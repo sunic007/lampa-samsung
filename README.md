@@ -1,12 +1,12 @@
 # Lampa for Samsung Smart TV (Tizen)
 
-[![Release](https://img.shields.io/github/v/release/sunic007/lampa-samsung?label=release&color=3d8bff)](https://github.com/sunic007/lampa-samsung/releases/latest) [![Downloads](https://img.shields.io/github/downloads/sunic007/lampa-samsung/total?color=2ea043)](https://github.com/sunic007/lampa-samsung/releases) ![Samsung Tizen](https://img.shields.io/badge/Samsung-Tizen%202.3%2B-1428a0?logo=samsung&logoColor=white) [![Telegram bot](https://img.shields.io/badge/Telegram-bot-26a5e4?logo=telegram&logoColor=white)](#-telegram-bot--search-watch-on-the-tv-and-notifications) [![License](https://img.shields.io/badge/license-MIT%20%2B%20GPL--2.0%20(Lampa)-lightgrey)](THIRD_PARTY_NOTICES.md)
+[![Release](https://img.shields.io/github/v/release/sunic007/lampa-samsung?label=release&color=3d8bff)](https://github.com/sunic007/lampa-samsung/releases/latest) [![Downloads](https://img.shields.io/github/downloads/sunic007/lampa-samsung/total?color=2ea043)](https://github.com/sunic007/lampa-samsung/releases) ![Tizen](https://img.shields.io/badge/Tizen-2.3%2B-1428a0) [![Telegram bot](https://img.shields.io/badge/Telegram-bot-26a5e4?logo=telegram&logoColor=white)](#-telegram-bot--search-watch-on-the-tv-and-notifications) [![License](https://img.shields.io/badge/license-MIT%20%2B%20GPL--2.0%20(Lampa)-lightgrey)](THIRD_PARTY_NOTICES.md)
 
 **English** · [Русский](README.ru.md)
 
-A build of the **Lampa** media center for Samsung TVs with the **Skaz (byskaz)** plugins. It installs as a single
-`samsung.wgt` file and is tuned for the TV: it updates itself, picks working servers on its own and keeps the player
-from freezing.
+A build of the open-source **Lampa** media center for Samsung Smart TVs. It installs as a single `samsung.wgt` file
+and is tuned for the TV: it updates itself, keeps the player from freezing and adds a Telegram bot to control the TV
+from your phone. It is a player — it does not host or provide any movies or series.
 
 **⬇️ [Download samsung.wgt](https://github.com/sunic007/lampa-samsung/releases/latest/download/samsung.wgt)** — latest version
 · all versions — [Releases](https://github.com/sunic007/lampa-samsung/releases)
@@ -17,16 +17,9 @@ from freezing.
 
 Tested on a 2022 Samsung TV (Tizen 6.5) and on the official Samsung TV emulator (Tizen 10.0).
 
-> Lampa itself supports several languages. The extra features of this package and the Telegram bot are in Russian;
-> online movies and series come from the Russian-language **Skaz TV** service.
+> Lampa itself supports several languages. The extra features of this package and the Telegram bot are in Russian.
 
 ---
-
-## Movies and series — with a Skaz TV subscription
-
-Online playback in this build works through the **Skaz TV** service, which requires a **subscription**:
-**[skaz.tv](https://skaz.tv)** · subscribe: **[skaz.tv/oplata.php](https://skaz.tv/oplata.php)** ·
-support: Telegram [@helpiptv](https://t.me/helpiptv), bot [@skaztv_bot](https://t.me/skaztv_bot).
 
 ## 🤖 Telegram bot — search, “Watch” on the TV and notifications
 
@@ -60,6 +53,13 @@ about new episodes. No server needed — the bot runs inside Lampa on the TV.
 
 The full feature table is in the [Russian README](README.ru.md#что-добавляет-этот-пакет).
 
+## Content sources
+
+The package contains no movies, series or streams. What you watch depends on the content source you connect
+yourself — for example the **[Skaz TV](https://skaz.tv)** subscription service, which the package is set up for
+(subscribe: [skaz.tv/oplata.php](https://skaz.tv/oplata.php), support: [@helpiptv](https://t.me/helpiptv)).
+Use only sources you have the right to use.
+
 ## Installation
 
 The easiest way is from an Android phone with **[TV Installer](https://github.com/sunic007/tvinstaller)**: it finds
@@ -78,6 +78,13 @@ New versions install over the old one; settings are kept. Package settings are i
 
 The package and TV Installer are free. If they are useful to you, you can support development on
 **[GitHub Sponsors](https://github.com/sponsors/sunic007)** (in Lampa: Settings → “Обновление” → “Поддержать проект”).
+
+## Disclaimer
+
+This project does not host, store or distribute any films, series or other media, and is not affiliated with
+the content services it can be used with. Samsung and Tizen are trademarks of Samsung Electronics; this project is
+not affiliated with or endorsed by Samsung. Third-party components and their licenses —
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ---
 
