@@ -6,4 +6,3 @@ dist/.candidate.wgt*
 debug/tv.log
 __pycache__/
 # Локальные настройки инструментов
-.claude/
