@@ -1,0 +1,9 @@
+# Собранные пакеты: создаются pack.py из src/, выпуски хранятся в dist/
+*.wgt
+dist/.candidate.wgt*
+*.tmp
+# Отладка
+debug/tv.log
+__pycache__/
+# Локальные настройки инструментов
+.claude/

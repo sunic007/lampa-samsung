@@ -1,0 +1,133 @@
+/*
+ * Все уведомления Lampa (Lampa.Noty: и Lampa, и плагинов Skaz, и пакета) — не сплошная полоса во всю ширину снизу,
+ * а тихая полупрозрачная плашка в правом нижнем углу: не перекрывает картинку, не забирает пульт, гаснет сама.
+ * !important и html body — потому что app.css Lampa подгружается позже нашего файла.
+ */
+html body .noty {
+  left: auto !important;
+  right: 2.2em !important;
+  bottom: 1.6em !important;
+  max-width: 42% !important;
+  max-height: 60% !important;
+  overflow: hidden !important;
+  background: rgba(0, 0, 0, 0.38) !important;
+  color: rgba(255, 255, 255, 0.82) !important;
+  border-radius: 0.6em !important;
+  -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+  pointer-events: none !important;
+  -webkit-transform: translateY(0.6em) !important;
+          transform: translateY(0.6em) !important;
+}
+html body .noty.noty--visible {
+  -webkit-transform: none !important;
+          transform: none !important;
+}
+html body .noty .noty__body {
+  padding: 0.45em 0.9em !important;
+  text-align: left !important;
+}
+html body .noty .noty__text {
+  font-size: 0.95em !important;
+  line-height: 1.35 !important;
+}
+/* панель плеера видна — уведомления над ней, не на кнопках */
+html body.bs-panel-up .noty,
+html body.bs-panel-up .bs-toast {
+  bottom: 8.5em !important;
+}
+
+/* Окно поверх плеера: отсчёт до следующей серии, «Вы ещё смотрите?» (bswatch.js). Над панелью плеера, справа. */
+.bs-overlay {
+  position: fixed;
+  right: 2.2em;
+  bottom: 9.5em;
+  z-index: 1000;
+  max-width: 40%;
+  padding: 0.9em 1.3em;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  border-radius: 0.6em;
+  pointer-events: none;
+}
+.bs-overlay__title { font-size: 1.5em; line-height: 1.3; }
+.bs-overlay__hint { margin-top: 0.35em; font-size: 0.95em; opacity: 0.75; }
+/* «Продолжить или сначала»: по центру экрана, две кнопки одна под другой, выбранная — в рамке (как в других плеерах) */
+.bs-overlay--choice {
+  top: 50%; left: 50%; right: auto; bottom: auto;
+  transform: translate(-50%, -50%);
+  max-width: none; width: 22em;
+  padding: 0; background: none; text-align: center;
+}
+.bs-overlay--choice .bs-overlay__btn {
+  margin: 0.7em 0; padding: 0.7em 1em; border-radius: 0.5em;
+  font-size: 1.2em; text-transform: uppercase; letter-spacing: 0.04em;
+  background: rgba(70, 70, 95, 0.85); border: 0.15em solid transparent;
+}
+.bs-overlay--choice .bs-overlay__btn.focus { background: rgba(60, 50, 80, 0.95); border-color: #ff2e7e; }
+.bs-overlay--choice .bs-overlay__btn small { display: block; margin-top: 0.15em; font-size: 0.7em; text-transform: none; opacity: 0.7; }
+
+/* Предыдущая и следующая серия по бокам от пуска/паузы (bswatch.js); «предыдущая» — тот же значок, зеркально */
+.player-panel__center .bs-ep { margin: 0 0.5em; }
+.player-panel__center .bs-btn-prev svg { -webkit-transform: scaleX(-1); transform: scaleX(-1); }
+
+/* Подписка в плеере (bstg.js), как в YouTube: кнопка и когда выйдет следующая серия — слева в панели */
+.bs-sub { display: flex; align-items: center; margin-left: 0.6em; }
+.bs-sub__btn { width: auto !important; padding: 0 1.1em; border-radius: 2em; font-size: 0.95em; white-space: nowrap; background: rgba(255, 255, 255, 0.92); color: #000; }
+.bs-sub__btn--on { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.bs-sub__next { margin-left: 0.9em; font-size: 0.85em; opacity: 0.8; white-space: nowrap; }
+
+/* Своя «следующая серия» у Lampa (справа в панели) дублирует ⏭ у пуска/паузы — прячем; «Плейлист» остаётся */
+.player-panel__playlist-buttons .player-panel__next { display: none !important; }
+
+/* Плашка серии при запуске (bswatch.js): слева сверху, плавно, как в стриминговых сервисах */
+.bs-ep-banner {
+  position: fixed; left: 2.5em; top: 2.2em; z-index: 1000; pointer-events: none;
+  padding: 0.8em 1.4em 0.9em 1.2em; border-left: 0.25em solid #ff2e7e; border-radius: 0.3em;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.35)); color: #fff;
+  opacity: 0; -webkit-transform: translateX(-1.5em); transform: translateX(-1.5em);
+  -webkit-transition: opacity .5s, -webkit-transform .5s; transition: opacity .5s, transform .5s;
+}
+.bs-ep-banner--on { opacity: 1; -webkit-transform: none; transform: none; }
+.bs-ep-banner__show { font-size: 0.95em; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.75; }
+.bs-ep-banner__ep { margin-top: 0.15em; font-size: 1.9em; font-weight: 700; }
+.bs-ep-banner__name { margin-top: 0.2em; font-size: 1.05em; opacity: 0.85; max-width: 28em; }
+
+/* Экранная клавиатура Lampa — современный вид: крупные скруглённые клавиши с промежутками, выбранная — белая,
+   чуть крупнее; служебные — другим тоном; значки на выбранной инвертируются, чтобы не пропадали на белом */
+.simple-keyboard .hg-row { margin-bottom: 0.35em; }
+.simple-keyboard .hg-button {
+  margin: 0 0.18em; padding: 0.35em 0; border-radius: 0.35em;
+  font-size: 1.9em; background: rgba(255, 255, 255, 0.08); color: #fff;
+  -webkit-transition: background .12s, color .12s, -webkit-transform .12s; transition: background .12s, color .12s, transform .12s;
+}
+.simple-keyboard .hg-button.focus, .simple-keyboard .hg-button.hg-activeButton {
+  background: #fff; color: #000;
+  -webkit-transform: scale(1.08); transform: scale(1.08);
+  -webkit-box-shadow: 0 0.2em 0.8em rgba(0, 0, 0, 0.5); box-shadow: 0 0.2em 0.8em rgba(0, 0, 0, 0.5);
+}
+.simple-keyboard .hg-button.focus:after { -webkit-filter: invert(1); filter: invert(1); }
+.simple-keyboard .hg-button[data-skbtn^="{"] { background: rgba(255, 255, 255, 0.16); }
+.simple-keyboard .hg-button[data-skbtn^="{"].focus { background: #fff; }
+.search__keypad .simple-keyboard .hg-button-SPACE { min-width: 9em; }
+.search__keypad { padding: 0.6em 1.5em 0.3em; }
+
+/* Telegram: подключение с телефона по QR (bstg.js) */
+.bs-tg-pair { display: flex; align-items: flex-start; }
+.bs-tg-pair__qr { flex: 0 0 auto; width: 12em; height: 12em; padding: 0.6em; background: #fff; border-radius: 0.5em; }
+.bs-tg-pair__qr svg, .bs-tg-pair__qr img { width: 100%; height: 100%; display: block; }
+.bs-tg-pair__steps { margin-left: 1.4em; font-size: 0.95em; line-height: 1.4; }
+.bs-tg-pair__steps p { margin: 0 0 0.6em; }
+.bs-tg-pair__url { margin-top: 0.4em; font-size: 0.8em; opacity: 0.6; word-break: break-all; }
+.bs-tg-pair__status { margin-top: 0.8em; padding: 0.5em 0.8em; border-radius: 0.4em; background: rgba(255, 255, 255, 0.1); }
+
+/* Telegram: код подключения ещё одного ТВ */
+.bs-tg-join__code { font-size: 3em; font-weight: 700; letter-spacing: .12em; text-align: center; margin: .3em 0 .4em; }
+
+/* Поиск: QR Telegram-бота под клавиатурой */
+.bs-search-tg { display: flex; align-items: center; gap: 1.2em; margin: 1em 0 1.2em; padding: 0.8em 1em; background: rgba(255, 255, 255, 0.06); border-radius: 0.8em; }
+.bs-search-tg__qr { flex: 0 0 auto; width: 7.5em; height: 7.5em; padding: 0.35em; background: #fff; border-radius: 0.4em; }
+.bs-search-tg__qr svg, .bs-search-tg__qr img { width: 100%; height: 100%; display: block; }
+.bs-search-tg__text { font-size: 1.15em; line-height: 1.45; opacity: 0.9; }
+.bs-search-tg--off { padding: 0.6em 1em; }
+.bs-search-tg--off .bs-search-tg__qr { display: none; }

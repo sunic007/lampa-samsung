@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" version="1.7.38" viewmodes="maximized">
+    <access origin="*" subdomains="true"></access>
+    <tizen:app-control>
+        <tizen:src name="index.html" reload="disable"/>
+        <tizen:operation name="http://samsung.com/appcontrol/operation/eden_resume"/>
+    </tizen:app-control>
+    <tizen:application id="0SG81L944p.Lampa" package="0SG81L944p" required_version="2.3"/>
+    <author>Yumata Kun</author>
+    <content src="index.html"/>
+    <feature name="http://tizen.org/feature/screen.size.normal.1080.1920"/>
+    <feature name="http://www.samsungdforum.com/feature/Voice_Recognition"/>
+    <feature name="http://tizen.org/feature/speech.recognition"/>
+    <icon src="icon.png"/>
+    <tizen:metadata key="http://samsung.com/tv/metadata/use.preview" value="bg_service"/>
+    <tizen:metadata key="http://samsung.com/tv/metadata/prelaunch.support" value="true"/>
+    <name>Lampa</name>
+    <tizen:privilege name="http://tizen.org/privilege/recorder"/>
+    <tizen:privilege name="http://tizen.org/privilege/network.get"/>
+    <tizen:privilege name="http://developer.samsung.com/privilege/microphone"/>
+    <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
+    <tizen:privilege name="http://developer.samsung.com/privilege/contentsdownload"/>
+    <tizen:privilege name="http://developer.samsung.com/privilege/widgetdata"/>
+    <tizen:privilege name="http://tizen.org/privilege/content.read"/>
+    <tizen:privilege name="http://tizen.org/privilege/content.write"/>
+    <tizen:privilege name="http://developer.samsung.com/privilege/network.public"/>
+    <tizen:privilege name="http://developer.samsung.com/privilege/productinfo"/>
+    <tizen:privilege name="http://tizen.org/privilege/download"/>
+    <tizen:privilege name="http://tizen.org/privilege/filesystem.read"/>
+    <tizen:privilege name="http://tizen.org/privilege/filesystem.write"/>
+    <tizen:privilege name="http://tizen.org/privilege/application.info"/>
+    <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
+    <tizen:privilege name="http://tizen.org/privilege/fullscreen"/>
+    <tizen:privilege name="http://tizen.org/privilege/internet"/>
+    <tizen:privilege name="http://tizen.org/privilege/tv.audio"/>
+    <tizen:privilege name="http://tizen.org/privilege/tv.channel"/>
+    <tizen:privilege name="http://tizen.org/privilege/tv.display"/>
+    <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+    <!-- Системный плеер webapis.avplay: без этой привилегии Samsung его не отдаёт -->
+    <tizen:privilege name="http://developer.samsung.com/privilege/avplay"/>
+    <tizen:profile name="tv-samsung"/>
+    <!-- Служба плиток Smart Hub — как в примере Samsung (SampleWebApps-PersonalPreview): без автоперезапуска,
+         своё служебное имя без значка, после отправки плиток завершается (service.js). Раньше (как у Skaz) висела
+         в памяти под именем «Lampa», и ТВ показывал в недавних серую заглушку вместо значка. -->
+    <tizen:service id="0SG81L944p.service">
+        <tizen:content src="service/service.js"/>
+        <tizen:name>LampaPreviewService</tizen:name>
+        <tizen:description>Smart Hub preview</tizen:description>
+        <tizen:metadata key="meta-key" value="meta-value"/>
+        <tizen:category name="http://tizen.org/category/service"/>
+    </tizen:service>
+    <tizen:setting screen-orientation="landscape" context-menu="enable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
+</widget>

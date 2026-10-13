@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lampa — подключить Telegram</title>
+<style>
+  :root { --bg: #141414; --fg: #eee; --muted: #9a9a9a; --accent: #2a6df4; --ok: #2e9d57; --err: #d9534f; --field: #222; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 16px; background: var(--bg); color: var(--fg); font: 17px/1.45 -apple-system, system-ui, sans-serif; }
+  h1 { font-size: 22px; margin: 0 0 12px; }
+  p { margin: 0 0 12px; color: var(--muted); }
+  textarea { width: 100%; min-height: 90px; padding: 12px; border-radius: 12px; border: 1px solid #333; background: var(--field); color: var(--fg); font: 16px monospace; }
+  button { width: 100%; margin-top: 12px; padding: 15px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font-size: 18px; }
+  button:disabled { opacity: .6; }
+  #s { margin-top: 14px; font-size: 17px; white-space: pre-wrap; }
+  .ok { color: var(--ok); } .err { color: var(--err); }
+  ol { padding-left: 20px; color: var(--muted); }
+</style>
+</head>
+<body>
+<h1>Подключить Telegram к Lampa</h1>
+<ol>
+  <li>В Telegram: <b>@BotFather</b> → <b>/newbot</b> → придумайте имя → нажмите на токен, чтобы скопировать.</li>
+  <li>Вставьте токен сюда и нажмите «Отправить на ТВ».</li>
+  <li>Напишите своему боту любое сообщение.</li>
+</ol>
+<textarea id="t" placeholder="123456789:AA…" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+<button id="b">Отправить на ТВ</button>
+<div id="s"></div>
+<script>
+  // Тема ntfy, которую слушает ТВ, — в адресе после #. Токен уходит одним запросом прямо в неё (без веб-приложения ntfy).
+  var topic = (location.hash || '').replace(/^#/, '');
+  var st = function (t, cls) { var e = document.getElementById('s'); e.textContent = t; e.className = cls || ''; };
+  if (!/^lampa-[a-z0-9]{8,40}$/.test(topic)) st('Откройте эту страницу через QR-код на экране ТВ.', 'err');
+  document.getElementById('b').onclick = function () {
+    var tok = document.getElementById('t').value.replace(/\s+/g, '');
+    var m = /(\d{6,12}:[A-Za-z0-9_-]{30,})/.exec(tok);
+    if (!m) return st('Это не похоже на токен бота. Скопируйте его у @BotFather целиком.', 'err');
+    if (!/^lampa-[a-z0-9]{8,40}$/.test(topic)) return st('Откройте эту страницу через QR-код на экране ТВ.', 'err');
+    var b = this; b.disabled = true; st('Отправляю…');
+    var x = new XMLHttpRequest();
+    x.open('POST', 'https://ntfy.sh/' + topic, true);
+    x.timeout = 20000;
+    x.onload = function () { b.disabled = false; if (x.status < 300) st('✅ Отправлено. На ТВ появится «Токен получен» — теперь напишите своему боту любое сообщение.', 'ok'); else st('Не отправилось (' + x.status + '). Попробуйте ещё раз.', 'err'); };
+    x.onerror = x.ontimeout = function () { b.disabled = false; st('Нет связи — проверьте интернет и нажмите ещё раз.', 'err'); };
+    x.send(m[1]);
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+ "version": "1.7.38",
+ "files": [
+  "skazauto.js",
+  "playerguard.js",
+  "bsfeatures.js",
+  "bsplayer.js",
+  "bsrch.js",
+  "bsprobe.js",
+  "bsfix.js",
+  "bsmenu.js",
+  "bscontinue.js",
+  "bswatch.js",
+  "bshub.js",
+  "bstg.js",
+  "bsvolume.js",
+  "loader.js"
+ ]
+}
