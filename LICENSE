@@ -22,7 +22,7 @@ SOFTWARE.
 
 ---
 
-This license covers the code of this package (the TV features around Lampa).
-Lampa itself (yumata/lampa, bundled copy in src/app.js and related files) and the
-Skaz (byskaz) plugins and servers belong to their respective authors and are
-distributed under their own terms.
+This license covers the package's own code (the TV features around Lampa).
+Lampa itself (yumata/lampa, bundled in src/) is licensed under GPL-2.0 — see
+LICENSE-GPL-2.0.txt and THIRD_PARTY_NOTICES.md. The Skaz (byskaz) plugins are not
+included in this repository; they belong to their authors.

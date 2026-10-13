@@ -1,6 +1,6 @@
 # Lampa для Samsung Smart TV (Tizen)
 
-[![Release](https://img.shields.io/github/v/release/sunic007/lampa-samsung?label=release&color=3d8bff)](https://github.com/sunic007/lampa-samsung/releases/latest) [![Downloads](https://img.shields.io/github/downloads/sunic007/lampa-samsung/total?color=2ea043)](https://github.com/sunic007/lampa-samsung/releases) ![Samsung Tizen](https://img.shields.io/badge/Samsung-Tizen%202.3%2B-1428a0?logo=samsung&logoColor=white) [![Telegram bot](https://img.shields.io/badge/Telegram-bot-26a5e4?logo=telegram&logoColor=white)](#-telegram-бот--поиск-смотреть-на-тв-и-уведомления-с-телефона) [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/sunic007/lampa-samsung?label=release&color=3d8bff)](https://github.com/sunic007/lampa-samsung/releases/latest) [![Downloads](https://img.shields.io/github/downloads/sunic007/lampa-samsung/total?color=2ea043)](https://github.com/sunic007/lampa-samsung/releases) ![Samsung Tizen](https://img.shields.io/badge/Samsung-Tizen%202.3%2B-1428a0?logo=samsung&logoColor=white) [![Telegram bot](https://img.shields.io/badge/Telegram-bot-26a5e4?logo=telegram&logoColor=white)](#-telegram-бот--поиск-смотреть-на-тв-и-уведомления-с-телефона) [![License](https://img.shields.io/badge/license-MIT%20%2B%20GPL--2.0%20(Lampa)-lightgrey)](THIRD_PARTY_NOTICES.md)
 
 [English](README.md) · **Русский**
 
@@ -119,7 +119,7 @@ Lampa — каталог фильмов, сериалов и аниме для �
 | 🆕 **Новые серии** | Сериал досмотрен, а вышла новая серия — метка «Новая серия» на карточке и уведомление при запуске |
 | ⏭ **Отсчёт до следующей серии** | За 15 с до конца серии: «Следующая серия через N». ОК — сразу, Назад — досмотреть титры. Если у серии есть метка титров Skaz — работает кнопка Lampa |
 | 💤 **«Вы ещё смотрите?»** | 3 серии подряд без нажатий на пульт — пауза и вопрос. Сериал не крутится всю ночь |
-| 🧒 **Детский режим** | По ПИН: прячет «Клубничку» (18+), «Пиратские плагины», установку плагинов, не открывает фильмы для взрослых |
+| 🧒 **Детский режим** | По ПИН: прячет разделы для взрослых и установку плагинов, не открывает фильмы 18+ |
 | ▶️ **Кнопка «Смотреть» на карточке** | Просмотр Skaz открывается одним ОК — без лишнего меню. Фокус сразу на ней |
 | 🇹🇷 **Турецкие сериалы** | Отдельная кнопка в левом меню: популярные, новинки, лучшие, по жанру, по годам, поиск по названию — только турецкие |
 | ⏱ **Загрузка не висит** | Если сервер не отвечает, через несколько секунд — «Не ответил» и переход к следующему, без бесконечной загрузки |
