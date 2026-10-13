@@ -577,81 +577,90 @@ function bsAddSettings() {
             '<path d="M28 4v7h-7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     });
 
+    /* Раздел «Обновление» — три части, у каждой сказано, откуда она обновляется:
+     *  Lampa (сервер byskaz) · плагины Skaz (их серверы, каждый запуск) · функции пакета (GitHub). */
+    var pkgVer = '';
+    try { pkgVer = tizen.application.getCurrentApplication().appInfo.version; } catch (e) {}
+    var title = function (name, text) { Lampa.SettingsApi.addParam({ component: C, param: { name: name, type: 'title' }, field: { name: text } }); };
+
+    title('bs_t_lampa', 'Lampa');
     Lampa.SettingsApi.addParam({
         component: C,
         param: { name: 'bs_info_version', type: 'static' },
-        field: { name: 'Версия Lampa', description: bsRunningVersion() + ' · пакет ' + BS_PACKAGE_VERSION + ' · встроенная копия ' + BS_BUNDLED_VERSION }
-    });
-
-    Lampa.SettingsApi.addParam({
-        component: C,
-        param: { name: 'bs_autoupdate', type: 'trigger', 'default': true },
-        field: {
-            name: 'Обновлять с GitHub',
-            description: (window.BS_REMOTE_VERSION ? 'Сейчас — ' + window.BS_REMOTE_VERSION + ' с GitHub. ' : '') +
-                'Новая версия ставится сама при следующем запуске Lampa, без установки .wgt.'
-        },
-        onChange: function (v) { try { window.localStorage.setItem('bs_autoupdate', String(v === true || v === 'true')); } catch (e) {} }
-    });
-
-    Lampa.SettingsApi.addParam({
-        component: C,
-        param: { name: 'bs_info_source', type: 'static' },
-        field: {
-            name: 'Откуда загружена',
-            description: bsSource === 'bundled'
-                ? 'Встроенная версия — сервер обновлений был недоступен при запуске'
-                : bsSource === 'local'
-                    ? 'Из пакета — та же сборка, что на сервере byskaz (быстрый старт без скачивания)'
-                    : 'Сервер byskaz (lampa.byskaz.ru)'
-        }
-    });
-
-    Lampa.SettingsApi.addParam({
-        component: C,
-        param: { name: 'bs_info_server', type: 'static' },
-        field: { name: 'Версия на сервере', description: 'Проверяю…' },
+        field: { name: 'Lampa ' + bsRunningVersion(), description: 'Проверяю сервер…' },
         onRender: function (item) {
             var descr = item.find('.settings-param__descr');
+            var from = bsSource === 'bundled' ? 'встроенная копия — сервер byskaz был недоступен при запуске'
+                : bsSource === 'local' ? 'из пакета — та же версия, что на сервере byskaz (без скачивания)'
+                    : 'с сервера byskaz (lampa.byskaz.ru)';
+            descr.text('Сейчас: ' + from + '.');
             bsCheckNow(function (a) {
-                if (!a) return descr.text('Сервер недоступен');
-                if (bsHasUpdate(a)) descr.text((a.app_version || '?') + ' — доступно обновление, нажмите «Проверить и обновить»');
-                else descr.text((a.app_version || '?') + ' — у вас последняя версия');
+                if (!a) return descr.text('Сейчас: ' + from + '. Сервер обновлений недоступен.');
+                descr.text('Сейчас: ' + from + '. На сервере ' + (a.app_version || '?') +
+                    (bsHasUpdate(a) ? ' — есть новее, нажмите «Проверить и обновить».' : ' — у вас последняя.'));
             });
         }
     });
-
     Lampa.SettingsApi.addParam({
         component: C,
         param: { name: 'bs_autoupdate', type: 'trigger', 'default': true },
-        field: { name: 'Автообновление', description: 'Проверяет сервер каждые 30 минут и при возврате в приложение; новая версия ставится сама (во время фильма — после закрытия плеера).' },
+        field: { name: 'Обновлять Lampa сама', description: 'Сервер byskaz проверяется каждые 30 минут; новая версия ставится сама (во время фильма — после закрытия плеера).' },
         onChange: function (v) { try { window.localStorage.setItem('bs_autoupdate', String(v === true || v === 'true')); } catch (e) {} }
     });
 
+    title('bs_t_skaz', 'Плагины Skaz — просмотр и ТВ by Skaz');
+    Lampa.SettingsApi.addParam({
+        component: C,
+        param: { name: 'bs_info_skaz', type: 'static' },
+        field: {
+            name: 'Обновляются сами',
+            description: 'Загружаются с серверов Skaz при каждом запуске Lampa: новая версия приходит не позже чем через сутки, ' +
+                'сразу — кнопкой «Проверить и обновить». Работают по подписке Skaz TV — skaz.tv.'
+        }
+    });
+
+    title('bs_t_pkg', 'Функции пакета — бот, плеер, настройки');
+    Lampa.SettingsApi.addParam({
+        component: C,
+        param: { name: 'bs_info_pkg', type: 'static' },
+        field: {
+            name: 'Версия ' + (window.BS_REMOTE_VERSION || pkgVer || BS_PACKAGE_VERSION),
+            description: (window.BS_REMOTE_VERSION ? 'Сейчас: с GitHub (sunic007/lampa-samsung).' : 'Сейчас: из установленного пакета.') +
+                ' Установлен пакет ' + (pkgVer || '?') + ' со встроенной Lampa ' + BS_BUNDLED_VERSION + '.'
+        }
+    });
+    Lampa.SettingsApi.addParam({
+        component: C,
+        param: { name: 'bs_gh_update', type: 'trigger', 'default': true },
+        field: { name: 'Обновлять с GitHub', description: 'Новая версия функций ставится сама при следующем запуске Lampa, без установки .wgt.' },
+        onChange: function (v) { try { window.localStorage.setItem('bs_gh_update', String(v === true || v === 'true')); } catch (e) {} }
+    });
+
+    title('bs_t_check', 'Проверка');
     var checked = null;
     try { checked = window.localStorage.getItem('bs_checked'); } catch (e) {}
     Lampa.SettingsApi.addParam({
         component: C,
         param: { name: 'bs_info_checked', type: 'static' },
-        field: { name: 'Последняя проверка', description: checked ? bsFormatDate(parseInt(checked, 10)) : '—' }
+        field: { name: 'Последняя проверка Lampa', description: checked ? bsFormatDate(parseInt(checked, 10)) : '—' }
     });
-
     Lampa.SettingsApi.addParam({
         component: C,
         param: { name: 'bs_check_now', type: 'button' },
-        field: { name: 'Проверить и обновить', description: 'Свежие плагины byskaz/Skaz сразу (обычно — раз в сутки); если на сервере новая Lampa — перезапуск с ней.' },
+        field: { name: 'Проверить и обновить', description: 'Lampa — с сервера byskaz, плагины Skaz — свежие сразу, функции пакета — с GitHub (применятся при следующем запуске).' },
         onChange: function () {
             bsNoty('Проверяю обновление…', 3000);
+            try { if (window.BSUpdate && BSUpdate.check) BSUpdate.check(); } catch (e) {}
             bsCheckNow(function (a) {
                 if (!a) return bsNoty('Сервер обновлений недоступен. Попробуйте позже.');
                 // плагины byskaz/Skaz кэшируются на сутки — по кнопке берём свежие сразу
                 try { window.localStorage.setItem('bs_plugins_salt', String(Date.now() % 100000)); } catch (e) {}
                 if (bsSource !== 'bundled' && !bsHasUpdate(a)) {
-                    bsNoty('У вас последняя версия Lampa ' + bsRunningVersion() + '. Обновляю плагины…', 3000);
-                    return setTimeout(function () { location.reload(); }, 1500);
+                    bsNoty('У вас последняя версия Lampa ' + bsRunningVersion() + '. Обновляю плагины Skaz…', 3000);
+                    return setTimeout(function () { location.reload(); }, 2500);
                 }
                 bsNoty('Загружаю Lampa ' + (a.app_version || '') + '…', 3000);
-                setTimeout(function () { location.reload(); }, 1500);
+                setTimeout(function () { location.reload(); }, 2500);
             });
         }
     });

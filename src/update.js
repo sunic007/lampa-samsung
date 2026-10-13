@@ -27,7 +27,7 @@
     var upd = null;
     try { upd = JSON.parse(get('bs_upd') || 'null'); } catch (e) {}
     var bad = get('bs_upd_bad') || '', skipUntil = +(get('bs_upd_skip') || 0);
-    var remote = get('bs_autoupdate') !== 'false' && !!upd && !!upd.v && num(upd.v) > num(pkg) && upd.v !== bad && Date.now() > skipUntil &&
+    var remote = get('bs_gh_update') !== 'false' && !!upd && !!upd.v && num(upd.v) > num(pkg) && upd.v !== bad && Date.now() > skipUntil &&
         !!upd.files && upd.files.length > 0 && upd.files.every(okName);
     if (remote && get('bs_upd_try') === upd.v) {            // прошлый запуск с этой версией до готовности не дошёл
         set('bs_upd_bad', upd.v);
@@ -50,7 +50,7 @@
     document.write(html);
 
     function check() {
-        if (get('bs_autoupdate') === 'false') return;
+        if (get('bs_gh_update') === 'false') return;
         var x = new XMLHttpRequest();
         try {
             x.open('GET', MANIFEST + '?t=' + Date.now(), true);
