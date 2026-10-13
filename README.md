@@ -4,9 +4,12 @@
 `samsung.wgt` и доработана для работы на ТВ: сама обновляется, сама выбирает рабочие серверы и не даёт
 плееру «повиснуть».
 
-> Версия пакета: **1.7.34** · Lampa: **3.3.5** · проверено на ТВ Samsung 2022 (Tizen 6.5) и на официальном
-> эмуляторе Samsung TV (Tizen 10.0)
-> История изменений — [CHANGELOG.md](CHANGELOG.md) · для разработчиков — [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+**⬇️ [Скачать samsung.wgt](https://github.com/sunic007/lampa-samsung/releases/latest/download/samsung.wgt)** — последняя версия
+· все версии — [Releases](https://github.com/sunic007/lampa-samsung/releases)
+· история — [CHANGELOG.md](CHANGELOG.md)
+· для разработчиков — [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+
+Проверено на ТВ Samsung 2022 (Tizen 6.5) и на официальном эмуляторе Samsung TV (Tizen 10.0).
 
 ---
 
@@ -136,7 +139,8 @@ Lampa — каталог фильмов, сериалов и аниме для �
 ## Установка
 1. На ТВ: **Приложения** → набрать на пульте `12345` → включить **режим разработчика**, указать IP телефона
    (или ПК), с которого будете ставить, перезагрузить ТВ.
-2. Установить `samsung.wgt` установщиком на телефоне (он подписывает пакет сам).
+2. Скачать **[samsung.wgt](https://github.com/sunic007/lampa-samsung/releases/latest/download/samsung.wgt)** и установить
+   установщиком на телефоне (он подписывает пакет сам).
 3. Запустить Lampa. Стартовые настройки byskaz пакет ставит сам — без перезагрузки при первом запуске.
 
 Новые версии ставятся поверх старых, настройки сохраняются.
