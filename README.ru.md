@@ -1,5 +1,7 @@
 # Lampa для Samsung Smart TV (Tizen)
 
+[![Release](https://img.shields.io/github/v/release/sunic007/lampa-samsung?label=release&color=3d8bff)](https://github.com/sunic007/lampa-samsung/releases/latest) [![Downloads](https://img.shields.io/github/downloads/sunic007/lampa-samsung/total?color=2ea043)](https://github.com/sunic007/lampa-samsung/releases) ![Samsung Tizen](https://img.shields.io/badge/Samsung-Tizen%202.3%2B-1428a0?logo=samsung&logoColor=white) [![Telegram bot](https://img.shields.io/badge/Telegram-bot-26a5e4?logo=telegram&logoColor=white)](#-telegram-бот--поиск-смотреть-на-тв-и-уведомления-с-телефона) [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+
 [English](README.md) · **Русский**
 
 Сборка медиацентра **Lampa** для телевизоров Samsung с плагинами **Skaz (byskaz)**. Устанавливается одним файлом

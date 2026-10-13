@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🎬 Skaz TV subscription & playback / Подписка и просмотр Skaz TV
+    url: https://t.me/helpiptv
+    about: Questions about the subscription go to Skaz TV support / Вопросы по подписке — в поддержку Skaz TV
+  - name: 💬 Questions / Вопросы
+    url: https://github.com/sunic007/lampa-samsung/discussions
+    about: Setup and usage questions / Вопросы по установке и настройке

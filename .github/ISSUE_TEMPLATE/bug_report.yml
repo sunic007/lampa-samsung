@@ -1,0 +1,31 @@
+name: 🐞 Bug report / Ошибка
+description: Something doesn't work / Что-то не работает
+labels: [bug]
+body:
+  - type: input
+    id: tv
+    attributes:
+      label: TV model and year / Модель и год ТВ
+      placeholder: UE55BU8500 (2022)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version / Версия пакета
+      description: Settings → «Обновление» / Настройки → Обновление
+      placeholder: "1.7.41"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area / Где
+      options: [Player / Плеер, Telegram bot / Telegram-бот, Updates / Обновление, Startup / Запуск, Other / Другое]
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened / Что произошло
+      description: Steps, a photo of the TV screen / Шаги, фото экрана ТВ
+    validations:
+      required: true
