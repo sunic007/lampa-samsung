@@ -865,6 +865,9 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('сводка: только 7 дней, по дате', wl.length === 2 && /Кэрри 1×3/.test(wl[0]) && /^• пт 16 окт — Солдаты 12×17$/.test(wl[1]));
     t('сводка: неделя считается с понедельника', T._weekKey(new Date(2026, 9, 18, 12).getTime()) === '2026-10-12' && T._weekKey(day) === '2026-10-12' && T._weekKey(new Date(2026, 9, 19).getTime()) === '2026-10-19');
     t('бот поиск: подпись — название, год, тип, рейтинг', /^Солдаты \(2004\)\nСериал · ★ 7\.5/.test(T._caption({ media_type: 'tv', name: 'Солдаты', first_air_date: '2004-01-26', vote_average: 7.46, overview: 'Про армию' })));
+    const mr = T._menuRows(), flat = [].concat.apply([], mr).map(b => b.callback_data);
+    t('меню бота: разделы кнопками «mn:», как у бота Skaz', ['mn:find', 'mn:pic', 'mn:want', 'mn:subs', 'mn:week', 'mn:tvs', 'mn:profile', 'mn:help', 'mn:support'].every(c => flat.indexOf(c) >= 0) && mr.every(r => r.length <= 2));
+    t('меню бота: команды у кнопки «Меню» слева от поля ввода', T._commands.map(c => c.command).join(',') === 'menu,find,want,subs,week,tvs,profile,help');
     const sl = [{ media_type: 'tv', id: 1 }, { media_type: 'movie', id: 2 }, { media_type: 'movie', id: 3 }];
     const b0 = T._slideButtons(sl, 0), b1 = T._slideButtons(sl, 1);
     t('слайдер: сериал — подписка, стрелки по кругу, счётчик', b0[1].length === 2 && b0[2][0].callback_data === 'p:2' && b0[2][1].text === '1 / 3' && b0[2][2].callback_data === 'p:1');

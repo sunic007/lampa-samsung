@@ -101,7 +101,7 @@ var BSTelegram = (function () {
         if (photo) call('sendPhoto', extra({ chat_id: to(), photo: photo, caption: text }), ok, plain);
         else plain();
     }
-    var KB = { keyboard: [[{ text: '🔎 Найти' }, { text: '⭐ Хочу посмотреть' }], [{ text: '🔔 Мои подписки' }, { text: '🗓 На этой неделе' }], [{ text: '🖼 По картинке' }, { text: '❓ Помощь' }]],
+    var KB = { keyboard: [[{ text: '📋 Меню' }], [{ text: '👤 Профиль' }, { text: '❓ Помощь' }]],
         resize_keyboard: true, is_persistent: true };
     var HELP = 'Я — ваш помощник Lampa 🎬\n\n' +
         '🔎 Напишите название фильма или сериала — найду: «▶️ Смотреть» (сразу включит на ТВ), «Хочу посмотреть», подписаться. Можно и описать словами — поможет ИИ.\n' +
@@ -112,14 +112,83 @@ var BSTelegram = (function () {
         '🗓 По понедельникам — что выходит на неделе.\n' +
         '🎬 Записали момент кнопкой «Записать» в плеере — видео придёт сюда.\n' +
         '👥 Семья: каждый подключает свой Telegram через QR в поиске Lampa — у каждого свои «Хочу посмотреть» и подписки. «Люди» — кто подключён.\n\n' +
-        'Кнопки — внизу. Работаю, пока Lampa на ТВ запущена.';
+        '📋 «Меню» внизу — все разделы кнопками. Работаю, пока Lampa на ТВ запущена.';
     var HELP_GUEST = HELP.replace(/➕[^\n]*\n/, '').replace(/👥[^\n]*\n/, '👥 Ваши «Хочу посмотреть» и подписки — только ваши, другие их не видят.\n');
     function helpText() { return isOwner() ? HELP : HELP_GUEST; }
     function sendKb(text) { call('sendMessage', { chat_id: to(), text: text, reply_markup: JSON.stringify(KB) }, null, null); }
 
     function epButtons(id) { return [[{ text: '🔕 Отписаться', callback_data: 'u:' + id }, { text: '⏰ Напомнить завтра', callback_data: 'l:' + id }]]; }
-    /** Без меню команд со слешем — всё кнопками внизу. */
-    function setCommands() { call('deleteMyCommands', {}, null, null); }
+    /** Меню команд слева от поля ввода - те же разделы, что в «📋 Меню». */
+    var COMMANDS = [
+        { command: 'menu', description: '📋 Главное меню' },
+        { command: 'find', description: '🔎 Найти фильм или сериал' },
+        { command: 'want', description: '⭐ Хочу посмотреть' },
+        { command: 'subs', description: '🔔 Мои подписки' },
+        { command: 'week', description: '🗓 На этой неделе' },
+        { command: 'tvs', description: '📺 Телевизоры' },
+        { command: 'profile', description: '👤 Профиль' },
+        { command: 'help', description: '❓ Помощь' }
+    ];
+    function setCommands() {
+        call('setMyCommands', { commands: JSON.stringify(COMMANDS) }, null, null);
+        call('setChatMenuButton', { menu_button: JSON.stringify({ type: 'commands' }) }, null, null);
+    }
+
+    /** «📋 Меню»: сообщение «Выберите раздел» с кнопками-плитками, как у бота Skaz. */
+    function menuRows() {
+        var b = function (text, a) { return { text: text, callback_data: 'mn:' + a }; };
+        var rows = [
+            [b('🔎 Найти', 'find'), b('🖼 По картинке', 'pic')],
+            [b('⭐ Хочу посмотреть', 'want'), b('🔔 Мои подписки', 'subs')],
+            [b('🗓 На этой неделе', 'week'), b('📺 Телевизоры', 'tvs')]
+        ];
+        if (isOwner()) rows.push([b('👥 Люди', 'people')]);
+        rows.push([b('👤 Профиль', 'profile')]);
+        rows.push([b('❓ Помощь', 'help'), b('❤️ Поддержать', 'support')]);
+        return rows;
+    }
+    function tvNames() { return allTvs().map(function (d) { return d.text.replace(/^📺 /, ''); }); }
+    function sendMenu() {
+        var tvs = tvNames();
+        reply('📺 На связи: ' + tvs.join(', ') + (aiReady() ? ' · 🧠 ИИ-поиск включён' : '') + '\n\nВыберите раздел:', menuRows());
+    }
+    function profileText() {
+        var g = guest(), people = users(), me = people[to()] || {}, ai = aiProviders().map(function (x) { return x.p === 'gemini' ? 'Gemini' : OA[x.p].name; });
+        var subsN = (isOwner() ? subs() : ((g || {}).subs || [])).length;
+        var lines = [
+            '👤 ' + (isOwner() ? 'Владелец бота' : 'Вы подключены' + (me.name ? ' как ' + me.name : '') + ' — свои списки и подписки'),
+            '📺 Телевизоры на связи: ' + tvNames().join(', '),
+            '🔔 Подписок: ' + subsN,
+            '🧠 ИИ-поиск: ' + (ai.length ? ai.join(', ') : 'нет ключа — пришлите ключ Groq, Gemini или OpenRouter (подробнее — «🖼 По картинке»)')
+        ];
+        if (isOwner()) {
+            var guests = Object.keys(people).filter(function (k) { return active(people[k]); }).length;
+            lines.push('👥 Подключено людей: ' + guests);
+        }
+        return lines.join('\n');
+    }
+    function tvsInfo() {
+        var tvs = allTvs();
+        var rows = isOwner() ? [[{ text: '✏️ Переименовать ТВ', callback_data: 'rn' }]] : null;
+        reply('📺 Телевизоры на связи (' + tvs.length + '):\n' + tvs.map(function (d) { return '• ' + d.text.replace(/^📺 /, ''); }).join('\n') +
+            '\n\nЕщё один ТВ: в его Lampa — Настройки → Telegram → «Подключить через бота», код с экрана пришлите сюда.', rows);
+    }
+    function supportText() {
+        return '❤️ Lampa для Samsung и TV Installer — бесплатные.\nПоддержать развитие: https://github.com/sponsors/sunic007';
+    }
+    function menuAction(a) {
+        if (a === 'find') return reply('Напишите название фильма или сериала 👇');
+        if (a === 'pic') return aiReady() ? aiStatus() : reply(geminiHow());
+        if (a === 'want') return wantList();
+        if (a === 'subs') return subsList();
+        if (a === 'week') return reply(weekText(true));
+        if (a === 'tvs') return tvsInfo();
+        if (a === 'people') return isOwner() ? peopleList() : null;
+        if (a === 'profile') return reply(profileText(), [[{ text: '📋 Меню', callback_data: 'mn:menu' }]]);
+        if (a === 'help') return sendKb(helpText());
+        if (a === 'support') return reply(supportText());
+        if (a === 'menu') return sendMenu();
+    }
 
     function link() {
         if (!token()) return noty('Сначала впишите токен бота', 3000);
@@ -1408,7 +1477,7 @@ var BSTelegram = (function () {
     }
 
     var renameFor = null, renameWait = null;
-    var KB_WORDS = ['найти', 'хочу посмотреть', 'мои подписки', 'на этой неделе', 'по картинке', 'помощь', 'люди'];
+    var KB_WORDS = ['найти', 'хочу посмотреть', 'мои подписки', 'на этой неделе', 'по картинке', 'помощь', 'люди', 'меню', 'профиль', 'телевизоры'];
 
     /** Чей это апдейт; чужим — только подключение по приглашению. */
     function chatOf(u) { var m = u.callback_query ? u.callback_query.message : u.message; return m && m.chat ? String(m.chat.id) : ''; }
@@ -1423,6 +1492,8 @@ var BSTelegram = (function () {
         if (u.callback_query) {
             var q = u.callback_query, sm = /^([wosxv]):([mt]):(\d+)$/.exec(q.data || ''), m = /^([ul]):(\d+)$/.exec(q.data || '');
             if (!q.message) return;
+            var mn = /^mn:(\w+)$/.exec(q.data || '');
+            if (mn) { call('answerCallbackQuery', { callback_query_id: q.id }, null, null); return menuAction(mn[1]); }
             var ku = /^ku:(-?\d+)$/.exec(q.data || '');
             var okk = /^ok:(-?\d+)$/.exec(q.data || '');
             if (okk) {
@@ -1524,25 +1595,32 @@ var BSTelegram = (function () {
         }
         var t = msg.text.replace(/^\s+|\s+$/g, ''), cmd = /^\/(\w+)(?:@\w+)?\s*([\s\S]*)$/.exec(t);
         var c = cmd ? cmd[1].toLowerCase() : '', arg = cmd ? cmd[2] : t, plain = t.replace(/^[^\wА-Яа-яЁё]+/, '').toLowerCase();
-        if (c === 'start' || c === 'help' || plain === 'помощь') return sendKb(helpText());
+        if (c === 'start') { sendKb('👋 Это бот вашей Lampa на ТВ.\nНапишите название фильма или сериала — или выберите раздел 👇'); return setTimeout(sendMenu, 400); }
+        if (c === 'help' || plain === 'помощь') return sendKb(helpText());
+        if (c === 'menu' || plain === 'меню') return sendMenu();
+        if (c === 'profile' || plain === 'профиль') return menuAction('profile');
+        if (c === 'tvs' || plain === 'телевизоры') return tvsInfo();
         if (plain === 'найти') return reply('Напишите название фильма или сериала 👇');
-        if (plain === 'хочу посмотреть') return wantList();
+        if (c === 'want' || plain === 'хочу посмотреть') return wantList();
         if (plain === 'люди') return peopleList();
         if (plain === 'по картинке') return aiReady() ? aiStatus() : reply(geminiHow());
-        if (plain === 'на этой неделе') return reply(weekText(true));
-        if (c === 'subs' || plain === 'мои подписки' || plain === 'подписки') {
-            var l = isOwner() ? subs() : ((guest() || {}).subs || []), seen = loadSeen();
-            if (!l.length) return reply('🔔 Подписок нет.\nНапишите название сериала и нажмите «🔔 Подписаться» — или кнопкой на карточке в Lampa.');
-            var lines = l.slice(0, 30).map(function (s) {
-                var r = seen[s.id] || {}, n = r.next;
-                return '• ' + (s.name || r.name || '') + (n && n.d ? ' — ' + n.s + '×' + n.e + ', ' + n.d.split('-').reverse().slice(0, 2).join('.') : '');
-            });
-            return reply('🔔 Ваши подписки:\n' + lines.join('\n') + '\n\nНажмите, чтобы отписаться:', l.slice(0, 8).map(function (s) { return [{ text: '🔕 ' + (s.name || s.id), callback_data: 'u:' + s.id }]; }));
-        }
-        if (c && c !== 'find') return sendKb('Пользуйтесь кнопками внизу или просто напишите название 👇');
+        if (c === 'week' || plain === 'на этой неделе') return reply(weekText(true));
+        if (c === 'subs' || plain === 'мои подписки' || plain === 'подписки') return subsList();
+        if (c && c !== 'find') return sendMenu();
         var query = (c === 'find' ? arg : t).replace(/^найти\s+/i, '').replace(/^\s+|\s+$/g, '');
         if (!query) return reply('Напишите название фильма или сериала 👇');
         botSearch(query);
+    }
+
+    /** «🔔 Мои подписки»: список с датами следующих серий и кнопками «Отписаться». */
+    function subsList() {
+        var l = isOwner() ? subs() : ((guest() || {}).subs || []), seen = loadSeen();
+        if (!l.length) return reply('🔔 Подписок нет.\nНапишите название сериала и нажмите «🔔 Подписаться» — или кнопкой на карточке в Lampa.');
+        var lines = l.slice(0, 30).map(function (s) {
+            var r = seen[s.id] || {}, n = r.next;
+            return '• ' + (s.name || r.name || '') + (n && n.d ? ' — ' + n.s + '×' + n.e + ', ' + n.d.split('-').reverse().slice(0, 2).join('.') : '');
+        });
+        return reply('🔔 Ваши подписки:\n' + lines.join('\n') + '\n\nНажмите, чтобы отписаться:', l.slice(0, 8).map(function (s) { return [{ text: '🔕 ' + (s.name || s.id), callback_data: 'u:' + s.id }]; }));
     }
 
     /* ---------- подписка в плеере ---------- */
@@ -2102,7 +2180,16 @@ var BSTelegram = (function () {
         setTimeout(function () { check(false); }, 40000);
         setInterval(function () { check(false); }, 30 * 60000);
         setTimeout(remind, 70000);
-        setTimeout(function () { if (token() && chat() && lsGet('bs_tg_cmds') !== '6') { lsSet('bs_tg_cmds', '6'); if (!leading()) return; setCommands(); sendKb('Новое: ещё один ТВ подключается без токена — код с экрана ТВ пришлите сюда 👇\n\n' + HELP); } }, 20000);
+        setTimeout(function () {
+            if (!token() || !chat() || lsGet('bs_tg_cmds') === '7') return;
+            lsSet('bs_tg_cmds', '7');
+            if (!leading()) return;
+            setCommands();
+            var news = '✨ Новое меню: кнопка «📋 Меню» внизу — все разделы, «👤 Профиль» — что подключено. Команды — у кнопки «Меню» слева от поля ввода.';
+            as('', function () { sendKb(news); });
+            var people = users();
+            Object.keys(people).forEach(function (k) { if (active(people[k])) as(k, function () { sendKb(news); }); });
+        }, 20000);
         setInterval(remind, 10 * 60000);
         setInterval(poll, 15000);                                    // страховка: опрос оборвался (сеть) — поднять
         loadDevName();
@@ -2127,5 +2214,5 @@ var BSTelegram = (function () {
         }, 60000);
     }
 
-    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary };
+    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _commands: COMMANDS };
 })();
