@@ -664,6 +664,34 @@ function bsAddSettings() {
             });
         }
     });
+
+    title('bs_t_support', 'Проект');
+    Lampa.SettingsApi.addParam({
+        component: C,
+        param: { name: 'bs_support', type: 'button' },
+        field: { name: 'Поддержать проект', description: 'Пакет бесплатный. Помочь развитию можно на GitHub Sponsors — QR-код для телефона.' },
+        onChange: bsSupportQr
+    });
+}
+
+/* Поддержка проекта: на ТВ ссылку не откроешь — показываем QR-код для телефона. */
+var BS_SPONSORS_URL = 'https://github.com/sponsors/sunic007';
+function bsSupportQr() {
+    var body = $('<div style="display:flex;align-items:center;gap:1.5em;padding:.5em 0">' +
+        '<div class="bs-support__qr" style="width:12em;height:12em;background:#fff;padding:.6em;border-radius:.6em;flex:none"></div>' +
+        '<div style="line-height:1.5"><p>Lampa для Samsung и TV Installer — бесплатные. ' +
+        'Если они вам полезны, поддержать развитие можно на GitHub Sponsors.</p>' +
+        '<p>Наведите камеру телефона на QR-код.</p>' +
+        '<p style="opacity:.7">' + BS_SPONSORS_URL + '</p></div></div>');
+    try { Lampa.Utils.qrcode(BS_SPONSORS_URL, body.find('.bs-support__qr')[0]); } catch (e) {}
+    var ctrl = 'settings_component';
+    try { ctrl = Lampa.Controller.enabled().name; } catch (e) {}
+    Lampa.Modal.open({
+        title: 'Поддержать проект',
+        html: body,
+        size: 'medium',
+        onBack: function () { try { Lampa.Modal.close(); Lampa.Controller.toggle(ctrl); } catch (e) {} }
+    });
 }
 
 /* Этап загрузки Lampa. lampainit.js прячет её строку статуса — показываем её сами,
