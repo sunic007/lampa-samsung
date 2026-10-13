@@ -64,7 +64,7 @@ def main():
     loader = open(loader_path, encoding='utf-8').read()
     loader = re.sub(r"var BS_BUNDLED_VERSION = '[^']*';", "var BS_BUNDLED_VERSION = '%s';" % version, loader, count=1)
     loader = re.sub(r"var BS_BUNDLED_HASH = '[^']*';", "var BS_BUNDLED_HASH = '%s';" % h, loader, count=1)
-    open(loader_path, 'w', encoding='utf-8').write(loader)
+    open(loader_path, 'w', encoding='utf-8', newline='').write(loader)
     print('Обновлено файлов:', len(jobs) - len(fails), '— встроенная копия теперь', version)
     print('Дальше: допишите CHANGELOG.md и выполните python pack.py --bump')
 

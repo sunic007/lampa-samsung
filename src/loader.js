@@ -11,8 +11,8 @@ console.log('Start load');
 var BS_SERVER = 'http://lampa.byskaz.ru/lampa-main/';
 var BS_PACKAGE_VERSION = 'dev';   // версия пакета .wgt — pack.py подставляет её из config.xml
 if (window.BS_REMOTE_VERSION) BS_PACKAGE_VERSION = window.BS_REMOTE_VERSION;   // модули пришли с GitHub (update.js)
-var BS_BUNDLED_VERSION = '3.3.5'; // версия встроенной копии app.js — update_bundled.py
-var BS_BUNDLED_HASH = '758fa55fe85adc08a7fef046e34fc920'; // hash из assembly.json этой копии — update_bundled.py
+var BS_BUNDLED_VERSION = '3.3.6'; // версия встроенной копии app.js — update_bundled.py
+var BS_BUNDLED_HASH = 'c5701b7be6da4427afd2403b298886e3'; // hash из assembly.json этой копии — update_bundled.py
 
 var bsRemote = null;      // assembly.json с сервера: {app_version, hash, time}
 var bsSource = '';        // 'server' | 'local' (из пакета, та же сборка что на сервере) | 'bundled' (сервер недоступен)
