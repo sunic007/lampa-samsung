@@ -681,7 +681,7 @@ function bsAddSettings() {
     Lampa.SettingsApi.addParam({
         component: C,
         param: { name: 'bs_check_now', type: 'button' },
-        field: { name: 'Проверить и обновить', description: 'Lampa — с сервера byskaz, плагины Skaz — свежие сразу, функции пакета — с GitHub, сразу.' },
+        field: { name: 'Проверить и обновить', description: 'Есть новая версия Lampa (сервер byskaz) или функций пакета (GitHub) — обновит сразу; нет — просто скажет.' },
         onChange: function () {
             bsNoty('Проверяю обновление…', 3000);
             // сначала GitHub (функции пакета), потом сервер Lampa; перезагрузка — только когда оба ответили
@@ -692,12 +692,13 @@ function bsAddSettings() {
                     return setTimeout(function () { location.reload(); }, 2500);
                 }
                 if (!a) return bsNoty('Сервер обновлений недоступен. Попробуйте позже.');
-                // плагины byskaz/Skaz кэшируются на сутки — по кнопке берём свежие сразу
-                try { window.localStorage.setItem('bs_plugins_salt', String(Date.now() % 100000)); } catch (e) {}
-                if (bsSource !== 'bundled' && !bsHasUpdate(a)) {
-                    bsNoty('У вас последняя версия Lampa ' + bsRunningVersion() + '. Обновляю плагины Skaz…', 3000);
-                    return setTimeout(function () { location.reload(); }, 2500);
+                // обновлять нечего — не перезагружаем (плагины Skaz и так обновляются сами при запуске)
+                if (!bsHasUpdate(a)) {
+                    return bsNoty('Обновлений нет: Lampa ' + bsRunningVersion() + ', функции ' +
+                        BS_PACKAGE_VERSION + ' — последние.', 5000);
                 }
+                // плагины byskaz/Skaz кэшируются на сутки — при обновлении Lampa берём и свежие плагины
+                try { window.localStorage.setItem('bs_plugins_salt', String(Date.now() % 100000)); } catch (e) {}
                 bsNoty('Загружаю Lampa ' + (a.app_version || '') + '…', 3000);
                 setTimeout(function () { location.reload(); }, 2500);
             }); });
