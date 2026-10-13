@@ -44,7 +44,7 @@ about new episodes. No server needed — the bot runs inside Lampa on the TV.
 - 🔄 **Auto-update** of Lampa, the plugins and the package itself (from this repository) — no reinstall needed.
 - 📡 **Automatic Skaz server choice** by ping, jitter and loss; a stuck server is replaced automatically.
 - 🛟 **Player watchdog** — restarts a frozen video from the same position, then tries another quality or source.
-- ▶️ **One-press “Watch”**, ⏯ **continue where you left off** (also from a Smart Hub tile), ⏭ **next-episode countdown**,
+- ▶️ **One-press “Watch”**, ⏯ **continue where you left off**, ⏭ **next-episode countdown**,
   skip intros and credits, chapters.
 - 📺 **Samsung AVPlay** hardware playback (4K/HLS), faster start, quality matched to your internet speed.
 - 🔈 Per-title volume with a night limit, 🌙 day/night brightness, audio track memory, sleep timer.

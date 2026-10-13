@@ -22,6 +22,23 @@
     
     <!-- API Samsung: без него Lampa не видит Tizen и не включает системный плеер AVPlay -->
     <script src="$WEBAPIS/webapis/webapis.js"></script>
+    <!-- Плитки Smart Hub не отправляем: служба превью убрана, а её запуск ТВ превращал значок Lampa в серую
+         заглушку. Ставится первым, до Lampa и до своих модулей. -->
+    <script>
+        (function () {
+            try {
+                var app = window.tizen && tizen.application, orig = app && app.launchAppControl;
+                if (!orig) return;
+                app.launchAppControl = function (ctrl) {
+                    try {
+                        var d = ctrl && ctrl.data && ctrl.data[0];
+                        if (ctrl.operation === 'http://tizen.org/appcontrol/operation/pick' && d && d.value && d.value[0] === 'ForegroundApp') return;
+                    } catch (e) {}
+                    return orig.apply(this, arguments);
+                };
+            } catch (e) {}
+        })();
+    </script>
     <script src="polyfills.js"></script>
     <script src="./vender/jquery/jquery.js"></script>
     <script src="./vender/notify/notify.js"></script>

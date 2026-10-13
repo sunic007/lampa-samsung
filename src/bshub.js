@@ -36,7 +36,8 @@ var BSHub = (function () {
      *            службы; проверено на ТВ: с 'off' значок держится). В Smart Hub остаются плитки, присланные раньше;
      *  'posters' — наши разделы в форме данных Lampa: постеры 1:1 w300, без «Play», без своих полей, ≤ 3 разделов;
      *  'wide'    — широкие кадры 16:9 с названием; 'lampa' — данные Lampa как есть. */
-    function mode() { var m = lsGet('bs_hub_mode'); return m === 'wide' || m === 'lampa' || m === 'posters' ? m : 'off'; }
+    // С 1.7.42 службы превью в пакете нет - ряд не отправляется никогда (см. config.xml, index.html).
+    function mode() { return 'off'; }
     function ours() { var m = mode(); return m === 'wide' || m === 'posters'; }
     // Один раз: на ТВ, где режим остался от 1.7.11–1.7.12 (тогда по умолчанию ряд обновлялся), — 'off', иначе служба
     // превью запускается и значок Lampa снова пропадает (ТВ 2022). Сразу при загрузке: Lampa шлёт ряд на старте.
@@ -307,15 +308,8 @@ var BSHub = (function () {
         });
     } catch (e) {}
 
-    function addSettings() {
-        if (!window.Lampa || !Lampa.SettingsApi) return;
-        Lampa.SettingsApi.addParam({
-            component: 'bs_update',
-            param: { name: 'bs_hub_mode', type: 'select', values: { off: 'Не обновлять (по умолчанию)', posters: 'Постеры — пропадает значок Lampa', wide: 'Широкие кадры — пропадает значок Lampa', lampa: 'Как в Lampa — пропадает значок Lampa' }, 'default': mode() },
-            field: { name: 'Ряд Lampa на панели ТВ', description: 'Плитки Lampa на главном экране ТВ. Может скрыть значок Lampa.' },
-            onChange: function (v) { lsSet('bs_hub_mode', String(v)); }
-        });
-    }
+    // Настройки ряда нет: служба превью убрана из пакета (1.7.42).
+    function addSettings() {}
 
     function start() { try { addSettings(); } catch (e) {} request(); }
 

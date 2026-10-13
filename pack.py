@@ -68,7 +68,7 @@ def check_sources():
         die('index.html ссылается на отсутствующие файлы: %s' % missing)
     # Плитка приложения на главном экране ТВ 2016+ (фон и логотип 1920x1080): без них ТВ 2022 после запуска Lampa
     # ставит серую заглушку вместо значка (1.6.9 удалил их как «картинки для магазина» — ошибка, вернули в 1.7.6).
-    need = ['icon.png', 'logo_appname_bg.png', 'logo_appname_fg.png', 'service/service.js']
+    need = ['icon.png', 'logo_appname_bg.png', 'logo_appname_fg.png']
     lost = [f for f in need if not os.path.exists(os.path.join(SRC, f))]
     if lost:
         die('нет обязательных файлов пакета: %s' % lost)

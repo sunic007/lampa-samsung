@@ -559,23 +559,24 @@ G.clock.run(25000);
 t('сторож: стоит и буфер не растёт — вмешивается (перезапуск/качество)', G.notes.length > 0);
 
 
-/* ---- service/service.js: служба превью — как в примере Samsung: отправила плитки — завершается (у Skaz висела, и ТВ
- *      показывал в недавних серую заглушку вместо значка) ---- */
-function runService(req, okSet) {
-    const st = { exit: 0, set: null };
-    const ctx = { module: { exports: {} }, console: { log() {} },
-        tizen: { application: { getCurrentApplication: () => ({ exit: () => st.exit++, getRequestedAppControl: () => req }) } },
-        webapis: { preview: { setPreviewData: (j, ok, err) => { st.set = j; okSet ? ok() : err({ message: 'x' }); } } } };
-    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'service', 'service.js'), 'utf8'), ctx);
-    ctx.module.exports.onRequest(); return st;
+/* ---- index.html: плитки Smart Hub не отправляются — первым скриптом, до Lampa (служба превью убрана: её запуск
+ *      ТВ превращал значок Lampa в серую заглушку) ---- */
+function runGuard() {
+    const html = fs.readFileSync(path.join(SRC, 'index.html'), 'utf8');
+    const code = html.match(/<script>\s*([\s\S]*?launchAppControl[\s\S]*?)<\/script>/)[1];
+    const calls = [];
+    const ctx = { window: {}, tizen: { application: { launchAppControl: (c, id) => calls.push(id) } } };
+    ctx.window.tizen = ctx.tizen;
+    vm.createContext(ctx); vm.runInContext(code, ctx);
+    return { app: ctx.tizen.application, calls };
 }
-const PICK = d => ({ appControl: { operation: 'http://tizen.org/appcontrol/operation/pick', data: d } });
-let sv = runService(PICK([{ value: ['ForegroundApp', '{"sections":[]}'] }]), true);
-t('служба превью: ряд Lampa передан в превью, служба завершается', sv.set === '{"sections":[]}' && sv.exit === 1);
-sv = runService(PICK([{ value: ['ForegroundApp', '{}'] }]), false);
-t('служба превью: ошибка обновления — тоже завершается', sv.exit === 1);
-sv = runService(null, true);
-t('служба превью: запуск без данных Lampa — превью не трогает', sv.set === null);
+const PICK = d => ({ operation: 'http://tizen.org/appcontrol/operation/pick', data: d });
+let hg = runGuard();
+hg.app.launchAppControl(PICK([{ value: ['ForegroundApp', '{"sections":[]}'] }]), 'x.service');
+t('Smart Hub: ряд Lampa не уходит в службу превью', hg.calls.length === 0);
+hg.app.launchAppControl({ operation: 'http://tizen.org/appcontrol/operation/view', data: [] }, 'other.app');
+t('Smart Hub: остальные запуски приложений проходят', hg.calls.length === 1 && hg.calls[0] === 'other.app');
+t('Smart Hub: в config.xml нет службы и превью', !/<tizen:service|metadata\/use\.preview/.test(fs.readFileSync(path.join(SRC, 'config.xml'), 'utf8')));
 
 
 /* ---- bsfix.js: качество под скорость канала ---- */

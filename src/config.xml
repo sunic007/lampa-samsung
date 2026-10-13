@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" version="1.7.41" viewmodes="maximized">
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" version="1.7.42" viewmodes="maximized">
     <access origin="*" subdomains="true"></access>
     <tizen:app-control>
         <tizen:src name="index.html" reload="disable"/>
@@ -12,7 +12,6 @@
     <feature name="http://www.samsungdforum.com/feature/Voice_Recognition"/>
     <feature name="http://tizen.org/feature/speech.recognition"/>
     <icon src="icon.png"/>
-    <tizen:metadata key="http://samsung.com/tv/metadata/use.preview" value="bg_service"/>
     <tizen:metadata key="http://samsung.com/tv/metadata/prelaunch.support" value="true"/>
     <name>Lampa</name>
     <tizen:privilege name="http://tizen.org/privilege/recorder"/>
@@ -39,15 +38,8 @@
     <!-- Системный плеер webapis.avplay: без этой привилегии Samsung его не отдаёт -->
     <tizen:privilege name="http://developer.samsung.com/privilege/avplay"/>
     <tizen:profile name="tv-samsung"/>
-    <!-- Служба плиток Smart Hub — как в примере Samsung (SampleWebApps-PersonalPreview): без автоперезапуска,
-         своё служебное имя без значка, после отправки плиток завершается (service.js). Раньше (как у Skaz) висела
-         в памяти под именем «Lampa», и ТВ показывал в недавних серую заглушку вместо значка. -->
-    <tizen:service id="0SG81L944p.service">
-        <tizen:content src="service/service.js"/>
-        <tizen:name>LampaPreviewService</tizen:name>
-        <tizen:description>Smart Hub preview</tizen:description>
-        <tizen:metadata key="meta-key" value="meta-value"/>
-        <tizen:category name="http://tizen.org/category/service"/>
-    </tizen:service>
+    <!-- Превью Smart Hub и служба плиток убраны (1.7.42): запущенная служба для ТВ становилась «последним
+         приложением», и вместо значка Lampa на главном экране появлялась серая заглушка. ТВ запускал её и сам
+         (use.preview=bg_service), и Lampa на старте — раньше, чем успевал включиться наш перехват. -->
     <tizen:setting screen-orientation="landscape" context-menu="enable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
 </widget>
