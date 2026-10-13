@@ -125,6 +125,8 @@ html body.bs-panel-up .bs-toast {
 .bs-tg-join__code { font-size: 3em; font-weight: 700; letter-spacing: .12em; text-align: center; margin: .3em 0 .4em; }
 
 /* Поиск: QR Telegram-бота под клавиатурой */
+/* поиск: набрали текст и ушли к результатам - экранная клавиатура прячется (bstg.js, searchKeypad) */
+body.bs-kb-hidden .search__keypad { display: none; }
 .bs-search-tg { display: flex; align-items: center; gap: 1.2em; margin: 1em 0 1.2em; padding: 0.8em 1em; background: rgba(255, 255, 255, 0.06); border-radius: 0.8em; }
 .bs-search-tg__qr { flex: 0 0 auto; width: 7.5em; height: 7.5em; padding: 0.35em; background: #fff; border-radius: 0.4em; }
 .bs-search-tg__qr svg, .bs-search-tg__qr img { width: 100%; height: 100%; display: block; }

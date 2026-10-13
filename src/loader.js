@@ -401,16 +401,17 @@ function bsStartAutoUpdate() {
     setTimeout(bsUpdateCheck, bsSource === 'bundled' ? 15000 : 60000);
 }
 
-/* Клавиатура поиска - системная Samsung, как в byskaz (1.7.44). С экранной клавиатурой Lampa она висела сверху поиска
- * постоянно, а история уходила под неё; с системной сверху - строка поиска и история, клавиатура появляется при вводе
- * и прячется после поиска. Один раз - до запуска Lampa (она читает keyboard_type при старте); выбрали в настройках
- * «Lampa» снова - больше не трогаем. */
+/* Клавиатура: своя экранная клавиатура Lampa вместо системной Samsung (просили: «Samsung неудобная»). Один раз —
+ * до запуска Lampa (она читает keyboard_type при старте); вернули «Системную» в настройках — больше не трогаем.
+ * bs_kb_lampa2: 1.7.44 на день переключала на системную — возвращаем экранную и тем, у кого она успела сработать.
+ * Прятать клавиатуру после набора - bstg.js (searchKeypad). */
 (function () {
     try {
         var ls = window.localStorage;
-        if (ls.getItem('bs_kb_system') !== '1') {
-            ls.setItem('keyboard_type', 'integrate');
-            ls.setItem('bs_kb_system', '1');
+        if (ls.getItem('bs_kb_lampa2') !== '1') {
+            if (ls.getItem('bs_kb_lampa') !== '1' || ls.getItem('bs_kb_system') === '1') ls.setItem('keyboard_type', 'lampa');
+            ls.setItem('bs_kb_lampa', '1');
+            ls.setItem('bs_kb_lampa2', '1');
         }
     } catch (e) {}
 })();

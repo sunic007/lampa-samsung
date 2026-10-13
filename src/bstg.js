@@ -555,6 +555,22 @@ var BSTelegram = (function () {
         if (n || !token()) return cb(n || '');
         call('getMe', {}, function (me) { if (me && me.username) lsSet('bs_tg_bot', me.username); cb((me && me.username) || ''); }, function () { cb(''); });
     }
+    /** Экранная клавиатура поиска: набрали текст и ушли вниз (история, источники, результаты) - прячется, результаты
+     *  поднимаются наверх; вернулись к вводу - появляется снова. Lampa сама её не прячет. Контроллер клавиатуры в
+     *  Lampa называется 'keybord'. */
+    function searchKeypad() {
+        if (searchKeypad.on || !Lampa.Controller || !Lampa.Controller.listener) return;
+        searchKeypad.on = true;
+        Lampa.Controller.listener.follow('toggle', function (e) {
+            try {
+                var body = $('body'), input = $('.search .search__input');
+                if (!body.hasClass('search--open')) return body.removeClass('bs-kb-hidden');
+                var typed = input.hasClass('filled') && $.trim(input.text()) !== '';
+                body.toggleClass('bs-kb-hidden', !!typed && e.name !== 'keybord' && e.name !== 'search');
+            } catch (x) {}
+        });
+    }
+
     function searchQr() {
         if (!on('bs_search_qr', true)) return;
         var body = $('.search .search__body').first();
@@ -2168,6 +2184,7 @@ var BSTelegram = (function () {
 
     function start() {
         try { addSettings(); } catch (e) { log('settings', e.message); }
+        try { searchKeypad(); } catch (e) { log('клавиатура поиска', e.message); }
         try { Lampa.Search.listener.follow('sources', function () { setTimeout(function () { try { searchQr(); } catch (e) { log('qr поиска', e.message); } }, 50); }); } catch (e) {}
         try {
             Lampa.Listener.follow('full', cardButton);
