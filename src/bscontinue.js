@@ -348,7 +348,7 @@ var BSContinue = (function () {
         Lampa.SettingsApi.addParam({
             component: 'bs_update',
             param: { name: 'bs_continue_row', type: 'trigger', 'default': true },
-            field: { name: 'Продолжить с места', description: 'Плитки начатых фильмов и сериалов.' },
+            field: { name: 'Новые серии', description: 'Уведомление при запуске, когда у начатого сериала вышла новая серия.' },
             onChange: function (v) { lsSet('bs_continue_row', String(v === true || v === 'true')); }
         });
         Lampa.SettingsApi.addParam({

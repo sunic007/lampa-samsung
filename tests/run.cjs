@@ -580,11 +580,11 @@ t('Smart Hub: в config.xml нет службы и превью', !/<tizen:servi
 
 
 /* ---- loader.js: «Проверить и обновить» дожидается GitHub и запоминает новую версию до перезагрузки ---- */
-function ghCheck(resp, status, store) {
+function ghCheck(resp, status, store, cdn) {
     const src = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
     const fn = src.slice(src.indexOf('function bsGhCheck('), src.indexOf('function bsCheckNow('));
     const ls = Object.assign({}, store || {}), got = [];
-    function X() { this.open = () => {}; this.send = () => { this.status = status; this.responseText = resp; this.onload(); }; }
+    function X() { this.open = (m, u) => { this.u = u; }; this.send = () => { this.status = /jsdelivr/.test(this.u) ? (cdn || 200) : status; this.responseText = resp; this.onload(); }; }
     const ctx = { window: { localStorage: { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); }, removeItem: k => { delete ls[k]; } } },
         XMLHttpRequest: X, BS_PACKAGE_VERSION: '1.7.40', setTimeout: () => 0, Date, JSON, String };
     vm.createContext(ctx); vm.runInContext(fn + ';bsGhCheck(v => got.push(v));', Object.assign(ctx, { got }));
@@ -596,8 +596,10 @@ ghc = ghCheck(JSON.stringify({ version: '1.7.40', files: ['loader.js'] }), 200);
 t('проверить и обновить: та же версия — ничего не меняем', ghc.v === '' && !ghc.ls.bs_upd);
 ghc = ghCheck('oops', 500);
 t('проверить и обновить: GitHub не ответил — продолжаем без него', ghc.v === '');
-ghc = ghCheck(JSON.stringify({ version: '1.7.46', files: ['loader.js'] }), 200, { bs_upd_bad: '1.7.46' });
-t('проверить и обновить: версия, на которой Lampa не поднялась, — не берём', ghc.v === '');
+ghc = ghCheck(JSON.stringify({ version: '1.7.46', files: ['loader.js'] }), 200, { bs_upd_bad: '1.7.46|1' });
+t('проверить и обновить: «плохой» версии по кнопке даём ещё шанс', ghc.v === '1.7.46' && !ghc.ls.bs_upd_bad);
+ghc = ghCheck(JSON.stringify({ version: '1.7.46', files: ['loader.js'] }), 200, {}, 404);
+t('проверить и обновить: тега на jsDelivr ещё нет — не перезагружаем впустую', ghc.v === '' && !ghc.ls.bs_upd);
 
 
 /* ---- bsfix.js: качество под скорость канала ---- */
@@ -868,7 +870,8 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     const ctx = { window: {}, console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout, setInterval };
     ctx.window = ctx; vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
     const T = ctx.M, now = Date.parse('2026-10-13');
-    t('telegram: чат — из последнего сообщения боту', T._chatFrom([{ message: { chat: { id: 1 } } }, { message: { chat: { id: 42 } } }]) === '42' && T._chatFrom([]) === '');
+    t('telegram: чат — из последнего сообщения боту', T._chatFrom([{ message: { chat: { id: 1, type: 'private' } } }, { message: { chat: { id: 42, type: 'private' } } }]) === '42' && T._chatFrom([]) === '');
+    t('telegram: владелец — только личный чат, не группа и не канал', T._chatFrom([{ message: { chat: { id: 1, type: 'private' } } }, { message: { chat: { id: -5, type: 'group' } } }, { channel_post: { chat: { id: -7, type: 'channel' } } }]) === '1');
     t('telegram: вышла серия новее — сообщить', T._isNew({ s: 12, e: 15 }, { season_number: 12, episode_number: 16, air_date: '2026-10-12' }, now));
     t('telegram: та же серия или сериал впервые — молчать', !T._isNew({ s: 12, e: 16 }, { season_number: 12, episode_number: 16, air_date: '2026-10-12' }, now) && !T._isNew(null, { season_number: 1, episode_number: 2, air_date: '2026-10-12' }, now));
     const d0 = new Date(2026, 9, 13).getTime();
@@ -924,7 +927,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('люди: пустой человек — пусто', T._guestTracked(null).length === 0 && T._guestTracked({}).length === 0);
     t('люди: карточка в список — сериал/фильм', T._mini({ id: 7, name: 'X', poster_path: '/p' }, 't').tv === true && T._mini({ id: 8, title: 'Y' }, 'm').name === 'Y');
     t('ИИ в поиске: описание — 5+ слов без года и студии', T._isDescription('фильм где мужик застрял на марсе') && !T._isDescription('Доктор Стрендж 2016') && !T._isDescription('Солдаты') && !T._isDescription('фильмы марвел про космос и героев 2026'));
-    const upd = (id, text) => ({ update_id: id, message: { chat: { id: id }, text } });
+    const upd = (id, text) => ({ update_id: id, message: { chat: { id: id, type: 'private' }, text } });
     t('владелец при подключении — не гость, писавший последним', T._chatFrom2([upd(111, 'a'), upd(222, 'b')], { '222': {} }) === '111' && T._chatFrom2([upd(111, 'a'), upd(222, 'b')]) === '222');
     t('новый ТВ: код из сообщения — с пробелом, дефисом, слитно', T._joinFrom('1234 5678') === '12345678' && T._joinFrom('1234-5678') === '12345678' && T._joinFrom(' 12345678 ') === '12345678');
     t('новый ТВ: год и обычный текст — не код', T._joinFrom('2026') === '' && T._joinFrom('Солдаты 2004') === '' && T._joinFrom('123456789') === '');

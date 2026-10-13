@@ -10,6 +10,9 @@
  * Lampa не поднялась (bs_upd_try остался с прошлого запуска) — версия помечается плохой, работает пакет.
  */
 (function () {
+    // pack.py вписывает сюда hash и версию app.js из пакета (loader.js с GitHub про них не знает)
+    var BS_PKG_APP = null;
+    window.BS_PKG_APP = BS_PKG_APP;
     var REPO = 'sunic007/lampa-samsung';
     var MANIFEST = 'https://raw.githubusercontent.com/' + REPO + '/main/version.json';
     var CDN = 'https://cdn.jsdelivr.net/gh/' + REPO + '@v';
@@ -26,11 +29,13 @@
     try { pkg = tizen.application.getCurrentApplication().appInfo.version; } catch (e) {}
     var upd = null;
     try { upd = JSON.parse(get('bs_upd') || 'null'); } catch (e) {}
-    var bad = get('bs_upd_bad') || '', skipUntil = +(get('bs_upd_skip') || 0);
-    var remote = get('bs_gh_update') !== 'false' && !!upd && !!upd.v && num(upd.v) > num(pkg) && upd.v !== bad && Date.now() > skipUntil &&
+    // «v|время»: версия, на которой Lampa не поднялась, через сутки получает ещё попытку
+    var badRaw = String(get('bs_upd_bad') || ''), badAt = +(badRaw.split('|')[1] || 0);
+    var bad = badRaw && (!badAt || Date.now() - badAt < 86400000) ? badRaw.split('|')[0] : '', skipUntil = +(get('bs_upd_skip') || 0);
+    var remote = get('bs_gh_update') !== 'false' && !!upd && /^\d+\.\d+\.\d+$/.test(String(upd.v)) && num(upd.v) > num(pkg) && upd.v !== bad && Date.now() > skipUntil &&
         !!upd.files && upd.files.length > 0 && upd.files.every(okName);
     if (remote && get('bs_upd_try') === upd.v) {            // прошлый запуск с этой версией до готовности не дошёл
-        set('bs_upd_bad', upd.v);
+        set('bs_upd_bad', upd.v + '|' + Date.now());
         bad = upd.v;
         remote = false;
     }
@@ -58,7 +63,7 @@
             x.onload = function () {
                 var m = null;
                 try { m = JSON.parse(x.responseText); } catch (e) {}
-                if (x.status !== 200 || !m || !m.version || !m.files || !m.files.length || !m.files.every(okName)) return;
+                if (x.status !== 200 || !m || !/^\d+\.\d+\.\d+$/.test(String(m.version)) || !m.files || !m.files.length || !m.files.every(okName)) return;
                 var now = window.BS_REMOTE_VERSION || pkg;
                 if (num(m.version) <= num(now) || m.version === bad) return;
                 var was = upd && upd.v;

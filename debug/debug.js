@@ -53,7 +53,7 @@
         XMLHttpRequest.prototype.send = function () {
             var x = this, info = x.__bs || {}, t = Date.now();
             if (info.u && !isOwn(info.u)) {
-                log('XHR>', [info.m, short(info.u)]);
+                log('XHR>', [info.m, short(String(info.u).replace(/\/bot\d+:[\w-]+\//, '/bot***/'))]);
                 var fin = function (kind) {
                     return function () {
                         var len = 0; try { len = (x.responseText || '').length; } catch (e) {}

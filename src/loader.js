@@ -13,6 +13,11 @@ var BS_PACKAGE_VERSION = 'dev';   // версия пакета .wgt — pack.py 
 if (window.BS_REMOTE_VERSION) BS_PACKAGE_VERSION = window.BS_REMOTE_VERSION;   // модули пришли с GitHub (update.js)
 var BS_BUNDLED_VERSION = '3.3.6'; // версия встроенной копии app.js — update_bundled.py
 var BS_BUNDLED_HASH = 'c5701b7be6da4427afd2403b298886e3'; // hash из assembly.json этой копии — update_bundled.py
+// loader.js пришёл с GitHub, а пакет на ТВ старее: app.js в пакете — та сборка, что записана в update.js пакета
+if (window.BS_REMOTE_VERSION && window.BS_PKG_APP && window.BS_PKG_APP.hash) {
+    BS_BUNDLED_HASH = window.BS_PKG_APP.hash;
+    BS_BUNDLED_VERSION = window.BS_PKG_APP.version || BS_BUNDLED_VERSION;
+}
 
 var bsRemote = null;      // assembly.json с сервера: {app_version, hash, time}
 var bsSource = '';        // 'server' | 'local' (из пакета, та же сборка что на сервере) | 'bundled' (сервер недоступен)
@@ -342,10 +347,21 @@ function bsGhCheck(cb) {
                 var m = JSON.parse(x.responseText), now = window.BS_REMOTE_VERSION || pkg || BS_PACKAGE_VERSION;
                 var ok = x.status === 200 && m && m.version && m.files && m.files.length &&
                     m.files.every(function (f) { return /^[\w.-]+\.js$/.test(f); });
-                if (!ok || num(m.version) <= num(now) || m.version === ls.getItem('bs_upd_bad')) return fin('');
-                ls.setItem('bs_upd', JSON.stringify({ v: m.version, files: m.files }));
-                ls.removeItem('bs_upd_skip');
-                fin(m.version);
+                if (!ok || !/^\d+\.\d+\.\d+$/.test(m.version) || num(m.version) <= num(now)) return fin('');
+                // нажали кнопку - даём версии ещё шанс, даже если раньше на ней не поднялась
+                if (String(ls.getItem('bs_upd_bad') || '').split('|')[0] === m.version) ls.removeItem('bs_upd_bad');
+                // тег версии на jsDelivr уже есть? иначе перезагрузка ушла бы впустую
+                var c = new XMLHttpRequest();
+                c.open('GET', 'https://cdn.jsdelivr.net/gh/sunic007/lampa-samsung@v' + m.version + '/src/loader.js', true);
+                c.timeout = 8000;
+                c.onload = function () {
+                    if (c.status !== 200) return fin('');
+                    ls.setItem('bs_upd', JSON.stringify({ v: m.version, files: m.files }));
+                    ls.removeItem('bs_upd_skip');
+                    fin(m.version);
+                };
+                c.onerror = c.ontimeout = function () { fin(''); };
+                c.send();
             } catch (e) { fin(''); }
         };
         x.onerror = x.ontimeout = function () { fin(''); };
@@ -456,7 +472,7 @@ function bsStartAutoUpdate() {
 var BS_SETTINGS_LAYOUT = [
     ['player', ['#^Надёжность воспроизведения', 'bs_player_auto', 'bs_guard', 'bs_bw_quality', 'bs_buffer',
         '#Во время просмотра', 'bs_resume_ask', 'bs_noads', 'bs_segments', 'bs_track_memory', 'bs_next_countdown', 'bs_still', 'bs_sleep', 'bs_vol_memory', 'bs_vol_night']],
-    ['interface', ['#Дополнительно', 'bs_watch_btn', 'bs_online_resume', 'bs_ru_auto', 'bs_menu_turk', 'bs_hub_mode', 'bs_continue_row']],
+    ['interface', ['#Дополнительно', 'bs_watch_btn', 'bs_online_resume', 'bs_ru_auto', 'bs_menu_turk', 'bs_continue_row']],
     ['parental_control', ['#Дополнительно', 'bs_kids']],
     ['bs_telegram', ['bs_tg_phone', 'bs_tg_join', 'bs_tg_help', 'bs_tg_token', 'bs_tg_link', 'bs_tv_name', 'bs_tg_on', 'bs_tg_shots', 'bs_search_qr', 'bs_tg_check']],
     ['bs_online', ['#Источники', 'bs_auto_source', 'bs_race', 'bs_torrents', 'bs_srv_title', 'bs_srv_now', 'bs_srv_auto', 'bs_srv_pick']]
@@ -467,7 +483,6 @@ var BS_SETTINGS_HIDDEN = ['bs_feat_title', 'bs_cont_title', 'bs_keys_info', 'bs_
 var BS_SETTINGS_NEEDS = {
     bs_player_auto: { on: 'bs_guard' },                      // запасной плеер включает сторож
     bs_race: { on: 'bs_auto_source' },
-    bs_continue_row: { name: 'bs_hub_mode', not: 'off' }     // плитки «Продолжить» — только в ряду на панели ТВ
 };
 
 /* Пункты Lampa и плагинов, которые прячем, пока они не нужны (проверено по коду и журналу ТВ, 2026-10-13):
@@ -714,11 +729,24 @@ function bsAddSettings() {
     });
 }
 
+/* Обновление функций с GitHub: Tizen по Home держит Lampa в памяти, «следующий запуск» может быть через недели —
+ * при возврате в приложение смотрим version.json (не чаще раза в 30 минут); новое применится при запуске. */
+(function () {
+    var last = Date.now();
+    try {
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden || Date.now() - last < 30 * 60000) return;
+            last = Date.now();
+            try { if (window.BSUpdate && BSUpdate.check) BSUpdate.check(); } catch (e) {}
+        });
+    } catch (e) {}
+})();
+
 /* Поддержка проекта: на ТВ ссылку не откроешь — показываем QR-код для телефона. */
 var BS_SPONSORS_URL = 'https://github.com/sponsors/sunic007';
 function bsSupportQr() {
-    var body = $('<div style="display:flex;align-items:center;gap:1.5em;padding:.5em 0">' +
-        '<div class="bs-support__qr" style="width:12em;height:12em;background:#fff;padding:.6em;border-radius:.6em;flex:none"></div>' +
+    var body = $('<div style="display:flex;align-items:center;padding:.5em 0">' +
+        '<div class="bs-support__qr" style="width:12em;height:12em;background:#fff;padding:.6em;border-radius:.6em;flex:none;margin-right:1.5em"></div>' +
         '<div style="line-height:1.5"><p>Lampa для Samsung и TV Installer — бесплатные. ' +
         'Если они вам полезны, поддержать развитие можно на GitHub Sponsors.</p>' +
         '<p>Наведите камеру телефона на QR-код.</p>' +

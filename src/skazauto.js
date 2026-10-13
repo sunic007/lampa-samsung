@@ -421,7 +421,7 @@ var BSSkaz = (function () {
         setTimeout(tryCheck, 20000);
         setInterval(tryCheck, WATCH_MS);
         try { Lampa.Player.listener.follow('destroy', function () { if (due) setTimeout(tryCheck, 5000); }); } catch (e) {}
-        window.addEventListener('online', function () { if (enabled()) setTimeout(function () { check(false); }, 3000); });
+        window.addEventListener('online', function () { if (enabled()) setTimeout(function () { if (!playerOpen()) check(false); }, 3000); });
     }
 
     try { last = JSON.parse(lsGet('bs_srv_stats') || 'null') || last; } catch (e) {}

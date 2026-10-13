@@ -120,7 +120,21 @@ def build(out, version, debug_host=None):
                 name = os.path.relpath(full, SRC).replace(os.sep, '/')
                 if name == 'loader.js':
                     js = open(full, encoding='utf-8').read()
-                    js = js.replace("var BS_PACKAGE_VERSION = 'dev';", "var BS_PACKAGE_VERSION = '%s%s';" % (version, '-debug' if debug_host else ''), 1)
+                    mark = "var BS_PACKAGE_VERSION = 'dev';"
+                    if js.count(mark) != 1:
+                        die('loader.js: нет строки %s — версия пакета не подставится' % mark)
+                    js = js.replace(mark, "var BS_PACKAGE_VERSION = '%s%s';" % (version, '-debug' if debug_host else ''), 1)
+                    z.writestr(name, js)
+                elif name == 'update.js':
+                    # какая Lampa (app.js) лежит в ЭТОМ пакете: loader.js с GitHub может быть новее пакета
+                    js = open(full, encoding='utf-8').read()
+                    mark = "var BS_PKG_APP = null;"
+                    if js.count(mark) != 1:
+                        die('update.js: нет строки %s' % mark)
+                    lj = open(os.path.join(SRC, 'loader.js'), encoding='utf-8').read()
+                    h = re.search(r"var BS_BUNDLED_HASH = '([0-9a-f]+)'", lj).group(1)
+                    v = re.search(r"var BS_BUNDLED_VERSION = '([^']+)'", lj).group(1)
+                    js = js.replace(mark, "var BS_PKG_APP = { hash: '%s', version: '%s' };" % (h, v), 1)
                     z.writestr(name, js)
                 elif debug_host and name == 'index.html':
                     html = open(full, encoding='utf-8').read()

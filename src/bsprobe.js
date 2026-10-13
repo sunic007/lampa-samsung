@@ -117,7 +117,8 @@ var BSProbe = (function () {
     function parseLists(text) {
         var out = { items: [], buttons: [] };
         try {
-            var html = $('<div>' + text + '</div>');
+            var doc = document.implementation.createHTMLDocument('');
+            var html = $('<div>', doc).append($.parseHTML(String(text || ''), doc, false));
             var read = function (sel, to) {
                 html.find(sel).each(function () {
                     var el = $(this), d = null;

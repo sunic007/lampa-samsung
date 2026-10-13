@@ -41,7 +41,11 @@ var BSTelegram = (function () {
     function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
     function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
     function on(k, def) { var v = lsGet(k); return v === null ? def : v === 'true'; }
-    function noty(t, time) { try { Lampa.Noty.show(t, { time: time || 4000 }); } catch (e) {} }
+    function noty(t, time) { try { Lampa.Noty.show(esc(t), { time: time || 4000 }); } catch (e) {} }
+    /** Текст в HTML Lampa (Noty, Select): имена из Telegram и с других ТВ - чужие, разметку из них не исполняем. */
+    function esc(t) { return String(t === undefined || t === null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    /** Имя человека/ТВ: без символов разметки, не длиннее 40. */
+    function cleanName(t) { return String(t || '').replace(/[<>&"'`]/g, '').replace(/^\s+|\s+$/g, '').slice(0, 40); }
     function log(a, b) { try { console.log('BS telegram', a, b === undefined ? '' : b); } catch (e) {} }
 
     function token() { return String(lsGet('bs_tg_token') || '').replace(/\s+/g, ''); }
@@ -87,8 +91,8 @@ var BSTelegram = (function () {
      *  владельцем при подключении ТВ не может стать гость, который писал боту последним. */
     function chatFrom(updates, skip) {
         for (var i = (updates || []).length - 1; i >= 0; i--) {
-            var u = updates[i], m = u && (u.message || u.edited_message || u.my_chat_member || u.channel_post);
-            if (m && m.chat && m.chat.id && !(skip && skip[String(m.chat.id)])) return String(m.chat.id);
+            var u = updates[i], m = u && (u.message || u.edited_message || u.my_chat_member);
+            if (m && m.chat && m.chat.id && m.chat.type === 'private' && !(skip && skip[String(m.chat.id)])) return String(m.chat.id);
         }
         return '';
     }
@@ -240,7 +244,7 @@ var BSTelegram = (function () {
             if (!ev || ev.event !== 'message') return;
             if (ev.id) last = ev.id;
             var m = TOKEN_RE.exec(String(ev.message || '').replace(/\s+/g, ''));
-            if (m) tok = m[1];
+            if (m && !tok) tok = m[1];
         });
         return [tok, last];
     }
@@ -425,6 +429,7 @@ var BSTelegram = (function () {
         var g = null;
         try { g = JSON.parse(b.parts.join('')); } catch (e) { return; }
         if (!g || typeof g !== 'object') return;
+        if (g.name) g.name = cleanName(g.name);
         var all = users();
         if (all[m.id] && (all[m.id].rev || 0) >= m.rev) return;
         all[m.id] = g;
@@ -460,7 +465,7 @@ var BSTelegram = (function () {
         if (!msg || typeof msg.text !== 'string' || !msg.chat || msg.chat.type !== 'private') return;
         var st = /^\/start(?:@\w+)?\s+(\S+)/.exec(msg.text);
         if (st && inviteCode() && st[1] === inviteCode()) {
-            var name = [msg.from && msg.from.first_name, msg.from && msg.from.last_name].filter(Boolean).join(' ').slice(0, 40) || 'Гость';
+            var name = cleanName([msg.from && msg.from.first_name, msg.from && msg.from.last_name].filter(Boolean).join(' ')) || 'Гость';
             var all = users();
             if (all[c] && all[c].banned) {                       // отключённый — снова только с разрешения владельца
                 as(c, function () { reply('Владелец отключил вас от Lampa. Я отправил ему запрос — когда разрешит, напишу.'); });
@@ -711,7 +716,7 @@ var BSTelegram = (function () {
         var now = Date.now();
         if (m.name) {
             var dv = devices[m.from] || {};
-            devices[m.from] = { name: m.name, at: now, model: m.model || dv.model || '', ip: m.ip || dv.ip || '', v: m.v || dv.v || '' };
+            devices[m.from] = { name: cleanName(m.name), at: now, model: m.model || dv.model || '', ip: m.ip || dv.ip || '', v: m.v || dv.v || '' };
             if (m.t === 'hello') oldWarn(m.from);
         }
         if (m.t === 'hello') {
@@ -735,7 +740,7 @@ var BSTelegram = (function () {
             var all = loadSeen(), r = all[m.id] || {};
             r.s = m.s | 0; r.e = m.e | 0; r.at = r.at || now;
             all[m.id] = r;
-            lsSet('bs_tg_seen', JSON.stringify(all));
+            lsSet('bs_tg_seen', JSON.stringify(trimSeen(all)));
         } else if (m.t === 'today' && m.tag) {
             var done = lsJson('bs_tg_today', []);
             if (done.indexOf(m.tag) < 0) { done.unshift(m.tag); lsSet('bs_tg_today', JSON.stringify(done.slice(0, 200))); }
@@ -848,6 +853,15 @@ var BSTelegram = (function () {
         return out.filter(function (c) { return muted.indexOf(String(c.id)) < 0; });
     }
 
+    /** Не больше 300 сериалов: самые давние (по at) выбрасываем. */
+    function trimSeen(all) {
+        var ids = Object.keys(all || {});
+        if (ids.length <= 300) return all;
+        ids.sort(function (x, y) { return ((all[y] || {}).at || 0) - ((all[x] || {}).at || 0); });
+        var out = {};
+        ids.slice(0, 300).forEach(function (k) { out[k] = all[k]; });
+        return out;
+    }
     function loadSeen() { try { return JSON.parse(lsGet('bs_tg_seen') || '{}') || {}; } catch (e) { return {}; } }
 
     var running = false;
@@ -888,7 +902,7 @@ var BSTelegram = (function () {
                     name: (json && json.name) || c.name || c.title || '', poster: (json && json.poster_path) || '',
                     next: nx && nx.air_date ? { s: nx.season_number | 0, e: nx.episode_number | 0, d: nx.air_date } : null
                 };
-                lsSet('bs_tg_seen', JSON.stringify(all));
+                lsSet('bs_tg_seen', JSON.stringify(trimSeen(all)));
                 setTimeout(next, 1200);
             }, function () { setTimeout(next, 1200); });
         })();
@@ -1039,7 +1053,8 @@ var BSTelegram = (function () {
      *  с цифрами, без пробелов. Название фильма так не выглядит. Проверяет сам Gemini (geminiCheck). */
     function isGeminiKey(t) {
         t = String(t || '').replace(/^\s+|\s+$/g, '');
-        return t.length >= 30 && t.length <= 200 && /^[\x21-\x7e]+$/.test(t) && /[A-Za-z]/.test(t) && /\d/.test(t) && !/^https?:/i.test(t);
+        return t.length >= 30 && t.length <= 200 && /^[\x21-\x7e]+$/.test(t) && /[A-Za-z]/.test(t) && /\d/.test(t) && !/^https?:/i.test(t) &&
+            t.indexOf('/') < 0 && !/^\d{6,}:[\w-]{30,}$/.test(t);
     }
 
     /** Рабочий ли ключ: ok(true) — да, ok(false, why) — Gemini его не принял; нет связи — ok(null). */
@@ -1545,7 +1560,7 @@ var BSTelegram = (function () {
                 if (!rn[1] && tvs.length > 1) return reply('✏️ Какой ТВ переименовать?', tvs.map(function (d) { return [{ text: d.text, callback_data: 'rn:' + d.id }]; }));
                 var who = tvs.filter(function (d) { return d.id === (rn[1] || tvId); })[0];
                 if (!who) return reply('Этот ТВ сейчас не на связи.');
-                renameFor = { id: who.id, at: Date.now() };
+                renameFor = { id: who.id, at: Date.now(), chat: to() };
                 return reply('✏️ Напишите новое название для «' + who.text.replace(/^📺 /, '') + '» — например «Зал» или «Спальня».');
             }
             if (sm) return searchAction(q, sm[1], sm[2], sm[3]);
@@ -1581,7 +1596,7 @@ var BSTelegram = (function () {
         if (!msg) return;
         if (msg.photo || (msg.document && /^image\//.test(msg.document.mime_type || ''))) return photoSearch(msg);
         if (typeof msg.text !== 'string') return;
-        if (renameFor && Date.now() - renameFor.at < 5 * 60000 && !/^\//.test(msg.text) && KB_WORDS.indexOf(msg.text.replace(/^[^\wА-Яа-яЁё]+/, '').toLowerCase()) < 0) {
+        if (renameFor && renameFor.chat === to() && Date.now() - renameFor.at < 5 * 60000 && !/^\//.test(msg.text) && KB_WORDS.indexOf(msg.text.replace(/^[^\wА-Яа-яЁё]+/, '').toLowerCase()) < 0) {
             var title = msg.text.replace(/^\s+|\s+$/g, '').slice(0, 40), target = renameFor.id;
             renameFor = null;
             if (!title) return reply('Название пустое — нажмите «✏️ Переименовать ТВ» ещё раз.');
@@ -1612,7 +1627,7 @@ var BSTelegram = (function () {
         }
         var t = msg.text.replace(/^\s+|\s+$/g, ''), cmd = /^\/(\w+)(?:@\w+)?\s*([\s\S]*)$/.exec(t);
         var c = cmd ? cmd[1].toLowerCase() : '', arg = cmd ? cmd[2] : t, plain = t.replace(/^[^\wА-Яа-яЁё]+/, '').toLowerCase();
-        if (c === 'start') { sendKb('👋 Это бот вашей Lampa на ТВ.\nНапишите название фильма или сериала — или выберите раздел 👇'); return setTimeout(sendMenu, 400); }
+        if (c === 'start') { sendKb('👋 Это бот вашей Lampa на ТВ.\nНапишите название фильма или сериала — или выберите раздел 👇'); return setTimeout(keep(sendMenu), 400); }
         if (c === 'help' || plain === 'помощь') return sendKb(helpText());
         if (c === 'menu' || plain === 'меню') return sendMenu();
         if (c === 'profile' || plain === 'профиль') return menuAction('profile');
@@ -1654,7 +1669,7 @@ var BSTelegram = (function () {
             if (!all[card.id] && info && info.id == card.id && info.last) all[card.id] = { s: info.last.season_number | 0, e: info.last.episode_number | 0, at: Date.now() };
             var mu = mutedList().filter(function (x) { return x !== String(card.id); });   // подписался снова — снова пишем
             lsSet('bs_tg_muted', JSON.stringify(mu));
-            lsSet('bs_tg_seen', JSON.stringify(all));
+            lsSet('bs_tg_seen', JSON.stringify(trimSeen(all)));
         }
     }
 
@@ -1728,11 +1743,11 @@ var BSTelegram = (function () {
         var ctrl = '';
         try { ctrl = Lampa.Controller.enabled().name; } catch (e) {}
         var back = function () { try { if (ctrl) Lampa.Controller.toggle(ctrl); } catch (e) {} };
-        var items = [{ title: ownerName(), who: '' }].concat(list.map(function (p) { return { title: p.name, who: p.who }; }));
+        var items = [{ title: esc(ownerName()), who: '' }].concat(list.map(function (p) { return { title: esc(p.name), who: p.who }; }));
         items.forEach(function (it) { as(it.who, function () { if (subscribed(card.id)) it.subtitle = 'подписан(а) — выберите, чтобы отписать'; }); });
         try {
             Lampa.Select.show({
-                title: 'Кому подписка на «' + (card.name || card.title || card.original_name || '') + '»?', items: items,
+                title: esc('Кому подписка на «' + (card.name || card.title || card.original_name || '') + '»?'), items: items,
                 onSelect: function (a) { back(); if (!a.who) return ownerToggle(); guestToggleTv(a.who, card); if (cancel) cancel(); },
                 onBack: function () { back(); if (cancel) cancel(); }
             });
@@ -2101,12 +2116,17 @@ var BSTelegram = (function () {
     /** Сериал ещё выходит: есть следующая серия, в производстве или не «завершён/отменён». */
     function ongoing(json) { return !!json && (!!json.next_episode_to_air || !!json.in_production || !/ended|canceled/i.test(String(json.status || ''))); }
 
+    var playSeq = 0;
     function onPlayerStart(data) {
         panelRemove();
         tvInfo = null;
+        var my = ++playSeq;
         var card = playerCard(data), s = data && data.season, e = data && data.episode;
         if (!card || !(s > 0) || !(e > 0) || !Lampa.TMDB || !Lampa.Reguest) return;
         var show = function (info) {
+            var open = false;
+            try { open = Lampa.Player.opened(); } catch (e) {}
+            if (my !== playSeq || !open) return;                // плеер закрыли или уже другое видео
             tvInfo = info;
             log('подписка', 's' + s + 'e' + e + (info.ongoing ? ' — сериал идёт, кнопка' : ' — сериал завершён, без кнопки'));
             if (info.ongoing) setTimeout(function () { panelDraw(card); }, 300);

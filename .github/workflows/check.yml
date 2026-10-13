@@ -1,0 +1,33 @@
+name: Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Unit tests
+        run: node tests/run.cjs
+
+      # Старые телевизоры Samsung (Tizen 2.3–5) понимают только ES5: стрелочные функции, let/const и т. п. их ломают
+      - name: ES5 syntax (own modules)
+        run: |
+          for f in src/update.js src/loader.js src/bs*.js src/skazauto.js src/playerguard.js src/polyfills.js; do
+            npx -y acorn@8.14.0 --ecma5 --silent "$f" || { echo "::error file=$f::not ES5"; exit 1; }
+          done
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Package builds
+        run: python pack.py && git diff --exit-code version.json
