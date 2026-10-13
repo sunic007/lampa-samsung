@@ -560,8 +560,9 @@ var BSTelegram = (function () {
         var body = $('.search .search__body').first();
         if (!body.length || body.find('.bs-search-tg').length) return;
         var box = $('<div class="bs-search-tg"><div class="bs-search-tg__qr"></div><div class="bs-search-tg__text"></div></div>');
-        var keypad = body.find('.search__keypad');
-        if (keypad.length) keypad.after(box); else body.prepend(box);
+        // ниже истории и вкладок источников: сразу под строкой поиска - история, как в Lampa
+        var under = body.find('.search__sources');
+        if (under.length) under.after(box); else body.append(box);
         var text = function (t) { box.find('.bs-search-tg__text').text(t); };
         if (!token() || !chat()) {
             box.addClass('bs-search-tg--off');
