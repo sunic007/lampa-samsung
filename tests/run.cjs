@@ -579,6 +579,27 @@ t('Smart Hub: остальные запуски приложений прохо�
 t('Smart Hub: в config.xml нет службы и превью', !/<tizen:service|metadata\/use\.preview/.test(fs.readFileSync(path.join(SRC, 'config.xml'), 'utf8')));
 
 
+/* ---- loader.js: «Проверить и обновить» дожидается GitHub и запоминает новую версию до перезагрузки ---- */
+function ghCheck(resp, status, store) {
+    const src = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
+    const fn = src.slice(src.indexOf('function bsGhCheck('), src.indexOf('function bsCheckNow('));
+    const ls = Object.assign({}, store || {}), got = [];
+    function X() { this.open = () => {}; this.send = () => { this.status = status; this.responseText = resp; this.onload(); }; }
+    const ctx = { window: { localStorage: { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); }, removeItem: k => { delete ls[k]; } } },
+        XMLHttpRequest: X, BS_PACKAGE_VERSION: '1.7.40', setTimeout: () => 0, Date, JSON, String };
+    vm.createContext(ctx); vm.runInContext(fn + ';bsGhCheck(v => got.push(v));', Object.assign(ctx, { got }));
+    return { v: got[0], ls };
+}
+let ghc = ghCheck(JSON.stringify({ version: '1.7.46', files: ['loader.js'] }), 200);
+t('проверить и обновить: новая версия на GitHub — запомнена до перезагрузки', ghc.v === '1.7.46' && JSON.parse(ghc.ls.bs_upd).v === '1.7.46');
+ghc = ghCheck(JSON.stringify({ version: '1.7.40', files: ['loader.js'] }), 200);
+t('проверить и обновить: та же версия — ничего не меняем', ghc.v === '' && !ghc.ls.bs_upd);
+ghc = ghCheck('oops', 500);
+t('проверить и обновить: GitHub не ответил — продолжаем без него', ghc.v === '');
+ghc = ghCheck(JSON.stringify({ version: '1.7.46', files: ['loader.js'] }), 200, { bs_upd_bad: '1.7.46' });
+t('проверить и обновить: версия, на которой Lampa не поднялась, — не берём', ghc.v === '');
+
+
 /* ---- bsfix.js: качество под скорость канала ---- */
 const QP = fixCtx().M._pickQuality, QS = { '2160p': 'u4k', '1080p': 'u1080', '720p': 'u720', '480p': 'u480' };
 t('качество: 25 Мбит/с — 4K остаётся', QP(QS, 'u4k', 25e6) === '');

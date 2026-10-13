@@ -323,6 +323,37 @@ function bsAnnounce() {
 }
 
 /** Запрос assembly.json. onResult(assembly) или onResult(null), если сервер недоступен. */
+/* «Проверить и обновить»: новая версия функций пакета на GitHub — сразу запомнить её (bs_upd) для update.js, чтобы
+ * перезагрузка тут же подняла новую версию. Раньше проверка шла параллельно с перезагрузкой, не успевала, и после
+ * перезагрузки Lampa писала «обновится при следующем запуске». cb(версия | ''). */
+function bsGhCheck(cb) {
+    var done = false, fin = function (v) { if (!done) { done = true; cb(v || ''); } };
+    var ls = window.localStorage;
+    try { if (ls.getItem('bs_gh_update') === 'false') return fin(''); } catch (e) { return fin(''); }
+    var num = function (v) { var m = /(\d+)\.(\d+)\.(\d+)/.exec(String(v || '')); return m ? +m[1] * 1e6 + +m[2] * 1e3 + +m[3] : 0; };
+    var pkg = '';
+    try { pkg = tizen.application.getCurrentApplication().appInfo.version; } catch (e) {}
+    try {
+        var x = new XMLHttpRequest();
+        x.open('GET', 'https://raw.githubusercontent.com/sunic007/lampa-samsung/main/version.json?t=' + Date.now(), true);
+        x.timeout = 10000;
+        x.onload = function () {
+            try {
+                var m = JSON.parse(x.responseText), now = window.BS_REMOTE_VERSION || pkg || BS_PACKAGE_VERSION;
+                var ok = x.status === 200 && m && m.version && m.files && m.files.length &&
+                    m.files.every(function (f) { return /^[\w.-]+\.js$/.test(f); });
+                if (!ok || num(m.version) <= num(now) || m.version === ls.getItem('bs_upd_bad')) return fin('');
+                ls.setItem('bs_upd', JSON.stringify({ v: m.version, files: m.files }));
+                ls.removeItem('bs_upd_skip');
+                fin(m.version);
+            } catch (e) { fin(''); }
+        };
+        x.onerror = x.ontimeout = function () { fin(''); };
+        x.send();
+    } catch (e) { fin(''); }
+    setTimeout(function () { fin(''); }, 12000);
+}
+
 function bsCheckNow(onResult) {
     checkConnection(BS_SERVER + 'assembly.json?v' + Math.random(), function (xhr) {
         var a = parseAssembly(xhr);
@@ -650,11 +681,16 @@ function bsAddSettings() {
     Lampa.SettingsApi.addParam({
         component: C,
         param: { name: 'bs_check_now', type: 'button' },
-        field: { name: 'Проверить и обновить', description: 'Lampa — с сервера byskaz, плагины Skaz — свежие сразу, функции пакета — с GitHub (применятся при следующем запуске).' },
+        field: { name: 'Проверить и обновить', description: 'Lampa — с сервера byskaz, плагины Skaz — свежие сразу, функции пакета — с GitHub, сразу.' },
         onChange: function () {
             bsNoty('Проверяю обновление…', 3000);
-            try { if (window.BSUpdate && BSUpdate.check) BSUpdate.check(); } catch (e) {}
-            bsCheckNow(function (a) {
+            // сначала GitHub (функции пакета), потом сервер Lampa; перезагрузка — только когда оба ответили
+            bsGhCheck(function (gh) { bsCheckNow(function (a) {
+                if (gh) {
+                    try { window.localStorage.setItem('bs_plugins_salt', String(Date.now() % 100000)); } catch (e) {}
+                    bsNoty('Обновляю функции до ' + gh + (a && bsHasUpdate(a) ? ' и Lampa до ' + (a.app_version || '') : '') + '…', 3000);
+                    return setTimeout(function () { location.reload(); }, 2500);
+                }
                 if (!a) return bsNoty('Сервер обновлений недоступен. Попробуйте позже.');
                 // плагины byskaz/Skaz кэшируются на сутки — по кнопке берём свежие сразу
                 try { window.localStorage.setItem('bs_plugins_salt', String(Date.now() % 100000)); } catch (e) {}
@@ -664,7 +700,7 @@ function bsAddSettings() {
                 }
                 bsNoty('Загружаю Lampa ' + (a.app_version || '') + '…', 3000);
                 setTimeout(function () { location.reload(); }, 2500);
-            });
+            }); });
         }
     });
 
