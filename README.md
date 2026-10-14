@@ -33,7 +33,8 @@ about new episodes. No server needed — the bot runs inside Lampa on the TV.
   (Groq, Gemini or OpenRouter).
 - 🔔 **Notifications**: new episode, “airs today”, “remind me tomorrow”, weekly digest.
 - 👨‍👩‍👧 **The whole family in one bot** — everyone connects with their own Telegram via a QR code in Lampa's search
-  and gets their own watch list and subscriptions. **Several TVs** share one bot; if one is turned off, another
+  and gets their own watch list and subscriptions (the owner approves newcomers, can block guests from starting
+  videos and rotate the invite). **Several TVs** share one bot; if one is turned off, another
   takes over within a minute.
 
 **Connect:** create a bot with [@BotFather](https://t.me/BotFather) → in Lampa open

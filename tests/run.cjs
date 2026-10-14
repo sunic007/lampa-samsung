@@ -634,6 +634,40 @@ t('проверить и обновить: тега на jsDelivr ещё нет 
 }
 
 
+/* ---- bstg.js: приглашение, одобрение владельцем, видео от гостей ---- */
+{
+    const store = { bs_tg_chat: '1', bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw' };
+    const urls = [];
+    function X() { this.open = (m, u) => urls.push(decodeURIComponent(u)); this.send = b => { if (b) urls.push(String(b)); }; this.setRequestHeader = () => {}; }
+    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: X, Uint8Array,
+        btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'), unescape, escape, encodeURIComponent, decodeURIComponent,
+        Lampa: { Noty: { show() {} } } };
+    ctx.window = ctx; ctx.crypto = require('crypto').webcrypto;
+    ctx.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
+    const T = ctx.M, users = () => JSON.parse(store.bs_tg_users || '{}');
+    const start = (c, code) => T._handle({ update_id: 1, message: { chat: { id: +c, type: 'private' }, from: { first_name: 'Аня' }, text: '/start ' + code } });
+    const cb = (data, from) => T._handle({ callback_query: { id: 'q', data, from: { id: +from }, message: { message_id: 5, chat: { id: +from } } } });
+    const old = T._inviteCode();
+    t('приглашение: без смены — прежний код (старые QR работают)', /^[0-9a-z]+$/.test(old) && old.length > 6);
+    start('2', old);
+    t('новый человек по QR — ждёт разрешения, ещё не подключён', users()['2'].pending === true && !T._active(users()['2']) && urls.some(u => /ok:2/.test(u) && /chat_id=1/.test(u)));
+    urls.length = 0; start('2', old);
+    t('повторный /start в течение часа — владельцу второй раз не пишем', !urls.some(u => /chat_id=1/.test(u)));
+    cb('ok:2', 1);
+    t('владелец разрешил — подключён со своими списками', T._active(users()['2']) && Array.isArray(users()['2'].want));
+    start('3', old); cb('ku:3', 1);
+    t('владелец отклонил — отключён, не ждёт', users()['3'].banned === true && !users()['3'].pending);
+    T._inviteReset();
+    t('сменить приглашение: новый код, старый не подключает', T._inviteCode() !== old && (start('4', old), !users()['4']));
+    store.bs_tg_approve = 'false';
+    start('5', T._inviteCode());
+    t('без одобрения — подключается сразу', T._active(users()['5']));
+    store.bs_tg_guest_play = 'false'; urls.length = 0;
+    cb('D:tv1:m:550', 2);
+    t('видео гостям запрещено — «Смотреть на ТВ» от гостя не включает', urls.some(u => /answerCallbackQuery/.test(u) && /запретил гостям/.test(u)) && !urls.some(u => /"t":"open"/.test(u)));
+}
+
 /* ---- bsfix.js: качество под скорость канала ---- */
 const QP = fixCtx().M._pickQuality, QS = { '2160p': 'u4k', '1080p': 'u1080', '720p': 'u720', '480p': 'u480' };
 t('качество: 25 Мбит/с — 4K остаётся', QP(QS, 'u4k', 25e6) === '');

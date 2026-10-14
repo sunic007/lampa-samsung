@@ -509,7 +509,7 @@ var BSTelegram = (function () {
      * кнопкой «Отключить». Приглашение выводится из токена бота — одно на все ТВ, без синхронизации. */
 
     function users() { var u = lsJson('bs_tg_users', {}); return u && typeof u === 'object' ? u : {}; }
-    function active(g) { return !!g && !g.banned; }
+    function active(g) { return !!g && !g.banned && !g.pending; }
     /** Сохранить и разослать другим ТВ изменённых людей (ids). У записи rev — время правки: старое новое не затрёт. */
     function saveUsers(u, ids) {
         var now = Date.now();
@@ -544,7 +544,24 @@ var BSTelegram = (function () {
         lsSet('bs_tg_users', JSON.stringify(all));
     }
     function sendAllUsers() { var u = users(); for (var k in u) if (u.hasOwnProperty(k)) busUser(k, u[k]); }
-    function inviteCode() { var t = token(); return t ? fnv(t + '#invite', 2166136261) + fnv('#invite' + t, 2166136261) : ''; }
+    function inviteCode() {
+        var t = token(), salt = lsGet('bs_tg_invite_salt') || '';
+        return t ? fnv(t + '#invite' + salt, 2166136261) + fnv('#invite' + salt + t, 2166136261) : '';
+    }
+    /** Настройки бота владельца - общие для всех ТВ (ходят по каналу): одобрение новых людей, видео от гостей, приглашение. */
+    function needApprove() { return on('bs_tg_approve', true); }
+    function guestPlay() { return on('bs_tg_guest_play', true); }
+    function cfgSend() { busSend({ t: 'cfg', approve: needApprove(), play: guestPlay(), salt: lsGet('bs_tg_invite_salt') || '' }); }
+    function onCfg(m) {
+        lsSet('bs_tg_approve', String(m.approve !== false));
+        lsSet('bs_tg_guest_play', String(m.play !== false));
+        if (typeof m.salt === 'string' && /^[a-z0-9]{0,32}$/.test(m.salt)) lsSet('bs_tg_invite_salt', m.salt);
+    }
+    /** Новое приглашение: старые QR и ссылки перестают подключать. Уже подключённые остаются. */
+    function inviteReset() {
+        lsSet('bs_tg_invite_salt', Crypt.secret().slice(0, 12));
+        cfgSend();
+    }
     /** Карточка для списка человека — только нужное. */
     function mini(card, kind) {
         return { id: card.id, tv: kind === 't', name: String(card.name || card.title || '').slice(0, 60) };
@@ -580,6 +597,20 @@ var BSTelegram = (function () {
                 as('', function () { reply('👤 ' + name + ' хочет снова подключиться к Lampa.', [[{ text: '✅ Разрешить', callback_data: 'ok:' + c }]]); });
                 return;
             }
+            if (needApprove()) {
+                if (all[c] && all[c].pending && Date.now() - (all[c].at || 0) < 3600000) {   // уже спросили - не заваливаем владельца
+                    return as(c, function () { reply('⏳ Запрос уже у владельца — когда разрешит, напишу.'); });
+                }
+                all[c] = { name: name, pending: true, at: Date.now() };
+                saveUsers(all, [c]);
+                as(c, function () { reply('⏳ Я спросил владельца бота — когда разрешит, напишу.'); });
+                as('', function () {
+                    reply('👤 ' + name + ' хочет подключиться к Lampa (через QR в поиске).',
+                        [[{ text: '✅ Разрешить', callback_data: 'ok:' + c }, { text: '🚫 Отклонить', callback_data: 'ku:' + c }]]);
+                });
+                log('просит подключиться', name);
+                return;
+            }
             all[c] = { name: name, at: Date.now(), want: [], subs: [], muted: [], later: [] };
             saveUsers(all, [c]);
             as(c, function () { sendKb('👋 ' + name + ', вы подключены к Lampa.\nУ вас свои «Хочу посмотреть» и подписки — другие их не видят.\n\n' + helpText()); });
@@ -593,9 +624,16 @@ var BSTelegram = (function () {
     function peopleList() {
         if (!isOwner()) return reply('Список людей видит только владелец бота.');
         var u = users(), ids = Object.keys(u).filter(function (i) { return active(u[i]); });
-        if (!ids.length) return reply('👥 Кроме вас ботом никто не пользуется.\nДругие подключаются, наведя камеру на QR в поиске Lampa на ТВ.');
-        reply('👥 Ещё пользуются ботом:\n' + ids.map(function (i) { return '• ' + u[i].name; }).join('\n') + '\n\nНажмите, чтобы отключить:',
-            ids.slice(0, 10).map(function (i) { return [{ text: '🚫 ' + u[i].name, callback_data: 'ku:' + i }]; }));
+        var waiting = Object.keys(u).filter(function (i) { return u[i] && u[i].pending; });
+        var rows = ids.slice(0, 10).map(function (i) { return [{ text: '🚫 ' + u[i].name, callback_data: 'ku:' + i }]; });
+        waiting.slice(0, 5).forEach(function (i) { rows.push([{ text: '✅ ' + u[i].name, callback_data: 'ok:' + i }, { text: '🚫 Отклонить', callback_data: 'ku:' + i }]); });
+        rows.push([{ text: (needApprove() ? '✅' : '⬜') + ' Новые — с моего разрешения', callback_data: 'cfg:ap' }]);
+        rows.push([{ text: (guestPlay() ? '✅' : '⬜') + ' Гости включают видео на ТВ', callback_data: 'cfg:play' }]);
+        rows.push([{ text: '🔄 Сменить приглашение (QR)', callback_data: 'cfg:inv' }]);
+        var text = ids.length ? '👥 Ещё пользуются ботом:\n' + ids.map(function (i) { return '• ' + u[i].name; }).join('\n') + '\n\nНажмите имя, чтобы отключить.'
+            : '👥 Кроме вас ботом никто не пользуется.\nДругие подключаются, наведя камеру на QR в поиске Lampa на ТВ.';
+        if (waiting.length) text += '\n\n⏳ Ждут разрешения: ' + waiting.map(function (i) { return u[i].name; }).join(', ');
+        reply(text, rows);
     }
 
     /** Человек (не владелец): «Хочу посмотреть», убрать, подписаться — в его списках. */
@@ -859,7 +897,7 @@ var BSTelegram = (function () {
             if (m.leader) leader = { id: m.from, at: now };
             if (m.chat && !chat()) { lsSet('bs_tg_chat', String(m.chat)); refreshSettings(); }
             if (m.ask) busHello(false);
-            if (m.ask && isLeader) sendAllUsers();                     // новый/включившийся ТВ — люди от главного
+            if (m.ask && isLeader) { sendAllUsers(); cfgSend(); }                   // новый/включившийся ТВ — люди от главного
         } else if (m.t === 'who') busHello(false);
         else if (m.t === 'bye') {                                      // ТВ ушёл (выключили, Lampa в фоне)
             delete devices[m.from];
@@ -867,6 +905,7 @@ var BSTelegram = (function () {
             if (m.lead !== false) { conflictUntil = 0; setTimeout(poll, 300 + Math.floor(Math.random() * 1500)); }   // вёл бота — взять сейчас
         }
         else if (m.t === 'u' && m.id && m.rev) onUserPart(m);
+        else if (m.t === 'cfg') onCfg(m);
         else if (m.t === 'rename' && m.to === tvId && m.title) { lsSet('bs_tv_name', String(m.title).slice(0, 40)); busHello(false); refreshSettings(); }
         else if (m.t === 'open' && m.to === tvId && now - (m.ts || 0) < 60000) openHere(m.k, m.id, m.ref, !!m.play);
         else if (m.t === 'ack' && m.ref && acks[m.ref]) { var a = acks[m.ref]; delete acks[m.ref]; a(m); }
@@ -1667,16 +1706,23 @@ var BSTelegram = (function () {
                 call('answerCallbackQuery', { callback_query_id: q.id }, null, null);
                 if (!isOwner()) return;
                 var back = users(), was = back[okk[1]];
-                if (!was || !was.banned) return reply('Уже подключён.');
+                if (!was || !(was.banned || was.pending)) return reply('Уже подключён.');
+                var first = !!was.pending;
                 back[okk[1]] = { name: was.name, at: Date.now(), want: [], subs: [], muted: [], later: [] };
                 saveUsers(back, [okk[1]]);
-                as(okk[1], function () { sendKb('✅ Владелец разрешил — вы снова подключены к Lampa.\n\n' + helpText()); });
-                return reply('✅ ' + was.name + ' снова подключён.');
+                as(okk[1], function () { sendKb((first ? '✅ Владелец разрешил — вы подключены к Lampa.\nУ вас свои «Хочу посмотреть» и подписки — другие их не видят.' : '✅ Владелец разрешил — вы снова подключены к Lampa.') + '\n\n' + helpText()); });
+                return reply('✅ ' + was.name + (first ? ' подключён.' : ' снова подключён.'));
             }
             if (ku) {
                 call('answerCallbackQuery', { callback_query_id: q.id }, null, null);
                 if (!isOwner()) return;
                 var people = users(), gone = people[ku[1]];
+                if (gone && gone.pending) {
+                    people[ku[1]] = { name: gone.name, banned: true, at: Date.now() };
+                    saveUsers(people, [ku[1]]);
+                    as(ku[1], function () { reply('Владелец не разрешил подключение.'); });
+                    return reply('🚫 Запрос ' + gone.name + ' отклонён.');
+                }
                 if (!active(gone)) return reply('Уже отключён.');
                 people[ku[1]] = { name: gone.name, banned: true, at: Date.now() };   // запомнить: по старому QR не вернётся
                 saveUsers(people, [ku[1]]);
@@ -1685,7 +1731,18 @@ var BSTelegram = (function () {
             }
             var pg = /^p:(\d+)$/.exec(q.data || ''), dv = /^([dD]):(\w+):([mt]):(\d+)$/.exec(q.data || '');
             if (pg) return slideTo(q, +pg[1]);
+            if (dv && !isOwner() && !guestPlay()) return call('answerCallbackQuery', { callback_query_id: q.id, text: 'Владелец запретил гостям включать видео на ТВ' }, null, null);
             if (dv) return openOn(q, dv[2], dv[3], dv[4], dv[1] === 'D');
+            var cf = /^cfg:(\w+)$/.exec(q.data || '');
+            if (cf) {
+                call('answerCallbackQuery', { callback_query_id: q.id }, null, null);
+                if (!isOwner()) return;
+                if (cf[1] === 'inv') { inviteReset(); return reply('🔄 Приглашение сменено: старые QR и ссылки больше не подключают. Уже подключённые остаются.'); }
+                if (cf[1] === 'ap') lsSet('bs_tg_approve', String(!needApprove()));
+                if (cf[1] === 'play') lsSet('bs_tg_guest_play', String(!guestPlay()));
+                cfgSend();
+                return peopleList();
+            }
             if (q.data === 'n') return call('answerCallbackQuery', { callback_query_id: q.id }, null, null);
             var rn = /^rn(?::(\w+))?$/.exec(q.data || '');
             if (rn) {
@@ -2176,6 +2233,7 @@ var BSTelegram = (function () {
         tmdbGet((kind === 't' ? 'tv/' : 'movie/') + id, function (j) {
             if (!j || !j.id) return answer('TMDB не ответил, попробуйте ещё раз');
             var card = toCard(j, kind), name = card.title || card.name || '';
+            if ((act === 'o' || act === 'v') && !isOwner() && !guestPlay()) return answer('Владелец запретил гостям включать видео на ТВ');
             if (act !== 'o' && act !== 'v' && !isOwner()) {
                 if (act === 's' && subscribed(card.id)) return answer('Вы уже подписаны');
                 return guestAction(act, card, kind, name, answer);
@@ -2321,6 +2379,21 @@ var BSTelegram = (function () {
             onChange: function (v) { lsSet('bs_tg_shots', String(v === true || v === 'true')); }
         });
         api.addParam({
+            component: C, param: { name: 'bs_tg_approve', type: 'trigger', 'default': true },
+            field: { name: 'Новые люди — с разрешения', description: 'Подключился по QR — бот сначала спросит вас. Выключено — подключается сразу.' },
+            onChange: function (v) { lsSet('bs_tg_approve', String(v === true || v === 'true')); cfgSend(); }
+        });
+        api.addParam({
+            component: C, param: { name: 'bs_tg_guest_play', type: 'trigger', 'default': true },
+            field: { name: 'Гости включают видео на ТВ', description: 'Выключено — гости могут искать, подписываться и вести свои списки, но не включать фильмы на ТВ.' },
+            onChange: function (v) { lsSet('bs_tg_guest_play', String(v === true || v === 'true')); cfgSend(); }
+        });
+        api.addParam({
+            component: C, param: { name: 'bs_tg_invite_reset', type: 'button' },
+            field: { name: 'Сменить приглашение', description: 'Старый QR в поиске и пересланные ссылки перестанут подключать. Уже подключённые остаются.' },
+            onChange: function () { inviteReset(); noty('Приглашение сменено — новый QR в поиске', 4000); }
+        });
+        api.addParam({
             component: C, param: { name: 'bs_search_qr', type: 'trigger', 'default': true },
             field: { name: 'QR бота в поиске', description: 'Под клавиатурой поиска — искать с телефона и открывать на ТВ.' },
             onChange: function (v) { lsSet('bs_search_qr', String(v === true || v === 'true')); }
@@ -2387,5 +2460,5 @@ var BSTelegram = (function () {
         }, 60000);
     }
 
-    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _commands: COMMANDS, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey };
+    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _commands: COMMANDS, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle };
 })();
