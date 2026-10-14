@@ -31,6 +31,7 @@ about new episodes. No server needed — the bot runs inside Lampa on the TV.
   position you stopped at.
 - 🖼 **Search by screenshot** and 🧠 **by description** (“the movie where a guy is stuck on Mars”) with a free AI key
   (Groq, Gemini or OpenRouter).
+- ⌨️ **Type on the TV** — type the search in Telegram and it appears in Lampa's search on the TV; with several TVs the bot asks which one.
 - 🔔 **Notifications**: new episode, “airs today”, “remind me tomorrow”, weekly digest.
 - 👨‍👩‍👧 **The whole family in one bot** — everyone connects with their own Telegram via a QR code in Lampa's search
   and gets their own watch list and subscriptions (the owner approves newcomers, can block guests from starting
