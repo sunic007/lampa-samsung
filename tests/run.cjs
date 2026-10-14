@@ -587,17 +587,22 @@ function ghCheck(resp, status, store, cdn) {
     function X() { this.open = (m, u) => { this.u = u; }; this.send = () => { this.status = /jsdelivr/.test(this.u) ? (cdn || 200) : status; this.responseText = resp; this.onload(); }; }
     const ctx = { window: { localStorage: { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); }, removeItem: k => { delete ls[k]; } } },
         XMLHttpRequest: X, BS_PACKAGE_VERSION: '1.7.40', setTimeout: () => 0, Date, JSON, String };
-    vm.createContext(ctx); vm.runInContext(fn + ';bsGhCheck(v => got.push(v));', Object.assign(ctx, { got }));
-    return { v: got[0], ls };
+    vm.createContext(ctx); vm.runInContext(fn + ';bsGhCheck((v, info) => { got.push(v); got.push(info); });', Object.assign(ctx, { got }));
+    return { v: got[0], info: got[1], ls };
 }
-let ghc = ghCheck(JSON.stringify({ version: '1.7.46', files: ['loader.js'] }), 200);
-t('проверить и обновить: новая версия на GitHub — запомнена до перезагрузки', ghc.v === '1.7.46' && JSON.parse(ghc.ls.bs_upd).v === '1.7.46');
+let ghc = ghCheck(JSON.stringify({ version: '1.7.46', files: ['loader.js'], notes: { title: 'Новое', items: ['Пункт 1', 'Пункт 2'] } }), 200);
+t('проверить и обновить: нашли версию — ничего не меняем, пока не согласились', ghc.v === '1.7.46' && !ghc.ls.bs_upd);
+t('проверить и обновить: «что нового» пришло в окно', ghc.info && ghc.info.notes && ghc.info.notes.title === 'Новое' && ghc.info.notes.items.length === 2);
+ghc.info.apply();
+t('проверить и обновить: «Обновить сейчас» — версия запомнена до перезагрузки', JSON.parse(ghc.ls.bs_upd).v === '1.7.46');
 ghc = ghCheck(JSON.stringify({ version: '1.7.40', files: ['loader.js'] }), 200);
 t('проверить и обновить: та же версия — ничего не меняем', ghc.v === '' && !ghc.ls.bs_upd);
 ghc = ghCheck('oops', 500);
 t('проверить и обновить: GitHub не ответил — продолжаем без него', ghc.v === '');
 ghc = ghCheck(JSON.stringify({ version: '1.7.46', files: ['loader.js'] }), 200, { bs_upd_bad: '1.7.46|1' });
-t('проверить и обновить: «плохой» версии по кнопке даём ещё шанс', ghc.v === '1.7.46' && !ghc.ls.bs_upd_bad);
+t('проверить и обновить: «плохую» версию без согласия не трогаем', ghc.v === '1.7.46' && ghc.ls.bs_upd_bad === '1.7.46|1');
+ghc.info.apply();
+t('проверить и обновить: согласились — «плохой» версии даём ещё шанс', !ghc.ls.bs_upd_bad && JSON.parse(ghc.ls.bs_upd).v === '1.7.46');
 ghc = ghCheck(JSON.stringify({ version: '1.7.46', files: ['loader.js'] }), 200, {}, 404);
 t('проверить и обновить: тега на jsDelivr ещё нет — не перезагружаем впустую', ghc.v === '' && !ghc.ls.bs_upd);
 

@@ -106,9 +106,43 @@ def update_modules():
 def write_manifest(version):
     """version.json в корне репозитория: ТВ сверяют с ним свою версию (update.js), модули берут с jsDelivr по тегу v<версия>."""
     import json
+    data = {'version': version, 'files': update_modules()}
+    notes = changelog_notes(version)
+    if notes:
+        data['notes'] = notes
     with open(os.path.join(ROOT, 'version.json'), 'w', encoding='utf-8', newline='\n') as f:
-        json.dump({'version': version, 'files': update_modules()}, f, ensure_ascii=False, indent=1)
+        json.dump(data, f, ensure_ascii=False, indent=1)
         f.write('\n')
+
+
+def changelog_notes(version):
+    """«Что нового» для окна обновления на ТВ: заголовок и пункты раздела этой версии из CHANGELOG.md.
+    Без разметки Markdown, коротко: окно на телевизоре, а не страница релиза."""
+    import re
+    path = os.path.join(ROOT, 'CHANGELOG.md')
+    if not os.path.exists(path):
+        return None
+    lines = open(path, encoding='utf-8').read().splitlines()
+    title, items, inside = '', [], False
+    for line in lines:
+        if line.startswith('## '):
+            if inside:
+                break
+            m = re.match(r'##\s+' + re.escape(version) + r'\b\s*(?:[—-]\s*(.*))?$', line)
+            if m:
+                inside, title = True, (m.group(1) or '').strip()
+            continue
+        if not inside:
+            continue
+        if line.startswith('- '):
+            items.append(line[2:].strip())
+        elif line.startswith('  ') and items:
+            items[-1] += ' ' + line.strip()
+    if not inside:
+        return None
+    clean = lambda t: re.sub(r'\*\*|`', '', t).strip()
+    short = lambda t: t if len(t) <= 220 else t[:217].rstrip() + '…'
+    return {'title': clean(title)[:120], 'items': [short(clean(i)) for i in items[:6]]}
 
 
 def build(out, version, debug_host=None):

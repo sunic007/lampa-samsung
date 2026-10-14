@@ -331,8 +331,11 @@ function bsAnnounce() {
 /* «Проверить и обновить»: новая версия функций пакета на GitHub — сразу запомнить её (bs_upd) для update.js, чтобы
  * перезагрузка тут же подняла новую версию. Раньше проверка шла параллельно с перезагрузкой, не успевала, и после
  * перезагрузки Lampa писала «обновится при следующем запуске». cb(версия | ''). */
+/** Проверка новой версии функций на GitHub. cb(версия, info): info.notes - «что нового» из version.json,
+ *  info.apply() - запомнить версию к перезагрузке. Сама проверка ничего не меняет: обновление ставится
+ *  только после «Обновить сейчас» в окне (а без нажатия - как обычно, при следующем запуске). */
 function bsGhCheck(cb) {
-    var done = false, fin = function (v) { if (!done) { done = true; cb(v || ''); } };
+    var done = false, fin = function (v, info) { if (!done) { done = true; cb(v || '', info || null); } };
     var ls = window.localStorage;
     try { if (ls.getItem('bs_gh_update') === 'false') return fin(''); } catch (e) { return fin(''); }
     var num = function (v) { var m = /(\d+)\.(\d+)\.(\d+)/.exec(String(v || '')); return m ? +m[1] * 1e6 + +m[2] * 1e3 + +m[3] : 0; };
@@ -348,17 +351,21 @@ function bsGhCheck(cb) {
                 var ok = x.status === 200 && m && m.version && m.files && m.files.length &&
                     m.files.every(function (f) { return /^[\w.-]+\.js$/.test(f); });
                 if (!ok || !/^\d+\.\d+\.\d+$/.test(m.version) || num(m.version) <= num(now)) return fin('');
-                // нажали кнопку - даём версии ещё шанс, даже если раньше на ней не поднялась
-                if (String(ls.getItem('bs_upd_bad') || '').split('|')[0] === m.version) ls.removeItem('bs_upd_bad');
                 // тег версии на jsDelivr уже есть? иначе перезагрузка ушла бы впустую
                 var c = new XMLHttpRequest();
                 c.open('GET', 'https://cdn.jsdelivr.net/gh/sunic007/lampa-samsung@v' + m.version + '/src/loader.js', true);
                 c.timeout = 8000;
                 c.onload = function () {
                     if (c.status !== 200) return fin('');
-                    ls.setItem('bs_upd', JSON.stringify({ v: m.version, files: m.files }));
-                    ls.removeItem('bs_upd_skip');
-                    fin(m.version);
+                    fin(m.version, {
+                        notes: bsNotes(m.notes),
+                        apply: function () {
+                            // согласились обновить - даём версии ещё шанс, даже если раньше на ней не поднялась
+                            if (String(ls.getItem('bs_upd_bad') || '').split('|')[0] === m.version) ls.removeItem('bs_upd_bad');
+                            ls.setItem('bs_upd', JSON.stringify({ v: m.version, files: m.files }));
+                            ls.removeItem('bs_upd_skip');
+                        }
+                    });
                 };
                 c.onerror = c.ontimeout = function () { fin(''); };
                 c.send();
@@ -368,6 +375,46 @@ function bsGhCheck(cb) {
         x.send();
     } catch (e) { fin(''); }
     setTimeout(function () { fin(''); }, 12000);
+}
+
+/** «Что нового» из version.json: только строки, не больше 6 пунктов - это идёт в окно на ТВ. */
+function bsNotes(n) {
+    if (!n || typeof n !== 'object') return null;
+    var items = (Object.prototype.toString.call(n.items) === '[object Array]' ? n.items : []).slice(0, 6).map(function (i) { return String(i).slice(0, 240); });
+    return { title: String(n.title || '').slice(0, 120), items: items };
+}
+function bsEsc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+}
+/** Окно «Вышло обновление»: что нового и кнопки «Обновить сейчас» / «Позже». Раньше кнопка сразу перезагружала Lampa,
+ *  и человек не успевал понять, что обновляется, - а мог и смотреть что-то. */
+function bsUpdateDialog(gh, info, lampaV, onYes) {
+    var html = '<div style="line-height:1.5">';
+    if (gh) {
+        html += '<p><b>Функции пакета: ' + bsEsc(BS_PACKAGE_VERSION) + ' → ' + bsEsc(gh) + '</b>' +
+            (info && info.notes && info.notes.title ? ' — ' + bsEsc(info.notes.title) : '') + '</p>';
+        if (info && info.notes && info.notes.items.length) {
+            html += '<ul style="margin:.3em 0 .8em 1.2em;padding:0">' + info.notes.items.map(function (i) {
+                return '<li style="margin-bottom:.4em">' + bsEsc(i) + '</li>';
+            }).join('') + '</ul>';
+        }
+    }
+    if (lampaV) html += '<p><b>Lampa: ' + bsEsc(bsRunningVersion()) + ' → ' + bsEsc(lampaV) + '</b> (сервер byskaz)</p>';
+    html += '<p style="opacity:.7">После обновления Lampa перезапустится — это несколько секунд.</p></div>';
+    var ctrl = 'settings_component';
+    try { ctrl = Lampa.Controller.enabled().name; } catch (e) {}
+    var close = function () { try { Lampa.Modal.close(); Lampa.Controller.toggle(ctrl); } catch (e) {} };
+    Lampa.Modal.open({
+        title: 'Вышло обновление',
+        html: $(html),
+        size: 'medium',
+        buttons_position: 'outside',
+        buttons: [
+            { name: 'Обновить сейчас', onSelect: function () { close(); onYes(); } },
+            { name: 'Позже', onSelect: function () { close(); bsNoty('Хорошо. Обновление встанет само при следующем запуске Lampa.', 5000); } }
+        ],
+        onBack: close
+    });
 }
 
 function bsCheckNow(onResult) {
@@ -698,26 +745,26 @@ function bsAddSettings() {
     Lampa.SettingsApi.addParam({
         component: C,
         param: { name: 'bs_check_now', type: 'button' },
-        field: { name: 'Проверить и обновить', description: 'Есть новая версия Lampa (сервер byskaz) или функций пакета (GitHub) — обновит сразу; нет — просто скажет.' },
+        field: { name: 'Проверить и обновить', description: 'Есть новая версия Lampa (сервер byskaz) или функций пакета (GitHub) — покажет, что нового, и обновит, если согласитесь; нет — просто скажет.' },
         onChange: function () {
             bsNoty('Проверяю обновление…', 3000);
             // сначала GitHub (функции пакета), потом сервер Lampa; перезагрузка — только когда оба ответили
-            bsGhCheck(function (gh) { bsCheckNow(function (a) {
-                if (gh) {
-                    try { window.localStorage.setItem('bs_plugins_salt', String(Date.now() % 100000)); } catch (e) {}
-                    bsNoty('Обновляю функции до ' + gh + (a && bsHasUpdate(a) ? ' и Lampa до ' + (a.app_version || '') : '') + '…', 3000);
-                    return setTimeout(function () { location.reload(); }, 2500);
-                }
-                if (!a) return bsNoty('Сервер обновлений недоступен. Попробуйте позже.');
+            bsGhCheck(function (gh, info) { bsCheckNow(function (a) {
+                var lampaNew = !!(a && bsHasUpdate(a));
+                if (!gh && !a) return bsNoty('Сервер обновлений недоступен. Попробуйте позже.');
                 // обновлять нечего — не перезагружаем (плагины Skaz и так обновляются сами при запуске)
-                if (!bsHasUpdate(a)) {
+                if (!gh && !lampaNew) {
                     return bsNoty('Обновлений нет: Lampa ' + bsRunningVersion() + ', функции ' +
                         BS_PACKAGE_VERSION + ' — последние.', 5000);
                 }
-                // плагины byskaz/Skaz кэшируются на сутки — при обновлении Lampa берём и свежие плагины
-                try { window.localStorage.setItem('bs_plugins_salt', String(Date.now() % 100000)); } catch (e) {}
-                bsNoty('Загружаю Lampa ' + (a.app_version || '') + '…', 3000);
-                setTimeout(function () { location.reload(); }, 2500);
+                // есть что обновить - сначала показываем, что именно, и спрашиваем
+                bsUpdateDialog(gh, info, lampaNew ? (a.app_version || '') : '', function () {
+                    if (info) info.apply();
+                    // плагины byskaz/Skaz кэшируются на сутки — при обновлении берём и свежие плагины
+                    try { window.localStorage.setItem('bs_plugins_salt', String(Date.now() % 100000)); } catch (e) {}
+                    bsNoty('Обновляю… Lampa перезапустится через пару секунд.', 3000);
+                    setTimeout(function () { location.reload(); }, 2000);
+                });
             }); });
         }
     });
