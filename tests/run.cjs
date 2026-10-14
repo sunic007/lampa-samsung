@@ -497,13 +497,17 @@ function guardEnv(opt) {
     g4.fire('video:timeupdate', { current: 1 }); g4.clock.run(500); g4.fire('video:timeupdate', { current: 2 });
     g4.av.l.onbufferingstart();
     t('сторож: остановки на подгрузку считаются только после старта видео', g4.M.stalls() === 1);
-    // TV Skaz: сервер отдал пустой плейлист — AVPlay бросает INVALID_STATE из play(), до первой картинки
+    // INVALID_STATE из play() бывает и у рабочих каналов (TV Skaz на ТВ: поток пошёл сам через 6,6 с) — не ошибка
     const g5 = guardEnv();
     g5.fire('player:start', { url: 'http://cdn/1080.m3u8' }); g5.clock.run(500);
     g5.av.throwPlay = true;
     try { g5.av.play(); } catch (e) {}
     g5.clock.run(3500);
-    t('сторож: исключение из play() до картинки — вмешивается за ~3 с, а не через 9', g5.notes.length > 0);
+    t('сторож: исключение из play() не считается ошибкой — рабочий канал не перезапускаем', g5.notes.length === 0);
+    const g7 = guardEnv(); g7.av.setListener({});
+    g7.fire('player:start', { url: 'http://cdn/1080.m3u8' }); g7.clock.run(500);
+    g7.av.l.onerror('PLAYER_ERROR_CONNECTION_FAILED'); g7.clock.run(3500);
+    t('сторож: обрыв соединения до картинки — вмешивается за ~3 с', g7.notes.length > 0);
     const g6 = guardEnv(); g6.av.setListener({});
     g6.fire('player:start', { url: 'http://cdn/1080.m3u8' }); g6.clock.run(500);
     g6.fire('video:timeupdate', { current: 1 }); g6.clock.run(500); g6.fire('video:timeupdate', { current: 2 });

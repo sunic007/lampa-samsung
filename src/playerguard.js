@@ -276,8 +276,8 @@ var BSGuard = (function () {
         if (s.paused || document.hidden || s.closing) return;
         // Нет сети — ничего не переключаем, ждём её возвращения (см. 'online').
         if (navigator.onLine === false || s.offline) { s.lastProgressAt = Date.now(); return; }
-        // Ошибка плеера: ждём ERROR_GRACE — плеер (hls.js, AVPlay) часто восстанавливается сам. Ошибка до первой картинки
-        // (сервер отдал пустой плейлист — так бывает у TV Skaz) сама не проходит: переключаем через START_ERROR_GRACE.
+        // Ошибка плеера: ждём ERROR_GRACE — плеер (hls.js, AVPlay) часто восстанавливается сам. Ошибка соединения или
+        // подготовки до первой картинки сама не проходит: переключаем через START_ERROR_GRACE.
         if (s.errorAt && Date.now() - s.errorAt > (s.everPlayed ? cfg.ERROR_GRACE : cfg.START_ERROR_GRACE)) { s.errorAt = 0; return escalate('выдал ошибку'); }
         var hlsWait = s.avplay && s.hls && !s.everPlayed;
         // Картинки нет — сразу сказать, что происходит, иначе кажется, что всё зависло
@@ -451,7 +451,7 @@ var BSGuard = (function () {
     function hookAvplay() {
         var av = window.webapis && window.webapis.avplay;
         if (!av || !av.setListener || av.setListener.__bsGuard) return;
-        var setListener = av.setListener, prepareAsync = av.prepareAsync, play = av.play;
+        var setListener = av.setListener, prepareAsync = av.prepareAsync;
         av.setListener = function (l) {
             if (l && typeof l === 'object') {
                 var copy = {}, k;
@@ -467,12 +467,8 @@ var BSGuard = (function () {
             return setListener.apply(av, arguments);
         };
         av.setListener.__bsGuard = true;
-        // PLAYER_ERROR_INVALID_STATE (пустой плейлист) AVPlay бросает исключением из play(), а не в onerror
-        if (play) {
-            av.play = function () {
-                try { return play.apply(av, arguments); } catch (e) { avError('play ' + (e && (e.name || e.message) || '')); throw e; }
-            };
-        }
+        // play() не перехватываем: PLAYER_ERROR_INVALID_STATE бывает и у рабочих каналов (Lampa зовёт play() до конца
+        // подготовки, поток потом идёт сам — проверено на ТВ, TV Skaz 1.7.59). Ошибкой её считать нельзя.
         if (prepareAsync) {
             av.prepareAsync = function (ok, fail) {
                 return prepareAsync.call(av, ok, function (e) { avError('prepare ' + (e && (e.name || e.message) || '')); if (fail) return fail.apply(this, arguments); });
