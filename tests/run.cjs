@@ -731,6 +731,26 @@ t('проверить и обновить: тега на jsDelivr ещё нет 
     t('клавиатура: не в поиске — поведение Lampa не меняется', origCalls.join() === 'R,L');
 }
 
+/* ---- bstg.js: открыть во время видео - в очередь, после закрытия плеера ---- */
+{
+    let playing = true;
+    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setInterval: () => 0,
+        setTimeout: f => { f(); return 0; },
+        Lampa: { Player: { opened: () => playing }, Noty: { show() {} } } };
+    ctx.window = ctx; ctx.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
+    const T = ctx.M;
+    let ran = 0;
+    t('видео: во время просмотра tvPlaying — да', T._tvPlaying() === true);
+    T._whenVideoEnds(() => { ran++; });
+    t('видео: пока идёт, действие не выполняется', ran === 0);
+    playing = false;
+    T._onVideoClosed();
+    t('видео: после закрытия плеера действие выполняется один раз', ran === 1 && T._tvPlaying() === false);
+    T._onVideoClosed();
+    t('видео: повторное закрытие ничего не запускает', ran === 1);
+}
+
 /* ---- bsfix.js: качество под скорость канала ---- */
 const QP = fixCtx().M._pickQuality, QS = { '2160p': 'u4k', '1080p': 'u1080', '720p': 'u720', '480p': 'u480' };
 t('качество: 25 Мбит/с — 4K остаётся', QP(QS, 'u4k', 25e6) === '');
