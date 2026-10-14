@@ -111,6 +111,7 @@ var BSTelegram = (function () {
         '🔎 Напишите название фильма или сериала — найду: «▶️ Смотреть» (сразу включит на ТВ), «Хочу посмотреть», подписаться. Можно и описать словами — поможет ИИ.\n' +
         'Можно с годом и студией: «Доктор Стрендж 2026», «2026», «фильмы Марвел 2026», «сериалы Netflix».\n' +
         '🖼 Пришлите скриншот, кадр или постер — узнаю фильм (Gemini).\n' +
+        '⌨️ «Набрать на ТВ» — пишете текст здесь, а он появляется в поиске Lampa на телевизоре.\n' +
         '➕ Ещё один ТВ: в его Lampa — Настройки → Telegram → «Подключить через бота», код с экрана пришлите сюда.\n' +
         '🔔 Пришлю новую серию, когда выйдет, и напомню утром в день выхода.\n' +
         '🗓 По понедельникам — что выходит на неделе.\n' +
@@ -126,6 +127,7 @@ var BSTelegram = (function () {
     var COMMANDS = [
         { command: 'menu', description: '📋 Главное меню' },
         { command: 'find', description: '🔎 Найти фильм или сериал' },
+        { command: 'type', description: '⌨️ Набрать текст в поиске Lampa на ТВ' },
         { command: 'want', description: '⭐ Хочу посмотреть' },
         { command: 'subs', description: '🔔 Мои подписки' },
         { command: 'week', description: '🗓 На этой неделе' },
@@ -143,6 +145,7 @@ var BSTelegram = (function () {
         var b = function (text, a) { return { text: text, callback_data: 'mn:' + a }; };
         var rows = [
             [b('🔎 Найти', 'find'), b('🖼 По картинке', 'pic')],
+            [b('⌨️ Набрать на ТВ', 'type')],
             [b('⭐ Хочу посмотреть', 'want'), b('🔔 Мои подписки', 'subs')],
             [b('🗓 На этой неделе', 'week'), b('📺 Телевизоры', 'tvs')]
         ];
@@ -182,6 +185,7 @@ var BSTelegram = (function () {
     }
     function menuAction(a) {
         if (a === 'find') return reply('Напишите название фильма или сериала 👇');
+        if (a === 'type') return typeStart();
         if (a === 'pic') return aiReady() ? aiStatus() : reply(geminiHow());
         if (a === 'want') return wantList();
         if (a === 'subs') return subsList();
@@ -908,6 +912,10 @@ var BSTelegram = (function () {
         else if (m.t === 'cfg') onCfg(m);
         else if (m.t === 'rename' && m.to === tvId && m.title) { lsSet('bs_tv_name', String(m.title).slice(0, 40)); busHello(false); refreshSettings(); }
         else if (m.t === 'open' && m.to === tvId && now - (m.ts || 0) < 60000) openHere(m.k, m.id, m.ref, !!m.play);
+        else if (m.t === 'type' && m.to === tvId && now - (m.ts || 0) < 60000) {
+            var why = typedText(m.text) ? typeHere(typedText(m.text)) : 'пустой текст';
+            if (m.ref) busSend({ t: 'ack', ref: m.ref, ok: !why, why: why, name: tvName() });
+        }
         else if (m.t === 'ack' && m.ref && acks[m.ref]) { var a = acks[m.ref]; delete acks[m.ref]; a(m); }
         else if (m.t === 'sub' && m.card && m.card.id) setSub(m.card, !!m.on, null);
         else if (m.t === 'seen' && m.id) {
@@ -1683,7 +1691,7 @@ var BSTelegram = (function () {
     }
 
     var renameFor = null, renameWait = null;
-    var KB_WORDS = ['найти', 'хочу посмотреть', 'мои подписки', 'на этой неделе', 'по картинке', 'помощь', 'люди', 'меню', 'профиль', 'телевизоры'];
+    var KB_WORDS = ['набрать на тв', 'найти', 'хочу посмотреть', 'мои подписки', 'на этой неделе', 'по картинке', 'помощь', 'люди', 'меню', 'профиль', 'телевизоры'];
 
     /** Чей это апдейт; чужим — только подключение по приглашению. */
     function chatOf(u) { var m = u.callback_query ? u.callback_query.message : u.message; return m && m.chat ? String(m.chat.id) : ''; }
@@ -1728,6 +1736,12 @@ var BSTelegram = (function () {
                 saveUsers(people, [ku[1]]);
                 as(ku[1], function () { reply('Вас отключили от Lampa. Подключиться снова — QR в поиске Lampa на ТВ.'); });
                 return reply('🚫 ' + gone.name + ' отключён.');
+            }
+            var tp = /^tp:(\w+)$/.exec(q.data || '');
+            if (tp) {
+                call('answerCallbackQuery', { callback_query_id: q.id }, null, null);
+                if (!isOwner() && !guestPlay()) return reply('Владелец запретил гостям управлять ТВ.');
+                return typeWait(tp[1]);
             }
             var pg = /^p:(\d+)$/.exec(q.data || ''), dv = /^([dD]):(\w+):([mt]):(\d+)$/.exec(q.data || '');
             if (pg) return slideTo(q, +pg[1]);
@@ -1805,6 +1819,10 @@ var BSTelegram = (function () {
             return;
         }
         renameFor = null;
+        // «⌨️ Набрать на ТВ»: следующее сообщение (не команда и не кнопка) — в поиск Lampa
+        if (typeFor && typeFor.chat === to() && Date.now() - typeFor.at < TYPE_WAIT && !/^\//.test(msg.text) &&
+            KB_WORDS.indexOf(msg.text.replace(/^[^\wА-Яа-яЁё]+/, '').toLowerCase()) < 0) return typeSend(msg.text);
+        if (typeFor && typeFor.chat === to()) typeFor = null;
         var jc = isOwner() && joinFrom(msg.text);
         if (jc) return joinSend(jc);
         if (isGeminiKey(msg.text)) {                                         // похоже на ключ — сразу из чата, в поиск не отдаём (у каждого свой)
@@ -1825,6 +1843,7 @@ var BSTelegram = (function () {
         if (c === 'profile' || plain === 'профиль') return menuAction('profile');
         if (c === 'tvs' || plain === 'телевизоры') return tvsInfo();
         if (plain === 'найти') return reply('Напишите название фильма или сериала 👇');
+        if (c === 'type' || plain === 'набрать на тв') return typeStart();
         if (c === 'want' || plain === 'хочу посмотреть') return wantList();
         if (plain === 'люди') return peopleList();
         if (plain === 'по картинке') return aiReady() ? aiStatus() : reply(geminiHow());
@@ -2227,6 +2246,60 @@ var BSTelegram = (function () {
         }
     }
 
+    /* ---------- «⌨️ Набрать на ТВ»: текст с телефона — в поиск Lampa на телевизоре ---------- */
+
+    var typeFor = null, TYPE_WAIT = 5 * 60000;
+
+    /** Текст для поиска Lampa: она вставляет его как HTML (.search__input), поэтому разметку и
+     *  управляющие символы вычищаем — иначе через бота можно было бы встроить код в страницу ТВ. */
+    function typedText(t) {
+        return String(t || '').replace(/[<>&"'`\\]/g, ' ').replace(/[\u0000-\u001f\u007f]/g, ' ')
+            .replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '').slice(0, 100);
+    }
+    /** Открыть поиск Lampa на этом ТВ с готовым текстом: Search.open сам ставит текст и ищет. */
+    function typeHere(text) {
+        var playing = false;
+        try { playing = !!Lampa.Player.opened(); } catch (e) {}
+        if (playing) return 'идёт видео — не прерываю';
+        try {
+            if (document.body.className.indexOf('search--open') >= 0) Lampa.Search.close();
+            Lampa.Search.open({ input: text });
+            return '';
+        } catch (e) { return e.message || 'не получилось открыть поиск'; }
+    }
+    /** Кнопка в меню: выбрать ТВ (если их несколько) и ждать текст. */
+    function typeStart() {
+        if (!isOwner() && !guestPlay()) return reply('Владелец запретил гостям управлять ТВ.');
+        var tvs = allTvs();
+        if (tvs.length > 1) {
+            return reply('⌨️ На каком телевизоре набрать?', tvs.map(function (d) { return [{ text: d.text, callback_data: 'tp:' + d.id }]; }));
+        }
+        typeWait(tvId);
+    }
+    function typeWait(dev) {
+        typeFor = { chat: to(), at: Date.now(), tv: dev };
+        var name = dev === tvId ? tvName() : (devices[dev] || {}).name || 'ТВ';
+        reply('⌨️ Напишите, что искать, — текст появится в поиске Lampa на «' + name + '».');
+    }
+    /** Пришёл текст в режиме «Набрать на ТВ». */
+    function typeSend(raw) {
+        var dev = typeFor.tv, text = typedText(raw), again = [[{ text: '⌨️ Набрать ещё', callback_data: 'mn:type' }]];
+        typeFor = null;
+        if (!text) return reply('Текст пустой — нажмите «⌨️ Набрать на ТВ» ещё раз.');
+        var name = dev === tvId ? tvName() : (devices[dev] || {}).name || 'ТВ';
+        if (dev === tvId) {
+            var why = typeHere(text);
+            return reply(why ? '📺 «' + name + '»: ' + why : '📺 Ищу «' + text + '» на «' + name + '»', again);
+        }
+        var ref = randomTopic().slice(6, 14), timer = null;
+        acks[ref] = keep(function (m) {
+            clearTimeout(timer);
+            reply(m.ok ? '📺 Ищу «' + text + '» на «' + name + '»' : '📺 «' + name + '»: ' + (m.why || 'не получилось'), again);
+        });
+        timer = setTimeout(keep(function () { if (acks[ref]) { delete acks[ref]; reply('📺 «' + name + '» не ответил — возможно, выключен или Lampa закрыта.'); } }), ACK_WAIT);
+        busSend({ t: 'type', to: dev, text: text, ref: ref });
+    }
+
     /** Кнопки под результатом поиска: w — «Хочу посмотреть», o — открыть на ТВ, s — подписаться. */
     function searchAction(q, act, kind, id) {
         var answer = function (t) { call('answerCallbackQuery', { callback_query_id: q.id, text: t }, null, null); };
@@ -2427,11 +2500,13 @@ var BSTelegram = (function () {
         setInterval(function () { check(false); }, 30 * 60000);
         setTimeout(remind, 70000);
         setTimeout(function () {
-            if (!token() || !chat() || lsGet('bs_tg_cmds') === '7') return;
-            lsSet('bs_tg_cmds', '7');
+            if (!token() || !chat() || lsGet('bs_tg_cmds') === '8') return;
+            var first = lsGet('bs_tg_cmds') !== '7';
+            lsSet('bs_tg_cmds', '8');
             if (!leading()) return;
             setCommands();
-            var news = '✨ Новое меню: кнопка «📋 Меню» внизу — все разделы, «👤 Профиль» — что подключено. Команды — у кнопки «Меню» слева от поля ввода.';
+            var news = (first ? '✨ Новое меню: кнопка «📋 Меню» внизу — все разделы, «👤 Профиль» — что подключено.\n' : '') +
+                '⌨️ Новое: «Набрать на ТВ» в меню — пишете здесь, а текст появляется в поиске Lampa на телевизоре.';
             as('', function () { sendKb(news); });
             var people = users();
             Object.keys(people).forEach(function (k) { if (active(people[k])) as(k, function () { sendKb(news); }); });
@@ -2460,5 +2535,5 @@ var BSTelegram = (function () {
         }, 60000);
     }
 
-    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _commands: COMMANDS, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle };
+    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _commands: COMMANDS, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle };
 })();

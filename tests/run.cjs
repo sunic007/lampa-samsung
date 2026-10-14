@@ -681,6 +681,25 @@ t('проверить и обновить: тега на jsDelivr ещё нет 
     t('настройки: все пункты модулей разложены по разделам' + (lost.length ? ' (вне раскладки: ' + lost.join(', ') + ')' : ''), lost.length === 0);
 }
 
+/* ---- bstg.js: «⌨️ Набрать на ТВ» — текст с телефона в поиск Lampa ---- */
+{
+    let opened = null, closed = 0, playing = false;
+    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0,
+        document: { body: { className: '' } },
+        Lampa: { Search: { open: p => { opened = p; }, close: () => { closed++; } }, Player: { opened: () => playing }, Noty: { show() {} } } };
+    ctx.window = ctx; ctx.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
+    const T = ctx.M;
+    t('набрать на ТВ: разметка и управляющие символы вычищены', T._typedText('  <b>Дюна</b> "2"'+String.fromCharCode(10)) === 'b Дюна /b 2');
+    t('набрать на ТВ: длинный текст обрезан до 100 символов', T._typedText('я'.repeat(300)).length === 100);
+    t('набрать на ТВ: поиск открывается с текстом', T._typeHere('Дюна') === '' && opened && opened.input === 'Дюна' && closed === 0);
+    ctx.document.body.className = 'search--open';
+    T._typeHere('Матрица');
+    t('набрать на ТВ: открытый поиск сначала закрывается', closed === 1 && opened.input === 'Матрица');
+    playing = true; opened = null;
+    t('набрать на ТВ: во время видео не прерывает', /видео/.test(T._typeHere('x')) && opened === null);
+}
+
 /* ---- bsfix.js: качество под скорость канала ---- */
 const QP = fixCtx().M._pickQuality, QS = { '2160p': 'u4k', '1080p': 'u1080', '720p': 'u720', '480p': 'u480' };
 t('качество: 25 Мбит/с — 4K остаётся', QP(QS, 'u4k', 25e6) === '');
@@ -970,7 +989,8 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('бот поиск: подпись — название, год, тип, рейтинг', /^Солдаты \(2004\)\nСериал · ★ 7\.5/.test(T._caption({ media_type: 'tv', name: 'Солдаты', first_air_date: '2004-01-26', vote_average: 7.46, overview: 'Про армию' })));
     const mr = T._menuRows(), flat = [].concat.apply([], mr).map(b => b.callback_data);
     t('меню бота: разделы кнопками «mn:», как у бота Skaz', ['mn:find', 'mn:pic', 'mn:want', 'mn:subs', 'mn:week', 'mn:tvs', 'mn:profile', 'mn:help', 'mn:support'].every(c => flat.indexOf(c) >= 0) && mr.every(r => r.length <= 2));
-    t('меню бота: команды у кнопки «Меню» слева от поля ввода', T._commands.map(c => c.command).join(',') === 'menu,find,want,subs,week,tvs,profile,help');
+    t('меню бота: команды у кнопки «Меню» слева от поля ввода', T._commands.map(c => c.command).join(',') === 'menu,find,type,want,subs,week,tvs,profile,help');
+    t('меню бота: «⌨️ Набрать на ТВ»', flat.indexOf('mn:type') >= 0);
     const sl = [{ media_type: 'tv', id: 1 }, { media_type: 'movie', id: 2 }, { media_type: 'movie', id: 3 }];
     const b0 = T._slideButtons(sl, 0), b1 = T._slideButtons(sl, 1);
     t('слайдер: сериал — подписка, стрелки по кругу, счётчик', b0[1].length === 2 && b0[2][0].callback_data === 'p:2' && b0[2][1].text === '1 / 3' && b0[2][2].callback_data === 'p:1');
