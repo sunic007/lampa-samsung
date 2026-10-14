@@ -519,7 +519,7 @@ function bsStartAutoUpdate() {
 var BS_SETTINGS_LAYOUT = [
     ['player', ['#^Надёжность воспроизведения', 'bs_player_auto', 'bs_guard', 'bs_bw_quality', 'bs_buffer',
         '#Во время просмотра', 'bs_resume_ask', 'bs_noads', 'bs_segments', 'bs_track_memory', 'bs_next_countdown', 'bs_still', 'bs_sleep', 'bs_vol_memory', 'bs_vol_night']],
-    ['interface', ['#Дополнительно', 'bs_watch_btn', 'bs_online_resume', 'bs_ru_auto', 'bs_menu_turk', 'bs_continue_row', 'bs_sisi']],
+    ['interface', ['#Дополнительно', 'bs_watch_btn', 'bs_online_resume', 'bs_ru_auto', 'bs_menu_turk', 'bs_continue_row']],
     ['parental_control', ['#Дополнительно', 'bs_kids']],
     ['bs_telegram', ['#Подключение', 'bs_tg_phone', 'bs_tg_join', 'bs_tg_help', 'bs_tg_token', 'bs_tg_link', 'bs_tv_name',
         '#Бот', 'bs_tg_on', 'bs_tg_shots', 'bs_search_qr', 'bs_tg_check',
@@ -539,13 +539,16 @@ var BS_SETTINGS_NEEDS = {
  *  — «Тип плеера» и «Обработка .m3u8» выбирает автовыбор плеера — вручную менять бессмысленно;
  *  — пункт Skaz «Сервер Skaz» (skaz_domain) выбирает автовыбор серверов; сам раздел настроек Skaz виден всегда;
  *  — торренты: «Парсер», «TorrServer», плеер для торрентов — на ТВ не используются (онлайн-источники),
- *    вернуть — «Торренты» в «Онлайн-источниках». Выключили автоматику — пункты снова видны. */
+ *    вернуть — «Торренты» в «Онлайн-источниках». Выключили автоматику — пункты снова видны;
+ *  — «Родительский контроль» Клубнички (sisi_pin_manage): PIN и Telegram хранит сервер Skaz, он отвечает ошибкой,
+ *    и пункт ничего не делает. Прячем всегда; защита от 18+ — наш детский режим. */
 function bsLsOn(k, def) { var v = null; try { v = window.localStorage.getItem(k); } catch (e) {} return v === null ? def : v === 'true'; }
 var BS_SETTINGS_HIDE_IF = [
     { sel: '[data-name="player"], [data-name="player_hls_method"]', when: function () { return bsLsOn('bs_player_auto', true); } },
     { sel: '[data-name="skaz_domain"]', when: function () { return bsLsOn('bs_srv_auto', true); } },
     { sel: '[data-name="player_torrent"], .settings-folder[data-component="parser"], .settings-folder[data-component="server"]',
-        when: function () { return !bsLsOn('bs_torrents', false); } }
+        when: function () { return !bsLsOn('bs_torrents', false); } },
+    { sel: '[data-name="sisi_pin_manage"]', when: function () { return true; } }
 ];
 function bsSettingsHideLampa(body) {
     var root = body && body.find ? body : $('body');

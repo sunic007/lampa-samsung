@@ -1144,7 +1144,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     T._onBus({ t: 'hello', from: 'AAAAAAAA', name: 'Гостиная', leader: true, fg: true });
     t('failover по времени: новый «я здесь» от главного возвращает его', T._leaderStale() === false);
 }
-/* ---- bssources.js: источники на выбор, главная кнопка, ключи Skaz, Клубничка ---- */
+/* ---- bssources.js: источники на выбор, главная кнопка, ключи Skaz ---- */
 {
     const store = {}, mem = {};
     const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
@@ -1182,10 +1182,6 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('ключи: Z01 снова — его собственный выбор', mem.online_balanser === 'filmix');
     S._onActivity({ type: 'init', component: 'lampacskaz' });
     t('ключи: экран Skaz — выбор Skaz не потерян', mem.online_balanser === 'rezka');
-    mem.skaz_domain = 'skaztv.online';
-    t('клубничка: с текущего домена Skaz', S._sisiUrl() === 'http://skaztv.online/sisi.js');
-    mem.skaz_domain = 'bad domain/../x';
-    t('клубничка: странный домен — skaz.tv', S._sisiUrl() === 'http://skaz.tv/sisi.js');
 }
 /* ---- bssources.js: выбор кнопки «Смотреть» и подключение плагинов ---- */
 {
@@ -1211,18 +1207,15 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('смотреть: главный Z01 — его кнопка', r.S.pick([skaz, z01], false) === z01);
     t('смотреть: Z01 ещё не добавил кнопку — ждём (не Skaz)', r.S.pick([skaz], false) === null);
     t('смотреть: Z01 так и не загрузился — последняя попытка берёт Skaz', r.S.pick([other, skaz], true) === skaz);
-    r = mk({ bs_src_online_mod: 'true', bs_src_vod_llpp: 'true', bs_src_showy: 'true', bs_sisi: 'false' });
+    r = mk({ bs_src_online_mod: 'true', bs_src_vod_llpp: 'true', bs_src_showy: 'true' });
     r.S._loadAll();
     t('подключение: из группы Online Mod — только один плагин', r.loaded.filter(u => /online_mod\.js|llpp\.in/.test(u)).length === 1);
     t('подключение: выключенные не грузятся, включённые грузятся', r.loaded.indexOf('http://showy.online/m.js') >= 0 && r.loaded.indexOf('http://z01.online/live') < 0);
-    t('подключение: Клубничка выключена — не грузится', !r.loaded.some(u => /sisi\.js/.test(u)));
+    t('подключение: Клубничку сами не грузим — решает переключатель Skaz', !r.loaded.some(u => /sisi\.js/.test(u)));
     r = mk({});
     r.S._loadAll();
-    t('подключение: по умолчанию — только Клубничка Skaz, сторонних нет', r.loaded.length === 1 && r.loaded[0] === 'http://skaz.tv/sisi.js');
-    r = mk({ bs_kids: 'true', bs_kids_pin: '1234' });
-    r.S._loadAll();
-    t('подключение: детский режим — Клубничка не грузится', r.loaded.length === 0);
-    r = mk({ bs_src_z01: 'true', bs_sisi: 'false' }, [{ url: 'http://z01.online/live' }]);
+    t('подключение: по умолчанию ничего не грузим', r.loaded.length === 0);
+    r = mk({ bs_src_z01: 'true' }, [{ url: 'http://z01.online/live' }]);
     r.S._loadAll();
     t('подключение: плагин уже добавлен вручную — второй раз не грузим', r.loaded.length === 0);
 }

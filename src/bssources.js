@@ -1,5 +1,5 @@
 /*
- * Сторонние онлайн-источники на выбор (плагины Lampa) и «Клубничка» (18+).
+ * Сторонние онлайн-источники на выбор (плагины Lampa).
  *
  *  Skaz — основной источник, как и раньше. Остальные плагины по умолчанию выключены: человек сам включает нужные
  *  в «Онлайн-источниках». Подключаются только адреса из списка ниже (не произвольные ссылки). Включённый плагин
@@ -14,9 +14,8 @@
  *  набор этих ключей: перед входом в его экран текущий набор сохраняется (bs_src_snap_<кто>), а свой — возвращается;
  *  на остальных экранах (карточка, главная) действуют ключи Skaz.
  *
- *  Клубничка (18+): Skaz перестал её подключать (в его privateinit.js строка закомментирована, а адрес на z01.online
- *  отвечает 404). Свой плагин Skaz по-прежнему отдаёт с домена контента (skaz_domain)/sisi.js — подключаем его сами.
- *  В детском режиме не подключаем (bswatch.js прячет и пункт меню).
+ *  Клубничку (18+) сами не подключаем: у Skaz свой переключатель «Клубничка — Скрыть из меню / Показывать в меню»
+ *  (SISI_fix, раздел «ТВ by Skaz»). Своя загрузка в 1.7.57 его перекрывала — «Скрыть» не действовало.
  */
 var BSSources = (function () {
     'use strict';
@@ -134,15 +133,6 @@ var BSSources = (function () {
         done[url] = true;
         try { Lampa.Utils.putScriptAsync([url], function () { log('подключён', url); }); } catch (e) { log('не подключён', url + ' ' + e.message); }
     }
-    function kids() { return on('bs_kids', false) && !!lsGet('bs_kids_pin'); }
-    function sisiUrl() {
-        var d = '';
-        try { d = String(Lampa.Storage.get('skaz_domain', '') || ''); } catch (e) {}
-        if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(d)) d = 'skaz.tv';
-        var proto = 'http://';
-        try { proto = Lampa.Utils.protocol(); } catch (e) {}
-        return proto + d + '/sisi.js';
-    }
     function loadAll() {
         var groups = {};
         for (var i = 0; i < LIST.length; i++) {
@@ -151,7 +141,6 @@ var BSSources = (function () {
             if (s.group) groups[s.group] = true;
             load(s.url);
         }
-        if (on('bs_sisi', true) && !kids()) load(sisiUrl());
     }
 
     /* ---------- настройки ---------- */
@@ -184,15 +173,6 @@ var BSSources = (function () {
                 }
             });
         });
-        api.addParam({
-            component: C, param: { name: 'bs_sisi', type: 'trigger', 'default': true },
-            field: { name: 'Клубничка (18+)', description: 'Раздел для взрослых в меню (плагин Skaz). В детском режиме скрыт.' },
-            onChange: function (v) {
-                var want = v === true || v === 'true';
-                lsSet('bs_sisi', String(want));
-                if (want && !kids()) load(sisiUrl()); else if (!want) noty('Клубничка исчезнет после перезапуска Lampa');
-            }
-        });
     }
 
     function start() {
@@ -202,5 +182,5 @@ var BSSources = (function () {
     }
 
     return { start: start, owner: owner, mainId: mainId, isMain: isMain, pick: pick, list: LIST,
-        _swapTo: swapTo, _compOwner: compOwner, _sisiUrl: sisiUrl, _onActivity: onActivity, _loadAll: loadAll };
+        _swapTo: swapTo, _compOwner: compOwner, _onActivity: onActivity, _loadAll: loadAll };
 })();
