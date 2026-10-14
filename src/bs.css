@@ -106,7 +106,12 @@ html body.bs-panel-up .bs-toast {
   -webkit-transform: scale(1.08); transform: scale(1.08);
   -webkit-box-shadow: 0 0.2em 0.8em rgba(0, 0, 0, 0.5); box-shadow: 0 0.2em 0.8em rgba(0, 0, 0, 0.5);
 }
-.simple-keyboard .hg-button.focus:after { -webkit-filter: invert(1); filter: invert(1); }
+.simple-keyboard .hg-button.focus:after { -webkit-filter: invert(1) !important; filter: invert(1) !important; }
+/* Служебные клавиши («#+», микрофон, Aa) Lampa красит белым отдельным правилом - на белой выбранной
+   клавише текст и значок пропадали. Выбранная клавиша - всегда тёмный текст и значок. */
+.simple-keyboard .hg-button.focus, .simple-keyboard .hg-button.focus span,
+.simple-keyboard .hg-button.hg-activeButton, .simple-keyboard .hg-button.hg-activeButton span { color: #000 !important; }
+.simple-keyboard .hg-button.focus svg { color: #000 !important; fill: currentColor; }
 .simple-keyboard .hg-button[data-skbtn^="{"] { background: rgba(255, 255, 255, 0.16); }
 .simple-keyboard .hg-button[data-skbtn^="{"].focus { background: #fff; }
 .search__keypad .simple-keyboard .hg-button-SPACE { min-width: 9em; }

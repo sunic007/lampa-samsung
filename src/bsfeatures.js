@@ -294,7 +294,40 @@ var BSFeatures = (function () {
         Lampa.Player.listener.follow('destroy', function () { $('body').removeClass('bs-panel-up'); });
     }
 
+    /* Клавиатура поиска - по кругу: на краю ряда «вправо» ведёт на первую клавишу этого ряда, «влево» -
+     * на последнюю. Раньше курсор упирался в край, и к другому концу приходилось идти через весь ряд.
+     * Только в поиске (.search__keypad): в других окнах Lampa край клавиатуры может вести в соседние элементы. */
+    function keyboardWrapTarget(dir) {
+        var cur = $('.search__keypad .simple-keyboard .hg-button.focus');
+        if (cur.length !== 1) return null;
+        var row = cur.closest('.hg-row').find('.hg-button');
+        var i = row.index(cur);
+        if (i < 0 || row.length < 2) return null;
+        if (dir === 'right' && i === row.length - 1) return row.eq(0);
+        if (dir === 'left' && i === 0) return row.eq(row.length - 1);
+        return null;
+    }
+    function keyboardWrap() {
+        var C = Lampa.Controller, add = C && C.add;
+        if (!add || add.__bsWrap) return;
+        C.add = function (name, obj) {
+            if (name === 'keybord' && obj && obj.left && obj.right) {
+                var left = obj.left, right = obj.right;
+                var jump = function (dir, orig, self, args) {
+                    var t = keyboardWrapTarget(dir);
+                    if (!t) return orig.apply(self, args);
+                    try { Lampa.Controller.collectionFocus(t[0], $('.search__keypad .simple-keyboard')); } catch (e) { orig.apply(self, args); }
+                };
+                obj.left = function () { jump('left', left, this, arguments); };
+                obj.right = function () { jump('right', right, this, arguments); };
+            }
+            return add.apply(this, arguments);
+        };
+        C.add.__bsWrap = true;
+    }
+
     function start() {
+        try { keyboardWrap(); } catch (e) { console.log('BS keyboard wrap', e.message); }
         try { noticesAbovePanel(); } catch (e) {}
         try { lazyYouTube(); } catch (e) {}
         try { installFastStart(); } catch (e) { console.log('BS fast start', e.message); }
@@ -313,5 +346,5 @@ var BSFeatures = (function () {
         } catch (e) {}
     }
 
-    return { start: start, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
+    return { start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
 })();

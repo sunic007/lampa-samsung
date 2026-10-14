@@ -705,6 +705,32 @@ t('проверить и обновить: тега на jsDelivr ещё нет 
     t('набрать на ТВ: во время видео не прерывает', /видео/.test(T._typeHere('x')) && opened === null);
 }
 
+/* ---- bsfeatures.js: клавиатура поиска по кругу ---- */
+{
+    let pos = 0, focused = null, origCalls = [];
+    const N = 5, cur = { length: 1 };
+    const row = { length: N, index: () => pos, eq: i => [{ key: i }] };
+    cur.closest = () => ({ find: () => row });
+    const $ = sel => (/hg-button\.focus/.test(sel) ? (pos < 0 ? { length: 0 } : cur) : { length: 1 });
+    const added = {};
+    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, setTimeout: () => 0, setInterval: () => 0, $,
+        document: { addEventListener() {} }, XMLHttpRequest: function () {}, Node: function () {},
+        Lampa: { Controller: { add: (n, o) => { added[n] = o; }, collectionFocus: el => { focused = el; } } } };
+    ctx.window = ctx; ctx.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+    ctx.XMLHttpRequest.prototype = { open() {} }; ctx.Node.prototype = { appendChild() {} };
+    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bsfeatures.js'), 'utf8') + ';this.M=BSFeatures;', ctx);
+    ctx.M._kbWrap();
+    ctx.Lampa.Controller.add('keybord', { left: () => origCalls.push('L'), right: () => origCalls.push('R') });
+    pos = N - 1; added.keybord.right();
+    t('клавиатура: на последней клавише «вправо» — на первую в ряду', focused && focused.key === 0 && origCalls.length === 0);
+    pos = 0; focused = null; added.keybord.left();
+    t('клавиатура: на первой клавише «влево» — на последнюю в ряду', focused && focused.key === N - 1 && origCalls.length === 0);
+    pos = 2; focused = null; added.keybord.right();
+    t('клавиатура: в середине ряда — обычный ход Lampa', focused === null && origCalls.join() === 'R');
+    pos = -1; added.keybord.left();
+    t('клавиатура: не в поиске — поведение Lampa не меняется', origCalls.join() === 'R,L');
+}
+
 /* ---- bsfix.js: качество под скорость канала ---- */
 const QP = fixCtx().M._pickQuality, QS = { '2160p': 'u4k', '1080p': 'u1080', '720p': 'u720', '480p': 'u480' };
 t('качество: 25 Мбит/с — 4K остаётся', QP(QS, 'u4k', 25e6) === '');
