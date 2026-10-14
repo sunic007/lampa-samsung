@@ -668,6 +668,19 @@ t('проверить и обновить: тега на jsDelivr ещё нет 
     t('видео гостям запрещено — «Смотреть на ТВ» от гостя не включает', urls.some(u => /answerCallbackQuery/.test(u) && /запретил гостям/.test(u)) && !urls.some(u => /"t":"open"/.test(u)));
 }
 
+/* ---- настройки: каждый пункт модулей — в своём разделе (раскладка), а не в «Обновление» ---- */
+{
+    const L = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
+    const lay = L.slice(L.indexOf('var BS_SETTINGS_LAYOUT'), L.indexOf('var BS_SETTINGS_NEEDS'));
+    const lost = [];
+    fs.readdirSync(SRC).filter(f => /^(bs.*|skazauto|playerguard)\.js$/.test(f)).forEach(f => {
+        const s = fs.readFileSync(path.join(SRC, f), 'utf8'), re = /param:\s*\{\s*name:\s*'([a-z_0-9]+)'/g;
+        let m;
+        while ((m = re.exec(s))) if (lay.indexOf("'" + m[1] + "'") < 0) lost.push(f + ':' + m[1]);
+    });
+    t('настройки: все пункты модулей разложены по разделам' + (lost.length ? ' (вне раскладки: ' + lost.join(', ') + ')' : ''), lost.length === 0);
+}
+
 /* ---- bsfix.js: качество под скорость канала ---- */
 const QP = fixCtx().M._pickQuality, QS = { '2160p': 'u4k', '1080p': 'u1080', '720p': 'u720', '480p': 'u480' };
 t('качество: 25 Мбит/с — 4K остаётся', QP(QS, 'u4k', 25e6) === '');
