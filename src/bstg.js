@@ -105,8 +105,8 @@ var BSTelegram = (function () {
         if (photo) call('sendPhoto', extra({ chat_id: to(), photo: photo, caption: text }), ok, plain);
         else plain();
     }
-    var KB = { keyboard: [[{ text: '📋 Меню' }], [{ text: '👤 Профиль' }, { text: '❓ Помощь' }]],
-        resize_keyboard: true, is_persistent: true };
+    // Внизу — только «Меню»: «Профиль» и «Помощь» есть в самом меню (раньше дублировались здесь).
+    var KB = { keyboard: [[{ text: '📋 Меню' }]], resize_keyboard: true, is_persistent: true };
     var HELP = 'Я — ваш помощник Lampa 🎬\n\n' +
         '🔎 Напишите название фильма или сериала — найду: «▶️ Смотреть» (сразу включит на ТВ), «Хочу посмотреть», подписаться. Можно и описать словами — поможет ИИ.\n' +
         'Можно с годом и студией: «Доктор Стрендж 2026», «2026», «фильмы Марвел 2026», «сериалы Netflix».\n' +
@@ -145,22 +145,24 @@ var BSTelegram = (function () {
         var b = function (text, a) { return { text: text, callback_data: 'mn:' + a }; };
         var rows = [
             [b('🔎 Найти', 'find'), b('🖼 По картинке', 'pic')],
-            [b('⌨️ Набрать на ТВ', 'type')],
-            [b('⭐ Хочу посмотреть', 'want'), b('🔔 Мои подписки', 'subs')],
-            [b('🗓 На этой неделе', 'week'), b('📺 Телевизоры', 'tvs')]
+            [b('⌨️ Набрать на ТВ', 'type'), b('📺 Телевизоры', 'tvs')],
+            [b('⭐ Хочу посмотреть', 'want'), b('🔔 Подписки', 'subs')]
         ];
-        if (isOwner()) rows.push([b('👥 Люди', 'people')]);
-        rows.push([b('👤 Профиль', 'profile')]);
-        rows.push([b('❓ Помощь', 'help'), b('❤️ Поддержать', 'support')]);
+        // остальное — парами: у владельца есть «Люди», у гостя нет; «Поддержать» — внизу «Помощи»
+        var tail = [b('🗓 На неделе', 'week')];
+        if (isOwner()) tail.push(b('👥 Люди', 'people'));
+        tail.push(b('👤 Профиль', 'profile'), b('❓ Помощь', 'help'));
+        for (var i = 0; i < tail.length; i += 2) rows.push(tail.slice(i, i + 2));
         return rows;
     }
     function tvNames() { return allTvs().map(function (d) { return d.text.replace(/^📺 /, ''); }); }
     function sendMenu() {
         var tvs = tvNames();
-        reply('📺 На связи: ' + tvs.join(', ') + (aiReady() ? ' · 🧠 ИИ-поиск включён' : '') + '\n\nВыберите раздел:', menuRows());
+        reply('📺 На связи: ' + tvs.join(', ') + (anyAi() ? ' · 🧠 ИИ-поиск включён' : '') + '\n\nВыберите раздел:', menuRows());
     }
     function profileText() {
         var g = guest(), people = users(), me = people[to()] || {}, ai = aiProviders().map(function (x) { return x.p === 'gemini' ? 'Gemini' : OA[x.p].name; });
+        if (cubAiReady()) ai.unshift('AI-ассистент Lampa (CUB)');
         var subsN = (isOwner() ? subs() : ((g || {}).subs || [])).length;
         var lines = [
             '👤 ' + (isOwner() ? 'Владелец бота' : 'Вы подключены' + (me.name ? ' как ' + me.name : '') + ' — свои списки и подписки'),
@@ -193,8 +195,8 @@ var BSTelegram = (function () {
         if (a === 'tvs') return tvsInfo();
         if (a === 'people') return isOwner() ? peopleList() : null;
         if (a === 'profile') return reply(profileText(), [[{ text: '📋 Меню', callback_data: 'mn:menu' }]]);
-        if (a === 'help') return sendKb(helpText());
-        if (a === 'support') return reply(supportText());
+        if (a === 'help') return sendKb(helpText() + '\n\n' + supportText());
+        if (a === 'support') return reply(supportText());              // кнопка из старых сообщений
         if (a === 'menu') return sendMenu();
     }
 
@@ -1587,6 +1589,61 @@ var BSTelegram = (function () {
             });
         });
     }
+    /* AI-ассистент CUB — тот же, что во вкладке «AI-ассистент» поиска Lampa: запрос от аккаунта CUB на ТВ, свои ключи
+     * не нужны. Лимит запросов — у CUB (больше с CUB Premium); исчерпан, нет аккаунта или пусто — ИИ бота по ключу. */
+    function cubAccount() {
+        try { var a = Lampa.Storage.get('account', {}) || {}; return a.token && a.profile && a.profile.id ? a : null; } catch (e) { return null; }
+    }
+    function cubAiReady() {
+        try {
+            var st = window.lampa_settings || {};
+            if (!st.account_use || (st.disable_features && st.disable_features.ai)) return false;
+            return !!cubAccount() && !!(Lampa.Manifest && Lampa.Manifest.cub_domain);
+        } catch (e) { return false; }
+    }
+    function anyAi() { return cubAiReady() || aiReady(); }
+    /** Ответ CUB — карточки TMDB без media_type: у сериала name вместо title. */
+    function cubCards(results) {
+        return (results || []).filter(function (c) { return c && c.id && c.poster_path; }).map(function (c) {
+            if (!c.media_type) c.media_type = c.name && !c.title ? 'tv' : 'movie';
+            return c;
+        }).slice(0, SLIDE_LIMIT);
+    }
+    /** cb(карточки или null, почему). */
+    function cubAiSearch(q, cb) {
+        cb = keep(cb);
+        var acc = cubAccount(), done = false, end = function (list, why) { if (done) return; done = true; cb(list, why); };
+        if (!acc) return end(null, 'нет аккаунта CUB');
+        try {
+            var x = new XMLHttpRequest();
+            x.open('GET', Lampa.Utils.protocol() + Lampa.Manifest.cub_domain + '/api/ai/search/' + encodeURIComponent(String(q).slice(0, 300)), true);
+            x.timeout = 45000;
+            x.setRequestHeader('token', acc.token);
+            x.setRequestHeader('profile', acc.profile.id);
+            x.onload = function () {
+                var j = null;
+                try { j = JSON.parse(x.responseText); } catch (e) {}
+                if (x.status !== 200 || !j || !j.results) return end(null, x.status === 429 || (j && (j.code === 600 || j.decode_code === 600)) ? 'лимит' : 'ответ ' + x.status);
+                end(cubCards(j.results), '');
+            };
+            x.onerror = function () { end(null, 'нет связи'); };
+            x.ontimeout = function () { end(null, 'долго не отвечает'); };
+            x.send();
+        } catch (e) { end(null, e.message); }
+    }
+    /** Поиск по описанию: AI-ассистент CUB, не вышло — ИИ бота по ключу, ключа нет — честное «не нашлось». */
+    function smartFlow(query, status) {
+        if (!cubAiReady()) return aiFlow(query, status);
+        status('🤖 Спрашиваю AI-ассистента…');
+        cubAiSearch(query, function (list, why) {
+            if (list && list.length) {
+                status('🤖 Под «' + query + '» подходят: ' + list.slice(0, 5).map(function (c) { return c.title || c.name; }).join(', ') + (list.length > 5 ? '…' : ''));
+                return showSlides({ list: list, src: { fetch: function (p, cb) { cb([], 0); } }, page: 1, pages: 1 });
+            }
+            if (aiReady()) return aiFlow(query, status);
+            status('😔 По запросу «' + query + '» ничего не нашлось' + (why === 'лимит' ? ' — лимит AI-ассистента CUB исчерпан, попробуйте позже.' : '.'));
+        });
+    }
     /** Спросить ИИ и показать: один фильм — обычный поиск по названию, несколько — слайдер из них. */
     function aiFlow(query, status) {
         status('🤖 Спрашиваю ИИ…');
@@ -1867,7 +1924,7 @@ var BSTelegram = (function () {
         var t = msg.text.replace(/^\s+|\s+$/g, ''), cmd = /^\/(\w+)(?:@\w+)?\s*([\s\S]*)$/.exec(t);
         var c = cmd ? cmd[1].toLowerCase() : '', arg = cmd ? cmd[2] : t, plain = t.replace(/^[^\wА-Яа-яЁё]+/, '').toLowerCase();
         if (c === 'start') { sendKb('👋 Это бот вашей Lampa на ТВ.\nНапишите название фильма или сериала — или выберите раздел 👇'); return setTimeout(keep(sendMenu), 400); }
-        if (c === 'help' || plain === 'помощь') return sendKb(helpText());
+        if (c === 'help' || plain === 'помощь') return menuAction('help');
         if (c === 'menu' || plain === 'меню') return sendMenu();
         if (c === 'profile' || plain === 'профиль') return menuAction('profile');
         if (c === 'tvs' || plain === 'телевизоры') return tvsInfo();
@@ -2174,12 +2231,12 @@ var BSTelegram = (function () {
 
     function botSearch(query, viaAi) {
         // описали словами — сначала ИИ: что это за фильм; потом обычный поиск по названию
-        if (!viaAi && aiReady() && isDescription(query)) {
+        if (!viaAi && anyAi() && isDescription(query)) {
             call('sendChatAction', { chat_id: to(), action: 'typing' }, null, null);
             var sid = 0, queued = '';
             var st = function (t) { if (sid) call('editMessageText', { chat_id: to(), message_id: sid, text: t }, null, null); else queued = t; };
             call('sendMessage', { chat_id: to(), text: '🤖 Спрашиваю ИИ…' }, function (m) { sid = m && m.message_id || 0; if (sid && queued) st(queued); }, null);
-            return aiFlow(query, st);
+            return smartFlow(query, st);
         }
         // пока ищем — «печатает…» и сообщение «Ищу…»; результат пришёл — сообщение убираем (или пишем «не нашлось»)
         call('sendChatAction', { chat_id: to(), action: 'upload_photo' }, null, null);
@@ -2188,7 +2245,7 @@ var BSTelegram = (function () {
         var finish = function () {
             if (!found || shown) return;
             shown = true;
-            if (!found.list.length && !viaAi && aiReady()) return aiFlow(query, status);   // по названию пусто — спросить ИИ
+            if (!found.list.length && !viaAi && anyAi()) return smartFlow(query, status);   // по названию пусто — спросить ИИ
             if (!found.list.length) {
                 if (statusId) call('editMessageText', { chat_id: to(), message_id: statusId, text: '😔 По запросу «' + query + '» ничего не нашлось.\nПопробуйте написать иначе или по-английски.' }, null, null);
                 else reply('😔 По запросу «' + query + '» ничего не нашлось.');
@@ -2544,13 +2601,13 @@ var BSTelegram = (function () {
         setInterval(function () { check(false); }, 30 * 60000);
         setTimeout(remind, 70000);
         setTimeout(function () {
-            if (!token() || !chat() || lsGet('bs_tg_cmds') === '8') return;
-            var first = lsGet('bs_tg_cmds') !== '7';
-            lsSet('bs_tg_cmds', '8');
+            // '9': новая нижняя клавиатура — старая (с «Профилем» и «Помощью») у людей остаётся, пока бот не пришлёт новую
+            if (!token() || !chat() || lsGet('bs_tg_cmds') === '9') return;
+            lsSet('bs_tg_cmds', '9');
             if (!leading()) return;
             setCommands();
-            var news = (first ? '✨ Новое меню: кнопка «📋 Меню» внизу — все разделы, «👤 Профиль» — что подключено.\n' : '') +
-                '⌨️ Новое: «Набрать на ТВ» в меню — пишете здесь, а текст появляется в поиске Lampa на телевизоре.';
+            var news = '✨ Меню стало компактнее: внизу одна кнопка «📋 Меню», внутри все разделы.\n' +
+                '🤖 Опишите фильм словами («фильм про космос, где…») — подберу через AI-ассистента Lampa, свой ключ ИИ не нужен.';
             as('', function () { sendKb(news); });
             var people = users();
             Object.keys(people).forEach(function (k) { if (active(people[k])) as(k, function () { sendKb(news); }); });
@@ -2585,5 +2642,5 @@ var BSTelegram = (function () {
         }, 15000);
     }
 
-    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _commands: COMMANDS, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle };
+    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _cubCards: cubCards, _commands: COMMANDS, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle };
 })();

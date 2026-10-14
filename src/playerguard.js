@@ -23,7 +23,7 @@
  * возвращаются (bs_player_forced хранит прежние, если приложение закрыли посреди просмотра).
  */
 var BSGuard = (function () {
-    var cfg = { BUFFER_GRACE: 60000, START_LIMIT: 25000, PLAY_LIMIT: 20000, ERROR_GRACE: 6000, CLOSE_DELAY: 4000, TICK: 1000 };
+    var cfg = { BUFFER_GRACE: 60000, START_LIMIT: 25000, PLAY_LIMIT: 20000, ERROR_GRACE: 6000, START_ERROR_GRACE: 2000, CLOSE_DELAY: 4000, TICK: 1000 };
     var s = null;          // текущий сеанс просмотра
     var timer = null;
     var HLS_START_LIMIT = 10000, HLS_QUIET = 6000, HLS_HINT = 3000, HLS_LEARN = 30 * 24 * 3600 * 1000, LEARN_KEY = 'bs_hls_inner', FORCED_KEY = 'bs_player_forced';
@@ -276,8 +276,9 @@ var BSGuard = (function () {
         if (s.paused || document.hidden || s.closing) return;
         // Нет сети — ничего не переключаем, ждём её возвращения (см. 'online').
         if (navigator.onLine === false || s.offline) { s.lastProgressAt = Date.now(); return; }
-        // Ошибка плеера: ждём ERROR_GRACE — плеер (hls.js, AVPlay) часто восстанавливается сам.
-        if (s.errorAt && Date.now() - s.errorAt > cfg.ERROR_GRACE) { s.errorAt = 0; return escalate('выдал ошибку'); }
+        // Ошибка плеера: ждём ERROR_GRACE — плеер (hls.js, AVPlay) часто восстанавливается сам. Ошибка до первой картинки
+        // (сервер отдал пустой плейлист — так бывает у TV Skaz) сама не проходит: переключаем через START_ERROR_GRACE.
+        if (s.errorAt && Date.now() - s.errorAt > (s.everPlayed ? cfg.ERROR_GRACE : cfg.START_ERROR_GRACE)) { s.errorAt = 0; return escalate('выдал ошибку'); }
         var hlsWait = s.avplay && s.hls && !s.everPlayed;
         // Картинки нет — сразу сказать, что происходит, иначе кажется, что всё зависло
         if (hlsWait && !s.hinted && Date.now() - s.lastProgressAt > HLS_HINT) {
@@ -450,7 +451,7 @@ var BSGuard = (function () {
     function hookAvplay() {
         var av = window.webapis && window.webapis.avplay;
         if (!av || !av.setListener || av.setListener.__bsGuard) return;
-        var setListener = av.setListener, prepareAsync = av.prepareAsync;
+        var setListener = av.setListener, prepareAsync = av.prepareAsync, play = av.play;
         av.setListener = function (l) {
             if (l && typeof l === 'object') {
                 var copy = {}, k;
@@ -466,6 +467,12 @@ var BSGuard = (function () {
             return setListener.apply(av, arguments);
         };
         av.setListener.__bsGuard = true;
+        // PLAYER_ERROR_INVALID_STATE (пустой плейлист) AVPlay бросает исключением из play(), а не в onerror
+        if (play) {
+            av.play = function () {
+                try { return play.apply(av, arguments); } catch (e) { avError('play ' + (e && (e.name || e.message) || '')); throw e; }
+            };
+        }
         if (prepareAsync) {
             av.prepareAsync = function (ok, fail) {
                 return prepareAsync.call(av, ok, function (e) { avError('prepare ' + (e && (e.name || e.message) || '')); if (fail) return fail.apply(this, arguments); });

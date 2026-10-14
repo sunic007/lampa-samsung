@@ -455,7 +455,8 @@ function guardEnv(opt) {
     const clock = { run(ms) { const end = now + ms; for (;;) { timers.sort((a, b) => a.at - b.at); const x = timers[0]; if (!x || x.at > end) break; now = x.at; if (x.rep) x.at += x.rep; else timers.shift(); x.fn(); } now = end; } };
     const H = {}, follow = name => (ev, fn) => { (H[name + ':' + ev] = H[name + ':' + ev] || []).push(fn); };
     const notes = [], events = [];
-    const av = { setListener(l) { this.l = l; }, prepareAsync(ok, fail) { this.fail = fail; } };
+    const av = { setListener(l) { this.l = l; }, prepareAsync(ok, fail) { this.fail = fail; },
+        play() { if (this.throwPlay) { const e = new Error('PLAYER_ERROR_INVALID_STATE'); e.name = 'InvalidStateError'; throw e; } } };
     const ls = {}, store = { player: 'tizen', player_hls_method: 'application' }, plays = [];
     const w = { localStorage: opt.tizen ? { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); }, removeItem: k => { delete ls[k]; } } : { getItem: () => null, setItem() {} },
         addEventListener() {}, webapis: { avplay: av } };
@@ -496,6 +497,20 @@ function guardEnv(opt) {
     g4.fire('video:timeupdate', { current: 1 }); g4.clock.run(500); g4.fire('video:timeupdate', { current: 2 });
     g4.av.l.onbufferingstart();
     t('сторож: остановки на подгрузку считаются только после старта видео', g4.M.stalls() === 1);
+    // TV Skaz: сервер отдал пустой плейлист — AVPlay бросает INVALID_STATE из play(), до первой картинки
+    const g5 = guardEnv();
+    g5.fire('player:start', { url: 'http://cdn/1080.m3u8' }); g5.clock.run(500);
+    g5.av.throwPlay = true;
+    try { g5.av.play(); } catch (e) {}
+    g5.clock.run(3500);
+    t('сторож: исключение из play() до картинки — вмешивается за ~3 с, а не через 9', g5.notes.length > 0);
+    const g6 = guardEnv(); g6.av.setListener({});
+    g6.fire('player:start', { url: 'http://cdn/1080.m3u8' }); g6.clock.run(500);
+    g6.fire('video:timeupdate', { current: 1 }); g6.clock.run(500); g6.fire('video:timeupdate', { current: 2 });
+    for (let k = 3; k < 6; k++) { g6.clock.run(500); g6.fire('video:timeupdate', { current: k }); }
+    g6.av.l.onerror('PLAYER_ERROR_CONNECTION_FAILED');
+    for (let k = 6; k < 12; k++) { g6.clock.run(500); g6.fire('video:timeupdate', { current: k }); }
+    t('сторож: ошибка во время просмотра — даём плееру 6 с восстановиться (не дёргаем за 3 с)', g6.notes.length === 0);
 }
 {
     // Плеер ТВ не запустил .m3u8 — та же серия во встроенном плеере (hls.js); сервер запоминается
@@ -1039,7 +1054,13 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('сводка: неделя считается с понедельника', T._weekKey(new Date(2026, 9, 18, 12).getTime()) === '2026-10-12' && T._weekKey(day) === '2026-10-12' && T._weekKey(new Date(2026, 9, 19).getTime()) === '2026-10-19');
     t('бот поиск: подпись — название, год, тип, рейтинг', /^Солдаты \(2004\)\nСериал · ★ 7\.5/.test(T._caption({ media_type: 'tv', name: 'Солдаты', first_air_date: '2004-01-26', vote_average: 7.46, overview: 'Про армию' })));
     const mr = T._menuRows(), flat = [].concat.apply([], mr).map(b => b.callback_data);
-    t('меню бота: разделы кнопками «mn:», как у бота Skaz', ['mn:find', 'mn:pic', 'mn:want', 'mn:subs', 'mn:week', 'mn:tvs', 'mn:profile', 'mn:help', 'mn:support'].every(c => flat.indexOf(c) >= 0) && mr.every(r => r.length <= 2));
+    t('меню бота: разделы кнопками «mn:», как у бота Skaz', ['mn:find', 'mn:pic', 'mn:type', 'mn:want', 'mn:subs', 'mn:week', 'mn:tvs', 'mn:profile', 'mn:help'].every(c => flat.indexOf(c) >= 0) && mr.every(r => r.length <= 2));
+    t('меню бота: без повторов, «Поддержать» — в «Помощи», а не отдельной плиткой', flat.length === new Set(flat).size && flat.indexOf('mn:support') < 0);
+    t('меню бота: плитки парами — рядов не больше шести', mr.length <= 6);
+    t('бот: AI-ассистент CUB — сериал узнаётся по name, без постера — мимо', (() => {
+        const c = T._cubCards([{ id: 1, title: 'Интерстеллар', poster_path: '/a.jpg' }, { id: 2, name: 'Тьма', poster_path: '/b.jpg' }, { id: 3, title: 'Без постера' }]);
+        return c.length === 2 && c[0].media_type === 'movie' && c[1].media_type === 'tv';
+    })());
     t('меню бота: команды у кнопки «Меню» слева от поля ввода', T._commands.map(c => c.command).join(',') === 'menu,find,type,want,subs,week,tvs,profile,help');
     t('меню бота: «⌨️ Набрать на ТВ»', flat.indexOf('mn:type') >= 0);
     const sl = [{ media_type: 'tv', id: 1 }, { media_type: 'movie', id: 2 }, { media_type: 'movie', id: 3 }];
@@ -1218,6 +1239,33 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     r = mk({ bs_src_z01: 'true' }, [{ url: 'http://z01.online/live' }]);
     r.S._loadAll();
     t('подключение: плагин уже добавлен вручную — второй раз не грузим', r.loaded.length === 0);
+}
+/* ---- update.js: запасные зеркала CDN ---- */
+{
+    const mk = store => {
+        const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+        let reloaded = 0, written = '';
+        const w = { localStorage: ls, location: { reload() { reloaded++; } } };
+        const ctx = { window: w, document: { write: h => { written += h; }, createElement: () => ({ style: {} }), body: { appendChild() {} } },
+            setInterval: () => 0, clearInterval() {}, setTimeout: () => 0,
+            JSON, Date, Math, String, Number, console: { log() {} } };
+        w.window = w; vm.createContext(ctx);
+        vm.runInContext(fs.readFileSync(path.join(SRC, 'update.js'), 'utf8'), ctx);
+        return { w, store, written: () => written, reloaded: () => reloaded };
+    };
+    const upd = JSON.stringify({ v: '9.9.9', files: ['loader.js'] });
+    let r = mk({ bs_upd: upd });
+    t('обновление: по умолчанию — основной jsDelivr', /https:\/\/cdn\.jsdelivr\.net\/gh\/sunic007\/lampa-samsung@v9\.9\.9\/src\/loader\.js/.test(r.written()));
+    r.w.bsUpdFail();
+    t('обновление: файл не пришёл — следующее зеркало, без часа на пакете и без метки «плохая версия»',
+        r.store.bs_upd_mirror === '1' && !r.store.bs_upd_skip && !('bs_upd_try' in r.store) && r.reloaded() === 1);
+    r = mk({ bs_upd: upd, bs_upd_mirror: '1' });
+    t('обновление: второе зеркало — fastly', /https:\/\/fastly\.jsdelivr\.net\/gh\/sunic007\/lampa-samsung@v9\.9\.9\/src\//.test(r.written()));
+    r = mk({ bs_upd: upd, bs_upd_mirror: '2' });
+    r.w.bsUpdFail();
+    t('обновление: все зеркала не ответили — час на пакете, потом снова с первого', !!r.store.bs_upd_skip && !('bs_upd_mirror' in r.store));
+    r = mk({ bs_upd: upd, bs_upd_mirror: '7' });
+    t('обновление: испорченный номер зеркала — основной', /cdn\.jsdelivr\.net/.test(r.written()));
 }
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

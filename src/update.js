@@ -15,7 +15,12 @@
     window.BS_PKG_APP = BS_PKG_APP;
     var REPO = 'sunic007/lampa-samsung';
     var MANIFEST = 'https://raw.githubusercontent.com/' + REPO + '/main/version.json';
-    var CDN = 'https://cdn.jsdelivr.net/gh/' + REPO + '@v';
+    // Зеркала jsDelivr (разные сети одного CDN). Свежий тег основной иногда отдаёт с 503 — тогда следующее зеркало, а не
+    // час на пакете. raw.githubusercontent не годится: text/plain + nosniff, такой скрипт ТВ не выполнит.
+    var MIRRORS = ['https://cdn.jsdelivr.net/gh/', 'https://fastly.jsdelivr.net/gh/', 'https://gcore.jsdelivr.net/gh/'];
+    var mirror = +(get('bs_upd_mirror') || 0);
+    if (!(mirror >= 0 && mirror < MIRRORS.length)) mirror = 0;
+    var CDN = MIRRORS[mirror] + REPO + '@v';
     // порядок важен: loader.js — последним (запускает остальное)
     var LOCAL = ['skazauto.js', 'playerguard.js', 'bsfeatures.js', 'bsplayer.js', 'bsrch.js', 'bsprobe.js', 'bsfix.js', 'bssources.js', 'bsmenu.js',
         'bscontinue.js', 'bswatch.js', 'bshub.js', 'bstg.js', 'bsvolume.js', 'loader.js'];
@@ -43,11 +48,12 @@
     var files = remote ? upd.files : LOCAL;
     if (remote) { set('bs_upd_try', upd.v); window.BS_REMOTE_VERSION = upd.v; }
 
-    window.bsUpdFail = function () {                        // файл с CDN не пришёл — сеть: час работаем с пакетом
+    window.bsUpdFail = function () {                        // файл с CDN не пришёл: следующее зеркало, все не ответили — час на пакете
         if (!remote || window.bsUpdFailed) return;
         window.bsUpdFailed = true;
-        set('bs_upd_try', null);
-        set('bs_upd_skip', String(Date.now() + 3600000));
+        set('bs_upd_try', null);                            // это сбой сети, а не плохая версия
+        if (mirror + 1 < MIRRORS.length) set('bs_upd_mirror', String(mirror + 1));
+        else { set('bs_upd_mirror', null); set('bs_upd_skip', String(Date.now() + 3600000)); }
         try { window.location.reload(); } catch (e) {}
     };
     // Статистика на экране загрузки: пока модули идут с CDN, видно, что происходит (вместо пустого фона Lampa)
@@ -76,7 +82,7 @@
     var html = remote ? '<link rel="stylesheet" href="' + base + 'bs.css">' : '';
     for (var i = 0; i < files.length; i++) html += '<script src="' + base + files[i] + '"' + (remote ? ' onload="bsUpdLoaded()" onerror="bsUpdFail()"' : '') + '><\/script>';
     document.write(html);
-    statShow();
+    try { statShow(); } catch (e) {}                        // статистика — украшение: её сбой не должен ломать обновление
 
     function check() {
         if (get('bs_gh_update') === 'false') return;
@@ -104,5 +110,5 @@
         if (window.appready) { clearInterval(t); statHide(); set('bs_upd_try', null); setTimeout(check, 20000); }
         else if (++waits > 90) clearInterval(t);                // 3 минуты не поднялась — try остаётся, в следующий раз — пакет
     }, 2000);
-    window.BSUpdate = { local: LOCAL, check: check, _num: num };
+    window.BSUpdate = { local: LOCAL, check: check, _num: num, _base: base, _mirror: mirror };
 })();
