@@ -1,15 +1,15 @@
 /*
- * Автовыбор серверов Skaz по пингу, джиттеру и потерям.
+ * Автовыбор серверов онлайн-источников Skaz (фильмы и сериалы) по пингу, джиттеру и потерям.
  *
- * Два набора серверов:
- *  1. Домен контента (настройка Lampa `skaz_domain`) — privateinit.js берёт с него ТВ by Skaz
- *     и прочее. Сам Skaz выбирает его только вручную.
- *  2. Семейство серверов онлайн-источников (`skazonline_servers`): прямые online3/4/5/7 или
- *     через Cloudflare onlinecf3/4/5/7. onlines.js пингует серверы только внутри выбранного
- *     семейства, одним замером; само семейство не переключает.
+ * Только семейство серверов источников (`skazonline_servers`): прямые online3/4/5/7 или через Cloudflare
+ * onlinecf3/4/5/7. onlines.js пингует серверы только внутри выбранного семейства, одним замером; само
+ * семейство не переключает.
  *
- * Сервер «рабочий», только если отдал настоящий ответ: favicon.ico (image/*) у доменов
- * контента, число из /version у серверов источников. Заглушка провайдера — не рабочий.
+ * Сервер ТВ by Skaz (`skaz_domain`, онлайн-ТВ) НЕ трогаем: его выбирает человек в настройках Skaz («Сервер Skaz»),
+ * а свой резерв по потокам ТВ by Skaz делает сам (stream.<домен>/ok.php). До 1.7.61 мы выбирали и его — по
+ * favicon сайта, а не по серверу потоков, и брали skaztv.top, у которого сайт жив, а сертификат потоков сломан.
+ *
+ * Сервер «рабочий», только если отдал настоящий ответ: число из /version. Заглушка провайдера — не рабочий.
  * Оценка = медиана + 2 × джиттер + штраф за потери; меньше — лучше.
  *
  * До запуска Lampa — быстрый замер (до 2.5 с). После запуска — полный замер через 20 с,
@@ -17,22 +17,21 @@
  * Lampa откладывается, пока открыт плеер), просто медленный — со следующего запуска.
  */
 var BSSkaz = (function () {
-    var DOMAINS = ['skaz.tv', 'skaztv.online', 'skaz.team', 'skaztv.top', 'list.skaz.tv'];
     var FAMILIES = {
         direct: ['online3', 'online4', 'online5', 'online7'],
         cf: ['onlinecf3', 'onlinecf4', 'onlinecf5', 'onlinecf7']
     };
     var PROBE_TIMEOUT = 3000, FAST_BUDGET = 2500, WATCH_MS = 3 * 60 * 1000;
 
-    var last = { domains: {}, online: {}, time: 0 };
+    var last = { online: {}, time: 0 };
     var pendingReload = null;   // причина перезапуска, отложенного до закрытия плеера
     /* Защита от перезапусков по кругу на плохом Wi-Fi (сервер «мёртв» уже при 2 потерянных пробах из 4):
      *  - мёртвым текущий сервер считается только после двух полных замеров подряд (suspect*);
      *  - переключаемся только на сервер без потерь;
      *  - автоперезапуск — не чаще раза в 30 мин (bs_srv_reload_at), иначе новый сервер — со следующего запуска;
-     *  - «лучше, но работает» не пишется сразу (иначе curDomain() перестаёт быть тем, что реально работает), а
+     *  - «лучше, но работает» не пишется сразу (иначе curFamily() перестаёт быть тем, что реально работает), а
      *    откладывается до следующего запуска (bs_srv_pending); ручной выбор (bs_srv_manual) такие советы не перебивают. */
-    var suspectDomain = '', suspectFamily = '', RELOAD_GAP = 30 * 60 * 1000, MANUAL_KEEP = 7 * 24 * 3600 * 1000;
+    var suspectFamily = '', RELOAD_GAP = 30 * 60 * 1000, MANUAL_KEEP = 7 * 24 * 3600 * 1000;
     var notices = [];
     var running = false;
 
@@ -48,23 +47,9 @@ var BSSkaz = (function () {
 
     function enabled() { return lsGet('bs_srv_auto') !== 'false'; }
 
-    function curDomain() {
-        var d = (window.Lampa && Lampa.Storage) ? Lampa.Storage.get('skaz_domain', '') : lsGet('skaz_domain');
-        return domainList().indexOf(d) >= 0 ? d : 'skaz.tv';
-    }
-
     function curFamily() {
         var v = (window.Lampa && Lampa.Storage) ? Lampa.Storage.get('skazonline_servers', false) : lsGet('skazonline_servers');
         return (v === true || v === 'true') ? 'cf' : 'direct';
-    }
-
-    function domainList() {
-        var list = DOMAINS.slice(), learned = [];
-        try { learned = JSON.parse(lsGet('bs_skaz_list') || '[]') || []; } catch (e) {}
-        for (var i = 0; i < learned.length; i++) {
-            if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(learned[i]) && list.indexOf(learned[i]) < 0) list.push(learned[i]);
-        }
-        return list;
     }
 
     /* ---------- замеры ---------- */
@@ -80,11 +65,6 @@ var BSSkaz = (function () {
             xhr.onerror = xhr.ontimeout = function () { fin(false); };
             xhr.send();
         } catch (e) { fin(false); }
-    }
-
-    function checkFavicon(xhr) {
-        var t = (xhr.getResponseHeader('Content-Type') || '').toLowerCase();
-        return t.indexOf('image') >= 0 || t.indexOf('icon') >= 0;
     }
 
     function checkVersion(xhr) {
@@ -117,15 +97,10 @@ var BSSkaz = (function () {
 
     function dead(st) { return !st || st.ok === 0 || st.loss >= 0.5; }
 
-    /** Замер всех серверов обоих наборов параллельно. cb(result). */
+    /** Замер серверов источников обоих семейств параллельно. cb(result). */
     function measureAll(samples, cb, onEach) {
-        var res = { domains: {}, online: {}, time: Date.now() }, left = 0;
+        var res = { online: {}, time: Date.now() }, left = 0;
         function done() { if (--left === 0) { last = res; save(); cb(res); } }
-        var list = domainList();
-        left += list.length;
-        for (var i = 0; i < list.length; i++) (function (d) {
-            measure('http://' + d + '/favicon.ico', checkFavicon, samples, function (st) { res.domains[d] = st; if (onEach) onEach(res); done(); });
-        })(list[i]);
         for (var f in FAMILIES) if (FAMILIES.hasOwnProperty(f)) {
             for (var j = 0; j < FAMILIES[f].length; j++) (function (h) {
                 left++;
@@ -146,15 +121,6 @@ var BSSkaz = (function () {
         var top = alive.slice(0, 2), score = 0, med = 0, jit = 0;
         for (var k = 0; k < top.length; k++) { score += top[k].score; med += top[k].median; jit += top[k].jitter; }
         return { alive: alive.length, score: score / top.length, median: Math.round(med / top.length), jitter: Math.round(jit / top.length) };
-    }
-
-    function bestDomain(res) {
-        var best = null;
-        for (var d in res.domains) if (res.domains.hasOwnProperty(d)) {
-            var st = res.domains[d];
-            if (!dead(st) && (!best || st.score < res.domains[best].score)) best = d;
-        }
-        return best;
     }
 
     function save() {
@@ -218,32 +184,16 @@ var BSSkaz = (function () {
     /** Отложенный совет «со следующего запуска» — применить до старта Lampa. */
     function applyPending() {
         var p = pending();
-        if (p.domain && domainList().indexOf(p.domain) >= 0) setLampa('skaz_domain', p.domain);
+        // p.domain — совет из версий до 1.7.61 (сервер ТВ by Skaz): не применяем, просто убираем
         if (p.family) setLampa('skazonline_servers', p.family === 'cf');
         if (p.domain || p.family) lsSet('bs_srv_pending', '{}');
     }
 
     function decide(res, mode) {
-        var reload = false;
+        var reload = false, manual = manualRecently(), pend = pending();
         recheck = false;
 
-        // 1. Домен контента
-        var cd = curDomain(), bd = bestDomain(res), manual = manualRecently(), pend = pending();
-        if (bd && bd !== cd) {
-            var w = mode === 'fast' ? (dead(res.domains[cd]) ? true : false) : worse(res.domains[cd], res.domains[bd]);
-            if (w === true && mode === 'full' && suspectDomain !== cd) { suspectDomain = cd; w = false; recheck = true; }
-            if (w === true) {
-                suspectDomain = '';
-                setLampa('skaz_domain', bd);
-                notice('Skaz: ' + cd + ' не отвечает, переключился на ' + bd);
-                reload = mode === 'full';
-            } else if (w === 'later' && !manual && pend.domain !== bd) {
-                pend.domain = bd; savePending(pend);
-                notice('Skaz: ' + bd + ' быстрее (' + fmt(res.domains[bd]) + ') — со следующего запуска');
-            }
-        } else if (mode === 'full') suspectDomain = '';
-
-        // 2. Семейство серверов онлайн-источников
+        // Семейство серверов онлайн-источников (сервер ТВ by Skaz не трогаем — см. шапку)
         var cf = curFamily(), other = cf === 'cf' ? 'direct' : 'cf';
         var sc = familyStat(res, cf), so = familyStat(res, other);
         if (so.alive) {
@@ -253,7 +203,7 @@ var BSSkaz = (function () {
                 suspectFamily = '';
                 setLampa('skazonline_servers', other === 'cf');
                 notice('Источники: ' + famName(cf) + ' не отвечают, переключился на ' + famName(other));
-                reload = reload || mode === 'full';
+                reload = mode === 'full';
             } else if (wf === 'later' && !manual && pend.family !== other) {
                 pend.family = other; savePending(pend);
                 notice('Источники ' + famName(other) + ' быстрее (' + fmt(so) + ') — со следующего запуска');
@@ -288,21 +238,20 @@ var BSSkaz = (function () {
     /* ---------- публичное ---------- */
 
     /** До запуска Lampa: быстрый замер, cb() не позже чем через FAST_BUDGET.
-     * Lampa стартует, как только ответили текущий домен и хоть один сервер текущего семейства: до запуска мы меняем
+     * Lampa стартует, как только ответил хоть один сервер текущего семейства: до запуска мы меняем
      * сервер, только если текущий мёртв, — ждать остальные ответы (до 2,5 с, медленный или мёртвый чужой сервер)
      * незачем. Замер доходит в фоне; мёртвый текущий выяснится в полном замере и переключится с перезапуском. */
     function prepare(cb) {
         if (!enabled()) return cb();
         try { applyPending(); } catch (e) {}
-        var called = false, cd = curDomain(), cf = curFamily();
+        var called = false, cf = curFamily();
         function go() { if (!called) { called = true; cb(); } }
         setTimeout(go, FAST_BUDGET);
         // Lampa уже стартовала (истёк бюджет) — плагины прочли сервер; молча менять его поздно и по одной пробе
         // рискованно: разберётся полный замер.
         measureAll(1, function (res) { if (!called) decide(res, 'fast'); go(); }, function (res) {
             if (called) return;
-            var d = res.domains[cd];
-            if (d && !dead(d) && familyStat(res, cf).alive > 0) go();
+            if (familyStat(res, cf).alive > 0) go();
         });
     }
 
@@ -318,53 +267,29 @@ var BSSkaz = (function () {
             var reload = enabled() && decide(res, 'full');
             if (reload) reloadSoon('server');
             else if (recheck) setTimeout(function () { check(false); }, 20000);   // подтвердить, что сервер правда умер
-            else if (manual) say('Серверы Skaz: ' + curDomain() + ' ' + fmt(res.domains[curDomain()]) + '; источники ' + famName(curFamily()) + ' ' + fmt(familyStat(res, curFamily())));
+            else if (manual) say('Серверы источников: ' + famName(curFamily()) + ' ' + fmt(familyStat(res, curFamily())));
             for (var i = 0; i < ws.length; i++) { try { ws[i](res); } catch (e) {} }
         });
     }
 
-    /** Свежий список доменов прямо из плагина Skaz — новые серверы подхватываются сами. */
-    function learnList() {
-        var xhr = new XMLHttpRequest();
-        try {
-            xhr.open('GET', 'http://lampa.byskaz.ru/plugins/privateinit.js?_=' + Date.now(), true);
-            xhr.timeout = 15000;
-            xhr.onload = function () {
-                var m = /SKAZ_DOMAINS\s*=\s*\[([^\]]+)\]/.exec(xhr.responseText || '');
-                if (!m) return;
-                var found = m[1].match(/['"]([a-z0-9.-]+\.[a-z]{2,})['"]/gi) || [];
-                for (var i = 0; i < found.length; i++) found[i] = found[i].replace(/['"]/g, '');
-                if (found.length) lsSet('bs_skaz_list', JSON.stringify(found));
-            };
-            xhr.send();
-        } catch (e) {}
-    }
-
-    /** Экран выбора: все серверы с пингом, джиттером и потерями; выбор вручную. */
+    /** Экран выбора серверов источников с пингом, джиттером и потерями; выбор вручную. Сервер ТВ by Skaz — в его настройках. */
     function showPicker() {
-        say('Проверяю серверы Skaz…');
+        say('Проверяю серверы источников…');
         check(false, function (res) {
-            var items = [], cd = curDomain(), bd = bestDomain(res);
-            items.push({ title: 'Домен Skaz (ТВ и плагины)', separator: true });
-            var list = domainList();
-            for (var i = 0; i < list.length; i++) {
-                var d = list[i];
-                items.push({ title: d + (d === cd ? ' — текущий' : '') + (d === bd ? ' ★' : ''), subtitle: fmt(res.domains[d]), kind: 'domain', value: d });
-            }
-            items.push({ title: 'Серверы онлайн-источников', separator: true });
+            var items = [];
+            items.push({ title: 'Серверы онлайн-источников (фильмы и сериалы)', separator: true });
             ['direct', 'cf'].forEach(function (f) {
                 items.push({ title: famName(f) + (f === curFamily() ? ' — текущие' : ''), subtitle: fmt(familyStat(res, f)) + ', живых ' + familyStat(res, f).alive + ' из 4', kind: 'family', value: f });
             });
             var ctrl = Lampa.Controller.enabled().name;
             Lampa.Select.show({
-                title: 'Серверы Skaz',
+                title: 'Серверы источников',
                 items: items,
                 onBack: function () { Lampa.Controller.toggle(ctrl); },
                 onSelect: function (a) {
                     Lampa.Controller.toggle(ctrl);
                     lsSet('bs_srv_manual', String(Date.now())); lsSet('bs_srv_pending', '{}');
-                    if (a.kind === 'domain' && a.value !== curDomain()) setLampa('skaz_domain', a.value);
-                    else if (a.kind === 'family' && a.value !== curFamily()) setLampa('skazonline_servers', a.value === 'cf');
+                    if (a.kind === 'family' && a.value !== curFamily()) setLampa('skazonline_servers', a.value === 'cf');
                     else return;
                     say('Сервер выбран. Перезапускаю Lampa…');
                     setTimeout(function () { location.reload(); }, 1500);
@@ -376,26 +301,26 @@ var BSSkaz = (function () {
     function addSettings() {
         if (!Lampa.SettingsApi) return;
         var C = 'bs_update';
-        Lampa.SettingsApi.addParam({ component: C, param: { name: 'bs_srv_title', type: 'title' }, field: { name: 'Серверы Skaz' } });
+        Lampa.SettingsApi.addParam({ component: C, param: { name: 'bs_srv_title', type: 'title' }, field: { name: 'Серверы источников Skaz' } });
         Lampa.SettingsApi.addParam({
             component: C,
             param: { name: 'bs_srv_now', type: 'static' },
             field: { name: 'Сейчас', description: '…' },
             onRender: function (item) {
-                var d = curDomain(), f = curFamily();
-                item.find('.settings-param__descr').text('Домен ' + d + ' (' + fmt(last.domains[d]) + '), источники ' + famName(f) + ' (' + fmt(familyStat(last, f)) + ')');
+                var f = curFamily();
+                item.find('.settings-param__descr').text('Источники ' + famName(f) + ' (' + fmt(familyStat(last, f)) + '). Сервер ТВ by Skaz — в настройках Skaz.');
             }
         });
         Lampa.SettingsApi.addParam({
             component: C,
             param: { name: 'bs_srv_auto', type: 'trigger', 'default': true },
-            field: { name: 'Автовыбор серверов', description: 'Сам меняет зависший сервер.' },
+            field: { name: 'Автовыбор серверов источников', description: 'Сам меняет зависшие серверы фильмов и сериалов. Сервер ТВ by Skaz не трогает.' },
             onChange: function (v) { lsSet('bs_srv_auto', String(v === true || v === 'true')); }
         });
         Lampa.SettingsApi.addParam({
             component: C,
             param: { name: 'bs_srv_pick', type: 'button' },
-            field: { name: 'Проверить и выбрать сервер', description: 'Пинг всех серверов, ★ — лучший.' },
+            field: { name: 'Проверить и выбрать сервер источников', description: 'Пинг серверов фильмов и сериалов.' },
             onChange: showPicker
         });
     }
@@ -412,7 +337,6 @@ var BSSkaz = (function () {
                 if (pendingReload) setTimeout(function () { lsSet('bs_srv_reload_at', String(Date.now())); location.reload(); }, 1000);
             });
         } catch (e) {}
-        setTimeout(learnList, 10000);
         /* Во время просмотра не меряем: канал забит видео, очередь в роутере раздувает задержки (bufferbloat) — замер
          * показал бы «скачки» у вполне живого сервера, а ~50 запросов за раз ещё и отнимают у видео. Сервер видео уже
          * выбран; новые запросы к Skaz пойдут после плеера — тогда и проверим. */
@@ -424,7 +348,7 @@ var BSSkaz = (function () {
         window.addEventListener('online', function () { if (enabled()) setTimeout(function () { if (!playerOpen()) check(false); }, 3000); });
     }
 
-    try { last = JSON.parse(lsGet('bs_srv_stats') || 'null') || last; } catch (e) {}
+    try { last = JSON.parse(lsGet('bs_srv_stats') || 'null') || last; if (!last.online) last.online = {}; } catch (e) {}
 
     return { prepare: prepare, start: start, check: check, showPicker: showPicker, toast: toast, _decide: decide, _stats: stats };
 })();

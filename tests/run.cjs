@@ -25,19 +25,31 @@ const ON = { online3: S(80), online4: S(90), online5: S(85), online7: S(95), onl
 const DEAD_DIRECT = Object.assign({}, ON, { online3: S(null), online4: S(null), online5: S(null), online7: S(null) });
 function decide(store, r, mode) { const x = load('skazauto.js', 'BSSkaz', store); return { r: x.M._decide(r, mode), store: x.store }; }
 let x;
-x = decide({ skaz_domain: 'skaz.tv' }, res({ 'skaz.tv': S(null), 'skaztv.top': S(60) }, ON), 'fast'); t('серверы: мёртвый домен до запуска -> лучший', x.store.skaz_domain === 'skaztv.top');
-x = decide({ skaz_domain: 'skaz.tv' }, res({ 'skaz.tv': S(400), 'skaztv.top': S(60) }, ON), 'fast'); t('серверы: медленный, но живой — до запуска не трогаем', x.store.skaz_domain === 'skaz.tv');
-x = decide({ skaz_domain: 'skaz.tv' }, res({ 'skaz.tv': S(400), 'skaztv.top': S(60) }, ON), 'full'); t('серверы: заметно медленнее -> со следующего запуска (пока не трогаем текущий)', x.store.skaz_domain === 'skaz.tv' && JSON.parse(x.store.bs_srv_pending).domain === 'skaztv.top' && x.r === false);
+// сервер ТВ by Skaz (skaz_domain) — настройка самого Skaz: автовыбор его не меняет никогда
+x = decide({ skaz_domain: 'skaz.tv' }, res({ 'skaz.tv': S(null), 'skaztv.top': S(60) }, ON), 'fast');
+t('серверы: сервер ТВ by Skaz не трогаем — даже если не отвечает', x.store.skaz_domain === 'skaz.tv' && !('bs_srv_pending' in x.store));
+x = decide({ skaz_domain: 'skaztv.online' }, res({ 'skaztv.online': S(400), 'skaztv.top': S(60) }, ON), 'full');
+t('серверы: сервер ТВ by Skaz не трогаем — даже если другой быстрее', x.store.skaz_domain === 'skaztv.online' && !('bs_srv_pending' in x.store));
+{
+    const m = load('skazauto.js', 'BSSkaz', { skaz_domain: 'skaztv.online', bs_srv_pending: '{"domain":"skaztv.top"}' });
+    m.M.prepare(() => {});
+    t('серверы: старый совет перейти на skaztv.top отменяется, сервер ТВ прежний', m.store.skaz_domain === 'skaztv.online' && m.store.bs_srv_pending === '{}');
+}
+// серверы источников фильмов (skazonline_servers): прямые или через Cloudflare
+const SLOW_DIRECT = Object.assign({}, ON, { online3: S(600), online4: S(620), online5: S(610), online7: S(640) });
+x = decide({}, res({}, DEAD_DIRECT), 'fast'); t('источники: прямые мертвы до запуска -> Cloudflare', x.store.skazonline_servers === 'true');
+x = decide({}, res({}, SLOW_DIRECT), 'fast'); t('источники: медленные, но живые — до запуска не трогаем', !('skazonline_servers' in x.store));
+x = decide({}, res({}, SLOW_DIRECT), 'full'); t('источники: заметно медленнее -> со следующего запуска', JSON.parse(x.store.bs_srv_pending).family === 'cf' && !('skazonline_servers' in x.store));
+x = decide({ bs_srv_manual: String(Date.now()) }, res({}, SLOW_DIRECT), 'full'); t('источники: выбраны вручную — советы «быстрее» не перебивают', !x.store.bs_srv_pending);
+x = decide({}, res({}, Object.assign({}, ON, { onlinecf3: S(70), onlinecf4: S(75) })), 'full'); t('источники: малая разница — не прыгаем', !x.store.bs_srv_pending && !('skazonline_servers' in x.store));
+const ALL_DEAD = {}; Object.keys(ON).forEach(k => { ALL_DEAD[k] = S(null); });
+x = decide({}, res({}, ALL_DEAD), 'full'); t('источники: все мертвы — ничего не меняем', !('skazonline_servers' in x.store));
 function decide2(store, r) { const m = load('skazauto.js', 'BSSkaz', store); const r1 = m.M._decide(r, 'full'), r2 = m.M._decide(r, 'full'); return { r1, r2, store: m.store }; }
-let x2 = decide2({ skaz_domain: 'skaz.tv' }, res({ 'skaz.tv': S(100, 0, 0.75), 'skaz.team': S(110) }, ON));
-t('серверы: потери 75% — первый замер только подозрение', x2.r1 === false);
-t('серверы: потери 75% два замера подряд -> переключение + перезапуск', x2.r2 === true && x2.store.skaz_domain === 'skaz.team');
-x = decide({ skaz_domain: 'skaz.tv' }, res({ 'skaz.tv': S(100, 300), 'skaz.team': S(110, 10) }, ON), 'full'); t('серверы: джиттер ±300 -> стабильный (со следующего запуска)', JSON.parse(x.store.bs_srv_pending).domain === 'skaz.team');
-x2 = decide2({ skaz_domain: 'skaz.tv' }, res({ 'skaz.tv': S(80) }, DEAD_DIRECT)); t('серверы: прямые мертвы два замера -> Cloudflare', x2.store.skazonline_servers === 'true' && x2.r2 === true);
-x2 = decide2({ skaz_domain: 'skaz.tv' }, res({ 'skaz.tv': S(100, 0, 0.75), 'skaz.team': S(110, 0, 0.25) }, ON)); t('серверы: на сервер с потерями не переключаемся', x2.store.skaz_domain === 'skaz.tv' && x2.r2 === false);
-x = decide({ skaz_domain: 'skaz.tv', bs_srv_manual: String(Date.now()) }, res({ 'skaz.tv': S(400), 'skaztv.top': S(60) }, ON), 'full'); t('серверы: выбран вручную — советы «быстрее» не перебивают', !x.store.bs_srv_pending);
-x = decide({ skaz_domain: 'skaz.tv' }, res({ 'skaz.tv': S(120), 'skaztv.top': S(90) }, ON), 'full'); t('серверы: малая разница — не прыгаем', x.store.skaz_domain === 'skaz.tv');
-x = decide({ skaz_domain: 'skaz.tv' }, res({ 'skaz.tv': S(null), 'skaz.team': S(null) }, ON), 'full'); t('серверы: все мертвы — ничего не меняем', x.store.skaz_domain === 'skaz.tv');
+const LOSSY_DIRECT = Object.assign({}, ON, { online3: S(100, 0, 0.75), online4: S(100, 0, 0.75), online5: S(100, 0, 0.75), online7: S(100, 0, 0.75) });
+let x2 = decide2({}, res({}, LOSSY_DIRECT));
+t('источники: потери 75% — первый замер только подозрение', x2.r1 === false);
+t('источники: потери 75% два замера подряд -> Cloudflare + перезапуск', x2.r2 === true && x2.store.skazonline_servers === 'true');
+x2 = decide2({}, res({}, DEAD_DIRECT)); t('источники: прямые мертвы два замера -> Cloudflare', x2.store.skazonline_servers === 'true' && x2.r2 === true);
 const st = load('skazauto.js', 'BSSkaz').M._stats([100, 140, 100], 4); t('серверы: медиана/джиттер/потери', st.median === 100 && st.jitter === 40 && st.loss === 0.25);
 
 /* ---- bsplayer.js: метки и главы ---- */

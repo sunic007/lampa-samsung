@@ -537,7 +537,6 @@ var BS_SETTINGS_NEEDS = {
 
 /* Пункты Lampa и плагинов, которые прячем, пока они не нужны (проверено по коду и журналу ТВ, 2026-10-13):
  *  — «Тип плеера» и «Обработка .m3u8» выбирает автовыбор плеера — вручную менять бессмысленно;
- *  — пункт Skaz «Сервер Skaz» (skaz_domain) выбирает автовыбор серверов; сам раздел настроек Skaz виден всегда;
  *  — торренты: «Парсер», «TorrServer», плеер для торрентов — на ТВ не используются (онлайн-источники),
  *    вернуть — «Торренты» в «Онлайн-источниках». Выключили автоматику — пункты снова видны;
  *  — «Родительский контроль» Клубнички (sisi_pin_manage): PIN и Telegram хранит сервер Skaz, он отвечает ошибкой,
@@ -545,7 +544,6 @@ var BS_SETTINGS_NEEDS = {
 function bsLsOn(k, def) { var v = null; try { v = window.localStorage.getItem(k); } catch (e) {} return v === null ? def : v === 'true'; }
 var BS_SETTINGS_HIDE_IF = [
     { sel: '[data-name="player"], [data-name="player_hls_method"]', when: function () { return bsLsOn('bs_player_auto', true); } },
-    { sel: '[data-name="skaz_domain"]', when: function () { return bsLsOn('bs_srv_auto', true); } },
     { sel: '[data-name="player_torrent"], .settings-folder[data-component="parser"], .settings-folder[data-component="server"]',
         when: function () { return !bsLsOn('bs_torrents', false); } },
     { sel: '[data-name="sisi_pin_manage"]', when: function () { return true; } }
