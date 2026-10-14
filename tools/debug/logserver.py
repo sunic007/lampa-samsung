@@ -1,4 +1,4 @@
-# Принимает журнал отладочной сборки с телевизора: python debug/logserver.py
+# Принимает журнал отладочной сборки с телевизора: python tools/debug/logserver.py
 import http.server, datetime, os
 
 LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tv.log')

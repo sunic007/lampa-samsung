@@ -1,16 +1,16 @@
 # Обновляет встроенную (запасную) копию Lampa в src/ с сервера byskaz:
 # app.js, css/, vender/, img/, sound/ — и вписывает её версию и hash в src/loader.js.
 #
-#   python update_bundled.py
+#   python tools/update_bundled.py
 #
 # Список файлов берётся из репозитория github.com/yumata/lampa, сами файлы — с сервера byskaz
-# (там та же Lampa с патчем byskaz). После обновления: python pack.py --bump
+# (там та же Lampa с патчем byskaz). После обновления: python tools/pack.py --bump
 import os, re, json, urllib.request, concurrent.futures as cf, sys
 for _s in (sys.stdout, sys.stderr):
     try: _s.reconfigure(encoding='utf-8')
     except Exception: pass
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # скрипт лежит в tools/
 SRC = os.path.join(ROOT, 'src')
 MIRROR = 'http://lampa.byskaz.ru/lampa-main/'
 TREE = 'https://api.github.com/repos/yumata/lampa/git/trees/main?recursive=1'
@@ -66,7 +66,7 @@ def main():
     loader = re.sub(r"var BS_BUNDLED_HASH = '[^']*';", "var BS_BUNDLED_HASH = '%s';" % h, loader, count=1)
     open(loader_path, 'w', encoding='utf-8', newline='').write(loader)
     print('Обновлено файлов:', len(jobs) - len(fails), '— встроенная копия теперь', version)
-    print('Дальше: допишите CHANGELOG.md и выполните python pack.py --bump')
+    print('Дальше: допишите CHANGELOG.md и выполните python tools/pack.py --bump')
 
 
 if __name__ == '__main__':

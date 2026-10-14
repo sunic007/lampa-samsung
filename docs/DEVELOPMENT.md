@@ -99,7 +99,7 @@
   качества ×1,5 берётся, только если были остановки на подгрузку (`BSGuard.stalls()`, по `onbufferingstart`).
 - **Ошибки AVPlay** Lampa не пересылает (обработчик 'error' читает `video.error`, у обёртки AVPlay его нет) —
   `playerguard.js` оборачивает `webapis.avplay.setListener` (onerror) и `prepareAsync` (колбэк ошибки).
-- **Отладка на эмуляторе:** `python pack.py --debug 10.0.2.2` (10.0.2.2 — ПК из эмулятора) и `debug/logserver.py`;
+- **Отладка на эмуляторе:** `python tools/pack.py --debug 10.0.2.2` (10.0.2.2 — ПК из эмулятора) и `tools/debug/logserver.py`;
   журнал консоли приходит на ПК. Экран — `ecp-cli` не снимает (GL), только окно эмулятора.
 
 ### Источники с RCH (`bsrch.js`)
@@ -329,8 +329,8 @@
 
 ## Выпуск новой версии
 ```bash
-python update_bundled.py      # только если на сервере новая Lampa — обновит встроенную копию и её hash
-python pack.py --bump         # поднять версию и собрать: dist/samsung-X.Y.Z.wgt + samsung.wgt
+python tools/update_bundled.py      # только если на сервере новая Lampa — обновит встроенную копию и её hash
+python tools/pack.py --bump         # поднять версию и собрать: dist/samsung-X.Y.Z.wgt + samsung.wgt
 ```
 Затем: запись в `CHANGELOG.md`, проверка (ниже), коммит в git.
 
@@ -370,14 +370,14 @@ python pack.py --bump         # поднять версию и собрать: d
   ```
 - Пульт: `ecp-cli hmp "sendkey <клавиша>"` (up/down/left/right, ret — ОК, backspace — «Назад»). `sdb shell` у
   эмулятора закрыт; снимок экрана — только окном эмулятора (QEMU `screendump` пуст: картинка через GL).
-- Журнал консоли: `python pack.py --debug 10.0.2.2` (10.0.2.2 — это ПК, если смотреть из эмулятора) +
-  `python debug/logserver.py`. Для сценариев «плохой интернет / сломанный поток» в отладочную сборку добавляется
+- Журнал консоли: `python tools/pack.py --debug 10.0.2.2` (10.0.2.2 — это ПК, если смотреть из эмулятора) +
+  `python tools/debug/logserver.py`. Для сценариев «плохой интернет / сломанный поток» в отладочную сборку добавляется
   тестовый скрипт после `polyfills.js` (поддельная скорость `bs_bw`, подмена адреса в `webapis.avplay.open`).
 - Не проверить на эмуляторе: 4K/HDR/DRM, цветные кнопки пульта, ряд превью на главной.
 
 ## Отладка
-- `python pack.py --debug <IP ПК>` → `samsung-debug.wgt`: консоль, ошибки, все сетевые запросы, WebSocket и этапы
-  Lampa уходят на ПК. Приёмник: `python debug/logserver.py` (порт 8799, журнал `debug/tv.log`).
+- `python tools/pack.py --debug <IP ПК>` → `samsung-debug.wgt`: консоль, ошибки, все сетевые запросы, WebSocket и этапы
+  Lampa уходят на ПК. Приёмник: `python tools/debug/logserver.py` (порт 8799, журнал `tools/debug/tv.log`).
 - ТВ и ПК должны быть в одной сети. Если в большой сети адрес ТВ совпадает с другим устройством — поможет
   точка доступа на ПК (Windows раздаёт адреса `192.168.137.x`).
 - `sdb` (Tizen Studio, `C:\tizen-studio\tools\sdb.exe`) подключается, только если в режиме разработчика ТВ указан IP
@@ -421,7 +421,7 @@ python pack.py --bump         # поднять версию и собрать: d
 | `tests/run.cjs` | автотесты логики (запускает `pack.py`) |
 | `src/personal1.lampa` | метка «личной» сборки (для пропуска рекламы) |
 | `src/app.js`, `css/`, `vender/`, `img/` | встроенная копия Lampa (обновляет `update_bundled.py`) |
-| `pack.py` | сборка и версии |
-| `update_bundled.py` | обновление встроенной копии Lampa |
-| `debug/` | отладочный журнал: `debug.js`, `logserver.py` |
+| `tools/pack.py` | сборка и версии |
+| `tools/update_bundled.py` | обновление встроенной копии Lampa |
+| `tools/debug/` | отладочный журнал: `debug.js`, `logserver.py` |
 | `dist/` | все выпущенные версии |

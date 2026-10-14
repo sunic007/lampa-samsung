@@ -1,10 +1,10 @@
 # Сборка пакета Lampa для Samsung Tizen из src/.
 #
-#   python pack.py                    собрать текущую версию (из src/config.xml)
-#   python pack.py --bump             поднять patch (1.4.5 -> 1.4.6) и собрать
-#   python pack.py --bump minor       поднять minor (1.4.5 -> 1.5.0) и собрать
-#   python pack.py --debug <IP>       отладочная сборка: журнал уходит на ПК с этим IP (debug/logserver.py)
-#   python pack.py --force            пересобрать уже выпущенную версию (перезаписать dist/)
+#   python tools/pack.py                    собрать текущую версию (из src/config.xml)
+#   python tools/pack.py --bump             поднять patch (1.4.5 -> 1.4.6) и собрать
+#   python tools/pack.py --bump minor       поднять minor (1.4.5 -> 1.5.0) и собрать
+#   python tools/pack.py --debug <IP>       отладочная сборка: журнал уходит на ПК с этим IP (tools/debug/logserver.py)
+#   python tools/pack.py --force            пересобрать уже выпущенную версию (перезаписать dist/)
 #
 # Результат:
 #   dist/samsung-<версия>.wgt   — архив выпуска (не перезаписывается без --force)
@@ -18,7 +18,7 @@ for _s in (sys.stdout, sys.stderr):
     try: _s.reconfigure(encoding='utf-8')
     except Exception: pass
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # скрипт лежит в tools/
 SRC = os.path.join(ROOT, 'src')
 DIST = os.path.join(ROOT, 'dist')
 CONFIG = os.path.join(SRC, 'config.xml')
@@ -81,7 +81,7 @@ def check_sources():
     m = re.search(r"var BS_BUNDLED_HASH = '([0-9a-f]+)'", loader)
     app = open(os.path.join(SRC, 'app.js'), encoding='utf-8', errors='ignore').read()
     if not m or m.group(1) not in app:
-        die('встроенная копия app.js не совпадает с BS_BUNDLED_HASH в loader.js — запустите update_bundled.py')
+        die('встроенная копия app.js не совпадает с BS_BUNDLED_HASH в loader.js — запустите tools/update_bundled.py')
     tests = os.path.join(ROOT, 'tests', 'run.cjs')
     if os.path.exists(tests):
         try:
@@ -176,7 +176,7 @@ def build(out, version, debug_host=None):
                 else:
                     z.write(full, name)
         if debug_host:
-            js = open(os.path.join(ROOT, 'debug', 'debug.js'), encoding='utf-8').read().replace('__BS_LOG_HOST__', debug_host)
+            js = open(os.path.join(ROOT, 'tools', 'debug', 'debug.js'), encoding='utf-8').read().replace('__BS_LOG_HOST__', debug_host)
             z.writestr('debug.js', js)
     names = zipfile.ZipFile(tmp).namelist()
     if any('\\' in n for n in names):
@@ -198,7 +198,7 @@ if __name__ == '__main__':
     os.chdir(ROOT)
     debug_host = arg('--debug')
     if '--debug' in sys.argv and not debug_host:
-        die('укажите IP компьютера: python pack.py --debug 192.168.1.10')
+        die('укажите IP компьютера: python tools/pack.py --debug 192.168.1.10')
     # сначала проверки, потом версия: иначе упавшие тесты «съедают» номер (1.6.6 поднята, но не выпущена)
     check_sources()
     if '--bump' in sys.argv:
@@ -218,7 +218,7 @@ if __name__ == '__main__':
     if os.path.exists(release) and '--force' not in sys.argv:
         if digest(release) != digest(fresh):
             os.remove(fresh)
-            die('версия %s уже выпущена с другим содержимым. Поднимите версию: python pack.py --bump' % version)
+            die('версия %s уже выпущена с другим содержимым. Поднимите версию: python tools/pack.py --bump' % version)
         os.remove(fresh)
         print('Версия', version, 'уже собрана, изменений нет')
     else:

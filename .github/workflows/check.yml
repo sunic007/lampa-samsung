@@ -30,4 +30,4 @@ jobs:
           python-version: '3.12'
 
       - name: Package builds
-        run: python pack.py && git diff --exit-code version.json
+        run: python tools/pack.py && git diff --exit-code version.json
