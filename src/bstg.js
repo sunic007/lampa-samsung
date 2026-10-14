@@ -212,6 +212,106 @@ var BSTelegram = (function () {
 
     /* ---------- подключение с телефона (QR через ntfy.sh) ---------- */
 
+    /* ---------- шифрование и подпись сообщений через ntfy (ES5, без WebCrypto: старые ТВ) ----------
+     * SHA-256 и HMAC-SHA256 на чистом JS. seal: поток HMAC(ключ шифрования, nonce|счётчик) XOR текст, подпись
+     * HMAC(ключ подписи, nonce|шифртекст) — подделать, прочитать или изменить сообщение без ключа нельзя.
+     * Та же копия — в docs/pair.html (страница на телефоне шифрует токен). */
+    var Crypt = (function () {
+        var K = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+            0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+            0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+            0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+            0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+            0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+            0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+            0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
+        function rotr(x, n) { return (x >>> n) | (x << (32 - n)); }
+        /** SHA-256 массива байт -> массив из 32 байт. */
+        function sha256(msg) {
+            var h = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+            var m = msg.slice(0), bitLen = msg.length * 8, i, j;
+            m.push(0x80);
+            while (m.length % 64 !== 56) m.push(0);
+            for (i = 7; i >= 0; i--) m.push(i > 3 ? 0 : (bitLen >>> (i * 8)) & 255);
+            var w = new Array(64);
+            for (var off = 0; off < m.length; off += 64) {
+                for (i = 0; i < 16; i++) w[i] = (m[off + i * 4] << 24) | (m[off + i * 4 + 1] << 16) | (m[off + i * 4 + 2] << 8) | m[off + i * 4 + 3];
+                for (i = 16; i < 64; i++) {
+                    var s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+                    var s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+                    w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
+                }
+                var a = h[0], b = h[1], c = h[2], d = h[3], e = h[4], f = h[5], g = h[6], hh = h[7];
+                for (i = 0; i < 64; i++) {
+                    var t1 = (hh + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
+                    var t2 = ((rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+                    hh = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+                }
+                h[0] = (h[0] + a) | 0; h[1] = (h[1] + b) | 0; h[2] = (h[2] + c) | 0; h[3] = (h[3] + d) | 0;
+                h[4] = (h[4] + e) | 0; h[5] = (h[5] + f) | 0; h[6] = (h[6] + g) | 0; h[7] = (h[7] + hh) | 0;
+            }
+            var out = [];
+            for (i = 0; i < 8; i++) for (j = 3; j >= 0; j--) out.push((h[i] >>> (j * 8)) & 255);
+            return out;
+        }
+        function hmac(key, msg) {
+            if (key.length > 64) key = sha256(key);
+            var ik = [], ok = [];
+            for (var i = 0; i < 64; i++) { var k = key[i] || 0; ik.push(k ^ 0x36); ok.push(k ^ 0x5c); }
+            return sha256(ok.concat(sha256(ik.concat(msg))));
+        }
+        function bytes(s) { var u = unescape(encodeURIComponent(String(s))), b = []; for (var i = 0; i < u.length; i++) b.push(u.charCodeAt(i)); return b; }
+        function text(b) { var s = ''; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return decodeURIComponent(escape(s)); }
+        function b64(b) { var s = ''; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s); }
+        function unb64(s) { var r = atob(String(s || '')), b = []; for (var i = 0; i < r.length; i++) b.push(r.charCodeAt(i)); return b; }
+        function hex(b) { var s = ''; for (var i = 0; i < b.length; i++) s += ('0' + b[i].toString(16)).slice(-2); return s; }
+        function rnd(n) {
+            var a = [], i;
+            try {
+                var c = window.crypto || window.msCrypto, u = new Uint8Array(n);
+                c.getRandomValues(u);
+                for (i = 0; i < n; i++) a.push(u[i]);
+                return a;
+            } catch (e) {}
+            for (i = 0; i < n; i++) a.push(Math.floor(Math.random() * 256));
+            return a;
+        }
+        function stream(ek, nonce, data) {
+            var out = [];
+            for (var i = 0; i < data.length; i += 32) {
+                var ks = hmac(ek, nonce.concat([(i >>> 24) & 255, (i >>> 16) & 255, (i >>> 8) & 255, i & 255]));
+                for (var j = 0; j < 32 && i + j < data.length; j++) out.push(data[i + j] ^ ks[j]);
+            }
+            return out;
+        }
+        /** Ключ из строки (токен, код, секрет из QR). */
+        function key(str) { return sha256(bytes(str)); }
+        /** Зашифровать и подписать строку: {z:2, n, c, s}. */
+        function seal(k, str) {
+            var n = rnd(16), ct = stream(hmac(k, bytes('enc')), n, bytes(str));
+            return { z: 2, n: b64(n), c: b64(ct), s: b64(hmac(hmac(k, bytes('mac')), n.concat(ct)).slice(0, 16)) };
+        }
+        /** Проверить подпись и расшифровать; чужое или изменённое — null. */
+        function open(k, m) {
+            try {
+                if (!m || m.z !== 2) return null;
+                var n = unb64(m.n), ct = unb64(m.c), tag = unb64(m.s);
+                if (n.length !== 16 || tag.length !== 16) return null;
+                var want = hmac(hmac(k, bytes('mac')), n.concat(ct)).slice(0, 16), diff = 0;
+                for (var i = 0; i < 16; i++) diff |= want[i] ^ tag[i];
+                if (diff) return null;
+                return text(stream(hmac(k, bytes('enc')), n, ct));
+            } catch (e) { return null; }
+        }
+        /** Случайный секрет для QR: 22 символа без похожих букв. */
+        function secret() {
+            var a = 'abcdefghijkmnpqrstuvwxyz23456789', r = rnd(22), s = '';
+            for (var i = 0; i < r.length; i++) s += a.charAt(r[i] % a.length);
+            return s;
+        }
+        return { sha256: sha256, hmac: hmac, bytes: bytes, hex: hex, key: key, seal: seal, open: open, secret: secret };
+    })();
+
     var RELAY = 'https://ntfy.sh/', TOKEN_RE = /(\d{6,12}:[A-Za-z0-9_-]{30,})/, PAIR_TIME = 15 * 60000;
     var pair = null;     // {topic, since, until, stage: 'token' | 'chat', busy, timer}
 
@@ -229,21 +329,27 @@ var BSTelegram = (function () {
         try {
             x.open('GET', RELAY + p.topic + '/json?poll=1&since=' + encodeURIComponent(p.since), true);
             x.timeout = TIMEOUT;
-            x.onload = function () { end.apply(null, tokenFrom(x.responseText)); };
+            x.onload = function () { end.apply(null, tokenFrom(x.responseText, p.secret)); };
             x.onerror = x.ontimeout = function () { end('', ''); };
             x.send();
         } catch (e) { end('', ''); }
     }
     /** Токен из ответа ntfy (последний подходящий) и id последнего сообщения — дальше читаем после него (по id, а не по
      *  часам ТВ: часы нового ТВ могут спешить, и «с такого-то времени» отсеяло бы присланный токен). */
-    function tokenFrom(text) {
-        var tok = '', last = '';
+    function tokenFrom(text, secret) {
+        var tok = '', last = '', k = secret ? Crypt.key('lampa-pair-v2|' + secret) : null;
         String(text || '').split('\n').forEach(function (line) {
-            var ev = null;
+            var ev = null, body = '';
             try { ev = JSON.parse(line); } catch (e) { return; }
             if (!ev || ev.event !== 'message') return;
             if (ev.id) last = ev.id;
-            var m = TOKEN_RE.exec(String(ev.message || '').replace(/\s+/g, ''));
+            body = String(ev.message || '');
+            if (k) {                                   // с секретом из QR - только зашифрованный им токен
+                var sealed = null;
+                try { sealed = JSON.parse(body); } catch (e) { return; }
+                body = Crypt.open(k, sealed) || '';
+            }
+            var m = TOKEN_RE.exec(body.replace(/\s+/g, ''));
             if (m && !tok) tok = m[1];
         });
         return [tok, last];
@@ -253,7 +359,8 @@ var BSTelegram = (function () {
         pairStop();
         // своя лёгкая страница на GitHub Pages (поле и кнопка) — веб-приложение ntfy на телефоне тяжёлое и тормозит;
         // токен она отправляет в ту же тему ntfy одним запросом
-        var topic = randomTopic(), url = 'https://sunic007.github.io/lampa-samsung/pair.html#' + topic;
+        // в адресе после # - тема и секрет: страница шифрует им токен, в кэше ntfy его не прочитать
+        var topic = randomTopic(), secret = Crypt.secret(), url = 'https://sunic007.github.io/lampa-samsung/pair.html#' + topic + '.' + secret;
         var body = $('<div class="bs-tg-pair"><div class="bs-tg-pair__qr"></div><div class="bs-tg-pair__steps">' +
             '<p>1. В Telegram откройте <b>@BotFather</b> → <b>/newbot</b> → придумайте имя → нажмите на токен, чтобы скопировать.</p>' +
             '<p>2. Наведите камеру телефона на QR-код. На открывшейся странице вставьте токен и нажмите «Отправить на ТВ».</p>' +
@@ -266,7 +373,7 @@ var BSTelegram = (function () {
         try { ctrl = Lampa.Controller.enabled().name; } catch (e) {}
         var close = function () { pairStop(); try { Lampa.Modal.close(); Lampa.Controller.toggle(ctrl); } catch (e) {} };
         Lampa.Modal.open({ title: 'Telegram — подключить с телефона', html: body, size: 'medium', onBack: close });
-        var p = pair = { topic: topic, since: '2m', until: Date.now() + PAIR_TIME, stage: 'token', busy: false };
+        var p = pair = { topic: topic, secret: secret, since: '2m', until: Date.now() + PAIR_TIME, stage: 'token', busy: false };
         p.timer = setInterval(function () {
             if (pair !== p) return;
             if (Date.now() > p.until) { status('Время вышло — откройте подключение ещё раз'); return pairStop(); }
@@ -322,13 +429,14 @@ var BSTelegram = (function () {
 
     /** Сообщение с подключением из темы: {token, chat} или null. */
     function joinMsg(text, p) {
-        var found = null;
+        var found = null, k = p && p.code ? Crypt.key('lampa-join-v2|' + p.code) : null;
         String(text || '').split('\n').forEach(function (line) {
             var ev = null, m = null;
             try { ev = JSON.parse(line); } catch (e) { return; }
             if (!ev || ev.event !== 'message') return;
             if (p && ev.id) p.since = ev.id;                        // дальше — после этого сообщения (по id, не по часам ТВ)
             try { m = JSON.parse(ev.message); } catch (e) { return; }
+            if (k) { try { m = JSON.parse(Crypt.open(k, m) || 'null'); } catch (e) { return; } }   // зашифровано ключом из кода
             if (m && m.t === 'join' && TOKEN_RE.test(String(m.token || ''))) found = { token: String(m.token), chat: String(m.chat || '') };
         });
         return found;
@@ -348,7 +456,7 @@ var BSTelegram = (function () {
         var close = function () { pairStop(); try { Lampa.Modal.close(); Lampa.Controller.toggle(ctrl); } catch (e) {} };
         Lampa.Modal.open({ title: 'Telegram — подключить через бота', html: body, size: 'medium', onBack: close });
         // since — сначала «за 2 минуты» по часам ntfy: часы ТВ могут спешить, и ответ отсеялся бы
-        var p = pair = { topic: joinTopic(code), since: '2m', until: Date.now() + PAIR_TIME, busy: false, start: Date.now() };
+        var p = pair = { topic: joinTopic(code), code: code, since: '2m', until: Date.now() + PAIR_TIME, busy: false, start: Date.now() };
         p.timer = setInterval(function () {
             if (pair !== p) return;
             if (Date.now() > p.until) { status('Время вышло — откройте подключение ещё раз'); return pairStop(); }
@@ -390,7 +498,7 @@ var BSTelegram = (function () {
             x.timeout = TIMEOUT;
             x.onload = keep(function () { reply(x.status < 300 ? '⏳ Передаю подключение на новый ТВ…' : 'Не получилось передать (' + x.status + ') — отправьте код ещё раз.'); });
             x.onerror = x.ontimeout = keep(function () { reply('Нет связи — отправьте код ещё раз.'); });
-            x.send(JSON.stringify({ t: 'join', token: token(), chat: chat(), ts: Date.now() }));
+            x.send(JSON.stringify(Crypt.seal(Crypt.key('lampa-join-v2|' + code), JSON.stringify({ t: 'join', token: token(), chat: chat(), ts: Date.now() }))));
         } catch (e) { reply('Не получилось: ' + e.message); }
     }
 
@@ -658,16 +766,42 @@ var BSTelegram = (function () {
     }
     function busTopic() { var t = token(); return t ? 'lampa-tv-' + fnv(t, 2166136261) + fnv(t + '#', 2166136261) : ''; }
 
+    /** Ключ канала из токена: без токена сообщение не прочитать и не подделать. */
+    var busKeyFor = '', busKeyVal = null;
+    function busKey() {
+        var t = token();
+        if (t !== busKeyFor) { busKeyFor = t; busKeyVal = t ? Crypt.key('lampa-bus-v2|' + t) : null; }
+        return busKeyVal;
+    }
     function busSend(obj) {
-        var topic = busTopic();
-        if (!topic) return;
+        var topic = busTopic(), k = busKey();
+        if (!topic || !k) return;
         obj.from = tvId; obj.ts = Date.now();
         try {
             var x = new XMLHttpRequest();
             x.open('POST', RELAY + topic, true);
             x.timeout = TIMEOUT;
-            x.send(JSON.stringify(obj));
+            x.send(JSON.stringify(Crypt.seal(k, JSON.stringify(obj))));
         } catch (e) {}
+    }
+    /** Сообщение канала: зашифрованное нашим ключом - разбираем; повтор (тот же nonce) и старше суток - мимо.
+     *  Незашифрованное - только от старой версии Lampa: верим лишь «я в сети» (hello/bye), без чата и команд. */
+    var busSeen = {}, busSeenN = 0;
+    function busOpen(raw) {
+        var m = null;
+        try { m = JSON.parse(raw); } catch (e) { return null; }
+        if (m && m.z === 2) {
+            if (busSeen[m.n]) return null;
+            var t = Crypt.open(busKey(), m);
+            if (!t) return null;
+            if (++busSeenN > 500) { busSeen = {}; busSeenN = 0; }
+            busSeen[m.n] = 1;
+            try { m = JSON.parse(t); } catch (e) { return null; }
+            if (!m || (m.ts && Math.abs(Date.now() - m.ts) > 86400000)) return null;
+            return m;
+        }
+        if (!m || (m.t !== 'hello' && m.t !== 'bye')) return null;
+        return { t: m.t, from: m.from, name: m.name, model: m.model, v: m.v, ts: m.ts };
     }
     function appVer() { try { return window.BS_REMOTE_VERSION || (typeof BS_PACKAGE_VERSION !== 'undefined' ? String(BS_PACKAGE_VERSION) : ''); } catch (e) { return ''; } }
     function busHello(ask) { busSend({ t: 'hello', v: appVer(), name: tvName(), model: lsGet('bs_tv_model') || '', ip: myIp(), leader: isLeader, chat: chat(), ask: !!ask }); }
@@ -706,7 +840,8 @@ var BSTelegram = (function () {
             try { ev = JSON.parse(line); } catch (e) { return; }
             if (!ev || ev.event !== 'message') return;
             busSince = ev.id || busSince;
-            try { m = JSON.parse(ev.message); } catch (e) { return; }
+            m = busOpen(ev.message);
+            if (!m) return;
             try { onBus(m); } catch (e) { log('канал', e.message); }
         });
     }
@@ -2252,5 +2387,5 @@ var BSTelegram = (function () {
         }, 60000);
     }
 
-    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _commands: COMMANDS };
+    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _commands: COMMANDS, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey };
 })();

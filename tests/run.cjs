@@ -602,6 +602,38 @@ ghc = ghCheck(JSON.stringify({ version: '1.7.46', files: ['loader.js'] }), 200, 
 t('проверить и обновить: тега на jsDelivr ещё нет — не перезагружаем впустую', ghc.v === '' && !ghc.ls.bs_upd);
 
 
+/* ---- bstg.js: шифрование и подпись сообщений через ntfy ---- */
+{
+    const store = { bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw' };
+    const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout, setInterval, Uint8Array,
+        btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'),
+        unescape, escape, encodeURIComponent, decodeURIComponent };
+    ctx.window = ctx; ctx.localStorage = ls; ctx.crypto = require('crypto').webcrypto;
+    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
+    const T = ctx.M, C = T._crypt;
+    t('шифр: SHA-256 и HMAC — эталонные значения', C.hex(C.sha256(C.bytes('abc'))) === 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad' &&
+        C.hex(C.hmac(C.bytes('Jefe'), C.bytes('what do ya want for nothing?'))) === '5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843');
+    const k = T._busKey(), msg = { t: 'open', from: 'tv2', name: 'Зал', ts: Date.now() };
+    const sealed = JSON.stringify(C.seal(k, JSON.stringify(msg)));
+    t('канал ТВ: своё зашифрованное сообщение читается', T._busOpen(sealed).name === 'Зал');
+    t('канал ТВ: повтор того же сообщения — отброшен', T._busOpen(sealed) === null);
+    t('канал ТВ: чужой ключ (без токена) — отброшено', T._busOpen(JSON.stringify(C.seal(C.key('other'), JSON.stringify(msg)))) === null);
+    const tampered = C.seal(k, JSON.stringify(msg)); tampered.c = tampered.c.slice(0, -4) + (tampered.c.slice(-4) === 'AAAA' ? 'BBBB' : 'AAAA');
+    t('канал ТВ: изменённое сообщение — отброшено', T._busOpen(JSON.stringify(tampered)) === null);
+    t('канал ТВ: сообщение суточной давности — отброшено', T._busOpen(JSON.stringify(C.seal(k, JSON.stringify({ t: 'open', ts: Date.now() - 2 * 86400000 })))) === null);
+    const legacy = T._busOpen(JSON.stringify({ t: 'hello', from: 'old', name: 'Спальня', chat: '999', leader: true }));
+    t('канал ТВ: старая версия — только «в сети», без чата и главенства', legacy && legacy.name === 'Спальня' && legacy.chat === undefined && legacy.leader === undefined);
+    t('канал ТВ: незашифрованные команды (люди, открыть, переименовать) — отброшены', ['u', 'open', 'rename'].every(x => T._busOpen(JSON.stringify({ t: x, from: 'evil' })) === null));
+    const sec = C.secret(), tk = store.bs_tg_token;
+    const pairLine = m => JSON.stringify({ event: 'message', id: 'p1', message: m });
+    t('QR с телефона: токен, зашифрованный секретом из QR, — принят', T._tokenFrom(pairLine(JSON.stringify(C.seal(C.key('lampa-pair-v2|' + sec), tk))), sec)[0] === tk);
+    t('QR с телефона: открытый токен при секрете — не принят', T._tokenFrom(pairLine(tk), sec)[0] === '');
+    const jl = JSON.stringify({ event: 'message', id: 'j1', message: JSON.stringify(C.seal(C.key('lampa-join-v2|12345678'), JSON.stringify({ t: 'join', token: tk, chat: '42' }))) });
+    t('второй ТВ по коду: зашифровано кодом — принято, другим кодом — нет', (T._joinMsg(jl, { code: '12345678' }) || {}).chat === '42' && T._joinMsg(jl, { code: '87654321' }) === null);
+}
+
+
 /* ---- bsfix.js: качество под скорость канала ---- */
 const QP = fixCtx().M._pickQuality, QS = { '2160p': 'u4k', '1080p': 'u1080', '720p': 'u720', '480p': 'u480' };
 t('качество: 25 Мбит/с — 4K остаётся', QP(QS, 'u4k', 25e6) === '');
