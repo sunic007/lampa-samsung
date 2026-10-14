@@ -1180,6 +1180,28 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('failover по времени: ушедший главный не занимает очередь - мы первые', T._takeoverRank() === 0);
     T._onBus({ t: 'hello', from: 'AAAAAAAA', name: 'Гостиная', leader: true, fg: true });
     t('failover по времени: новый «я здесь» от главного возвращает его', T._leaderStale() === false);
+    clock += 200000;
+    t('failover по времени: главный давно молчит — бота можно брать', T._leaderStale() === true);
+    T._onConflict();
+    t('split-brain: Telegram ответил «занято» — главный жив, не перехватываем', T._leaderStale() === false && T._takeoverRank() === 0);
+    clock += 60000;
+    t('split-brain: и через минуту после «занято» — всё ещё не перехватываем', T._leaderStale() === false);
+    clock += 61000;
+    t('split-brain: «занято» больше 2 минут не было — главный пропал, можно брать', T._leaderStale() === true);
+}
+/* ---- bstg.js: только что запущенный ТВ не знает главного — «занято» от Telegram не даёт ему отбирать сообщения ---- */
+{
+    const store = { bs_tv_id: 'ZZZZZZZZ', bs_tg_chat: '1', bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw' };
+    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: function () {},
+        Uint8Array, btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'), unescape, escape,
+        encodeURIComponent, decodeURIComponent, Lampa: { Noty: { show() {} } } };
+    ctx.window = ctx; ctx.crypto = require('crypto').webcrypto;
+    ctx.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
+    const T = ctx.M;
+    t('split-brain: новый ТВ, главного ещё не слышал — до «занято» бота взять можно (вдруг ТВ один)', T._leaderStale() === true);
+    T._onConflict();
+    t('split-brain: новый ТВ получил «занято» — не дёргает Telegram каждые 8 с', T._leaderStale() === false);
 }
 /* ---- bssources.js: источники на выбор, главная кнопка, ключи Skaz ---- */
 {
