@@ -751,7 +751,8 @@ var BSTelegram = (function () {
     // Кто ведёт бота, решает сам Telegram: опрашивать может один — второй получает «409 занято». Остальные ТВ пробуют
     // раз в минуту (CONFLICT_PAUSE): главный выключился — следующая попытка берёт бота. Уходя (ТВ выключают, Lampa в
     // фоне), главный шлёт «bye» — другие берут бота сразу.
-    var HELLO_EVERY = 60 * 60000, LEADER_HELLO = 10 * 60000, LEADER_ALIVE = 25 * 60000, CONFLICT_PAUSE = 60000;
+    // Каждые 40 с ТВ шлёт «я здесь». Главный молчит 2 минуты - считаем его ушедшим, и бота берёт следующий на экране.
+    var HELLO_EVERY = 40000, LEADER_ALIVE = 120000, CONFLICT_PAUSE = 60000, TAKEOVER_PAUSE = 8000, STALE_UPDATE = 180;
     var DEVICE_ALIVE = 70 * 60000, ACK_WAIT = 10000;
     var tvId = lsGet('bs_tv_id');
     if (!tvId) { tvId = randomTopic().slice(6, 14); lsSet('bs_tv_id', tvId); }
@@ -846,7 +847,16 @@ var BSTelegram = (function () {
         return { t: m.t, from: m.from, name: m.name, model: m.model, v: m.v, ts: m.ts };
     }
     function appVer() { try { return window.BS_REMOTE_VERSION || (typeof BS_PACKAGE_VERSION !== 'undefined' ? String(BS_PACKAGE_VERSION) : ''); } catch (e) { return ''; } }
-    function busHello(ask) { busSend({ t: 'hello', v: appVer(), name: tvName(), model: lsGet('bs_tv_model') || '', ip: myIp(), leader: isLeader, chat: chat(), ask: !!ask }); }
+    function onScreen() { try { return !document.hidden; } catch (e) { return true; } }
+    function busHello(ask) { busSend({ t: 'hello', v: appVer(), name: tvName(), model: lsGet('bs_tv_model') || '', ip: myIp(), leader: isLeader, fg: onScreen(), chat: chat(), ask: !!ask }); }
+    /** Главный молчит дольше LEADER_ALIVE (или его вовсе нет) - бота можно брать. */
+    function leaderStale() { return !isLeader && (!leader.id || Date.now() - leader.at > LEADER_ALIVE); }
+    /** Очередь на бота: сколько ТВ на экране с свежим «я здесь» и меньшим id. 0 - берём первым. */
+    function takeoverRank() {
+        var now = Date.now(), rank = 0, k;
+        for (k in devices) if (devices.hasOwnProperty(k) && devices[k].fg && now - devices[k].at < LEADER_ALIVE && k < tvId) rank++;
+        return rank;
+    }
 
     /* Поток канала: один длинный запрос (ntfy шлёт сообщения построчно); раз в 30 мин — заново, чтобы ответ не рос. */
     var busX = null, busNow = '', busSince = '', busPos = 0, busTimer = null, busLife = null;
@@ -899,6 +909,7 @@ var BSTelegram = (function () {
         if (m.t === 'hello') {
             if (renameWait && renameWait.to === m.from && m.name === renameWait.title) { clearTimeout(renameWait.timer); renameWait = null; reply('✅ ТВ теперь называется «' + m.name + '».'); }
             if (m.leader) leader = { id: m.from, at: now };
+            if (devices[m.from]) devices[m.from].fg = !!m.fg;
             if (m.chat && !chat()) { lsSet('bs_tg_chat', String(m.chat)); refreshSettings(); }
             if (m.ask) busHello(false);
             if (m.ask && isLeader) { sendAllUsers(); cfgSend(); }                   // новый/включившийся ТВ — люди от главного
@@ -1194,6 +1205,11 @@ var BSTelegram = (function () {
             if (!isLeader) { isLeader = true; leader = { id: tvId, at: Date.now() }; busHello(false); log('главный ТВ', tvName()); }
             (updates || []).forEach(function (u) {
                 lsSet('bs_tg_offset', String(u.update_id + 1));
+                var md = u.message && u.message.date;
+                if (md && Date.now() / 1000 - md > STALE_UPDATE && u.message.chat) {     // пришло давно (ТВ был без бота) - не отвечаем позже
+                    call('sendMessage', { chat_id: u.message.chat.id, text: '⏳ Этот запрос пришёл давно — напишите его ещё раз.' }, null, null);
+                    return;
+                }
                 try { handle(u); } catch (e) { log('команда', e.message); }
             });
             setTimeout(poll, 200);                                   // сразу следующий
@@ -1202,7 +1218,7 @@ var BSTelegram = (function () {
             if (/conflict/i.test(String(e))) {                       // бота опрашивает другой ТВ — он главный
                 if (isLeader) log('главный теперь другой ТВ', '');
                 isLeader = false;
-                conflictUntil = Date.now() + CONFLICT_PAUSE;
+                conflictUntil = Date.now() + (leaderStale() ? TAKEOVER_PAUSE : CONFLICT_PAUSE);
             }
         }, (LONG_POLL + 10) * 1000);
     }
@@ -2014,10 +2030,16 @@ var BSTelegram = (function () {
 
     /* ---------- поиск в боте ---------- */
 
+    /* TMDB без таймаута: если сервер не отвечает, поиск висел бы до минут. Через TMDB_TIMEOUT отвечаем «не ответил». */
+    var TMDB_TIMEOUT = 10000;
     function tmdbGet(path, cb) {
         cb = keep(cb);
-        new Lampa.Reguest().silent(Lampa.TMDB.api(path + (path.indexOf('?') < 0 ? '?' : '&') + 'api_key=' + Lampa.TMDB.key() + '&language=ru'),
-            function (j) { cb(j || null); }, function () { cb(null); });
+        var done = false, finish = function (j) { if (done) return; done = true; cb(j || null); };
+        var req = new Lampa.Reguest();
+        try { req.timeout(TMDB_TIMEOUT); } catch (e) {}
+        req.silent(Lampa.TMDB.api(path + (path.indexOf('?') < 0 ? '?' : '&') + 'api_key=' + Lampa.TMDB.key() + '&language=ru'),
+            function (j) { finish(j); }, function () { finish(null); });
+        setTimeout(function () { finish(null); }, TMDB_TIMEOUT + 2000);
     }
     /** Карточка Lampa из ответа TMDB (подробности фильма/сериала). */
     function toCard(j, kind) {
@@ -2551,11 +2573,17 @@ var BSTelegram = (function () {
         setInterval(function () { if (token()) busStart(); }, 60000);
         var lastHello = Date.now();
         setInterval(function () {
-            if (!token() || Date.now() - lastHello < (isLeader ? LEADER_HELLO : HELLO_EVERY)) return;
+            if (!token() || Date.now() - lastHello < HELLO_EVERY) return;
             lastHello = Date.now();
             busHello(false);
-        }, 60000);
+        }, 15000);
+        // Failover: главный пропал (выключили, Lampa закрыта, сеть) - первый на экране по очереди берёт бота сразу.
+        setInterval(function () {
+            if (!token() || !chat() || pair || polling || !onScreen() || !leaderStale() || takeoverRank() > 0) return;
+            conflictUntil = 0;
+            poll();
+        }, 15000);
     }
 
-    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _commands: COMMANDS, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle };
+    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _commands: COMMANDS, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle };
 })();

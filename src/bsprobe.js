@@ -202,7 +202,13 @@ var BSProbe = (function () {
     }
     function remember(id, name, v) {
         if (!id || !name) return;
-        (verdicts[id] = verdicts[id] || {})[name] = { v: v, t: Date.now() };
+        var now = Date.now();
+        (verdicts[id] = verdicts[id] || {})[name] = { v: v, t: now };
+        // старые вердикты не читаются (state() ждёт VERDICT_LIFE) - убираем, чтобы память не росла
+        for (var k in verdicts) if (verdicts.hasOwnProperty(k)) {
+            for (var n in verdicts[k]) if (verdicts[k].hasOwnProperty(n) && now - verdicts[k][n].t > VERDICT_LIFE) delete verdicts[k][n];
+            if (!Object.keys(verdicts[k]).length) delete verdicts[k];
+        }
     }
     function state(id, name) {
         var r = verdicts[id] && verdicts[id][name];

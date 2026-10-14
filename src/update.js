@@ -50,9 +50,33 @@
         set('bs_upd_skip', String(Date.now() + 3600000));
         try { window.location.reload(); } catch (e) {}
     };
+    // Статистика на экране загрузки: пока модули идут с CDN, видно, что происходит (вместо пустого фона Lampa)
+    var statStart = Date.now(), statLoaded = 0, statEl = null, statTimer = null;
+    function statText() {
+        var sec = Math.round((Date.now() - statStart) / 1000);
+        return 'Обновляю Lampa до ' + upd.v + ': загружено ' + statLoaded + ' из ' + files.length + ' · ' + sec + ' с';
+    }
+    function statShow() {
+        if (!remote || statEl) return;
+        statEl = document.createElement('div');
+        statEl.id = 'bs-upd-stat';
+        statEl.style.cssText = 'position:fixed;left:0;right:0;bottom:22%;z-index:999;text-align:center;font-family:sans-serif;' +
+            'font-size:1.3em;color:rgba(255,255,255,.85);text-shadow:0 1px 3px rgba(0,0,0,.6);padding:0 5%';
+        statEl.textContent = statText();
+        document.body.appendChild(statEl);
+        statTimer = setInterval(function () { if (statEl) statEl.textContent = statText(); }, 1000);
+    }
+    function statHide() {
+        clearInterval(statTimer);
+        if (statEl && statEl.parentNode) statEl.parentNode.removeChild(statEl);
+        statEl = null;
+    }
+    window.bsUpdLoaded = function () { statLoaded++; if (statEl) statEl.textContent = statText(); };
+
     var html = remote ? '<link rel="stylesheet" href="' + base + 'bs.css">' : '';
-    for (var i = 0; i < files.length; i++) html += '<script src="' + base + files[i] + '"' + (remote ? ' onerror="bsUpdFail()"' : '') + '><\/script>';
+    for (var i = 0; i < files.length; i++) html += '<script src="' + base + files[i] + '"' + (remote ? ' onload="bsUpdLoaded()" onerror="bsUpdFail()"' : '') + '><\/script>';
     document.write(html);
+    statShow();
 
     function check() {
         if (get('bs_gh_update') === 'false') return;
@@ -77,7 +101,7 @@
         } catch (e) {}
     }
     var waits = 0, t = setInterval(function () {
-        if (window.appready) { clearInterval(t); set('bs_upd_try', null); setTimeout(check, 20000); }
+        if (window.appready) { clearInterval(t); statHide(); set('bs_upd_try', null); setTimeout(check, 20000); }
         else if (++waits > 90) clearInterval(t);                // 3 минуты не поднялась — try остаётся, в следующий раз — пакет
     }, 2000);
     window.BSUpdate = { local: LOCAL, check: check, _num: num };
