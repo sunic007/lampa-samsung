@@ -1104,5 +1104,45 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('по-русски: без дубляжа — любая русская, не украинская/оригинал', C._pickRu([opts[0], opts[1], opts[2]]) === opts[2]);
     t('по-русски: русских нет — ничего', C._pickRu([opts[0], opts[1], opts[4]]) === null);
 }
+/* ---- bstg.js: failover главного ТВ ---- */
+{
+    const store = { bs_tv_id: 'ZZZZZZZZ', bs_tg_chat: '1', bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw' };
+    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: function () {},
+        Uint8Array, btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'), unescape, escape,
+        encodeURIComponent, decodeURIComponent, Lampa: { Noty: { show() {} } } };
+    ctx.window = ctx; ctx.crypto = require('crypto').webcrypto;
+    ctx.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
+    const T = ctx.M;
+    t('failover: главного пока нет - бота можно брать', T._leaderStale() === true);
+    T._onBus({ t: 'hello', from: 'AAAAAAAA', name: 'Гостиная', leader: true, fg: true });
+    t('failover: свежий главный - бота не трогаем', T._leaderStale() === false);
+    t('failover: ТВ на экране с меньшим id - впереди в очереди', T._takeoverRank() === 1);
+    T._onBus({ t: 'hello', from: 'BBBBBBBB', name: 'Спальня', leader: false, fg: false });
+    t('failover: ТВ не на экране в очереди не учитывается', T._takeoverRank() === 1);
+    T._onBus({ t: 'hello', from: 'CCCCCCCC', name: 'Кухня', leader: false, fg: true });
+    t('failover: очередь растёт с каждым ТВ на экране', T._takeoverRank() === 2);
+}
+/* ---- bstg.js: failover по времени (главный молчит 2 минуты) ---- */
+{
+    const store = { bs_tv_id: 'ZZZZZZZZ', bs_tg_chat: '1', bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw' };
+    let clock = 1700000000000;
+    class FakeDate extends Date { constructor(...args) { if (args.length) super(...args); else super(clock); } static now() { return clock; } }
+    const ctx = { console: { log() {} }, Date: FakeDate, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: function () {},
+        Uint8Array, btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'), unescape, escape,
+        encodeURIComponent, decodeURIComponent, Lampa: { Noty: { show() {} } } };
+    ctx.window = ctx; ctx.crypto = require('crypto').webcrypto;
+    ctx.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
+    const T = ctx.M;
+    T._onBus({ t: 'hello', from: 'AAAAAAAA', name: 'Гостиная', leader: true, fg: true });
+    clock += 60000;
+    t('failover по времени: через минуту главный ещё жив', T._leaderStale() === false);
+    clock += 61000;
+    t('failover по времени: после 2 минут тишины главный считается ушедшим', T._leaderStale() === true);
+    t('failover по времени: ушедший главный не занимает очередь - мы первые', T._takeoverRank() === 0);
+    T._onBus({ t: 'hello', from: 'AAAAAAAA', name: 'Гостиная', leader: true, fg: true });
+    t('failover по времени: новый «я здесь» от главного возвращает его', T._leaderStale() === false);
+}
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

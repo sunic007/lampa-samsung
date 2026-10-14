@@ -14,7 +14,7 @@
 var BSPlayer = (function () {
     var ENDPOINTS = ['https://skaz.team/report.php', 'https://list.skaz.tv/report.php', 'https://skaztv.online/report.php'];
     var TIMEOUT = 4000;
-    var cache = {};             // ключ запроса -> ответ сервера
+    var cache = {}, cacheKeys = [], CACHE_MAX = 50;   // ключ запроса -> ответ сервера; старые уходят, память не растёт
     var s = null;               // текущий сеанс: {card, season, episode, duration, asked, chapters}
 
     function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
@@ -53,7 +53,13 @@ var BSPlayer = (function () {
         (function next() {
             if (i >= ENDPOINTS.length) return cb(null);
             var xhr = new XMLHttpRequest(), done = false;
-            var fin = function (data) { if (done) return; done = true; if (data) { cache[query] = data; cb(data); } else next(); };
+            var fin = function (data) {
+                if (done) return; done = true;
+                if (data) {
+                    if (!(query in cache)) { cacheKeys.push(query); if (cacheKeys.length > CACHE_MAX) delete cache[cacheKeys.shift()]; }
+                    cache[query] = data; cb(data);
+                } else next();
+            };
             try {
                 xhr.open('GET', ENDPOINTS[i++] + '?' + query + '&t=' + Date.now(), true);
                 xhr.timeout = TIMEOUT;
