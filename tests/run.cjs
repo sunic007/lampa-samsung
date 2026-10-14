@@ -1144,5 +1144,87 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     T._onBus({ t: 'hello', from: 'AAAAAAAA', name: 'Гостиная', leader: true, fg: true });
     t('failover по времени: новый «я здесь» от главного возвращает его', T._leaderStale() === false);
 }
+/* ---- bssources.js: источники на выбор, главная кнопка, ключи Skaz, Клубничка ---- */
+{
+    const store = {}, mem = {};
+    const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+    const Lampa = { Storage: { get: (k, d) => (k in mem ? mem[k] : (d === undefined ? '' : d)), set: (k, v) => { mem[k] = v; } },
+        Utils: { protocol: () => 'http://', putScriptAsync() {} }, Noty: { show() {} }, Listener: { follow() {} }, Plugins: { get: () => [] } };
+    const ctx = { window: { localStorage: ls }, Lampa, $: { trim: x => String(x).trim() }, console: { log() {} }, JSON, String, Object, Array };
+    ctx.window.window = ctx.window; vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync(path.join(SRC, 'bssources.js'), 'utf8') + ';this.M=BSSources;', ctx);
+    const S = ctx.M;
+    const btn = (cls, subtitle, text) => ({ hasClass: c => cls.split(' ').indexOf(c) >= 0, attr: () => subtitle, data: () => subtitle, text: () => text || '' });
+    const skaz = btn('full-start__button view--online lampac--button', 'Онлайн by Skaz', 'Онлайн');
+    const z01 = btn('full-start__button view--online lampac--button', 'Z01 2.1', 'Онлайн');
+    const ark = btn('full-start__button view--online lampac--button', 'Vod v1.4', 'Онлайн');
+    const mod = btn('full-start__button view--online_mod', 'online_mod 3.2', 'Онлайн');
+    const showy = btn('full-start__button view--online showy--button', 'смотреть Filmix/Rezka/Kodik', 'Showy');
+    const shots = btn('full-start__button view--online', 'Shots', 'Shots');
+    t('источники: кнопки узнаются по признакам', S.owner(skaz) === 'skaz' && S.owner(z01) === 'z01' && S.owner(ark) === 'arkmv' &&
+        S.owner(mod) === 'online_mod' && S.owner(showy) === 'showy' && S.owner(shots) === '');
+    t('источники: по умолчанию главный — Skaz', S.mainId() === 'skaz' && S.isMain(skaz) && !S.isMain(z01) && !S.isMain(ark));
+    store.bs_src_main = 'z01';
+    t('источники: выбран, но не включён — главный остаётся Skaz', S.mainId() === 'skaz' && S.isMain(skaz));
+    store.bs_src_z01 = 'true';
+    t('источники: выбран и включён — «Смотреть» открывает его, не Skaz', S.mainId() === 'z01' && S.isMain(z01) && !S.isMain(skaz));
+    store.bs_src_main = 'vod_llpp'; store.bs_src_vod_llpp = 'true';
+    t('источники: вариант Online Mod узнаётся по общей кнопке группы', S.isMain(mod));
+    t('источники: экраны плагинов', S._compOwner('lampacskaz') === 'skaz' && S._compOwner('lampac_z') === 'z01' &&
+        S._compOwner('online_mod') === 'online_mod' && S._compOwner('vod') === 'arkmv' && S._compOwner('full') === '');
+    mem.online_balanser = 'rezka'; mem.online_watched_last = '{"skaz":1}';
+    S._onActivity({ type: 'init', component: 'lampac_z' });
+    t('ключи: Z01 впервые — без выбора Skaz', mem.online_balanser === '' && mem.online_watched_last === '');
+    mem.online_balanser = 'filmix';
+    S._onActivity({ type: 'archive', component: 'full' });
+    t('ключи: вне экрана плагина — снова выбор Skaz', mem.online_balanser === 'rezka' && mem.online_watched_last === '{"skaz":1}');
+    S._onActivity({ type: 'init', component: 'lampac_z' });
+    t('ключи: Z01 снова — его собственный выбор', mem.online_balanser === 'filmix');
+    S._onActivity({ type: 'init', component: 'lampacskaz' });
+    t('ключи: экран Skaz — выбор Skaz не потерян', mem.online_balanser === 'rezka');
+    mem.skaz_domain = 'skaztv.online';
+    t('клубничка: с текущего домена Skaz', S._sisiUrl() === 'http://skaztv.online/sisi.js');
+    mem.skaz_domain = 'bad domain/../x';
+    t('клубничка: странный домен — skaz.tv', S._sisiUrl() === 'http://skaz.tv/sisi.js');
+}
+/* ---- bssources.js: выбор кнопки «Смотреть» и подключение плагинов ---- */
+{
+    const mk = (store, plugins) => {
+        const mem = {}, loaded = [];
+        const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+        const Lampa = { Storage: { get: (k, d) => (k in mem ? mem[k] : (d === undefined ? '' : d)), set: (k, v) => { mem[k] = v; } },
+            Utils: { protocol: () => 'http://', putScriptAsync: urls => { loaded.push.apply(loaded, urls); } }, Noty: { show() {} },
+            Listener: { follow() {} }, Plugins: { get: () => plugins || [] } };
+        const ctx = { window: { localStorage: ls }, Lampa, $: { trim: x => String(x).trim() }, console: { log() {} }, JSON, String, Object, Array };
+        ctx.window.window = ctx.window; vm.createContext(ctx);
+        vm.runInContext(fs.readFileSync(path.join(SRC, 'bssources.js'), 'utf8') + ';this.M=BSSources;', ctx);
+        return { S: ctx.M, loaded, mem };
+    };
+    const btn = (cls, subtitle, text) => ({ hasClass: c => cls.split(' ').indexOf(c) >= 0, attr: () => subtitle, data: () => subtitle, text: () => text || '' });
+    const skaz = btn('view--online lampac--button', 'Онлайн by Skaz', 'Онлайн');
+    const other = btn('view--online lampac--button', 'Другой Lampac 1.0', 'Онлайн');      // добавлен вручную, не из списка
+    const z01 = btn('view--online lampac--button', 'Z01 2.1', 'Онлайн');
+    let r = mk({});
+    t('смотреть: чужой Lampac раньше Skaz — берём точную кнопку Skaz', r.S.pick([other, skaz], false) === skaz);
+    t('смотреть: подписи Skaz нет — похожая кнопка, как раньше', r.S.pick([other], false) === other);
+    r = mk({ bs_src_main: 'z01', bs_src_z01: 'true' });
+    t('смотреть: главный Z01 — его кнопка', r.S.pick([skaz, z01], false) === z01);
+    t('смотреть: Z01 ещё не добавил кнопку — ждём (не Skaz)', r.S.pick([skaz], false) === null);
+    t('смотреть: Z01 так и не загрузился — последняя попытка берёт Skaz', r.S.pick([other, skaz], true) === skaz);
+    r = mk({ bs_src_online_mod: 'true', bs_src_vod_llpp: 'true', bs_src_showy: 'true', bs_sisi: 'false' });
+    r.S._loadAll();
+    t('подключение: из группы Online Mod — только один плагин', r.loaded.filter(u => /online_mod\.js|llpp\.in/.test(u)).length === 1);
+    t('подключение: выключенные не грузятся, включённые грузятся', r.loaded.indexOf('http://showy.online/m.js') >= 0 && r.loaded.indexOf('http://z01.online/live') < 0);
+    t('подключение: Клубничка выключена — не грузится', !r.loaded.some(u => /sisi\.js/.test(u)));
+    r = mk({});
+    r.S._loadAll();
+    t('подключение: по умолчанию — только Клубничка Skaz, сторонних нет', r.loaded.length === 1 && r.loaded[0] === 'http://skaz.tv/sisi.js');
+    r = mk({ bs_kids: 'true', bs_kids_pin: '1234' });
+    r.S._loadAll();
+    t('подключение: детский режим — Клубничка не грузится', r.loaded.length === 0);
+    r = mk({ bs_src_z01: 'true', bs_sisi: 'false' }, [{ url: 'http://z01.online/live' }]);
+    r.S._loadAll();
+    t('подключение: плагин уже добавлен вручную — второй раз не грузим', r.loaded.length === 0);
+}
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

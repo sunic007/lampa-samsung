@@ -519,12 +519,13 @@ function bsStartAutoUpdate() {
 var BS_SETTINGS_LAYOUT = [
     ['player', ['#^Надёжность воспроизведения', 'bs_player_auto', 'bs_guard', 'bs_bw_quality', 'bs_buffer',
         '#Во время просмотра', 'bs_resume_ask', 'bs_noads', 'bs_segments', 'bs_track_memory', 'bs_next_countdown', 'bs_still', 'bs_sleep', 'bs_vol_memory', 'bs_vol_night']],
-    ['interface', ['#Дополнительно', 'bs_watch_btn', 'bs_online_resume', 'bs_ru_auto', 'bs_menu_turk', 'bs_continue_row']],
+    ['interface', ['#Дополнительно', 'bs_watch_btn', 'bs_online_resume', 'bs_ru_auto', 'bs_menu_turk', 'bs_continue_row', 'bs_sisi']],
     ['parental_control', ['#Дополнительно', 'bs_kids']],
     ['bs_telegram', ['#Подключение', 'bs_tg_phone', 'bs_tg_join', 'bs_tg_help', 'bs_tg_token', 'bs_tg_link', 'bs_tv_name',
         '#Бот', 'bs_tg_on', 'bs_tg_shots', 'bs_search_qr', 'bs_tg_check',
         '#Люди и доступ', 'bs_tg_approve', 'bs_tg_guest_play', 'bs_tg_invite_reset']],
-    ['bs_online', ['#Источники', 'bs_auto_source', 'bs_race', 'bs_torrents', 'bs_srv_title', 'bs_srv_now', 'bs_srv_auto', 'bs_srv_pick']]
+    ['bs_online', ['#Источники', 'bs_auto_source', 'bs_race', 'bs_torrents', 'bs_srv_title', 'bs_srv_now', 'bs_srv_auto', 'bs_srv_pick',
+        '#Другие источники (на выбор)', 'bs_src_main', 'bs_src_z01', 'bs_src_online_mod', 'bs_src_vod_llpp', 'bs_src_showy', 'bs_src_arkmv']]
 ];
 // заголовки старой общей вкладки; подсказка про цветные кнопки (на Smart Remote их нет); «Быстрый старт» (техническое,
 // всегда вкл.); журнал запросов (отладка — есть журнал на компьютере); «Название источника» (выкл., просили скрыть)
@@ -536,13 +537,13 @@ var BS_SETTINGS_NEEDS = {
 
 /* Пункты Lampa и плагинов, которые прячем, пока они не нужны (проверено по коду и журналу ТВ, 2026-10-13):
  *  — «Тип плеера» и «Обработка .m3u8» выбирает автовыбор плеера — вручную менять бессмысленно;
- *  — раздел Skaz «Сервер Skaz» (skaz_domain) выбирает автовыбор серверов;
+ *  — пункт Skaz «Сервер Skaz» (skaz_domain) выбирает автовыбор серверов; сам раздел настроек Skaz виден всегда;
  *  — торренты: «Парсер», «TorrServer», плеер для торрентов — на ТВ не используются (онлайн-источники),
  *    вернуть — «Торренты» в «Онлайн-источниках». Выключили автоматику — пункты снова видны. */
 function bsLsOn(k, def) { var v = null; try { v = window.localStorage.getItem(k); } catch (e) {} return v === null ? def : v === 'true'; }
 var BS_SETTINGS_HIDE_IF = [
     { sel: '[data-name="player"], [data-name="player_hls_method"]', when: function () { return bsLsOn('bs_player_auto', true); } },
-    { sel: '[data-name="skaz_domain"], .settings-folder[data-component="tvskaz"]', when: function () { return bsLsOn('bs_srv_auto', true); } },
+    { sel: '[data-name="skaz_domain"]', when: function () { return bsLsOn('bs_srv_auto', true); } },
     { sel: '[data-name="player_torrent"], .settings-folder[data-component="parser"], .settings-folder[data-component="server"]',
         when: function () { return !bsLsOn('bs_torrents', false); } }
 ];
@@ -851,6 +852,7 @@ var bsReadyTimer = setInterval(function () {
     try { BSPlayer.start(); } catch (e) { console.log('BS player', e); }
     try { BSRch.start(); } catch (e) { console.log('BS rch', e); }
     try { BSFix.start(); } catch (e) { console.log('BS fix', e); }
+    try { BSSources.start(); } catch (e) { console.log('BS sources', e); }
     try { BSMenu.start(); } catch (e) { console.log('BS menu', e); }
     try { BSContinue.start(); } catch (e) { console.log('BS continue', e); }
     try { BSWatch.start(); } catch (e) { console.log('BS watch', e); }

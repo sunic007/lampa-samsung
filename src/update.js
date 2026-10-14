@@ -17,7 +17,7 @@
     var MANIFEST = 'https://raw.githubusercontent.com/' + REPO + '/main/version.json';
     var CDN = 'https://cdn.jsdelivr.net/gh/' + REPO + '@v';
     // порядок важен: loader.js — последним (запускает остальное)
-    var LOCAL = ['skazauto.js', 'playerguard.js', 'bsfeatures.js', 'bsplayer.js', 'bsrch.js', 'bsprobe.js', 'bsfix.js', 'bsmenu.js',
+    var LOCAL = ['skazauto.js', 'playerguard.js', 'bsfeatures.js', 'bsplayer.js', 'bsrch.js', 'bsprobe.js', 'bsfix.js', 'bssources.js', 'bsmenu.js',
         'bscontinue.js', 'bswatch.js', 'bshub.js', 'bstg.js', 'bsvolume.js', 'loader.js'];
 
     function get(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }

@@ -140,11 +140,15 @@ var BSMenu = (function () {
         el.attr('data-action', WANT.action);
     }
 
-    /* Кнопка «Онлайн» на карточке фильма. В Lampa «Смотреть» открывает меню источников (Shots / Онлайн / Трейлеры) —
+    /* Две кнопки на карточке: «Смотреть» — сразу главный источник (Skaz или выбранный в «Онлайн-источниках», bssources.js),
+     * «Источники» — родное меню Lampa со всеми источниками, трейлерами и Shots.
+     *
+     * Кнопка «Онлайн» на карточке фильма. В Lampa «Смотреть» открывает меню источников (Shots / Онлайн / Трейлеры) —
      * лишнее нажатие каждый раз. Lampa умеет выносить источник отдельной кнопкой (долгое ОК в этом меню →
      * full_btn_priority), но об этом мало кто знает. Если человек свою кнопку не выбрал — выносим «Онлайн by Skaz»
      * сами и ставим на неё фокус: карточка → ОК → источники. Своя кнопка (долгое ОК) заменяет нашу — это делает Lampa. */
     function watchEnabled() { return lsGet('bs_watch_btn') !== 'false'; }
+    // без bssources.js (старый пакет с новым модулем): прежнее правило; с ним — BSSources.pick (у Z01 и arkmv тот же класс)
     function isSkazButton(btn) {
         var sub = String(btn.data('subtitle') || ''), text = $.trim(btn.text());
         // Shots тоже ставит класс view--online — узнаём Skaz по его классу и подписи «by Skaz»
@@ -156,16 +160,21 @@ var BSMenu = (function () {
             if (!cont.length || cont.find('.button--priority').length || !body.closest('body').length) return;
             // Своя кнопка человека (full_btn_priority) уже стоит — .button--priority выше. Сам ключ бывает «мёртвым»
             // (hash кнопки, которой больше нет) — тогда Lampa ничего не выносит, а мы выносим.
-            var src = null;
-            body.find('.buttons--container > .full-start__button').not('.hide').each(function () { if (!src && isSkazButton($(this))) src = $(this); });
+            var src = null, btns = [];
+            body.find('.buttons--container > .full-start__button').not('.hide').each(function () { btns.push($(this)); });
+            // главный источник; не загрузился (последняя попытка) — Skaz
+            if (window.BSSources) src = BSSources.pick(btns, tries >= 8);
+            else for (var i = 0; i < btns.length && !src; i++) if (isSkazButton(btns[i])) src = btns[i];
             if (!src) { if (tries < 8) setTimeout(function () { addWatchButton(e, tries + 1); }, 250); return; }  // плагин ещё не добавил
             var play = cont.find('.button--play'), hadFocus = play.hasClass('focus');
             var clon = src.clone().removeClass('focus hide view--torrent').addClass('selector button--priority bs-watch');
-            // подпись — «Смотреть» (у плагина «Онлайн»); родное «Смотреть» Lampa (меню источников) тогда дублирует — прячем
+            // подпись — «Смотреть» (у плагина «Онлайн»); родное «Смотреть» Lampa (меню источников) остаётся второй кнопкой
             var label = clon.find('span').first();
             if (label.length) label.text('Смотреть');
             else clon.contents().filter(function () { return this.nodeType === 3 && $.trim(this.nodeValue); }).first().replaceWith('Смотреть');
-            play.addClass('hide');
+            var playLabel = play.find('span').first();
+            if (playLabel.length) playLabel.text('Источники');
+            play.removeClass('hide');
             clon.on('hover:enter', function () { src.trigger('hover:enter'); })
                 .on('hover:focus', function () { try { e.link.items[0].last = clon[0]; } catch (err) {} });
             cont.prepend(clon);
