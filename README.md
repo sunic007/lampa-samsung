@@ -1,8 +1,8 @@
+**English** · [Русский](README.ru.md)
+
 # Lampa for Samsung Smart TV (Tizen)
 
 [![Release](https://img.shields.io/github/v/release/sunic007/lampa-samsung?label=release&color=3d8bff)](https://github.com/sunic007/lampa-samsung/releases/latest) [![Downloads](https://img.shields.io/github/downloads/sunic007/lampa-samsung/total?color=2ea043)](https://github.com/sunic007/lampa-samsung/releases) ![Tizen](https://img.shields.io/badge/Tizen-2.3%2B-1428a0) [![Telegram bot](https://img.shields.io/badge/Telegram-bot-26a5e4?logo=telegram&logoColor=white)](#-telegram-bot--search-watch-on-the-tv-and-notifications) [![License](https://img.shields.io/badge/license-MIT%20%2B%20GPL--2.0%20(Lampa)-lightgrey)](licenses/THIRD_PARTY_NOTICES.md)
-
-**English** · [Русский](README.ru.md)
 
 A build of the open-source **Lampa** media center for Samsung Smart TVs. It installs as a single `samsung.wgt` file
 and is tuned for the TV: it updates itself, keeps the player from freezing and adds a Telegram bot to control the TV
