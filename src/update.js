@@ -104,6 +104,8 @@
     }
     function statDraw() {
         if (!statOn) return;
+        // «Обновляю» — только при первом запуске новой версии; дальше это обычный запуск (та же надпись, что у loader.js)
+        if (get('bs_upd_ran') === upd.v) return window.BSBoot.set('Запускаю Lampa', '', 0.08 * statLoaded / files.length);
         var sec = Math.round((Date.now() - statStart) / 1000);
         window.BSBoot.set('Обновляю Lampa до ' + upd.v, 'загружено ' + statLoaded + ' из ' + files.length + ' · ' + sec + ' с', statLoaded / files.length);
     }
@@ -175,7 +177,7 @@
         } catch (e) { fin(''); }
     }
     var waits = 0, t = setInterval(function () {
-        if (window.appready) { clearInterval(t); statHide(); set('bs_upd_try', null); setTimeout(check, 20000); }
+        if (window.appready) { clearInterval(t); statHide(); set('bs_upd_try', null); if (remote) set('bs_upd_ran', upd.v); setTimeout(check, 20000); }
         else if (++waits > 90) clearInterval(t);                // 3 минуты не поднялась — try остаётся, в следующий раз — пакет
     }, 2000);
     window.BSUpdate = { local: LOCAL, check: check, _num: num, _base: base, _mirror: mirror, _verify: verify };

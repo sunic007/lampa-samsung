@@ -77,6 +77,25 @@ try {
 
 /* ---------- строка статуса на экране загрузки ---------- */
 
+/* Запуск — одна надпись «Запускаю Lampa» и полоска, которая растёт по этапам (связь → сервер → загрузка → шаги Lampa).
+ * Раньше на старте сменялось с десяток надписей. Что именно ждём — серым и только если этап затянулся (BS_PHASE_SLOW). */
+var BS_PHASE_SLOW = 4, BS_LAMPA_STEPS = ['Подготовка', 'Загрузка языков', 'Поиск зеркал', 'Подготовка расширений', 'Осталось немного', 'Уже скоро'];
+var bsPh = { key: '', at: 0, part: 0, what: '' };
+/** Этап запуска: key — этап, part — доля полоски (только растёт), what — что ждём (покажется, если долго). */
+function bsPhase(key, part, what) {
+    if (key !== bsPh.key) { bsPh.key = key; bsPh.at = Date.now(); }
+    bsPh.part = Math.max(bsPh.part, part || 0);
+    bsPh.what = what || '';
+    bsPhaseDraw();
+}
+function bsPhaseDraw() {
+    if (!bsPh.key) return;
+    var waited = Math.round((Date.now() - bsPh.at) / 1000), detail = '';
+    if (bsPh.what && waited >= 15) detail = 'жду: ' + bsPh.what + ' — уже ' + waited + ' с';
+    else if (bsPh.what && waited >= BS_PHASE_SLOW) detail = bsPh.what + '…';
+    bsStatus('Запускаю Lampa', detail, bsPh.part);
+}
+
 /** Одна карточка загрузки (update.js, BSBoot): title — что делаем, detail — подробности, part — см. BSBoot.set. */
 function bsStatus(text, detail, part) {
     if (window.BSBoot) return BSBoot.set(text, detail, part);
@@ -166,7 +185,7 @@ function createScript(src,error){
 function startAppWithDeepLink(){
     if (bsStarted) return;
     if (!bsSrvReady) {
-        bsStatus('Выбираю сервер', 'для фильмов и сериалов Skaz');
+        bsPhase('srv', 0.15, 'выбираю сервер Skaz для фильмов');
         bsSrvWaiting = startAppWithDeepLink;
         return;
     }
@@ -175,7 +194,7 @@ function startAppWithDeepLink(){
     try { localFirst = window.localStorage.getItem('bs_local_first') !== 'false'; } catch (e) {}
     if (localFirst && bsRemote && bsRemote.hash === BS_BUNDLED_HASH) {
         bsSource = 'local';
-        bsStatus('Запускаю Lampa', 'версия ' + BS_BUNDLED_VERSION + ' из пакета');
+        bsPhase('app', 0.3, 'запускаю Lampa ' + BS_BUNDLED_VERSION + ' из пакета');
         createScript('app.js', function () {
             console.log('Local copy error');
             bsSource = 'server';
@@ -184,7 +203,7 @@ function startAppWithDeepLink(){
         return;
     }
     bsSource = 'server';
-    bsStatus('Загружаю Lampa', (bsRemote && bsRemote.app_version ? 'версия ' + bsRemote.app_version + ' · ' : '') + 'сервер byskaz');
+    bsPhase('app', 0.3, 'загружаю Lampa' + (bsRemote && bsRemote.app_version ? ' ' + bsRemote.app_version : '') + ' с сервера byskaz');
 
     createScript(BS_SERVER + 'app.min.js?v' + Math.random(), function(){
         console.log('Server app.min.js failed — bundled copy');
@@ -206,7 +225,7 @@ function loadFromLocal(){
     // «новую версию», перезапустит, загрузка снова сорвётся — и так по кругу каждые полминуты.
     if (bsRemote && bsRemote.hash) { try { window.localStorage.setItem('bs_failed_hash', bsRemote.hash + '|' + Date.now()); } catch (e) {} }
     bsSource = 'bundled';
-    bsStatus('Запускаю Lampa', 'сервер обновлений недоступен — встроенная версия ' + BS_BUNDLED_VERSION);
+    bsPhase('bundled', 0.3, 'сервер обновлений недоступен — запускаю встроенную версию ' + BS_BUNDLED_VERSION);
 
     createScript('app.js', function(){
         console.log('Load local error');
@@ -275,8 +294,7 @@ function countdown() {
         bsDropOldCopy();
     }
     else {
-        if (timeLeft < 15) bsStatus('Проверяю связь', 'сервер обновлений не отвечает, пробую ещё · ' + timeLeft + ' с');
-        else bsStatus('Проверяю связь', 'сервер обновлений');
+        bsPhase('net', 0.08, timeLeft < 15 ? 'сервер обновлений не отвечает, пробую ещё' : 'проверяю связь с сервером обновлений');
 
         // Проверяем связь маленьким файлом, а не всем app.min.js (2 МБ не успевали за таймаут).
         checking = true;
@@ -824,13 +842,11 @@ var bsStageTimer = setInterval(function () {
     if (window.appready) { clearInterval(bsStageTimer); return; }
     var el = document.querySelector('.lp-status'), st = document.querySelector('.lp-step');
     var raw = el ? el.textContent : '', step = st ? st.textContent : '';
-    if (!raw || !bsStarted) return;
+    if (!raw || !bsStarted) return bsPhaseDraw();                     // до шагов Lampa — обновить «жду … уже N с»
     if (raw !== bsStage) { bsStage = raw; bsStageSince = Date.now(); }
-    var name = BS_STAGES[raw] || raw;
-    var waited = Math.round((Date.now() - bsStageSince) / 1000);
-    // свою надпись Lampa не показывает (bs.css) — её шаг и состояние идут в общую карточку
-    if (waited >= 15) bsStatus('Запускаю Lampa', (step ? step + ' · ' : '') + 'жду: ' + name + ' — уже ' + waited + ' с');
-    else bsStatus('Запускаю Lampa', (step ? step + ' · ' : '') + name);
+    // свою надпись Lampa не показывает (bs.css): её шаги — та же надпись и полоска 40…90 %, название — если затянулось
+    var idx = BS_LAMPA_STEPS.indexOf(step);
+    bsPhase('lampa:' + raw, 0.4 + Math.max(0, idx) * 0.1, (BS_STAGES[raw] || raw).toLowerCase());
 }, 500);
 
 var bsReadyTimer = setInterval(function () {
