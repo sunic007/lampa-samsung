@@ -1219,6 +1219,30 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('skaz: новый вид — продолжаем сериал сами', run({}, rec, show).ep > 0);
     t('skaz: классический вид с «Предлагать продолжение» — его ответ не перебиваем', run({ skaz_ui_mode: 'classic', lampac_continue_play: true }, rec, show).ep === undefined);
 }
+/* ---- bstg.js: записи Shots (свой ключ списка) и разовое «что нового» ---- */
+{
+    const mk = (store, pkg) => {
+        const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: function () {},
+            Uint8Array, unescape, escape, encodeURIComponent, decodeURIComponent,
+            Lampa: { Noty: { show() {} }, Storage: { get: () => [] } },
+            tizen: { application: { getCurrentApplication: () => ({ appInfo: { version: pkg || '1.7.63' } }) } } };
+        ctx.window = ctx;
+        ctx.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+        vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
+        return ctx.M;
+    };
+    let st = { bs_tg_shots: '["11","12"]' };
+    mk(st)._shotsMigrate();
+    t('shots: список переехал в свой ключ, переключатель снова по умолчанию (вкл.)', st.bs_tg_shots_sent === '["11","12"]' && !('bs_tg_shots' in st));
+    st = { bs_tg_shots: 'false', bs_tg_shots_sent: '["1"]' }; mk(st)._shotsMigrate();
+    t('shots: явное «выкл.» не трогаем', st.bs_tg_shots === 'false' && st.bs_tg_shots_sent === '["1"]');
+    st = { bs_tg_token: '123456789:' + 'A'.repeat(35), bs_tg_chat: '5', bs_tg_shots_sent: '["1"]' };
+    try { mk(st)._onShot({ id: 77, status: 'ready', file: 'http://x/v.mp4' }); } catch (e) {}
+    t('shots: готовая запись запоминается в своём ключе, переключатель не затирается', st.bs_tg_shots_sent === '["77","1"]' && !('bs_tg_shots' in st));
+    const T = mk({});
+    t('что нового: метка пакета — по версии его кода', T._newsPkgFlag('1.7.50') === '7' && T._newsPkgFlag('1.7.55') === '8' && T._newsPkgFlag('1.7.62') === '9' && T._newsPkgFlag('1.7.40') === '');
+    t('что нового: уже виденное — по большей из меток', mk({ bs_tg_cmds: '7', bs_tg_news: '9' })._newsSeen() === 9 && mk({ bs_tg_cmds: '9' })._newsSeen() === 9 && mk({ bs_tg_cmds: '7' })._newsSeen() === 7);
+}
 /* ---- bstg.js: failover главного ТВ ---- */
 {
     const store = { bs_tv_id: 'ZZZZZZZZ', bs_tg_chat: '1', bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw' };
@@ -1450,6 +1474,23 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     const own = () => 'own', e2 = { name: 'bs_player', params: { onBack: own } }, e3 = { name: 'interface', params: {} };
     c2.bsSectionBack(e2); c2.bsSectionBack(e3);
     t('настройки: чужой «Назад» и разделы Lampa не трогаем', e2.params.onBack === own && !e3.params.onBack);
+}
+/* ---- loader.js: вышли из Lampa во время загрузки — версия не «плохая» (не больше двух раз подряд) ---- */
+{
+    const L = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
+    const fn = L.slice(L.indexOf('var BS_UPD_FORGIVE'), L.indexOf("document.addEventListener('visibilitychange', function () { if (document.hidden) bsStartInterrupted(); });"));
+    const run = (store, ready) => {
+        const ctx = { parseInt, String, window: { BS_REMOTE_VERSION: '1.7.63', appready: !!ready,
+            localStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } } } };
+        vm.createContext(ctx); vm.runInContext(fn + ';bsStartInterrupted();', ctx);
+        return store;
+    };
+    let st = run({ bs_upd_try: '1.7.63' });
+    t('запуск прерван: метка попытки снята — версию не пометят плохой', !('bs_upd_try' in st) && st.bs_upd_intr === '1');
+    st = run({ bs_upd_try: '1.7.63', bs_upd_intr: '2' });
+    t('запуск прерван третий раз подряд: метку оставляем — зависшая версия уйдёт', st.bs_upd_try === '1.7.63');
+    st = run({ bs_upd_try: '1.7.63' }, true);
+    t('Lampa уже поднялась: ничего не трогаем', st.bs_upd_try === '1.7.63' && !('bs_upd_intr' in st));
 }
 /* ---- loader.js: ошибки плагинов в уведомлениях — коротко и красной точкой ---- */
 {

@@ -23,6 +23,24 @@ var bsRemote = null;      // assembly.json с сервера: {app_version, hash
 var bsSource = '';        // 'server' | 'local' (из пакета, та же сборка что на сервере) | 'bundled' (сервер недоступен)
 var bsStarted = false;
 
+/* Версия функций с GitHub: update.js ставит bs_upd_try и снимает, когда Lampa поднялась; не снятый — следующий запуск
+ * считает версию плохой, и ТВ сутки работает на модулях своего пакета (старых). Ушли из Lampa или выключили ТВ, пока
+ * она грузилась, — это не сбой версии: метку снимаем. Но не больше двух раз подряд (bs_upd_intr), иначе версия, на
+ * которой Lampa висит (человек не дождался и вышел), никогда не уйдёт. */
+var BS_UPD_FORGIVE = 2;
+function bsStartInterrupted() {
+    try {
+        var ls = window.localStorage, v = window.BS_REMOTE_VERSION;
+        if (window.appready || !v || ls.getItem('bs_upd_try') !== v) return;
+        var n = parseInt(ls.getItem('bs_upd_intr'), 10) || 0;
+        if (n >= BS_UPD_FORGIVE) return;
+        ls.setItem('bs_upd_intr', String(n + 1));
+        ls.removeItem('bs_upd_try');
+    } catch (e) {}
+}
+document.addEventListener('visibilitychange', function () { if (document.hidden) bsStartInterrupted(); });
+window.addEventListener('pagehide', bsStartInterrupted);
+
 /* Настройки по умолчанию: постоянное левое меню и плагин «ТВ by Skaz».
  * Ставим один раз, до запуска Lampa; если пользователь потом выключит — не трогаем. */
 try {
@@ -878,6 +896,7 @@ var bsStageTimer = setInterval(function () {
 var bsReadyTimer = setInterval(function () {
     if (!window.appready || !window.Lampa) return;
     clearInterval(bsReadyTimer);
+    try { window.localStorage.removeItem('bs_upd_intr'); } catch (e) {}      // поднялась — счёт прерванных запусков с нуля
     bsHideStatus();
     var err = document.getElementById('bs-error');
     if (err && err.parentNode) err.parentNode.removeChild(err);

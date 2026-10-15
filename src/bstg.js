@@ -137,6 +137,22 @@ var BSTelegram = (function () {
     ];
     var BOT_DESC = 'Помощник Lampa для телевизора: найдёт фильм или сериал и включит на ТВ, сообщит о новых сериях и о выходе фильма в хорошем качестве.\n\n⚠️ Бот работает внутри Lampa на телевизоре — отвечает, только пока Lampa открыта хотя бы на одном ТВ. Бот молчит — включите Lampa на ТВ.';
     var BOT_SHORT = 'Lampa на ТВ: найти фильм, включить на телевизоре, новые серии. Отвечает, пока Lampa открыта на ТВ.';
+    /* Разовое сообщение «что нового» после обновления бота. Раньше — метка bs_tg_cmds с проверкой «равно»: '7' в 1.7.43–51,
+     * '8' в 1.7.52–58, '9' с 1.7.59. ТВ, где версию с GitHub пометили плохой, на сутки уходит на модули своего пакета —
+     * и старый и новый код видели «чужую» метку, слали каждый своё «новое меню» и ставили свою: при каждом таком переходе
+     * сообщение приходило снова. Теперь номер (bs_tg_news) только растёт, а старому коду пакета ставим ту метку,
+     * которую он ждёт, — он молчит. */
+    var BOT_NEWS = 9;
+    function newsSeen() { return Math.max(parseInt(lsGet('bs_tg_news'), 10) || 0, parseInt(lsGet('bs_tg_cmds'), 10) || 0); }
+    /** Метка, которую ждёт bstg.js этой версии пакета ('' — тот код ничего такого не шлёт). */
+    function newsPkgFlag(pkg) { var n = verNum(pkg); return n >= 1007059 ? '9' : n >= 1007052 ? '8' : n >= 1007043 ? '7' : ''; }
+    function newsPkgMark() {
+        var pkg = '';
+        try { pkg = tizen.application.getCurrentApplication().appInfo.version; } catch (e) {}
+        var f = newsPkgFlag(pkg);
+        if (f && lsGet('bs_tg_cmds') !== f) lsSet('bs_tg_cmds', f);
+    }
+
     function setCommands() {
         call('setMyCommands', { commands: JSON.stringify(COMMANDS) }, null, null);
         call('setMyDescription', { description: BOT_DESC }, null, null);
@@ -680,10 +696,11 @@ var BSTelegram = (function () {
     }
     function onShot(e) {
         if (!e || e.status !== 'ready' || !e.file || !on('bs_tg_shots', true) || !token() || !chat()) return;
-        var sent = lsJson('bs_tg_shots', []);
+        var sent = lsJson(SHOTS_SENT, []);
+        if (Object.prototype.toString.call(sent) !== '[object Array]') sent = [];
         if (sent.indexOf(String(e.id)) >= 0) return;
         sent.unshift(String(e.id));
-        lsSet('bs_tg_shots', JSON.stringify(sent.slice(0, 100)));
+        lsSet(SHOTS_SENT, JSON.stringify(sent.slice(0, 100)));
         var info = null;
         try { (Lampa.Storage.get('shots_created', '[]') || []).forEach(function (x) { if (x && x.id == e.id) info = x; }); } catch (x) {}
         info = info || {};
@@ -699,12 +716,23 @@ var BSTelegram = (function () {
         call('sendVideo', p, function () { log('запись в Telegram', e.id); }, asLink, 60000);
     }
 
+    /* Список уже отправленных записей. До 1.7.63 он лежал в bs_tg_shots — в том же ключе, что переключатель «Записи
+     * Shots — в Telegram»: список затирал «вкл» (функция молча выключалась), а «вкл» ломал список (onShot падал).
+     * shotsMigrate: список — в свой ключ, переключатель — снова по умолчанию (вкл.). Явное «выкл.» не трогаем. */
+    var SHOTS_SENT = 'bs_tg_shots_sent';
+    function shotsMigrate() {
+        var v = lsGet('bs_tg_shots');
+        if (v === null || v === 'true' || v === 'false') return;
+        if (lsGet(SHOTS_SENT) === null && v.charAt(0) === '[') lsSet(SHOTS_SENT, v);
+        try { window.localStorage.removeItem('bs_tg_shots'); } catch (e) {}
+    }
+
     /** Готовые записи, которые прошли мимо (Lampa закрыли, пока CUB их обрабатывал), — прислать. Первый раз — только
      *  запомнить уже сделанные, старые в чат не сыплем. */
     function shotsSweep() {
         var created = [];
         try { created = Lampa.Storage.get('shots_created', '[]') || []; } catch (e) {}
-        if (lsGet('bs_tg_shots') === null) return lsSet('bs_tg_shots', JSON.stringify(created.map(function (x) { return String(x && x.id); }).slice(0, 100)));
+        if (lsGet(SHOTS_SENT) === null) return lsSet(SHOTS_SENT, JSON.stringify(created.map(function (x) { return String(x && x.id); }).slice(0, 100)));
         created.forEach(function (x) { if (x && x.status === 'ready' && x.file) onShot({ id: x.id, status: 'ready', file: x.file, screen: x.screen }); });
     }
 
@@ -2726,6 +2754,7 @@ var BSTelegram = (function () {
         try {
             Lampa.Listener.follow('full', cardButton);
             Lampa.Listener.follow('full', onFullWatch);
+            try { shotsMigrate(); } catch (x) {}
             Lampa.Listener.follow('shots_status', function (e) { try { onShot(e); } catch (x) { log('запись', x.message); } });
             setTimeout(function () { try { shotsSweep(); } catch (x) {} }, 30000);
             setInterval(function () { try { shotsSweep(); } catch (x) {} }, 5 * 60000);
@@ -2744,9 +2773,10 @@ var BSTelegram = (function () {
             setCommands();
         }, 25000);
         setTimeout(function () {
-            // '9': новая нижняя клавиатура — старая (с «Профилем» и «Помощью») у людей остаётся, пока бот не пришлёт новую
-            if (!token() || !chat() || lsGet('bs_tg_cmds') === '9') return;
-            lsSet('bs_tg_cmds', '9');
+            // новая нижняя клавиатура — старая (с «Профилем» и «Помощью») у людей остаётся, пока бот не пришлёт новую
+            newsPkgMark();
+            if (!token() || !chat() || newsSeen() >= BOT_NEWS) return;
+            lsSet('bs_tg_news', String(BOT_NEWS));
             if (!leading()) return;
             setCommands();
             var news = '✨ Меню стало компактнее: внизу одна кнопка «📋 Меню», внутри все разделы.\n' +
@@ -2785,5 +2815,5 @@ var BSTelegram = (function () {
         }, 15000);
     }
 
-    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _botDesc: function () { return [BOT_DESC, BOT_SHORT]; }, _onConflict: onConflict, _cubCards: cubCards, _commands: COMMANDS, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle };
+    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _botDesc: function () { return [BOT_DESC, BOT_SHORT]; }, _newsSeen: newsSeen, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: COMMANDS, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle };
 })();
