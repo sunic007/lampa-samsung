@@ -77,9 +77,10 @@ try {
 
 /* ---------- строка статуса на экране загрузки ---------- */
 
-/* Запуск — одна надпись «Запускаю Lampa» и полоска, которая растёт по этапам (связь → сервер → загрузка → шаги Lampa).
- * Раньше на старте сменялось с десяток надписей. Что именно ждём — серым и только если этап затянулся (BS_PHASE_SLOW). */
-var BS_PHASE_SLOW = 4, BS_LAMPA_STEPS = ['Подготовка', 'Загрузка языков', 'Поиск зеркал', 'Подготовка расширений', 'Осталось немного', 'Уже скоро'];
+/* Запуск — одна надпись «Запускаю Lampa» и полоска по этапам (связь → сервер → загрузка Lampa); что именно ждём — серым
+ * и только если этап затянулся (BS_PHASE_SLOW). Свой экран загрузки Lampa не трогаем: как только он появился (.lp-step),
+ * наша карточка уходит — на экране всегда одна надпись, и оригинал Lampa остаётся как есть. */
+var BS_PHASE_SLOW = 4, bsLampaOwn = false;
 var bsPh = { key: '', at: 0, part: 0, what: '' };
 /** Этап запуска: key — этап, part — доля полоски (только растёт), what — что ждём (покажется, если долго). */
 function bsPhase(key, part, what) {
@@ -871,12 +872,13 @@ var bsStageTimer = setInterval(function () {
     bsNotyPolish();
     if (window.appready) { clearInterval(bsStageTimer); return; }
     var el = document.querySelector('.lp-status'), st = document.querySelector('.lp-step');
-    var raw = el ? el.textContent : '', step = st ? st.textContent : '';
-    if (!raw || !bsStarted) return bsPhaseDraw();                     // до шагов Lampa — обновить «жду … уже N с»
-    if (raw !== bsStage) { bsStage = raw; bsStageSince = Date.now(); }
-    // свою надпись Lampa не показывает (bs.css): её шаги — та же надпись и полоска 40…90 %, название — если затянулось
-    var idx = BS_LAMPA_STEPS.indexOf(step);
-    bsPhase('lampa:' + raw, 0.4 + Math.max(0, idx) * 0.1, (BS_STAGES[raw] || raw).toLowerCase());
+    var raw = el ? el.textContent : '';
+    if (raw && raw !== bsStage) { bsStage = raw; bsStageSince = Date.now(); }    // этап — для сообщения «не запустилась»
+    if (st || bsLampaOwn) {                                         // Lampa показала свой экран загрузки — дальше только он
+        if (!bsLampaOwn) { bsLampaOwn = true; bsHideStatus(); }
+        return;
+    }
+    bsPhaseDraw();                                                  // наши этапы — обновить «жду … уже N с»
 }, 500);
 
 var bsReadyTimer = setInterval(function () {

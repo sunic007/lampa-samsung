@@ -153,9 +153,8 @@ body.bs-kb-hidden .search__keypad { display: none; }
 .bs-search-tg--off { padding: 0.6em 1em; }
 .bs-search-tg--off .bs-search-tg__qr { display: none; }
 
-/* Экран загрузки: одна карточка внизу (update.js BSBoot) вместо трёх надписей. Своя надпись Lampa скрыта — её шаги
- * показывает карточка. Без gap и :has — старые ТВ (Tizen 2.x/3) их не знают. */
-.lp-step, .lp-status { display: none !important; }
+/* Экран загрузки: наша карточка внизу (update.js BSBoot) — только до своего экрана загрузки Lampa, его не трогаем
+ * (loader.js убирает карточку, когда появился .lp-step). Без gap и :has — старые ТВ (Tizen 2.x/3) их не знают. */
 .bs-boot { position: fixed; left: 50%; bottom: 8%; z-index: 1000; min-width: 26em; max-width: 64%; padding: 1em 1.8em 1.15em;
     -webkit-transform: translateX(-50%); transform: translateX(-50%); border-radius: 1.1em; background: rgba(12, 14, 22, 0.62);
     box-shadow: 0 0.5em 2.2em rgba(0, 0, 0, 0.4); color: #fff; font-family: sans-serif; text-align: center;
