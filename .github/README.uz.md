@@ -28,7 +28,7 @@
 
 <p align="center">
   <picture><img src="../docs/screenshots/uz/01.png" width="24.4%" alt=""></picture>
-  <picture><img src="../docs/screenshots/uz/02.gif" width="24.4%" alt=""></picture>
+  <a href="../docs/screenshots/uz/02.gif"><img src="../docs/screenshots/uz/02.gif" width="24.4%" alt="Telegram bot"></a>
   <picture><img src="../docs/screenshots/uz/03.png" width="24.4%" alt=""></picture>
   <picture><img src="../docs/screenshots/uz/04.png" width="24.4%" alt=""></picture>
 </p>
