@@ -175,3 +175,13 @@ body.bs-kb-hidden .search__keypad { display: none; }
 @keyframes bs-spin { to { transform: rotate(360deg); } }
 @-webkit-keyframes bs-wait { 0% { -webkit-transform: translateX(-110%); } 100% { -webkit-transform: translateX(320%); } }
 @keyframes bs-wait { 0% { transform: translateX(-110%); } 100% { transform: translateX(320%); } }
+
+/* Ошибка скрипта до запуска (loader.js bsError) — карточка над карточкой загрузки, а не красный текст поверх картинки */
+.bs-boot-err { position: fixed; left: 50%; bottom: 22%; z-index: 1001; min-width: 26em; max-width: 70%; padding: 0.85em 1.6em 0.95em;
+    -webkit-transform: translateX(-50%); transform: translateX(-50%); border-radius: 1.1em; background: rgba(12, 14, 22, 0.82);
+    box-shadow: 0 0.5em 2.2em rgba(0, 0, 0, 0.4); color: #fff; font-family: sans-serif; text-align: center; }
+.bs-boot-err__title { font-size: 1.15em; font-weight: 600; color: #ff9a8f; }
+.bs-boot-err__title:before { content: ''; display: inline-block; vertical-align: 0.1em; width: 0.55em; height: 0.55em; margin-right: 0.6em;
+    border-radius: 50%; background: #ff7b6e; }
+.bs-boot-err__text { margin-top: 0.4em; font-family: monospace; font-size: 0.85em; color: rgba(255, 255, 255, 0.62);
+    white-space: pre-wrap; word-break: break-all; }

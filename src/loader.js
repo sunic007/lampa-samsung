@@ -113,6 +113,8 @@ function bsStatus(text, detail, part) {
 /* Ошибки до готовности Lampa — выводим на экран, чтобы было видно, почему запуск встал. */
 var bsErrors = [];
 
+/* Ошибка скрипта до запуска — тёмная карточка над карточкой загрузки (стиль .bs-boot-err в bs.css), как и всё остальное,
+ * а не красные строки поверх картинки. Видно, какой файл и строка: экран можно сфотографировать для поддержки. */
 function bsError(text) {
     if (window.appready || bsErrors.indexOf(text) >= 0) return;
     bsErrors.push(text);
@@ -120,11 +122,40 @@ function bsError(text) {
     if (!el) {
         el = document.createElement('div');
         el.id = 'bs-error';
-        el.style.cssText = 'position:fixed;left:0;right:0;bottom:3%;z-index:1000;text-align:center;' +
-            'font-family:monospace;font-size:1.05em;color:#ff8a80;padding:0 5%;white-space:pre-wrap;word-break:break-all';
+        el.className = 'bs-boot-err';
+        el.innerHTML = '<div class="bs-boot-err__title">Ошибка плагина</div><div class="bs-boot-err__text"></div>';
         document.body.appendChild(el);
     }
-    el.textContent = 'Ошибка: ' + bsErrors.slice(-3).join('\n');
+    el.lastChild.textContent = bsErrors.slice(-3).join('\n');
+}
+
+/* Уведомления, которые показывает сама Lampa и плагины: ошибку — красной точкой, даже если стиль не указан, а длинное
+ * «При загрузке приложения, часть плагинов не удалось загрузить (полные адреса)» — коротко, по именам файлов. */
+var BS_NOTY_ERROR = /(ошибк|не удалось|не загрузил|недоступ|не отвечает|не работает|нет связи|error|failed)/i;
+var BS_PLUGINS_FAIL = /^(При загрузке приложения, часть плагинов не удалось загрузить|When loading the application, some plugins could not be loaded) \((.*)\)$/;
+function bsPluginName(u) {
+    var m = /^[a-z]+:\/\/([^\/?#]+)(?:\/([^?#]*))?/i.exec(String(u).replace(/^\s+|\s+$/g, ''));
+    if (!m) return String(u).slice(0, 30);
+    var file = (m[2] || '').split('/').pop().replace(/\.js$/i, '');
+    return file || m[1];
+}
+function bsNotyText(text, params) {
+    params = params || {};
+    var t = String(text === undefined || text === null ? '' : text), m = BS_PLUGINS_FAIL.exec(t);
+    if (m) {
+        t = 'Не загрузились плагины: ' + m[2].split(/,\s*/).map(bsPluginName).join(', ');
+        params.style = 'error';
+    } else if (!params.style && BS_NOTY_ERROR.test(t.replace(/<[^>]*>/g, ''))) params.style = 'error';
+    return { text: t, params: params };
+}
+function bsNotyPolish() {
+    try {
+        var N = window.Lampa && Lampa.Noty;
+        if (!N || !N.show || N.show.__bs) return;
+        var show = N.show;
+        N.show = function (text, params) { var r = bsNotyText(text, params); return show.call(this, r.text, r.params); };
+        N.show.__bs = true;
+    } catch (e) {}
 }
 
 window.addEventListener('error', function (e) {
@@ -837,6 +868,7 @@ var BS_STAGES = {
 var bsStage = '', bsStageSince = 0;
 
 var bsStageTimer = setInterval(function () {
+    bsNotyPolish();
     if (window.appready) { clearInterval(bsStageTimer); return; }
     var el = document.querySelector('.lp-status'), st = document.querySelector('.lp-step');
     var raw = el ? el.textContent : '', step = st ? st.textContent : '';

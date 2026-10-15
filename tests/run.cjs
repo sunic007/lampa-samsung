@@ -1403,5 +1403,18 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     now = 5000; ctx.draw(); t('запуск: этап затянулся (4 с+) — видно, что ждём', shown[shown.length - 1].d === 'шаг…');
     now = 16000; ctx.draw(); t('запуск: совсем долго — «жду … уже N с»', /^жду: шаг — уже 16 с$/.test(shown[shown.length - 1].d));
 }
+/* ---- loader.js: ошибки плагинов в уведомлениях — коротко и красной точкой ---- */
+{
+    const src = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
+    const fn = src.slice(src.indexOf('var BS_NOTY_ERROR'), src.indexOf('function bsNotyPolish('));
+    const ctx = { String, RegExp };
+    vm.createContext(ctx); vm.runInContext(fn + ';this.txt = bsNotyText; this.name = bsPluginName;', ctx);
+    const r = ctx.txt('При загрузке приложения, часть плагинов не удалось загрузить (http://lampa.byskaz.ru/plugins/kp.js?v=2, https://cub.best/plugin/tsarea)');
+    t('ошибки плагинов: длинный список адресов — коротко по именам файлов', r.text === 'Не загрузились плагины: kp, tsarea' && r.params.style === 'error');
+    t('ошибки плагинов: адрес без файла — по домену', ctx.name('http://z01.online/') === 'z01.online');
+    t('ошибки: текст про сбой — красной точкой, даже без стиля', ctx.txt('Не удалось сменить качество').params.style === 'error' && ctx.txt('Сервер обновлений недоступен').params.style === 'error');
+    t('ошибки: обычное уведомление остаётся обычным', !ctx.txt('Переключаю качество на 720p').params.style && !ctx.txt('Lampa 3.3.6 запущена').params.style);
+    t('ошибки: стиль, заданный плагином, не трогаем', ctx.txt('Ошибка сети', { style: 'glass' }).params.style === 'glass');
+}
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
