@@ -181,38 +181,38 @@ var BSTelegram = (function () {
     function kb() { return { keyboard: [[{ text: L('📋 Меню', '📋 Menu', '📋 Menyu') }]], resize_keyboard: true, is_persistent: true }; }
     function help() {
         return L('Я — ваш помощник Lampa 🎬\n\n' +
-            '🔎 Напишите название фильма или сериала — найду: «▶️ Смотреть» (сразу включит на ТВ), «Хочу посмотреть», подписаться. Можно и описать словами — поможет ИИ.\n' +
-            'Можно с годом и студией: «Доктор Стрендж 2026», «2026», «фильмы Марвел 2026», «сериалы Netflix».\n' +
-            '🖼 Пришлите скриншот, кадр или постер — узнаю фильм (Gemini).\n' +
-            '⌨️ «Набрать на ТВ» — пишете текст здесь, а он появляется в поиске Lampa на телевизоре.\n' +
-            '➕ Ещё один ТВ: в его Lampa — Настройки → Sunic Apps → Telegram-бот → «Подключить через бота», код с экрана пришлите сюда.\n' +
-            '🔔 Пришлю новую серию, когда выйдет, и напомню утром в день выхода.\n' +
-            '🗓 По понедельникам — что выходит на неделе.\n' +
+            '🔎 Напишите название фильма или сериала — найду и покажу кнопки: «▶️ Смотреть» (сразу включится на ТВ), «⭐ Хочу посмотреть», «🔔 Подписаться». Не помните название — опишите сюжет, поможет ИИ.\n' +
+            'Можно добавить год или студию: «Доктор Стрендж 2026», «2026», «фильмы Марвел 2026», «сериалы Netflix».\n' +
+            '🖼 Пришлите скриншот, кадр или постер — узнаю фильм.\n' +
+            '⌨️ «Набрать на ТВ» — пишете текст здесь, и он появляется в поиске Lampa на телевизоре.\n' +
+            '➕ Ещё один ТВ: в его Lampa откройте Настройки → Sunic Apps → Telegram-бот → «Подключить через бота» и пришлите сюда код с экрана.\n' +
+            '🔔 Сообщу, когда выйдет новая серия, а утром в день выхода — напомню.\n' +
+            '🗓 По понедельникам — что выходит на этой неделе.\n' +
             '🎬 Записали момент кнопкой «Записать» в плеере — видео придёт сюда.\n' +
-            '👥 Семья: каждый подключает свой Telegram через QR в поиске Lampa — у каждого свои «Хочу посмотреть» и подписки. «Люди» — кто подключён.\n\n' +
-            '📋 «Меню» внизу — все разделы кнопками. Работаю, пока Lampa на ТВ запущена.',
+            '👥 Для всей семьи: каждый подключает свой Telegram через QR-код в поиске Lampa — у каждого свои «Хочу посмотреть» и подписки. Кто подключён — в «⚙️ Настройки» → «👥 Люди».\n\n' +
+            '📋 Кнопка «Меню» внизу — все разделы. Работаю, пока Lampa запущена на ТВ.',
             "I'm your Lampa assistant 🎬\n\n" +
-            "🔎 Type the name of a movie or series and I'll find it: “▶️ Watch” (plays on the TV right away), “Want to watch”, subscribe. You can also describe it in words — AI will help.\n" +
-            'You can add a year and a studio: “Doctor Strange 2026”, “2026”, “Marvel movies 2026”, “Netflix series”.\n' +
-            "🖼 Send a screenshot, a frame or a poster — I'll recognize the movie (Gemini).\n" +
-            '⌨️ “Type on TV” — you type text here and it appears in Lampa search on the TV.\n' +
-            '➕ Another TV: in its Lampa — Settings → Sunic Apps → Telegram-бот → “Подключить через бота” (Connect via bot), send the code from the screen here.\n' +
-            "🔔 I'll send each new episode when it's out and remind you in the morning on release day.\n" +
+            "🔎 Type the name of a movie or series — I'll find it and show buttons: “▶️ Watch” (starts on the TV right away), “⭐ Want to watch”, “🔔 Subscribe”. Don't remember the name? Describe the plot — AI will help.\n" +
+            'You can add a year or a studio: “Doctor Strange 2026”, “2026”, “Marvel movies 2026”, “Netflix series”.\n' +
+            "🖼 Send a screenshot, a frame or a poster — I'll recognize the movie.\n" +
+            '⌨️ “Type on TV” — type text here and it appears in Lampa search on the TV.\n' +
+            '➕ Another TV: in its Lampa open Settings → Sunic Apps → Telegram-бот → “Подключить через бота” (Connect via bot) and send the code from the screen here.\n' +
+            "🔔 I'll let you know when a new episode is out and remind you on the morning of release day.\n" +
             "🗓 On Mondays — what's coming out this week.\n" +
-            '🎬 Recorded a moment with the “Записать” (Record) button in the player — the video will come here.\n' +
-            '👥 Family: everyone connects their own Telegram via the QR code in Lampa search — each has their own “Want to watch” and subscriptions. “People” — who is connected.\n\n' +
-            '📋 “Menu” below — all sections as buttons. I work while Lampa is running on the TV.',
+            '🎬 Record a moment with the “Записать” (Record) button in the player — the video will arrive here.\n' +
+            '👥 For the whole family: everyone connects their own Telegram via the QR code in Lampa search — each gets their own “Want to watch” and subscriptions. Who is connected — “⚙️ Settings” → “👥 People”.\n\n' +
+            '📋 The “Menu” button below opens all sections. I work while Lampa is running on the TV.',
             "Men — Lampa yordamchingizman 🎬\n\n" +
-            "🔎 Film yoki serial nomini yozing — topaman: «▶️ Ko'rish» (darhol televizorda yoqiladi), «Ko'rmoqchiman», obuna bo'lish. So'z bilan tasvirlasangiz ham bo'ladi — sun'iy intellekt yordam beradi.\n" +
-            "Yil va studiya bilan ham bo'ladi: «Doktor Strendj 2026», «2026», «Marvel filmlari 2026», «Netflix seriallari».\n" +
-            "🖼 Skrinshot, kadr yoki poster yuboring — filmni aniqlayman (Gemini).\n" +
+            "🔎 Film yoki serial nomini yozing — topib, tugmalarni ko'rsataman: «▶️ Ko'rish» (darhol televizorda yoqiladi), «⭐ Ko'rmoqchiman», «🔔 Obuna bo'lish». Nomini eslay olmasangiz — syujetini yozing, sun'iy intellekt yordam beradi.\n" +
+            "Yil yoki studiyani ham qo'shishingiz mumkin: «Doktor Strendj 2026», «2026», «Marvel filmlari 2026», «Netflix seriallari».\n" +
+            "🖼 Skrinshot, kadr yoki poster yuboring — filmni aniqlayman.\n" +
             "⌨️ «TV'da yozish» — matnni shu yerda yozasiz, u televizordagi Lampa qidiruvida paydo bo'ladi.\n" +
-            "➕ Yana bir televizor: uning Lampa'sida — Настройки → Sunic Apps → Telegram-бот → «Подключить через бота», ekrandagi kodni shu yerga yuboring.\n" +
-            "🔔 Yangi qism chiqqanda yuboraman va chiqish kuni ertalab eslataman.\n" +
-            "🗓 Dushanba kunlari — shu hafta nima chiqishini yozaman.\n" +
-            "🎬 Pleerdagi «Записать» tugmasi bilan lavhani yozib oldingiz — video shu yerga keladi.\n" +
-            "👥 Oila: har kim o'z Telegramini Lampa qidiruvidagi QR orqali ulaydi — har kimning o'z «Ko'rmoqchiman» ro'yxati va obunalari bor. «Odamlar» — kim ulangan.\n\n" +
-            "📋 Pastdagi «Menyu» — barcha bo'limlar tugmalarda. Lampa televizorda ishlab turganda ishlayman.");
+            "➕ Yana bir televizor: uning Lampa'sida Настройки → Sunic Apps → Telegram-бот → «Подключить через бота» ga kiring va ekrandagi kodni shu yerga yuboring.\n" +
+            "🔔 Yangi qism chiqqanda xabar beraman, chiqish kuni ertalab esa eslataman.\n" +
+            "🗓 Har dushanba — shu hafta nimalar chiqishini yozaman.\n" +
+            "🎬 Pleerdagi «Записать» tugmasi bilan yozib olingan lavha shu yerga keladi.\n" +
+            "👥 Butun oila uchun: har kim o'z Telegramini Lampa qidiruvidagi QR-kod orqali ulaydi — har kimning o'z «Ko'rmoqchiman» ro'yxati va obunalari bo'ladi. Kim ulangani — «⚙️ Sozlamalar» → «👥 Odamlar».\n\n" +
+            "📋 Pastdagi «Menyu» tugmasi — barcha bo'limlar. Lampa televizorda ishlab turganda ishlayman.");
     }
     function helpText() {
         var h = help();
@@ -243,14 +243,14 @@ var BSTelegram = (function () {
         ];
     }
     function botDesc(l) {
-        return T3(l, 'Помощник Lampa для телевизора: найдёт фильм или сериал и включит на ТВ, сообщит о новых сериях и о выходе фильма в хорошем качестве.\n\n⚠️ Бот работает внутри Lampa на телевизоре — отвечает, только пока Lampa открыта хотя бы на одном ТВ. Бот молчит — включите Lampa на ТВ.',
-            "Lampa assistant for your TV: finds a movie or series and plays it on the TV, tells you about new episodes and when a movie comes out in good quality.\n\n⚠️ The bot runs inside Lampa on the TV — it answers only while Lampa is open on at least one TV. No answer? Turn Lampa on on the TV.",
-            "Televizor uchun Lampa yordamchisi: film yoki serialni topib, televizorda yoqadi, yangi qismlar va film yaxshi sifatda chiqqani haqida xabar beradi.\n\n⚠️ Bot televizordagi Lampa ichida ishlaydi — Lampa kamida bitta televizorda ochiq bo'lgandagina javob beradi. Bot jim bo'lsa — televizorda Lampa'ni yoqing.");
+        return T3(l, 'Помощник Lampa для телевизора: найдёт фильм или сериал и включит его на ТВ, сообщит о новых сериях и о том, что фильм вышел в хорошем качестве.\n\n⚠️ Бот работает внутри Lampa на телевизоре — отвечает, только пока Lampa открыта хотя бы на одном ТВ. Бот молчит? Включите Lampa на ТВ.',
+            "Lampa assistant for your TV: finds a movie or series and plays it on the TV, tells you about new episodes and when a movie is out in good quality.\n\n⚠️ The bot runs inside Lampa on the TV — it answers only while Lampa is open on at least one TV. Bot not answering? Open Lampa on the TV.",
+            "Televizor uchun Lampa yordamchisi: film yoki serialni topib, televizorda yoqadi, yangi qismlar va film yaxshi sifatda chiqqani haqida xabar beradi.\n\n⚠️ Bot televizordagi Lampa ichida ishlaydi — Lampa kamida bitta televizorda ochiq bo'lgandagina javob beradi. Bot javob bermayaptimi? Televizorda Lampa'ni oching.");
     }
     function botShort(l) {
-        return T3(l, 'Lampa на ТВ: найти фильм, включить на телевизоре, новые серии. Отвечает, пока Lampa открыта на ТВ.',
-            'Lampa on TV: find a movie, play it on the TV, new episodes. Answers while Lampa is open on the TV.',
-            "Lampa TV'da: film topish, televizorda yoqish, yangi qismlar. Lampa TV'da ochiq ekan, javob beradi.");
+        return T3(l, 'Lampa на ТВ: найдёт фильм, включит его на телевизоре, сообщит о новых сериях. Работает, пока Lampa открыта.',
+            'Lampa on your TV: finds movies, plays them on the TV, tells you about new episodes. Works while Lampa is open.',
+            "Lampa TV'da: film topadi, televizorda yoqadi, yangi qismlar haqida xabar beradi. Lampa ochiq ekan, ishlaydi.");
     }
     /* Разовое сообщение «что нового» после обновления бота. Раньше — метка bs_tg_cmds с проверкой «равно»: '7' в 1.7.43–51,
      * '8' в 1.7.52–58, '9' с 1.7.59. ТВ, где версию с GitHub пометили плохой, на сутки уходит на модули своего пакета —
@@ -303,7 +303,7 @@ var BSTelegram = (function () {
     function sendMenu() {
         var tvs = tvNames(), c = to();
         if (lastMenu[c]) { delNow(c, lastMenu[c]); lastMenu[c] = 0; }      // одно меню в чате — старое убираем
-        tmp(TMP_LONG, function () { send(L('📺 На связи: ', '📺 Online: ', '📺 Aloqada: ') + tvs.join(', ') + (anyAi() ? L(' · 🧠 ИИ-поиск включён', ' · 🧠 AI search is on', " · 🧠 Sun'iy intellekt qidiruvi yoqilgan") : '') +
+        tmp(TMP_LONG, function () { send(L('📺 На связи: ', '📺 Online: ', '📺 Aloqada: ') + tvs.join(', ') + (anyAi() ? L(' · 🧠 ИИ-поиск включён', ' · 🧠 AI search is on', " · 🧠 AI qidiruv yoqilgan") : '') +
             L('\n\nВыберите раздел:', '\n\nChoose a section:', "\n\nBo'limni tanlang:"), null, function (m) { if (m && m.message_id) lastMenu[c] = m.message_id; }, null, menuRows()); });
     }
     function profileText() {
@@ -311,15 +311,15 @@ var BSTelegram = (function () {
         if (cubAiReady()) ai.unshift(L('AI-ассистент Lampa (CUB)', 'Lampa AI assistant (CUB)', 'Lampa AI yordamchisi (CUB)'));
         var subsN = (isOwner() ? subs() : ((g || {}).subs || [])).length;
         var lines = [
-            '👤 ' + (isOwner() ? L('Владелец бота', 'Bot owner', 'Bot egasi') : L('Вы подключены' + (me.name ? ' как ' + me.name : '') + ' — свои списки и подписки',
-                'You are connected' + (me.name ? ' as ' + me.name : '') + ' — your own lists and subscriptions',
-                'Siz ulangansiz' + (me.name ? ' (' + me.name + ')' : '') + " — o'z ro'yxatlaringiz va obunalaringiz")),
+            '👤 ' + (isOwner() ? L('Владелец бота', 'Bot owner', 'Bot egasi') : L('Вы подключены' + (me.name ? ' как ' + me.name : '') + ' — у вас свои списки и подписки',
+                "You're connected" + (me.name ? ' as ' + me.name : '') + ' — you have your own lists and subscriptions',
+                'Siz ulangansiz' + (me.name ? ' (' + me.name + ')' : '') + " — ro'yxat va obunalaringiz o'zingizniki")),
             L('📺 Телевизоры на связи: ', '📺 TVs online: ', '📺 Aloqadagi televizorlar: ') + tvNames().join(', '),
             L('🔔 Подписок: ', '🔔 Subscriptions: ', '🔔 Obunalar: ') + subsN,
             L('📀 Жду хорошего качества: ', '📀 Waiting for good quality: ', '📀 Yaxshi sifat kutilmoqda: ') + (isOwner() ? qwOwner() : ((g || {}).qwait || [])).length,
-            L('🧠 ИИ-поиск: ', '🧠 AI search: ', "🧠 Sun'iy intellekt qidiruvi: ") + (ai.length ? ai.join(', ') : L('нет ключа — пришлите ключ Groq, Gemini или OpenRouter (подробнее — «🖼 По картинке»)',
-                'no key — send a Groq, Gemini or OpenRouter key (details — “🖼 By picture”)',
-                "kalit yo'q — Groq, Gemini yoki OpenRouter kalitini yuboring (batafsil — «🖼 Rasm bo'yicha»)"))
+            L('🧠 ИИ-поиск: ', '🧠 AI search: ', "🧠 AI qidiruv: ") + (ai.length ? ai.join(', ') : L('нет ключа — пришлите ключ Groq, Gemini или OpenRouter (как получить — «⚙️ Настройки» → «🧠 ИИ-поиск»)',
+                'no key — send a Groq, Gemini or OpenRouter key (how to get one — “⚙️ Settings” → “🧠 AI search”)',
+                "kalit yo'q — Groq, Gemini yoki OpenRouter kalitini yuboring (qanday olish — «⚙️ Sozlamalar» → «🧠 AI qidiruv»)"))
         ];
         if (isOwner()) {
             var guests = Object.keys(people).filter(function (k) { return active(people[k]); }).length;
@@ -331,14 +331,14 @@ var BSTelegram = (function () {
         var tvs = allTvs();
         var rows = isOwner() ? [[{ text: L('✏️ Переименовать ТВ', '✏️ Rename TV', "✏️ TV nomini o'zgartirish"), callback_data: 'rn' }]] : null;
         reply(L('📺 Телевизоры на связи (', '📺 TVs online (', '📺 Aloqadagi televizorlar (') + tvs.length + '):\n' + tvs.map(function (d) { return '• ' + d.text.replace(/^📺 /, ''); }).join('\n') +
-            L('\n\nЕщё один ТВ: в его Lampa — Настройки → Sunic Apps → Telegram-бот → «Подключить через бота», код с экрана пришлите сюда.',
-                '\n\nAnother TV: in its Lampa — Settings → Sunic Apps → Telegram-бот → “Подключить через бота” (Connect via bot), send the code from the screen here.',
-                "\n\nYana bir televizor: uning Lampa'sida — Настройки → Sunic Apps → Telegram-бот → «Подключить через бота», ekrandagi kodni shu yerga yuboring."), rows);
+            L('\n\nЕщё один ТВ: в его Lampa откройте Настройки → Sunic Apps → Telegram-бот → «Подключить через бота» и пришлите сюда код с экрана.',
+                '\n\nAnother TV: in its Lampa open Settings → Sunic Apps → Telegram-бот → “Подключить через бота” (Connect via bot) and send the code from the screen here.',
+                "\n\nYana bir televizor: uning Lampa'sida Настройки → Sunic Apps → Telegram-бот → «Подключить через бота» ga kiring va ekrandagi kodni shu yerga yuboring."), rows);
     }
     function supportText() {
-        return L('❤️ Lampa для Samsung и TV Installer — бесплатные.\nПоддержать развитие: https://github.com/sponsors/sunic007',
-            '❤️ Lampa for Samsung and TV Installer are free.\nSupport development: https://github.com/sponsors/sunic007',
-            "❤️ Samsung uchun Lampa va TV Installer — bepul.\nRivojlanishni qo'llab-quvvatlash: https://github.com/sponsors/sunic007");
+        return L('❤️ Lampa для Samsung и TV Installer бесплатны.\nПоддержать проект: https://github.com/sponsors/sunic007',
+            '❤️ Lampa for Samsung and TV Installer are free.\nSupport the project: https://github.com/sponsors/sunic007',
+            "❤️ Samsung uchun Lampa va TV Installer bepul.\nLoyihani qo'llab-quvvatlash: https://github.com/sponsors/sunic007");
     }
     /* ---------- «⚙️ Настройки» в боте: язык, ИИ-поиск (ключи), телевизоры, люди ----------
      * Экраны — одно сообщение: кнопки меняют его на месте (editMessageText), чат не растёт. */
@@ -356,12 +356,12 @@ var BSTelegram = (function () {
         tmp(TMP_LONG, function () { send(text, null, null, null, rows); });
     }
     function settingsText() {
-        return L('⚙️ Настройки\n\n🌐 Язык: русский\n🧠 ИИ-поиск: ', '⚙️ Settings\n\n🌐 Language: English\n🧠 AI search: ', "⚙️ Sozlamalar\n\n🌐 Til: o'zbekcha\n🧠 Sun'iy intellekt qidiruvi: ") +
+        return L('⚙️ Настройки\n\n🌐 Язык: русский\n🧠 ИИ-поиск: ', '⚙️ Settings\n\n🌐 Language: English\n🧠 AI search: ', "⚙️ Sozlamalar\n\n🌐 Til: o'zbekcha\n🧠 AI qidiruv: ") +
             (aiReady() ? aiProviders().map(function (x) { return AI_INFO[x.p].name; }).join(', ') : L('нет ключа', 'no key', "kalit yo'q"));
     }
     function settingsRows() {
         var rows = [[{ text: L('👤 Профиль', '👤 Profile', '👤 Profil'), callback_data: 'st:prof' }, { text: '🌐 Язык / Language / Til', callback_data: 'mn:lang' }],
-            [{ text: L('🧠 ИИ-поиск — ключи API', '🧠 AI search — API keys', "🧠 Sun'iy intellekt — API kalitlari"), callback_data: 'st:ai' }]];
+            [{ text: L('🧠 ИИ-поиск — ключи API', '🧠 AI search — API keys', "🧠 AI qidiruv — API kalitlari"), callback_data: 'st:ai' }]];
         if (isOwner()) rows.push([{ text: L('📺 Телевизоры', '📺 TVs', '📺 Televizorlar'), callback_data: 'mn:tvs' }, { text: L('👥 Люди', '👥 People', '👥 Odamlar'), callback_data: 'st:people' }]);
         rows.push([{ text: L('📋 Меню', '📋 Menu', '📋 Menyu'), callback_data: 'mn:menu' }]);
         return rows;
@@ -370,15 +370,15 @@ var BSTelegram = (function () {
     /** Ключ в списке — только последние знаки: чат могут видеть другие. */
     function keyMask(k) { return k ? '…' + String(k).slice(-4) : ''; }
     function aiText() {
-        var lines = [L('🧠 ИИ-поиск — поиск по описанию («фильм, где…») и по скриншоту. Нужен бесплатный ключ API любого сервиса; можно несколько — бот спросит по очереди.',
-            '🧠 AI search — search by description (“the movie where…”) and by screenshot. You need a free API key from any service; you can add several — the bot will ask them in turn.',
-            "🧠 Sun'iy intellekt qidiruvi — tavsif («…bo'lgan film») va skrinshot bo'yicha qidiruv. Istalgan xizmatning bepul API kaliti kerak; bir nechta bo'lishi mumkin — bot navbat bilan so'raydi."), ''];
+        var lines = [L('🧠 ИИ-поиск — поиск по описанию («фильм, где…») и по скриншоту. Нужен бесплатный ключ API любого сервиса. Можно добавить несколько — бот будет обращаться к ним по очереди.',
+            '🧠 AI search — search by description (“the movie where…”) and by screenshot. You need a free API key from any service. You can add several — the bot will use them in turn.',
+            "🧠 AI qidiruv — tavsif («…bo'lgan film») va skrinshot bo'yicha qidirish. Istalgan xizmatning bepul API kaliti kerak. Bir nechtasini qo'shsa ham bo'ladi — bot ulardan navbat bilan foydalanadi."), ''];
         ['groq', 'gemini', 'openrouter'].forEach(function (p) {
             var k = aiKey(p), own = p === 'gemini' ? ownKey() : (isOwner() ? lsGet('bs_ai_' + p) : lsJson('bs_ai_' + p + '_u', {})[to()]);
-            lines.push(AI_INFO[p].icon + ' ' + AI_INFO[p].name + ': ' + (own ? '✅ ' + keyMask(k) : k ? L('✅ ключ владельца', "✅ owner's key", '✅ egasining kaliti') : L('— нет', '— none', "— yo'q")));
+            lines.push(AI_INFO[p].icon + ' ' + AI_INFO[p].name + ': ' + (own ? '✅ ' + keyMask(k) : k ? L('✅ ключ владельца', "✅ owner's key", '✅ bot egasining kaliti') : L('— нет', '— none', "— yo'q")));
         });
-        if (cubAiReady()) lines.push(L('🤖 AI-ассистент Lampa (CUB) — включён по подписке', '🤖 Lampa AI assistant (CUB) — on with the subscription', '🤖 Lampa AI yordamchisi (CUB) — obuna bilan yoqilgan'));
-        lines.push('', L('Нет подписки CUB — бесплатного ключа хватит. Выберите сервис:', 'No CUB subscription? A free key is enough. Choose a service:', "CUB obunasi yo'qmi? Bepul kalit yetarli. Xizmatni tanlang:"));
+        if (cubAiReady()) lines.push(L('🤖 AI-ассистент Lampa (CUB) — включён по подписке', '🤖 Lampa AI assistant (CUB) — on via subscription', '🤖 Lampa AI yordamchisi (CUB) — obuna orqali yoqilgan'));
+        lines.push('', L('Нет подписки CUB? Хватит бесплатного ключа. Выберите сервис:', 'No CUB subscription? A free key is enough. Choose a service:', "CUB obunasi yo'qmi? Bepul kalit yetarli. Xizmatni tanlang:"));
         return lines.join('\n');
     }
     function aiRows() {
@@ -392,15 +392,15 @@ var BSTelegram = (function () {
     function aiKeyText(p) {
         var i = AI_INFO[p], has = p === 'gemini' ? ownKey() : (isOwner() ? lsGet('bs_ai_' + p) : lsJson('bs_ai_' + p + '_u', {})[to()]);
         return i.icon + ' ' + i.name + '\n\n' + L('1. Откройте сайт кнопкой ниже и войдите (бесплатно).\n2. Создайте ключ API — он начинается с ' + i.starts + '.\n3. Скопируйте ключ и пришлите сюда обычным сообщением.\n\nКлюч сохранится на ТВ, а сообщение с ним я сразу удалю.',
-            '1. Open the site with the button below and sign in (free).\n2. Create an API key — it starts with ' + i.starts + '.\n3. Copy the key and send it here as a normal message.\n\nThe key is saved on the TV and I delete the message with it right away.',
-            "1. Quyidagi tugma bilan saytni oching va kiring (bepul).\n2. API kalitini yarating — u " + i.starts + " bilan boshlanadi.\n3. Kalitni nusxalang va shu yerga oddiy xabar qilib yuboring.\n\nKalit televizorda saqlanadi, u bilan xabarni darhol o'chiraman.") +
-            (has ? '\n\n' + L('Сейчас: ✅ ', 'Now: ✅ ', 'Hozir: ✅ ') + keyMask(has) : '') + (isOwner() ? '' : '\n' + L('Ключ будет ваш: лимит — только ваш.', 'The key will be yours: the limit is yours only.', "Kalit sizniki bo'ladi: limit faqat sizniki."));
+            "1. Open the site with the button below and sign in (it's free).\n2. Create an API key — it starts with " + i.starts + ".\n3. Copy the key and send it here as a regular message.\n\nThe key will be saved on the TV, and I'll delete your message with it right away.",
+            "1. Quyidagi tugma orqali saytni oching va kiring (bepul).\n2. API kalitini yarating — u " + i.starts + " bilan boshlanadi.\n3. Kalitni nusxalang va shu yerga oddiy xabar qilib yuboring.\n\nKalit televizorda saqlanadi, kalitli xabarni esa darhol o'chiraman.") +
+            (has ? '\n\n' + L('Сейчас: ✅ ', 'Now: ✅ ', 'Hozir: ✅ ') + keyMask(has) : '') + (isOwner() ? '' : '\n' + L('Это будет ваш личный ключ — его лимит тратите только вы.', 'This will be your personal key — only you use up its limit.', "Bu shaxsiy kalitingiz bo'ladi — uning limitidan faqat siz foydalanasiz."));
     }
     function aiKeyRows(p) {
         var has = p === 'gemini' ? ownKey() : (isOwner() ? lsGet('bs_ai_' + p) : lsJson('bs_ai_' + p + '_u', {})[to()]);
         var rows = [[{ text: L('🔗 Получить ключ ', '🔗 Get a key at ', '🔗 Kalit olish: ') + AI_INFO[p].name, url: AI_INFO[p].url }]];
-        if (has) rows.push([{ text: L('🗑 Удалить ключ', '🗑 Delete the key', "🗑 Kalitni o'chirish"), callback_data: 'st:d:' + p }]);
-        rows.push([{ text: L('⬅️ ИИ-поиск', '⬅️ AI search', "⬅️ Sun'iy intellekt"), callback_data: 'st:ai' }]);
+        if (has) rows.push([{ text: L('🗑 Удалить ключ', '🗑 Delete key', "🗑 Kalitni o'chirish"), callback_data: 'st:d:' + p }]);
+        rows.push([{ text: L('⬅️ ИИ-поиск', '⬅️ AI search', "⬅️ AI qidiruv"), callback_data: 'st:ai' }]);
         return rows;
     }
     /** Кнопки экранов настроек (st:…). */
@@ -743,7 +743,7 @@ var BSTelegram = (function () {
             x.timeout = TIMEOUT;
             x.onload = keep(function () {
                 reply(x.status < 300 ? L('⏳ Передаю подключение на новый ТВ…', '⏳ Passing the connection to the new TV…', "⏳ Ulanishni yangi televizorga uzatyapman…")
-                    : L('Не получилось передать (' + x.status + ') — отправьте код ещё раз.', "Couldn't pass it (" + x.status + ') — send the code again.', "Uzatib bo'lmadi (" + x.status + ") — kodni qayta yuboring."));
+                    : L('Не получилось передать (' + x.status + ') — отправьте код ещё раз.', "Couldn't send it (" + x.status + ') — send the code again.', "Uzatib bo'lmadi (" + x.status + ") — kodni qayta yuboring."));
             });
             x.onerror = x.ontimeout = keep(function () { reply(L('Нет связи — отправьте код ещё раз.', 'No connection — send the code again.', "Aloqa yo'q — kodni qayta yuboring.")); });
             x.send(JSON.stringify(Crypt.seal(Crypt.key('lampa-join-v2|' + code), JSON.stringify({ t: 'join', token: token(), chat: chat(), ts: Date.now() }))));
@@ -845,13 +845,13 @@ var BSTelegram = (function () {
             var all = users();
             var allow = function () { return { text: L('✅ Разрешить', '✅ Allow', '✅ Ruxsat berish'), callback_data: 'ok:' + c }; };
             if (all[c] && all[c].banned) {                       // отключённый — снова только с разрешения владельца
-                as(c, function () { reply(L('Владелец отключил вас от Lampa. Я отправил ему запрос — когда разрешит, напишу.', "The owner disconnected you from Lampa. I've sent them a request — I'll let you know when they allow it.", "Egasi sizni Lampa'dan uzib qo'ygan. Unga so'rov yubordim — ruxsat bersa, yozaman.")); });
+                as(c, function () { reply(L('Владелец отключил вас от Lampa. Я отправил ему запрос — когда разрешит, напишу.', "The owner disconnected you from Lampa. I've sent them a request — I'll let you know when they allow it.", "Bot egasi sizni Lampa'dan uzgan. Unga so'rov yubordim — ruxsat bersa, yozaman.")); });
                 as('', function () { reply(L('👤 ' + name + ' хочет снова подключиться к Lampa.', '👤 ' + name + ' wants to connect to Lampa again.', "👤 " + name + " Lampa'ga qayta ulanmoqchi."), [[allow()]]); });
                 return;
             }
             if (needApprove()) {
                 if (all[c] && all[c].pending && Date.now() - (all[c].at || 0) < 3600000) {   // уже спросили - не заваливаем владельца
-                    return as(c, function () { reply(L('⏳ Запрос уже у владельца — когда разрешит, напишу.', "⏳ The owner already has your request — I'll let you know when they allow it.", "⏳ So'rov allaqachon egasida — ruxsat bersa, yozaman.")); });
+                    return as(c, function () { reply(L('⏳ Запрос уже отправлен владельцу — когда разрешит, напишу.', "⏳ Your request has already been sent to the owner — I'll let you know when they allow it.", "⏳ So'rov bot egasiga allaqachon yuborilgan — ruxsat bersa, yozaman.")); });
                 }
                 all[c] = { name: name, pending: true, at: Date.now() };
                 saveUsers(all, [c]);
@@ -868,10 +868,10 @@ var BSTelegram = (function () {
             as(c, function () {
                 sendKb(L('👋 ' + name + ', вы подключены к Lampa.\nУ вас свои «Хочу посмотреть» и подписки — другие их не видят.\n\n',
                     '👋 ' + name + ", you are connected to Lampa.\nYou have your own “Want to watch” and subscriptions — others can't see them.\n\n",
-                    '👋 ' + name + ", siz Lampa'ga ulandingiz.\nSizning o'z «Ko'rmoqchiman» ro'yxatingiz va obunalaringiz bor — boshqalar ularni ko'rmaydi.\n\n") + helpText());
+                    '👋 ' + name + ", siz Lampa'ga ulandingiz.\n«Ko'rmoqchiman» ro'yxatingiz va obunalaringiz faqat sizniki — boshqalar ularni ko'rmaydi.\n\n") + helpText());
                 langAskOnce();
             });
-            as('', function () { reply(L('👤 Подключился ' + name + ' — через QR в поиске Lampa. У него свои списки и уведомления.', '👤 ' + name + ' connected via the QR code in Lampa search. They have their own lists and notifications.', "👤 " + name + " Lampa qidiruvidagi QR orqali ulandi. Uning o'z ro'yxatlari va bildirishnomalari bor."), [[{ text: L('🚫 Отключить', '🚫 Disconnect', '🚫 Uzish'), callback_data: 'ku:' + c }]]); });
+            as('', function () { reply(L('👤 Новый пользователь: ' + name + ' (через QR-код в поиске Lampa). У него свои списки и уведомления.', '👤 New user: ' + name + ' (via the QR code in Lampa search). They have their own lists and notifications.', "👤 Yangi foydalanuvchi: " + name + " (Lampa qidiruvidagi QR-kod orqali). Uning o'z ro'yxatlari va bildirishnomalari bor."), [[{ text: L('🚫 Отключить', '🚫 Disconnect', '🚫 Uzish'), callback_data: 'ku:' + c }]]); });
             log('подключился', name);
             return;
         }
@@ -885,15 +885,15 @@ var BSTelegram = (function () {
         var waiting = Object.keys(u).filter(function (i) { return u[i] && u[i].pending; });
         var rows = ids.slice(0, 10).map(function (i) { return [{ text: '🚫 ' + u[i].name, callback_data: 'ku:' + i }]; });
         waiting.slice(0, 5).forEach(function (i) { rows.push([{ text: '✅ ' + u[i].name, callback_data: 'ok:' + i }, { text: L('🚫 Отклонить', '🚫 Decline', '🚫 Rad etish'), callback_data: 'ku:' + i }]); });
-        rows.push([{ text: (needApprove() ? '✅' : '⬜') + L(' Новые — с моего разрешения', ' New people — with my permission', " Yangilar — mening ruxsatim bilan"), callback_data: 'cfg:ap' }]);
-        rows.push([{ text: (guestPlay() ? '✅' : '⬜') + L(' Гости включают видео на ТВ', ' Guests can play videos on the TV', ' Mehmonlar televizorda video yoqadi'), callback_data: 'cfg:play' }]);
-        rows.push([{ text: L('🔄 Сменить приглашение (QR)', '🔄 Change the invitation (QR)', "🔄 Taklifni almashtirish (QR)"), callback_data: 'cfg:inv' }]);
-        var text = ids.length ? L('👥 Ещё пользуются ботом:\n', '👥 Also using the bot:\n', "👥 Botdan yana foydalanadi:\n") + ids.map(function (i) { return '• ' + u[i].name; }).join('\n') +
-            L('\n\nНажмите имя, чтобы отключить.', '\n\nTap a name to disconnect.', '\n\nUzish uchun ismni bosing.')
-            : L('👥 Кроме вас ботом никто не пользуется.\nДругие подключаются, наведя камеру на QR в поиске Lampa на ТВ.',
-                '👥 Nobody else uses the bot.\nOthers connect by pointing a camera at the QR code in Lampa search on the TV.',
-                "👥 Sizdan boshqa hech kim botdan foydalanmaydi.\nBoshqalar televizordagi Lampa qidiruvidagi QR-kodga kamerani qaratib ulanadi.");
-        if (waiting.length) text += L('\n\n⏳ Ждут разрешения: ', '\n\n⏳ Waiting for permission: ', '\n\n⏳ Ruxsat kutmoqda: ') + waiting.map(function (i) { return u[i].name; }).join(', ');
+        rows.push([{ text: (needApprove() ? '✅' : '⬜') + L(' Новые — с моего разрешения', ' New people — with my approval', " Yangilar — mening ruxsatim bilan"), callback_data: 'cfg:ap' }]);
+        rows.push([{ text: (guestPlay() ? '✅' : '⬜') + L(' Гости включают видео на ТВ', ' Guests can play videos on the TV', " Mehmonlar TV'da video yoqa oladi"), callback_data: 'cfg:play' }]);
+        rows.push([{ text: L('🔄 Сменить приглашение (QR)', '🔄 Reset invite (QR)', "🔄 Taklifni yangilash (QR)"), callback_data: 'cfg:inv' }]);
+        var text = ids.length ? L('👥 Ботом также пользуются:\n', '👥 Also using the bot:\n', "👥 Botdan yana bular foydalanadi:\n") + ids.map(function (i) { return '• ' + u[i].name; }).join('\n') +
+            L('\n\nНажмите на имя, чтобы отключить человека.', '\n\nTap a name to disconnect that person.', '\n\nUzish uchun ismni bosing.')
+            : L('👥 Кроме вас ботом пока никто не пользуется.\nДругие подключаются, наведя камеру телефона на QR-код в поиске Lampa на ТВ.',
+                '👥 Nobody else uses the bot yet.\nOthers connect by pointing their phone camera at the QR code in Lampa search on the TV.',
+                "👥 Sizdan boshqa hali hech kim botdan foydalanmaydi.\nBoshqalar telefon kamerasini televizordagi Lampa qidiruvidagi QR-kodga qaratib ulanadi.");
+        if (waiting.length) text += L('\n\n⏳ Ждут разрешения: ', '\n\n⏳ Waiting for approval: ', '\n\n⏳ Ruxsat kutayotganlar: ') + waiting.map(function (i) { return u[i].name; }).join(', ');
         rows.push(backRow());
         screen(q, text, rows);
     }
@@ -913,7 +913,7 @@ var BSTelegram = (function () {
         answer(act === 'x' ? wantRemoved(name) : act === 'w' ? wantAdded(name) : subAdded(name));
     }
     function wantRemoved(name) { return L('✖ «' + name + '» убран из «Хочу посмотреть»', '✖ “' + name + '” removed from “Want to watch”', "✖ «" + name + "» «Ko'rmoqchiman»dan olib tashlandi"); }
-    function wantAdded(name) { return L('⭐ «' + name + '» — в «Хочу посмотреть»', '⭐ “' + name + '” — added to “Want to watch”', "⭐ «" + name + "» — «Ko'rmoqchiman»ga qo'shildi"); }
+    function wantAdded(name) { return L('⭐ «' + name + '» — в «Хочу посмотреть»', '⭐ “' + name + '” added to “Want to watch”', "⭐ «" + name + "» — «Ko'rmoqchiman»ga qo'shildi"); }
     function subAdded(name) { return L('🔔 Подписка на «' + name + '»', '🔔 Subscribed to “' + name + '”', "🔔 «" + name + "»ga obuna bo'ldingiz"); }
     function watchBtn(k, id) { return { text: L('▶️ Смотреть', '▶️ Watch', "▶️ Ko'rish"), callback_data: 'v:' + k + ':' + id }; }
     function openBtn(k, id) { return { text: L('📺 Открыть на ТВ', '📺 Open on TV', "📺 TV'da ochish"), callback_data: 'o:' + k + ':' + id }; }
@@ -930,11 +930,11 @@ var BSTelegram = (function () {
     function shotCaption(info, tv) {
         info = info || {};
         var ep = info.season > 0 && info.episode > 0 ? L(' — ' + info.season + ' сезон, ' + info.episode + ' серия', ' — season ' + info.season + ', episode ' + info.episode, ' — ' + info.season + '-fasl, ' + info.episode + '-qism') : '';
-        var at = info.start_point > 0 ? L(' (с ', ' (from ', ' (') + clock(info.start_point) + L(')', ')', ' dan)') : '';
+        var at = info.start_point > 0 ? L(' (с ', ' (from ', ' (') + clock(info.start_point) + L(')', ')', '-dan boshlab)') : '';
         var yr = info.card_year && info.card_year !== '----' ? ' (' + info.card_year + ')' : '';
         return L('🎬 Запись из «' + (info.card_title || 'фильма') + '»', '🎬 Clip from “' + (info.card_title || 'a movie') + '”', "🎬 «" + (info.card_title || 'film') + "»dan lavha") + yr + ep + at +
-            L('\nЗаписано на ТВ «' + tv + '». Переслать друзьям — как обычное видео в Telegram.', '\nRecorded on the TV “' + tv + '”. Forward it to friends like any video in Telegram.',
-                "\n«" + tv + "» televizorida yozib olindi. Do'stlarga oddiy Telegram video kabi yuboring.");
+            L('\nЗаписано на ТВ «' + tv + '». Переслать друзьям — как обычное видео в Telegram.', '\nRecorded on TV “' + tv + '”. You can forward it to friends like any other video.',
+                "\n«" + tv + "» televizorida yozib olindi. Uni do'stlaringizga oddiy video kabi uzatishingiz mumkin.");
     }
     function onShot(e) {
         if (!e || e.status !== 'ready' || !e.file || !on('bs_tg_shots', true) || !token() || !chat()) return;
@@ -1262,9 +1262,9 @@ var BSTelegram = (function () {
         lsSet('bs_tg_oldwarn', JSON.stringify(warned.slice(0, 50)));
         var dv = String(d.v).replace(/-debug$/, ''), here = String(appVer()).replace(/-debug$/, '');
         as('', function () {
-            reply(L('⚠️ На «' + d.name + '» старая Lampa ' + dv + ' (здесь ' + here + '). Пока его не обновить, он иногда перехватывает бота — и новые кнопки («▶️ Смотреть» и др.) не срабатывают. Установите на нём новую версию.',
-                '⚠️ “' + d.name + '” has an old Lampa ' + dv + ' (this one has ' + here + "). Until it's updated, it sometimes takes over the bot — and new buttons (“▶️ Watch” and others) don't work. Install the new version on it.",
-                "⚠️ «" + d.name + "»da eski Lampa " + dv + ' (bu yerda ' + here + "). Yangilanmaguncha u ba'zan botni egallab oladi — va yangi tugmalar («▶️ Ko'rish» va boshq.) ishlamaydi. Unga yangi versiyani o'rnating."));
+            reply(L('⚠️ На ТВ «' + d.name + '» старая Lampa ' + dv + ' (на этом — ' + here + '). Пока её не обновить, тот ТВ иногда перехватывает бота, и новые кнопки («▶️ Смотреть» и другие) не работают. Обновите на нём Lampa.',
+                '⚠️ TV “' + d.name + '” has an old Lampa ' + dv + ' (this one has ' + here + "). Until it's updated, that TV sometimes takes over the bot, and new buttons (“▶️ Watch” and others) don't work. Please update Lampa on it.",
+                "⚠️ «" + d.name + "» televizorida eski Lampa " + dv + ' (bunda — ' + here + "). U yangilanmaguncha ba'zan botni o'ziga oladi va yangi tugmalar («▶️ Ko'rish» va boshqalar) ishlamaydi. Undagi Lampa'ni yangilang."));
         });
     }
 
@@ -1434,7 +1434,7 @@ var BSTelegram = (function () {
     var WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], WEEKDAYS_UZ = ['Ya', 'Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh'];
     /** «Сезон 2, серия 5» на языке того, кому пишем. */
     function seEp(s, e) { return L('Сезон ' + s + ', серия ' + e, 'Season ' + s + ', episode ' + e, s + '-fasl, ' + e + '-qism'); }
-    function weekHead() { return L('🗓 На этой неделе выходят\n', '🗓 Coming out this week\n', '🗓 Bu hafta chiqadi\n'); }
+    function weekHead() { return L('🗓 На этой неделе выходят\n', '🗓 Coming out this week\n', '🗓 Bu hafta chiqadiganlar\n'); }
 
     /** Сводка: серии с датой выхода в ближайшие 7 дней (от today, полночь) — строки по дате. */
     function weekLines(seen, ids, today) {
@@ -1530,10 +1530,10 @@ var BSTelegram = (function () {
                         staleTold[sc] = 1;
                         hintLang(u, sc);
                         as(sc, function () {
-                            call('sendMessage', { chat_id: sc, text: L('⏳ Сообщение от ' + hhmm(md * 1000) + ' пришло, пока Lampa на ТВ была выключена — ' +
-                                'бот работает внутри Lampa. Сейчас ТВ на связи: напишите ещё раз.',
-                                '⏳ Your message from ' + hhmm(md * 1000) + ' arrived while Lampa on the TV was off — the bot runs inside Lampa. The TV is online now: please write again.',
-                                '⏳ ' + hhmm(md * 1000) + " dagi xabaringiz televizordagi Lampa o'chiq paytda keldi — bot Lampa ichida ishlaydi. Hozir televizor aloqada: qayta yozing.") }, null, null);
+                            call('sendMessage', { chat_id: sc, text: L('⏳ Ваше сообщение от ' + hhmm(md * 1000) + ' пришло, когда Lampa на ТВ была выключена ' +
+                                '(бот работает внутри Lampa). Сейчас ТВ на связи — напишите ещё раз.',
+                                '⏳ Your message from ' + hhmm(md * 1000) + ' arrived while Lampa on the TV was off (the bot runs inside Lampa). The TV is online now — please send it again.',
+                                '⏳ Soat ' + hhmm(md * 1000) + " da yuborgan xabaringiz televizordagi Lampa o'chiq paytda keldi (bot Lampa ichida ishlaydi). Hozir televizor aloqada — qayta yozing.") }, null, null);
                         });
                     }
                     return;
@@ -1553,9 +1553,9 @@ var BSTelegram = (function () {
         var list = [];
         if (isOwner()) { try { list = Lampa.Favorite.get({ type: 'wath' }) || []; } catch (e) {} }
         else list = (guest() || {}).want || [];
-        if (!list.length) return reply(L('⭐ «Хочу посмотреть» пусто.\nНапишите название фильма или сериала и нажмите «⭐ Хочу посмотреть».',
-            '⭐ “Want to watch” is empty.\nType the name of a movie or series and tap “⭐ Want to watch”.',
-            "⭐ «Ko'rmoqchiman» bo'sh.\nFilm yoki serial nomini yozing va «⭐ Ko'rmoqchiman»ni bosing."));
+        if (!list.length) return reply(L('⭐ В «Хочу посмотреть» пока пусто.\nНапишите название фильма или сериала и нажмите «⭐ Хочу посмотреть».',
+            '⭐ “Want to watch” is empty for now.\nType the name of a movie or series and tap “⭐ Want to watch”.',
+            "⭐ «Ko'rmoqchiman» ro'yxati hozircha bo'sh.\nFilm yoki serial nomini yozing va «⭐ Ko'rmoqchiman» tugmasini bosing."));
         var rows = list.slice(0, 12).map(function (c) {
             var k = (c.tv !== undefined ? c.tv : c.name || c.number_of_seasons || c.first_air_date) ? 't' : 'm', name = c.title || c.name || c.original_title || c.original_name || '';
             return [{ text: '▶️ ' + name, callback_data: 'v:' + k + ':' + c.id }, { text: '📺', callback_data: 'o:' + k + ':' + c.id }, { text: '✖', callback_data: 'x:' + k + ':' + c.id }];
@@ -1645,7 +1645,7 @@ var BSTelegram = (function () {
             x.timeout = 30000;
             x.onload = keep(function () { if (x.status === 200 && x.response) ok(x.response); else fail(L('ответ ', 'response ', 'javob ') + x.status); });
             x.onerror = keep(function () { fail(L('нет связи', 'no connection', "aloqa yo'q")); });
-            x.ontimeout = keep(function () { fail(L('долго нет ответа', 'no answer for too long', "uzoq vaqt javob yo'q")); });
+            x.ontimeout = keep(function () { fail(L('сервер не отвечает', 'the server timed out', 'server javob bermayapti')); });
             x.send();
         } catch (e) { fail(e.message); }
     }
@@ -1720,7 +1720,7 @@ var BSTelegram = (function () {
     }
 
     var KIND_TEXT = { day: 'лимит на сегодня закончился', minute: 'много запросов в минуту', busy: 'перегружена',
-        missing: 'недоступна для ключа', other: 'ошибка' };
+        missing: 'недоступна с этим ключом', other: 'ошибка' };
     var KIND_EN = { day: "today's limit is used up", minute: 'too many requests per minute', busy: 'overloaded', missing: 'not available for this key', other: 'error' };
     var KIND_UZ = { day: 'bugungi limit tugadi', minute: "daqiqasiga so'rovlar ko'p", busy: "haddan tashqari band", missing: 'bu kalit uchun mavjud emas', other: 'xato' };
     function kindText(k) { return L(KIND_TEXT, KIND_EN, KIND_UZ)[k] || k; }
@@ -1734,8 +1734,8 @@ var BSTelegram = (function () {
         var head;
         if (all('day')) {
             var at = hhmm(tried[0].until || quotaReset(now));
-            head = L('🔋 Бесплатный лимит Gemini на сегодня закончился у всех моделей. Обновится в ' + at + '.', "🔋 Gemini's free limit for today is used up on all models. It resets at " + at + '.',
-                "🔋 Gemini'ning bugungi bepul limiti barcha modellarda tugadi. " + at + ' da yangilanadi.');
+            head = L('🔋 Бесплатный лимит Gemini на сегодня закончился у всех моделей. Он обновится в ' + at + '.', "🔋 Gemini's free limit for today is used up on all models. It resets at " + at + '.',
+                "🔋 Gemini'ning bugungi bepul limiti barcha modellarda tugadi. Limit soat " + at + ' da yangilanadi.');
         } else if (kinds.indexOf('busy') >= 0 || kinds.indexOf('minute') >= 0) head = L('⏳ Gemini сейчас занят — пришлите картинку ещё раз через минуту.', '⏳ Gemini is busy now — send the picture again in a minute.', "⏳ Gemini hozir band — rasmni bir daqiqadan keyin qayta yuboring.");
         else head = L('😔 Gemini не ответил.', "😔 Gemini didn't answer.", '😔 Gemini javob bermadi.');
         return head + '\n' + tried.map(function (t) {
@@ -1860,7 +1860,7 @@ var BSTelegram = (function () {
     function aiRun(parts, ok, fail, onTry) {
         ok = keep(ok); fail = keep(fail); onTry = keep(onTry);
         var list = aiProviders(), errs = [], i = 0;
-        if (!list.length) return fail(L('нет ключа ИИ — «🖼 По картинке» подскажет, где взять', 'no AI key — “🖼 By picture” tells you where to get one', "sun'iy intellekt kaliti yo'q — «🖼 Rasm bo'yicha» qayerdan olishni aytadi"));
+        if (!list.length) return fail(L('нет ключа ИИ — как его получить, смотрите в «🖼 По картинке»', 'no AI key — see “🖼 By picture” for how to get one', "AI kaliti yo'q — uni qanday olishni «🖼 Rasm bo'yicha» bo'limida ko'ring"));
         (function next() {
             if (i >= list.length) return fail(errs.join('\n'));
             var it = list[i++];
@@ -1920,7 +1920,7 @@ var BSTelegram = (function () {
                 if (--left) return;
                 var all = results.filter(function (r) { if (!r || have[r.media_type + r.id]) return false; have[r.media_type + r.id] = 1; return true; });
                 var names = items.map(function (x) { return x.title; }).join(', ');
-                if (!all.length) return status(L('😔 ИИ предложил: ' + names + ' — но в базе их не нашлось.', '😔 AI suggested: ' + names + " — but they aren't in the database.", "😔 Sun'iy intellekt taklif qildi: " + names + " — lekin bazada topilmadi."));
+                if (!all.length) return status(L('😔 ИИ предложил: ' + names + ', но в базе таких нет.', '😔 AI suggested: ' + names + ", but they're not in the database.", "😔 Sun'iy intellekt taklif qildi: " + names + ", lekin ular bazada topilmadi."));
                 status(fits(query, names));
                 showSlides({ list: all, src: { fetch: function (p, cb) { cb([], 0); } }, page: 1, pages: 1 });
             });
@@ -1978,11 +1978,11 @@ var BSTelegram = (function () {
                 return showSlides({ list: list, src: { fetch: function (p, cb) { cb([], 0); } }, page: 1, pages: 1 });
             }
             if (aiReady()) return aiFlow(query, status);
-            status(notFound(query) + (why === 'лимит' ? L(' — лимит AI-ассистента CUB исчерпан, попробуйте позже.', " — the CUB AI assistant's limit is used up, try later.", " — CUB AI yordamchisi limiti tugadi, keyinroq urinib ko'ring.") : '.'));
+            status(notFound(query) + (why === 'лимит' ? L(' — лимит AI-ассистента CUB исчерпан, попробуйте позже.', " — the CUB AI assistant's limit is used up, try again later.", " — CUB AI yordamchisi limiti tugadi, keyinroq urinib ko'ring.") : '.'));
         });
     }
     /** «🤖 Под «запрос» подходят: …» */
-    function fits(query, names) { return L('🤖 Под «' + query + '» подходят: ', '🤖 Matches for “' + query + '”: ', "🤖 «" + query + "»ga mos keladi: ") + names; }
+    function fits(query, names) { return L('🤖 Под «' + query + '» подходят: ', '🤖 Matches for “' + query + '”: ', "🤖 «" + query + "» so'roviga mos keladi: ") + names; }
     /** «😔 По запросу «…» ничего не нашлось» (без точки). */
     function notFound(query) { return L('😔 По запросу «' + query + '» ничего не нашлось', '😔 Nothing found for “' + query + '”', "😔 «" + query + "» bo'yicha hech narsa topilmadi"); }
     function askingAi(id) { return L('🤖 Спрашиваю ИИ', '🤖 Asking AI', "🤖 Sun'iy intellektdan so'rayapman") + (id ? ' (' + id + ')' : '') + '…'; }
@@ -1992,7 +1992,7 @@ var BSTelegram = (function () {
         aiSearch(query, function (r, why) {
             if (!r) return status(notFound(query) + (why ? ' — ' + String(why).replace(/^[^\wА-Яа-яЁё]+/, '').split('\n')[0].slice(0, 160) : L(', и ИИ не понял', " and AI didn't understand", " va sun'iy intellekt tushunmadi")) +
                 L('.\nПопробуйте иначе или пришлите скриншот.', '.\nTry different words or send a screenshot.', ".\nBoshqacha yozib ko'ring yoki skrinshot yuboring."));
-            if (r.items.length === 1) { status((r.sure ? L('🤖 Похоже, вы ищете: ', '🤖 Looks like you want: ', "🤖 Siz izlayotgan narsa: ") : L('🤖 Возможно, это: ', '🤖 Maybe it is: ', "🤖 Balki bu: ")) + r.items[0].title); return botSearch(r.items[0].query, true); }
+            if (r.items.length === 1) { status((r.sure ? L('🤖 Похоже, вы ищете: ', "🤖 Looks like you're looking for: ", "🤖 Siz izlayotganingiz shu bo'lsa kerak: ") : L('🤖 Возможно, это: ', "🤖 Maybe it's: ", "🤖 Balki bu: ")) + r.items[0].title); return botSearch(r.items[0].query, true); }
             aiSlides(r.items, status, query);
         }, function (id) { status(askingAi(id)); });
     }
@@ -2013,7 +2013,7 @@ var BSTelegram = (function () {
         return JSON.stringify({ contents: [{ parts: parts }], generationConfig: gc });
     }
 
-    function geminiSlow() { return L('⏳ Gemini долго не отвечает — попробуйте ещё раз через минуту.', '⏳ Gemini takes too long to answer — try again in a minute.', "⏳ Gemini uzoq vaqt javob bermayapti — bir daqiqadan keyin qayta urinib ko'ring."); }
+    function geminiSlow() { return L('⏳ Gemini долго не отвечает — попробуйте ещё раз через минуту.', '⏳ Gemini is taking too long to answer — try again in a minute.', "⏳ Gemini uzoq vaqt javob bermayapti — bir daqiqadan keyin qayta urinib ko'ring."); }
 
     /** onTry(id) — какую модель спрашиваем сейчас (для «Спрашиваю ИИ…»). */
     function geminiRun(parts, ok, fail, onTry) {
@@ -2066,22 +2066,22 @@ var BSTelegram = (function () {
     /** «🖼 По картинке»: что с Gemini сейчас — модели, лимиты, кто отвечал последним. */
     function aiStatus() {
         var list = aiProviders(), names = list.map(function (x) { return x.p === 'gemini' ? '🔷 Gemini' : x.p === 'groq' ? '⚡ Groq' : '🌐 OpenRouter'; });
-        var head = L('🖼 Пришлите скриншот, кадр или постер — узнаю фильм.\n\n🤖 ИИ по очереди: ', "🖼 Send a screenshot, a frame or a poster — I'll recognize the movie.\n\n🤖 AI in turn: ",
-            "🖼 Skrinshot, kadr yoki poster yuboring — filmni aniqlayman.\n\n🤖 Sun'iy intellekt navbat bilan: ") + names.join(' → ') +
-            (list.length < 3 ? L('\nЕщё ключ — ещё один ИИ про запас (Groq: console.groq.com/keys, OpenRouter: openrouter.ai/keys).', '\nAnother key — one more AI in reserve (Groq: console.groq.com/keys, OpenRouter: openrouter.ai/keys).',
-                "\nYana bir kalit — zaxirada yana bir sun'iy intellekt (Groq: console.groq.com/keys, OpenRouter: openrouter.ai/keys).") : '');
+        var head = L('🖼 Пришлите скриншот, кадр или постер — узнаю фильм.\n\n🤖 ИИ (по очереди): ', "🖼 Send a screenshot, a frame or a poster — I'll recognize the movie.\n\n🤖 AI (in turn): ",
+            "🖼 Skrinshot, kadr yoki poster yuboring — filmni aniqlayman.\n\n🤖 Sun'iy intellekt (navbat bilan): ") + names.join(' → ') +
+            (list.length < 3 ? L('\nДобавьте ещё ключ — будет запасной ИИ (Groq: console.groq.com/keys, OpenRouter: openrouter.ai/keys).', '\nAdd another key for a backup AI (Groq: console.groq.com/keys, OpenRouter: openrouter.ai/keys).',
+                "\nYana bir kalit qo'shing — zaxira sun'iy intellekt bo'ladi (Groq: console.groq.com/keys, OpenRouter: openrouter.ai/keys).") : '');
         if (!aiKey('gemini')) return reply(head + '\n\n' + newKeyHint());
         reply(head);
         geminiStatus();
     }
-    function newKeyHint() { return L('Новый ключ — просто пришлите его сообщением.', 'New key — just send it as a message.', 'Yangi kalit — shunchaki xabar qilib yuboring.'); }
+    function newKeyHint() { return L('Чтобы добавить новый ключ, просто пришлите его сообщением.', 'To add a new key, just send it as a message.', "Yangi kalit qo'shish uchun uni shunchaki xabar qilib yuboring."); }
     function geminiStatus() {
         geminiModels(function (models, fresh) {
             var skip = skipped(), last = lsGet('bs_gemini_last') || '';
             var free = models.filter(function (id) { return !skip[id]; });
             var lines = [];
             lines.push(fresh ? L('🔷 Модели Gemini для вашего ключа: ', '🔷 Gemini models for your key: ', '🔷 Kalitingiz uchun Gemini modellari: ') + models.length
-                : L('🤖 Список моделей сейчас не получить — пробую известные.', "🤖 Can't get the model list right now — trying the known ones.", "🤖 Hozir modellar ro'yxatini olib bo'lmadi — ma'lumlarini sinab ko'raman."));
+                : L('🤖 Не удалось получить список моделей — пробую известные.', "🤖 Couldn't get the model list — trying the known ones.", "🤖 Modellar ro'yxatini olib bo'lmadi — ma'lum modellarni sinab ko'raman."));
             if (free.length) lines.push(L('✅ Доступны: ', '✅ Available: ', '✅ Mavjud: ') + free.slice(0, 4).join(', ') + (free.length > 4 ? L(' и ещё ', ' and ', ' va yana ') + (free.length - 4) + L('', ' more', '') : ''));
             models.forEach(function (id) { if (skip[id]) lines.push('⛔ ' + id + ' — ' + kindText(skip[id].kind) + untilText(skip[id].until)); });
             if (!free.length) lines.push(L('🔋 Сейчас ни одна модель не доступна — лимит закончился.', '🔋 No model is available right now — the limit is used up.', '🔋 Hozir birorta ham model mavjud emas — limit tugadi.'));
@@ -2092,21 +2092,21 @@ var BSTelegram = (function () {
     }
 
     function geminiHow() {
-        return L('🤖 Поиск по картинке и по описанию работает через ИИ — нужен бесплатный ключ (можно несколько, бот спросит по очереди):\n' +
+        return L('🤖 Поиск по картинке и по описанию работает через ИИ — нужен бесплатный ключ (можно несколько — бот будет обращаться к ним по очереди):\n' +
             '⚡ Groq — самый быстрый: console.groq.com/keys → «Create API Key» (ключ начинается с gsk_)\n' +
             '🔷 Gemini (Google): aistudio.google.com/apikey → «Create API key» (AQ. или AIza)\n' +
             '🌐 OpenRouter: openrouter.ai/keys → «Create» (sk-or-), бесплатно 50 запросов в день\n\n' +
-            'Пришлите ключ сюда сообщением — сохраню на ТВ и удалю из чата.' + (isOwner() ? '' : ' Ключ будет ваш: лимит — только ваш.'),
-            '🤖 Search by picture and by description works through AI — you need a free key (you can add several, the bot will ask them in turn):\n' +
+            'Пришлите ключ сюда сообщением — сохраню его на ТВ и удалю из чата.' + (isOwner() ? '' : ' Это будет ваш личный ключ — его лимит тратите только вы.'),
+            '🤖 Search by picture and by description works through AI — you need a free key (you can add several — the bot will use them in turn):\n' +
             '⚡ Groq — the fastest: console.groq.com/keys → “Create API Key” (the key starts with gsk_)\n' +
             '🔷 Gemini (Google): aistudio.google.com/apikey → “Create API key” (AQ. or AIza)\n' +
             '🌐 OpenRouter: openrouter.ai/keys → “Create” (sk-or-), 50 free requests a day\n\n' +
-            "Send the key here as a message — I'll save it on the TV and delete it from the chat." + (isOwner() ? '' : ' The key will be yours: the limit is yours only.'),
-            "🤖 Rasm va tavsif bo'yicha qidiruv sun'iy intellekt orqali ishlaydi — bepul kalit kerak (bir nechta bo'lishi mumkin, bot navbat bilan so'raydi):\n" +
+            "Send the key here as a message — I'll save it on the TV and delete it from the chat." + (isOwner() ? '' : ' This will be your personal key — only you use up its limit.'),
+            "🤖 Rasm va tavsif bo'yicha qidiruv sun'iy intellekt orqali ishlaydi — bepul kalit kerak (bir nechtasini qo'shsa ham bo'ladi — bot ulardan navbat bilan foydalanadi):\n" +
             '⚡ Groq — eng tezkori: console.groq.com/keys → «Create API Key» (kalit gsk_ bilan boshlanadi)\n' +
             '🔷 Gemini (Google): aistudio.google.com/apikey → «Create API key» (AQ. yoki AIza)\n' +
             "🌐 OpenRouter: openrouter.ai/keys → «Create» (sk-or-), kuniga 50 ta bepul so'rov\n\n" +
-            "Kalitni shu yerga xabar qilib yuboring — televizorda saqlayman va chatdan o'chiraman." + (isOwner() ? '' : ' Kalit sizniki bo\'ladi: limit faqat sizniki.'));
+            "Kalitni shu yerga xabar qilib yuboring — televizorda saqlayman va chatdan o'chiraman." + (isOwner() ? '' : " Bu shaxsiy kalitingiz bo'ladi — uning limitidan faqat siz foydalanasiz."));
     }
 
     function photoSearch(msg) {
@@ -2117,7 +2117,7 @@ var BSTelegram = (function () {
             for (var i = 0; i < msg.photo.length; i++) if (msg.photo[i].width >= 1000) { file = msg.photo[i]; break; }   // хватит и 1280
         } else if (msg.document && /^image\//.test(msg.document.mime_type || '')) { file = msg.document; mime = msg.document.mime_type; }
         if (!file) return;
-        if (file.file_size > 15 * 1024 * 1024) return reply(L('Картинка слишком большая — пришлите сжатым фото.', 'The picture is too big — send it as a compressed photo.', "Rasm juda katta — siqilgan foto qilib yuboring."));
+        if (file.file_size > 15 * 1024 * 1024) return reply(L('Картинка слишком большая — отправьте её как фото (со сжатием).', 'The picture is too big — send it as a photo (compressed).', "Rasm juda katta — uni siqilgan foto sifatida yuboring."));
         call('sendChatAction', { chat_id: to(), action: 'typing' }, null, null);
         var statusId = 0, status = function (t) {
             if (statusId) call('editMessageText', { chat_id: to(), message_id: statusId, text: t }, null, null);
@@ -2126,13 +2126,13 @@ var BSTelegram = (function () {
         call('sendMessage', { chat_id: to(), text: L('🖼 Узнаю по картинке…', '🖼 Recognizing the picture…', '🖼 Rasm bo\'yicha aniqlayapman…') }, function (m) { statusId = m && m.message_id || 0; }, null);
         var fail = function (why) { log('картинка', why); status(/^[^\wА-Яа-яЁё]/.test(why) ? why : L('😔 Не получилось узнать: ', "😔 Couldn't recognize it: ", "😔 Aniqlab bo'lmadi: ") + whyText(why) + '.'); };
         call('getFile', { file_id: file.file_id }, function (f) {
-            if (!f || !f.file_path) return fail(L('Telegram не отдал картинку', "Telegram didn't give the picture", 'Telegram rasmni bermadi'));
+            if (!f || !f.file_path) return fail(L('Telegram не отдал картинку', "Telegram didn't send the picture", 'Telegram rasmni bermadi'));
             httpGetBin('https://api.telegram.org/file/bot' + token() + '/' + f.file_path, function (buf) {
                 geminiAsk(bytesB64(buf), mime, String(msg.caption || '').slice(0, 200), function (j, model) {
                     var r = fromGemini(j);
-                    if (!r) return status(L('🤔 Не узнал, что это за фильм (' + model + '). Напишите название — найду.', "🤔 Couldn't tell which movie this is (" + model + "). Type the name and I'll find it.",
+                    if (!r) return status(L('🤔 Не удалось узнать фильм (' + model + '). Напишите название — найду.', "🤔 Couldn't tell which movie this is (" + model + "). Type the name and I'll find it.",
                         "🤔 Bu qaysi film ekanini aniqlay olmadim (" + model + "). Nomini yozing — topaman."));
-                    status((r.sure ? L('🎬 Похоже на: ', '🎬 Looks like: ', "🎬 O'xshaydi: ") : L('🤔 Возможно, это: ', '🤔 Maybe it is: ', '🤔 Balki bu: ')) + r.title + '\n🤖 ' + model);
+                    status((r.sure ? L('🎬 Похоже на: ', '🎬 Looks like: ', "🎬 Bunga o'xshaydi: ") : L('🤔 Возможно, это: ', '🤔 Maybe it is: ', '🤔 Balki bu: ')) + r.title + '\n🤖 ' + model);
                     log('картинка', r.query);
                     botSearch(r.query);
                 }, fail);
@@ -2152,7 +2152,7 @@ var BSTelegram = (function () {
         want: ['хочу посмотреть', 'want to watch', "ko'rmoqchiman"],
         people: ['люди', 'people', 'odamlar'],
         pic: ['по картинке', 'by picture', "rasm bo'yicha"],
-        week: ['на этой неделе', 'this week', 'bu hafta'],
+        week: ['на этой неделе', 'на неделе', 'this week', 'bu hafta'],
         subs: ['мои подписки', 'подписки', 'my subscriptions', 'subscriptions', 'obunalarim', 'obunalar'],
         lang: ['язык', 'language', 'til', 'язык / language / til'],
         settings: ['настройки', 'settings', 'sozlamalar']
@@ -2215,9 +2215,9 @@ var BSTelegram = (function () {
                 saveUsers(back, [okk[1]]);
                 as(okk[1], function () {
                     sendKb((first ? L('✅ Владелец разрешил — вы подключены к Lampa.\nУ вас свои «Хочу посмотреть» и подписки — другие их не видят.',
-                        "✅ The owner allowed it — you are connected to Lampa.\nYou have your own “Want to watch” and subscriptions — others can't see them.",
-                        "✅ Egasi ruxsat berdi — siz Lampa'ga ulandingiz.\nSizning o'z «Ko'rmoqchiman» ro'yxatingiz va obunalaringiz bor — boshqalar ularni ko'rmaydi.")
-                        : L('✅ Владелец разрешил — вы снова подключены к Lampa.', '✅ The owner allowed it — you are connected to Lampa again.', "✅ Egasi ruxsat berdi — siz Lampa'ga qayta ulandingiz.")) + '\n\n' + helpText());
+                        "✅ The owner allowed it — you're connected to Lampa.\nYou have your own “Want to watch” and subscriptions — others can't see them.",
+                        "✅ Bot egasi ruxsat berdi — siz Lampa'ga ulandingiz.\n«Ko'rmoqchiman» ro'yxatingiz va obunalaringiz faqat sizniki — boshqalar ularni ko'rmaydi.")
+                        : L('✅ Владелец разрешил — вы снова подключены к Lampa.', "✅ The owner allowed it — you're connected to Lampa again.", "✅ Bot egasi ruxsat berdi — siz Lampa'ga qayta ulandingiz.")) + '\n\n' + helpText());
                     langAskOnce();
                 });
                 return reply('✅ ' + was.name + (first ? L(' подключён.', ' is connected.', ' ulandi.') : L(' снова подключён.', ' is connected again.', ' qayta ulandi.')));
@@ -2229,13 +2229,13 @@ var BSTelegram = (function () {
                 if (gone && gone.pending) {
                     people[ku[1]] = { name: gone.name, banned: true, at: Date.now() };
                     saveUsers(people, [ku[1]]);
-                    as(ku[1], function () { reply(L('Владелец не разрешил подключение.', "The owner didn't allow the connection.", 'Egasi ulanishga ruxsat bermadi.')); });
-                    return reply(L('🚫 Запрос ' + gone.name + ' отклонён.', '🚫 ' + gone.name + "'s request is declined.", '🚫 ' + gone.name + " so'rovi rad etildi."));
+                    as(ku[1], function () { reply(L('Владелец не разрешил подключение.', "The owner didn't allow the connection.", 'Bot egasi ulanishga ruxsat bermadi.')); });
+                    return reply(L('🚫 Запрос от ' + gone.name + ' отклонён.', '🚫 ' + gone.name + "'s request was declined.", '🚫 ' + gone.name + " so'rovi rad etildi."));
                 }
                 if (!active(gone)) return reply(L('Уже отключён.', 'Already disconnected.', 'Allaqachon uzilgan.'));
                 people[ku[1]] = { name: gone.name, banned: true, at: Date.now() };   // запомнить: по старому QR не вернётся
                 saveUsers(people, [ku[1]]);
-                as(ku[1], function () { reply(L('Вас отключили от Lampa. Подключиться снова — QR в поиске Lampa на ТВ.', 'You were disconnected from Lampa. To connect again — the QR code in Lampa search on the TV.', "Siz Lampa'dan uzildingiz. Qayta ulanish — televizordagi Lampa qidiruvidagi QR.")); });
+                as(ku[1], function () { reply(L('Вас отключили от Lampa. Чтобы подключиться снова, отсканируйте QR-код в поиске Lampa на ТВ.', 'You were disconnected from Lampa. To connect again, scan the QR code in Lampa search on the TV.', "Siz Lampa'dan uzildingiz. Qayta ulanish uchun televizordagi Lampa qidiruvidagi QR-kodni skanerlang.")); });
                 return reply(L('🚫 ' + gone.name + ' отключён.', '🚫 ' + gone.name + ' is disconnected.', '🚫 ' + gone.name + ' uzildi.'));
             }
             var tp = /^tp:(\w+)$/.exec(q.data || '');
@@ -2254,8 +2254,8 @@ var BSTelegram = (function () {
                 if (!isOwner()) return;
                 if (cf[1] === 'inv') {
                     inviteReset();
-                    return reply(L('🔄 Приглашение сменено: старые QR и ссылки больше не подключают. Уже подключённые остаются.', "🔄 The invitation is changed: old QR codes and links don't connect anymore. People already connected stay.",
-                        "🔄 Taklif almashtirildi: eski QR va havolalar endi ulamaydi. Allaqachon ulanganlar qoladi."));
+                    return reply(L('🔄 Приглашение обновлено: старые QR-коды и ссылки больше не работают. Кто уже подключён, останется подключён.', '🔄 Invite reset: old QR codes and links no longer work. People already connected stay connected.',
+                        "🔄 Taklif yangilandi: eski QR-kodlar va havolalar endi ishlamaydi. Ulanganlar ulangan holda qoladi."));
                 }
                 if (cf[1] === 'ap') lsSet('bs_tg_approve', String(!needApprove()));
                 if (cf[1] === 'play') lsSet('bs_tg_guest_play', String(!guestPlay()));
@@ -2266,7 +2266,7 @@ var BSTelegram = (function () {
             var rn = /^rn(?::(\w+))?$/.exec(q.data || '');
             if (rn) {
                 call('answerCallbackQuery', { callback_query_id: q.id }, null, null);
-                if (!isOwner()) return reply(L('Переименовать ТВ может владелец бота.', 'Only the bot owner can rename a TV.', "Televizor nomini faqat bot egasi o'zgartira oladi."));
+                if (!isOwner()) return reply(L('Переименовать ТВ может только владелец бота.', 'Only the bot owner can rename a TV.', "Televizor nomini faqat bot egasi o'zgartira oladi."));
                 var tvs = allTvs();
                 if (!rn[1] && tvs.length > 1) return reply(L('✏️ Какой ТВ переименовать?', '✏️ Which TV to rename?', "✏️ Qaysi televizor nomini o'zgartiramiz?"), tvs.map(function (d) { return [{ text: d.text, callback_data: 'rn:' + d.id }]; }));
                 var who = tvs.filter(function (d) { return d.id === (rn[1] || tvId); })[0];
@@ -2312,7 +2312,7 @@ var BSTelegram = (function () {
         if (renameFor && renameFor.chat === to() && Date.now() - renameFor.at < 5 * 60000 && !/^\//.test(msg.text) && KB_WORDS.indexOf(plainOf(msg.text)) < 0) {
             var title = msg.text.replace(/^\s+|\s+$/g, '').slice(0, 40), target = renameFor.id;
             renameFor = null;
-            if (!title) return reply(L('Название пустое — нажмите «✏️ Переименовать ТВ» ещё раз.', 'The name is empty — tap “✏️ Rename TV” again.', "Nom bo'sh — «✏️ TV nomini o'zgartirish»ni qayta bosing."));
+            if (!title) return reply(L('Название пустое — нажмите «✏️ Переименовать ТВ» ещё раз.', 'The name is empty — tap “✏️ Rename TV” again.', "Nom bo'sh — «✏️ TV nomini o'zgartirish» tugmasini qayta bosing."));
             if (target === tvId) { lsSet('bs_tv_name', title); busHello(false); refreshSettings(); }
             if (target === tvId) return reply(renamed(title));
             // другой ТВ: подтвердит своим «hello» с новым именем; молчит — значит, на нём старая Lampa или он выключен
@@ -2322,7 +2322,7 @@ var BSTelegram = (function () {
                 renameWait = null;
                 reply(L('⚠️ «' + oldName + '» не ответил. Похоже, на нём старая версия Lampa или он выключен — обновите Lampa на нём и переименуйте снова.',
                     "⚠️ “" + oldName + "” didn't answer. It probably has an old Lampa version or is off — update Lampa on it and rename again.",
-                    "⚠️ «" + oldName + "» javob bermadi. Ehtimol, unda Lampa'ning eski versiyasi yoki u o'chiq — undagi Lampa'ni yangilang va qayta nomlang."));
+                    "⚠️ «" + oldName + "» javob bermadi. Ehtimol, unda Lampa'ning eski versiyasi o'rnatilgan yoki u o'chiq — undagi Lampa'ni yangilang va qayta nomlang."));
             }), 15000) };
             busSend({ t: 'rename', to: target, title: title });
             return;
@@ -2338,14 +2338,14 @@ var BSTelegram = (function () {
             var key = msg.text.replace(/\s+/g, ''), kind = keyKind(key), kname = kind === 'gemini' ? 'Gemini' : OA[kind].name;
             call('deleteMessage', { chat_id: to(), message_id: msg.message_id }, null, null);
             return (kind === 'gemini' ? geminiCheck : function (k, cb) { oaCheck(kind, k, cb); })(key, function (good, why) {
-                if (good === false) return reply(L('❌ Похоже на ключ ' + kname + ', но он не принят: ' + why + '\nСообщение удалено. Проверьте ключ и пришлите ещё раз.',
-                    '❌ Looks like a ' + kname + ' key, but it was rejected: ' + why + '\nThe message is deleted. Check the key and send it again.',
+                if (good === false) return reply(L('❌ Похоже на ключ ' + kname + ', но он не подошёл: ' + why + '\nСообщение удалено. Проверьте ключ и пришлите ещё раз.',
+                    '❌ Looks like a ' + kname + ' key, but it was rejected: ' + why + '\nI deleted the message. Check the key and send it again.',
                     "❌ " + kname + " kalitiga o'xshaydi, lekin qabul qilinmadi: " + why + "\nXabar o'chirildi. Kalitni tekshirib, qayta yuboring."));
                 setAiKey(kind, key);
                 reply(L('✅ ' + (isOwner() ? 'Ключ' : 'Ваш ключ') + ' ' + kname + ' сохранён на ТВ «' + tvName() + '», сообщение с ним удалено.',
-                    '✅ ' + (isOwner() ? 'The ' : 'Your ') + kname + ' key is saved on the TV “' + tvName() + '”, the message with it is deleted.',
-                    '✅ ' + (isOwner() ? '' : 'Sizning ') + kname + " kaliti «" + tvName() + "» televizorida saqlandi, u bilan xabar o'chirildi.") +
-                    (good ? '' : L('\n(Проверить сейчас не удалось — проверю на первой картинке.)', "\n(Couldn't check it now — I'll check on the first picture.)", "\n(Hozir tekshirib bo'lmadi — birinchi rasmda tekshiraman.)")) +
+                    '✅ ' + (isOwner() ? 'The ' : 'Your ') + kname + ' key is saved on TV “' + tvName() + '” and the message with it is deleted.',
+                    '✅ ' + (isOwner() ? '' : 'Sizning ') + kname + " kalitingiz «" + tvName() + "» televizorida saqlandi, kalitli xabar o'chirildi.") +
+                    (good ? '' : L('\n(Проверить сейчас не удалось — проверю на первой картинке.)', "\n(Couldn't check it now — I'll check it with the first picture.)", "\n(Hozir tekshirib bo'lmadi — birinchi rasmda tekshiraman.)")) +
                     L('\nТеперь пришлите скриншот или постер 🖼', '\nNow send a screenshot or a poster 🖼', '\nEndi skrinshot yoki poster yuboring 🖼'));
             });
         }
@@ -2360,7 +2360,7 @@ var BSTelegram = (function () {
     }
     function command(c, plain, arg, t) {
         if (c === 'start') {
-            sendKb(L('👋 Это бот вашей Lampa на ТВ.\nНапишите название фильма или сериала — или выберите раздел 👇', '👋 This is the bot of your Lampa on the TV.\nType the name of a movie or series — or choose a section 👇',
+            sendKb(L('👋 Это бот вашей Lampa на ТВ.\nНапишите название фильма или сериала — или выберите раздел 👇', '👋 This is the bot for your Lampa on the TV.\nType the name of a movie or series — or choose a section 👇',
                 "👋 Bu televizoringizdagi Lampa boti.\nFilm yoki serial nomini yozing — yoki bo'limni tanlang 👇"));
             langAskOnce();
             return setTimeout(keep(sendMenu), 400);
@@ -2387,9 +2387,9 @@ var BSTelegram = (function () {
     /** «🔔 Мои подписки»: список с датами следующих серий и кнопками «Отписаться». */
     function subsList() {
         var l = isOwner() ? subs() : ((guest() || {}).subs || []), seen = loadSeen();
-        if (!l.length) return reply(L('🔔 Подписок нет.\nНапишите название сериала и нажмите «🔔 Подписаться» — или кнопкой на карточке в Lampa.',
-            '🔔 No subscriptions.\nType the name of a series and tap “🔔 Subscribe” — or use the button on the card in Lampa.',
-            "🔔 Obunalar yo'q.\nSerial nomini yozing va «🔔 Obuna bo'lish»ni bosing — yoki Lampa'dagi kartochkadagi tugma bilan."));
+        if (!l.length) return reply(L('🔔 Подписок пока нет.\nНапишите название сериала и нажмите «🔔 Подписаться» — или подпишитесь кнопкой на карточке в Lampa.',
+            '🔔 No subscriptions yet.\nType the name of a series and tap “🔔 Subscribe” — or use the button on the series card in Lampa.',
+            "🔔 Hozircha obunalar yo'q.\nSerial nomini yozing va «🔔 Obuna bo'lish» tugmasini bosing — yoki Lampa'dagi kartochkadagi tugma orqali obuna bo'ling."));
         var lines = l.slice(0, 30).map(function (s) {
             var r = seen[s.id] || {}, n = r.next;
             return '• ' + (s.name || r.name || '') + (n && n.d ? ' — ' + n.s + '×' + n.e + ', ' + n.d.split('-').reverse().slice(0, 2).join('.') : '');
@@ -2451,7 +2451,7 @@ var BSTelegram = (function () {
         if (!token() || !chat()) return;
         var name = card.name || card.title || card.original_name || '';
         if (!on) return send(L('🔕 Подписка отменена: ', '🔕 Unsubscribed: ', '🔕 Obuna bekor qilindi: ') + name, null, null, function (e) { log('не отправлено', e); });
-        var text = L('🔔 Вы подписались: ', '🔔 You subscribed: ', "🔔 Obuna bo'ldingiz: ") + name + '\n' + nextText(info && info.id == card.id ? info.next : null, today(), lang()) +
+        var text = L('🔔 Вы подписались: ', '🔔 Subscribed: ', "🔔 Obuna bo'ldingiz: ") + name + '\n' + nextText(info && info.id == card.id ? info.next : null, today(), lang()) +
             L('\nСообщу, когда выйдет новая серия.', "\nI'll let you know when a new episode is out.", '\nYangi qism chiqqanda xabar beraman.');
         var poster = card.poster_path ? 'https://image.tmdb.org/t/p/w500' + card.poster_path : null;
         send(text, poster, null, function (e) { log('не отправлено', e); });
@@ -2591,7 +2591,7 @@ var BSTelegram = (function () {
     }
     function qualityLine(r, now) {
         if (r.media_type === 'tv' || r._q === undefined) return '';
-        if (qualityLow(r._q)) return L('⚠️ Пока только экранка (', '⚠️ Only a cam rip so far (', '⚠️ Hozircha faqat kinoteatrdan yozilgani (') + qualityName(r._q) + ')';
+        if (qualityLow(r._q)) return L('⚠️ Пока только экранка (', '⚠️ Only a cam rip so far (', '⚠️ Hozircha faqat kinoteatrdan yozib olingan versiya (') + qualityName(r._q) + ')';
         if (r._q) return L('📀 Качество: ', '📀 Quality: ', '📀 Sifat: ') + qualityName(r._q);
         return recentMovie(r, now) ? L('⏳ В хорошем качестве ещё нет', '⏳ Not out in good quality yet', "⏳ Yaxshi sifatda hali yo'q") : '';
     }
@@ -2780,7 +2780,7 @@ var BSTelegram = (function () {
     function slideButtons(list, i, more) {
         var r = list[i], k = r.media_type === 'tv' ? 't' : 'm', row2 = [openBtn(k, r.id)];
         if (k === 't') row2.push({ text: L('🔔 Подписаться', '🔔 Subscribe', "🔔 Obuna bo'lish"), callback_data: 's:t:' + r.id });
-        else if (waitable(r)) row2.push({ text: L('🔔 Сообщить о качестве', '🔔 Notify about quality', '🔔 Sifat haqida xabar berish'), callback_data: 'q:m:' + r.id });
+        else if (waitable(r)) row2.push({ text: L('🔔 Ждать хорошего качества', '🔔 Wait for good quality', '🔔 Yaxshi sifatni kutish'), callback_data: 'q:m:' + r.id });
         var rows = [[watchBtn(k, r.id), { text: L('⭐ Хочу посмотреть', '⭐ Want to watch', "⭐ Ko'rmoqchiman"), callback_data: 'w:' + k + ':' + r.id }], row2];
         if (list.length > 1 || more) rows.push([
             { text: '◀', callback_data: 'p:' + ((i - 1 + list.length) % list.length) },
@@ -2807,7 +2807,7 @@ var BSTelegram = (function () {
             shown = true;
             if (!found.list.length && !viaAi && anyAi()) return smartFlow(query, status);   // по названию пусто — спросить ИИ
             if (!found.list.length) {
-                if (statusId) call('editMessageText', { chat_id: to(), message_id: statusId, text: notFound(query) + L('.\nПопробуйте написать иначе или по-английски.', '.\nTry writing it differently or in the original language.', ".\nBoshqacha yoki inglizcha yozib ko'ring.") }, null, null);
+                if (statusId) call('editMessageText', { chat_id: to(), message_id: statusId, text: notFound(query) + L('.\nПопробуйте написать иначе или по-английски.', '.\nTry different wording or the English title.', ".\nBoshqacha yoki inglizcha yozib ko'ring.") }, null, null);
                 else reply(notFound(query) + '.');
                 return;
             }
@@ -2815,7 +2815,7 @@ var BSTelegram = (function () {
             showSlides(found.s);
         };
         var src = searchSource(query);
-        call('sendMessage', { chat_id: to(), text: L('🔎 Ищу ', '🔎 Searching for ', '🔎 Qidiryapman: ') + src.label + L(' в базе фильмов и сериалов…', ' in the movie and series database…', ' — filmlar va seriallar bazasida…') }, function (m) {
+        call('sendMessage', { chat_id: to(), text: L('🔎 Ищу ', '🔎 Searching for ', '🔎 ') + src.label + L(' в базе фильмов и сериалов…', ' in the movie and series database…', ' filmlar va seriallar bazasidan qidirilmoqda…') }, function (m) {
             statusId = m && m.message_id || 0;
             if (found) finish();                                          // поиск успел раньше — доделать
         }, null);
@@ -2847,7 +2847,7 @@ var BSTelegram = (function () {
     function slideTo(q, i) {
         var mid = q.message.message_id, ss = slides[to() + ':' + mid];
         var answer = function (t) { call('answerCallbackQuery', { callback_query_id: q.id, text: t || '' }, null, null); };
-        if (!ss) return answer(L('Поиск устарел — напишите название ещё раз', 'The search is outdated — type the name again', 'Qidiruv eskirgan — nomini qayta yozing'));
+        if (!ss) return answer(L('Поиск устарел — напишите название ещё раз', 'This search has expired — type the name again', 'Qidiruv eskirdi — nomini qayta yozing'));
         i = i | 0;
         if (i >= ss.list.length && hasMore(ss)) {
             if (ss.loading) return answer(L('Загружаю…', 'Loading…', 'Yuklanmoqda…'));
@@ -2917,21 +2917,21 @@ var BSTelegram = (function () {
     function noAnswer(name) {
         return L('📺 «' + name + '» не ответил — возможно, выключен или Lampa закрыта.', "📺 “" + name + "” didn't answer — maybe it's off or Lampa is closed.", "📺 «" + name + "» javob bermadi — ehtimol, o'chiq yoki Lampa yopiq.");
     }
-    function watchingNow() { return L('На этом ТВ сейчас смотрят — подождите', 'Someone is watching this TV now — please wait', "Bu televizorda hozir ko'rishyapti — kuting"); }
+    function watchingNow() { return L('На этом ТВ сейчас смотрят — подождите', 'Someone is watching this TV now — please wait', "Bu televizorda hozir video ko'rilmoqda — biroz kuting"); }
     function afterVideoText() { return L('Откроется после просмотра', 'Will open after the video', "Ko'rishdan keyin ochiladi"); }
     function cantOpen() { return L('Не получилось открыть: ', "Couldn't open: ", "Ochib bo'lmadi: "); }
-    function noPlay() { return L('Владелец запретил гостям включать видео на ТВ', "The owner doesn't allow guests to play videos on the TV", "Egasi mehmonlarga televizorda video yoqishni taqiqlagan"); }
-    function noRemote() { return L('Владелец запретил гостям управлять ТВ.', "The owner doesn't allow guests to control the TV.", "Egasi mehmonlarga televizorni boshqarishni taqiqlagan."); }
-    function noMore(name) { return L('Больше не пишу про ' + (name || 'этот сериал'), "I won't write about " + (name || 'this series') + ' anymore', (name ? "«" + name + "»" : 'Bu serial') + " haqida boshqa yozmayman"); }
+    function noPlay() { return L('Владелец запретил гостям включать видео на ТВ', "The owner doesn't allow guests to play videos on the TV", "Bot egasi mehmonlarga televizorda video yoqishni taqiqlagan"); }
+    function noRemote() { return L('Владелец запретил гостям управлять ТВ.', "The owner doesn't allow guests to control the TV.", "Bot egasi mehmonlarga televizorni boshqarishni taqiqlagan."); }
+    function noMore(name) { return L('Больше не буду писать про ' + (name ? '«' + name + '»' : 'этот сериал'), "I won't write about " + (name ? '“' + name + '”' : 'this series') + ' anymore', (name ? "«" + name + "»" : 'Bu serial') + " haqida boshqa yozmayman"); }
     function remindAt() { return L('Напомню завтра в 9:00', "I'll remind you tomorrow at 9:00", 'Ertaga soat 9:00 da eslataman'); }
     function renamed(title) { return L('✅ ТВ теперь называется «' + title + '».', '✅ The TV is now called “' + title + '”.', "✅ Televizor endi «" + title + "» deb ataladi."); }
     /* Причины с других ТВ и из запросов приходят по-русски (старые ТВ шлют так же) — для человека переводим известные. */
     var WHY = {
-        'на этом ТВ сейчас смотрят — подождите': ['Someone is watching this TV now — please wait', "Bu televizorda hozir ko'rishyapti — kuting"],
+        'на этом ТВ сейчас смотрят — подождите': ['Someone is watching this TV now — please wait', "Bu televizorda hozir video ko'rilmoqda — biroz kuting"],
         'откроется, когда закончится видео': ['will open when the video ends', 'video tugagach ochiladi'],
         'ждёт, пока закончится видео': ['waiting for the video to end', 'video tugashini kutyapti'],
         'TMDB не ответил': ["TMDB didn't answer", 'TMDB javob bermadi'],
-        'идёт видео — не прерываю': ["a video is playing — I won't interrupt it", "video ketyapti — to'xtatmayman"],
+        'идёт видео — не прерываю': ["a video is playing — I won't interrupt it", "video ko'rilmoqda — to'xtatmayman"],
         'пустой текст': ['empty text', "bo'sh matn"],
         'не получилось': ["didn't work", "bo'lmadi"],
         'не получилось открыть поиск': ["couldn't open search", "qidiruvni ochib bo'lmadi"],
@@ -2982,7 +2982,7 @@ var BSTelegram = (function () {
     function typeSend(raw) {
         var dev = typeFor.tv, text = typedText(raw), again = [[{ text: L('⌨️ Набрать ещё', '⌨️ Type more', '⌨️ Yana yozish'), callback_data: 'mn:type' }]];
         typeFor = null;
-        if (!text) return reply(L('Текст пустой — нажмите «⌨️ Набрать на ТВ» ещё раз.', 'The text is empty — tap “⌨️ Type on TV” again.', "Matn bo'sh — «⌨️ TV'da yozish»ni qayta bosing."));
+        if (!text) return reply(L('Текст пустой — нажмите «⌨️ Набрать на ТВ» ещё раз.', 'The text is empty — tap “⌨️ Type on TV” again.', "Matn bo'sh — «⌨️ TV'da yozish» tugmasini qayta bosing."));
         var name = dev === tvId ? tvName() : (devices[dev] || {}).name || L('ТВ', 'TV', 'TV');
         if (dev === tvId) {
             var why = typeHere(text);
@@ -3003,7 +3003,7 @@ var BSTelegram = (function () {
         tmdbGet((kind === 't' ? 'tv/' : 'movie/') + id, function (j) {
             if (!j || !j.id) return answer(L('TMDB не ответил, попробуйте ещё раз', "TMDB didn't answer, try again", "TMDB javob bermadi, qayta urinib ko'ring"));
             var card = toCard(j, kind), name = card.title || card.name || '';
-            var already = function () { return answer(L('Вы уже подписаны', 'You are already subscribed', "Siz allaqachon obuna bo'lgansiz")); };
+            var already = function () { return answer(L('Вы уже подписаны', "You're already subscribed", "Siz allaqachon obuna bo'lgansiz")); };
             if (act === 'q') return qualityWait(card, kind, name, answer);
             if ((act === 'o' || act === 'v') && !isOwner() && !guestPlay()) return answer(noPlay());
             if (act !== 'o' && act !== 'v' && !isOwner()) {
@@ -3029,7 +3029,7 @@ var BSTelegram = (function () {
                         : L('На каком ТВ открыть «' + name + '»?', 'Which TV to open “' + name + '” on?', "«" + name + "»ni qaysi televizorda ochamiz?"), rows);
                 }
                 if (tvPlaying()) {
-                    if (!isOwner()) return answer(L('На ТВ сейчас смотрят — подождите', 'Someone is watching the TV now — please wait', "Televizorda hozir ko'rishyapti — kuting"));
+                    if (!isOwner()) return answer(L('На ТВ сейчас смотрят — подождите', 'Someone is watching the TV now — please wait', "Televizorda hozir video ko'rilmoqda — biroz kuting"));
                     answer(afterVideoText());
                     return whenVideoEnds(function () { try { pushCard(card, kind, act === 'v'); } catch (e) { log('после видео', e.message); } });
                 }
@@ -3220,7 +3220,7 @@ var BSTelegram = (function () {
                 return L('✨ Меню стало компактнее: внизу одна кнопка «📋 Меню», внутри все разделы.\n' +
                     '🤖 Опишите фильм словами («фильм про космос, где…») — подберу через AI-ассистента Lampa, свой ключ ИИ не нужен.',
                     '✨ The menu is more compact now: one “📋 Menu” button below, all sections inside.\n' +
-                    "🤖 Describe a movie in words (“a movie about space where…”) — I'll pick it via the Lampa AI assistant, no AI key of your own needed.",
+                    "🤖 Describe a movie in words (“a movie about space where…”) — I'll find it with the Lampa AI assistant, no AI key of your own needed.",
                     "✨ Menyu ixchamroq bo'ldi: pastda bitta «📋 Menyu» tugmasi, ichida barcha bo'limlar.\n" +
                     "🤖 Filmni so'z bilan tasvirlang («kosmos haqidagi film, unda…») — Lampa AI yordamchisi orqali topaman, o'z kalitingiz kerak emas.");
             };
