@@ -7,6 +7,7 @@
 <a href="https://github.com/sunic007/lampa-samsung/releases"><img src="https://img.shields.io/github/downloads/sunic007/lampa-samsung/total?style=flat-square&color=2ea043" alt="downloads"></a>
 <picture><img src="https://img.shields.io/badge/Samsung-Tizen%202.3%2B-1428a0?style=flat-square" alt="Tizen 2.3+"></picture>
 <picture><img src="https://img.shields.io/badge/Telegram-bot-26a5e4?style=flat-square&logo=telegram&logoColor=white" alt="Telegram bot"></picture>
+<a href="https://t.me/sunicapps"><img src="https://img.shields.io/badge/Telegram-help-26a5e4?style=flat-square&logo=telegram&logoColor=white" alt="Telegram"></a>
 </p>
 
 <p align="center"><a href="https://github.com/sunic007/lampa-samsung/releases/latest/download/samsung.wgt"><img src="../docs/badges/download-uz.svg" height="40" align="middle" alt="samsung.wgt'ni yuklab olish"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="README.md"><img src="https://flagcdn.com/h60/gb.png" height="30" align="middle" alt=""> English</a>&nbsp;&nbsp;&nbsp;<a href="README.ru.md"><img src="https://flagcdn.com/h60/ru.png" height="30" align="middle" alt=""> Русский</a>&nbsp;&nbsp;&nbsp;<picture><img src="https://flagcdn.com/h60/uz.png" height="30" align="middle" alt=""></picture> <b>O'zbekcha</b></p>
@@ -130,7 +131,7 @@ Yo'q. Bu pleyer: u hech qanday media kontentni saqlamaydi va tarqatmaydi.
 
 <div align="justify">
 
-Paketni o'z loyihangiz, yig'mangiz, maqola yoki videongizda ishlatmoqchimisiz? Marhamat — faqat <b>ushbu repozitoriyga havolani qoldiring</b> va <b>menga xabar bering</b>: <a href="https://github.com/sunic007/lampa-samsung/discussions">Muhokamalar</a>da yozing yoki <a href="https://github.com/sunic007/lampa-samsung/issues/new/choose">issue</a> oching. Kod MIT litsenziyasi ostida (Lampa'ning o'zi — o'z litsenziyasi bilan, THIRD_PARTY_NOTICES'ga qarang).
+Paketni o'z loyihangiz, yig'mangiz, maqola yoki videongizda ishlatmoqchimisiz? Marhamat — faqat <b>ushbu repozitoriyga havolani qoldiring</b> va <b>menga xabar bering</b>: <a href="https://t.me/sunicapps">Telegram guruhiga</a> yozing yoki <a href="https://github.com/sunic007/lampa-samsung/issues/new/choose">issue</a> oching. Kod MIT litsenziyasi ostida (Lampa'ning o'zi — o'z litsenziyasi bilan, THIRD_PARTY_NOTICES'ga qarang).
 
 </div>
 

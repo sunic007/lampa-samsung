@@ -7,6 +7,7 @@
 <a href="https://github.com/sunic007/lampa-samsung/releases"><img src="https://img.shields.io/github/downloads/sunic007/lampa-samsung/total?style=flat-square&color=2ea043" alt="downloads"></a>
 <picture><img src="https://img.shields.io/badge/Samsung-Tizen%202.3%2B-1428a0?style=flat-square" alt="Tizen 2.3+"></picture>
 <picture><img src="https://img.shields.io/badge/Telegram-bot-26a5e4?style=flat-square&logo=telegram&logoColor=white" alt="Telegram bot"></picture>
+<a href="https://t.me/sunicapps"><img src="https://img.shields.io/badge/Telegram-help-26a5e4?style=flat-square&logo=telegram&logoColor=white" alt="Telegram"></a>
 </p>
 
 <p align="center"><a href="https://github.com/sunic007/lampa-samsung/releases/latest/download/samsung.wgt"><img src="../docs/badges/download-en.svg" height="40" align="middle" alt="Download samsung.wgt"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<picture><img src="https://flagcdn.com/h60/gb.png" height="30" align="middle" alt=""></picture> <b>English</b>&nbsp;&nbsp;&nbsp;<a href="README.ru.md"><img src="https://flagcdn.com/h60/ru.png" height="30" align="middle" alt=""> Русский</a>&nbsp;&nbsp;&nbsp;<a href="README.uz.md"><img src="https://flagcdn.com/h60/uz.png" height="30" align="middle" alt=""> O'zbekcha</a></p>
@@ -130,7 +131,7 @@ No. It is a player; it does not host, store or distribute any media.
 
 <div align="justify">
 
-Want to use the package in your project, build, article or video? You are welcome to — please <b>keep a link to this repository</b> and <b>let me know</b>: write in <a href="https://github.com/sunic007/lampa-samsung/discussions">Discussions</a> or open an <a href="https://github.com/sunic007/lampa-samsung/issues/new/choose">issue</a>. The code is under the MIT license (Lampa itself — its own license, see THIRD_PARTY_NOTICES).
+Want to use the package in your project, build, article or video? You are welcome to — please <b>keep a link to this repository</b> and <b>let me know</b>: write in the <a href="https://t.me/sunicapps">Telegram group</a> or open an <a href="https://github.com/sunic007/lampa-samsung/issues/new/choose">issue</a>. The code is under the MIT license (Lampa itself — its own license, see THIRD_PARTY_NOTICES).
 
 </div>
 

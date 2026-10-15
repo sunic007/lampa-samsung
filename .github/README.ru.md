@@ -7,6 +7,7 @@
 <a href="https://github.com/sunic007/lampa-samsung/releases"><img src="https://img.shields.io/github/downloads/sunic007/lampa-samsung/total?style=flat-square&color=2ea043" alt="downloads"></a>
 <picture><img src="https://img.shields.io/badge/Samsung-Tizen%202.3%2B-1428a0?style=flat-square" alt="Tizen 2.3+"></picture>
 <picture><img src="https://img.shields.io/badge/Telegram-bot-26a5e4?style=flat-square&logo=telegram&logoColor=white" alt="Telegram bot"></picture>
+<a href="https://t.me/sunicapps"><img src="https://img.shields.io/badge/Telegram-help-26a5e4?style=flat-square&logo=telegram&logoColor=white" alt="Telegram"></a>
 </p>
 
 <p align="center"><a href="https://github.com/sunic007/lampa-samsung/releases/latest/download/samsung.wgt"><img src="../docs/badges/download-ru.svg" height="40" align="middle" alt="Скачать samsung.wgt"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="README.md"><img src="https://flagcdn.com/h60/gb.png" height="30" align="middle" alt=""> English</a>&nbsp;&nbsp;&nbsp;<picture><img src="https://flagcdn.com/h60/ru.png" height="30" align="middle" alt=""></picture> <b>Русский</b>&nbsp;&nbsp;&nbsp;<a href="README.uz.md"><img src="https://flagcdn.com/h60/uz.png" height="30" align="middle" alt=""> O'zbekcha</a></p>
@@ -210,7 +211,7 @@ Telegram-бот, Интерфейс, Обновление. Разделы сам
 
 <div align="justify">
 
-Хотите использовать пакет в своём проекте, сборке, статье или видео? Пожалуйста, — только <b>оставьте ссылку на этот репозиторий</b> и <b>сообщите мне</b>: напишите в <a href="https://github.com/sunic007/lampa-samsung/discussions">Обсуждениях</a> или откройте <a href="https://github.com/sunic007/lampa-samsung/issues/new/choose">issue</a>. Код — по лицензии MIT (сама Lampa — по своей лицензии, см. THIRD_PARTY_NOTICES).
+Хотите использовать пакет в своём проекте, сборке, статье или видео? Пожалуйста, — только <b>оставьте ссылку на этот репозиторий</b> и <b>сообщите мне</b>: напишите в <a href="https://t.me/sunicapps">группу в Telegram</a> или откройте <a href="https://github.com/sunic007/lampa-samsung/issues/new/choose">issue</a>. Код — по лицензии MIT (сама Lampa — по своей лицензии, см. THIRD_PARTY_NOTICES).
 
 </div>
 
