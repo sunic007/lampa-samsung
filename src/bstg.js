@@ -2048,7 +2048,7 @@ var BSTelegram = (function () {
         var finish = function (info) {
             setSubAll(card, now, info);
             subNotify(card, now, info);
-            noty(now ? (chat() ? 'Подписка: о новой серии придёт сообщение в Telegram' : 'Подписка сохранена. Уведомления — в Telegram: Настройки → Telegram') : 'Подписка отменена', 3500);
+            noty(now ? (chat() ? 'Подписка: о новой серии напишу в Telegram' : 'Подписка сохранена') : 'Подписка отменена', 3500);
             if (done) done(now);
         };
         if (!now) return finish(null);
@@ -2607,7 +2607,7 @@ var BSTelegram = (function () {
                     subNotify(card, now, tvInfo);
                     refocus();
                     if (!now) return noty('Подписка отменена', 2000);
-                    noty(chat() ? 'Подписка: о новой серии придёт сообщение в Telegram' : 'Подписка сохранена. Уведомления — в Telegram: Настройки → Telegram', 5000);
+                    noty(chat() ? 'Подписка: о новой серии напишу в Telegram' : 'Подписка сохранена', 5000);
                 }, refocus);
             });
             left.append(box);
