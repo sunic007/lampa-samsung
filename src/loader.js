@@ -126,6 +126,7 @@ function bsPluginName(u) {
     return file || m[1];
 }
 function bsNotyText(text, params) {
+    if (params !== undefined && params !== null && typeof params !== 'object') return { text: text, params: params };  // новая Lampa поменяла вызов — не трогаем
     params = params || {};
     var t = String(text === undefined || text === null ? '' : text), m = BS_PLUGINS_FAIL.exec(t);
     if (m) {
@@ -139,7 +140,11 @@ function bsNotyPolish() {
         var N = window.Lampa && Lampa.Noty;
         if (!N || !N.show || N.show.__bs) return;
         var show = N.show;
-        N.show = function (text, params) { var r = bsNotyText(text, params); return show.call(this, r.text, r.params); };
+        N.show = function (text, params) {
+            var r;
+            try { r = bsNotyText(text, params); } catch (e) { r = { text: text, params: params }; }   // наша правка не должна ломать уведомления Lampa
+            return show.apply(this, [r.text, r.params].concat([].slice.call(arguments, 2)));
+        };
         N.show.__bs = true;
     } catch (e) {}
 }
@@ -654,13 +659,24 @@ function bsRouteSettings() {
     } catch (e) {}
 }
 
+/** Раздел Lampa есть в её меню настроек? Новая Lampa может переименовать «player»/«interface»/«parental_control» —
+ * тогда пункты уходят в наш раздел «Обновление», а не пропадают. Свои разделы (bs_…) и непонятный ответ — как есть. */
+function bsSectionOr(to) {
+    if (to.indexOf('bs_') === 0) return to;
+    try {
+        var main = Lampa.Template.string('settings_main');
+        if (main && main.indexOf('data-component="' + to + '"') < 0) { console.log('BS settings: no section', to); return 'bs_update'; }
+    } catch (e) {}
+    return to;
+}
+
 /** После запуска модулей: пункты — по разделам в порядке раскладки, с заголовками групп. */
 function bsFlushSettings() {
     var api = Lampa.SettingsApi, add = api.addParam && api.addParam.__bsOrig;
     if (!add || bsSettingsFlushed) return;
     bsSettingsFlushed = true;
     for (var i = 0; i < BS_SETTINGS_LAYOUT.length; i++) {
-        var to = BS_SETTINGS_LAYOUT[i][0], list = BS_SETTINGS_LAYOUT[i][1], title = '', top = false;
+        var to = bsSectionOr(BS_SETTINGS_LAYOUT[i][0]), list = BS_SETTINGS_LAYOUT[i][1], title = '', top = false;
         for (var j = 0; j < list.length; j++) {
             var name = list[j];
             if (name.charAt(0) === '#') { top = name.charAt(1) === '^'; title = name.slice(top ? 2 : 1); continue; }

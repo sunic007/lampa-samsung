@@ -1409,6 +1409,19 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('загрузка: запуск из пакета — без карточки', run({}) === 0);
     const L = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
     t('загрузка: loader.js сам ничего не пишет при обычном запуске', L.indexOf("'Запускаю Lampa'") < 0 && L.indexOf('bsPhase') < 0);
+    // новая Lampa переименовала раздел настроек — наши пункты уходят в «Обновление», а не пропадают
+    const sec = L.slice(L.indexOf('function bsSectionOr'), L.indexOf('/** После запуска модулей'));
+    const secOr = (tpl) => {
+        const c = { Lampa: { Template: { string: () => tpl } }, console: { log() {} } };
+        vm.createContext(c); vm.runInContext(sec, c);
+        return ['player', 'parental_control', 'bs_online'].map(x => c.bsSectionOr(x)).join(',');
+    };
+    const APP = fs.readFileSync(path.join(SRC, 'app.js'), 'utf8');
+    t('совместимость: разделы настроек из раскладки есть во встроенной Lampa',
+        ['player', 'interface', 'parental_control'].every(x => APP.indexOf('data-component=\\"' + x + '\\"') >= 0));
+    t('совместимость: раздел есть — пункты в нём', secOr('<div data-component="player"></div><div data-component="parental_control">') === 'player,parental_control,bs_online');
+    t('совместимость: раздел переименовали — пункты в «Обновление»', secOr('<div data-component="player"></div>') === 'player,bs_update,bs_online');
+    t('совместимость: шаблона нет — раскладка как есть', secOr('') === 'player,parental_control,bs_online');
 }
 /* ---- loader.js: ошибки плагинов в уведомлениях — коротко и красной точкой ---- */
 {
@@ -1422,6 +1435,15 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('ошибки: текст про сбой — красной точкой, даже без стиля', ctx.txt('Не удалось сменить качество').params.style === 'error' && ctx.txt('Сервер обновлений недоступен').params.style === 'error');
     t('ошибки: обычное уведомление остаётся обычным', !ctx.txt('Переключаю качество на 720p').params.style && !ctx.txt('Lampa 3.3.6 запущена').params.style);
     t('ошибки: стиль, заданный плагином, не трогаем', ctx.txt('Ошибка сети', { style: 'glass' }).params.style === 'glass');
+    t('совместимость: новая Lampa передаёт не объект — уведомление как есть', ctx.txt('Ошибка сети', 5000).params === 5000);
+    // обёртка Lampa.Noty.show: наша ошибка не ломает уведомления, лишние аргументы новой Lampa доходят
+    const pol = src.match(/function bsNotyPolish\([\s\S]*?\n\}/)[0];
+    const got = [];
+    const c2 = { String, RegExp, window: {}, bsNotyText: () => { throw new Error('x'); } };
+    c2.window.Lampa = c2.Lampa = { Noty: { show: function () { got.push([].slice.call(arguments)); } } };
+    vm.createContext(c2); vm.runInContext(pol + ';bsNotyPolish();', c2);
+    c2.Lampa.Noty.show('Привет', { time: 1 }, 'extra');
+    t('совместимость: сбой нашей правки — уведомление Lampa всё равно показано', got.length === 1 && got[0][0] === 'Привет' && got[0][2] === 'extra');
 }
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
