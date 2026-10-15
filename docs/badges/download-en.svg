@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="212" height="40" viewBox="0 0 212 40">
+  <rect width="212" height="40" rx="8" fill="#2f81f7"/>
+  <g transform="translate(15,10)" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 2v12M5 9l5 5 5-5M3 19h14"/>
+  </g>
+  <text x="42" y="25.5" font-family="Segoe UI, -apple-system, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#ffffff">Download samsung.wgt</text>
+</svg>

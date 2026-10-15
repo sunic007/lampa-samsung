@@ -55,7 +55,7 @@ def bump(kind):
     new = '.'.join(map(str, v))
     cfg = re.sub(r'(<widget[^>]*\sversion=")\d+\.\d+\.\d+(")', r'\g<1>' + new + r'\g<2>', cfg, count=1)
     open(CONFIG, 'w', encoding='utf-8').write(cfg)
-    print('Версия поднята до', new, '— допишите CHANGELOG.md')
+    print('Версия поднята до', new, '— допишите .github/CHANGELOG.md')
     return new
 
 
@@ -119,7 +119,7 @@ def changelog_notes(version):
     """«Что нового» для окна обновления на ТВ: заголовок и пункты раздела этой версии из CHANGELOG.md.
     Без разметки Markdown, коротко: окно на телевизоре, а не страница релиза."""
     import re
-    path = os.path.join(ROOT, 'CHANGELOG.md')
+    path = os.path.join(ROOT, '.github', 'CHANGELOG.md')
     if not os.path.exists(path):
         return None
     lines = open(path, encoding='utf-8').read().splitlines()

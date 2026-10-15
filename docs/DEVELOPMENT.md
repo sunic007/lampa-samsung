@@ -11,7 +11,7 @@
 | | |
 |---|---|
 | ID приложения | `0SG81L944p.Lampa` (тот же, что у пакета byskaz — ставится поверх) |
-| Версия пакета | `src/config.xml` → `<widget version>`; история — [CHANGELOG.md](../CHANGELOG.md) |
+| Версия пакета | `src/config.xml` → `<widget version>`; история — [CHANGELOG.md](../.github/CHANGELOG.md) |
 | Целевой ТВ | Samsung 2022 (Tizen 6.5, браузер на Chromium 85) |
 | Сервер Lampa | `http://lampa.byskaz.ru/lampa-main/` (Lampa + патч byskaz) |
 | Установка | установщик на телефоне (подписывает сам) или Tizen Studio с сертификатом Samsung — см. «Установка» |
@@ -405,7 +405,7 @@ python tools/pack.py --bump         # поднять версию и собра�
 ```
 `CHANGELOG.md`: раздел версии должен начинаться строкой `## X.Y.Z — название`. По нему `pack.py`
 берёт пункты для окна обновления (`changelog_notes`). Пункты — короткие, понятные пользователю.
-Затем: запись в `CHANGELOG.md`, проверка (ниже), коммит в git.
+Затем: запись в `.github/CHANGELOG.md`, проверка (ниже), коммит в git.
 
 ## Проверка перед выпуском
 - `pack.py` сам запускает автотесты (`node tests/run.cjs`) и проверяет манифест, ссылки index.html, совпадение встроенной

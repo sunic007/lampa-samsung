@@ -66,7 +66,7 @@ def main():
     loader = re.sub(r"var BS_BUNDLED_HASH = '[^']*';", "var BS_BUNDLED_HASH = '%s';" % h, loader, count=1)
     open(loader_path, 'w', encoding='utf-8', newline='').write(loader)
     print('Обновлено файлов:', len(jobs) - len(fails), '— встроенная копия теперь', version)
-    print('Дальше: допишите CHANGELOG.md и выполните python tools/pack.py --bump')
+    print('Дальше: допишите .github/CHANGELOG.md и выполните python tools/pack.py --bump')
 
 
 if __name__ == '__main__':
