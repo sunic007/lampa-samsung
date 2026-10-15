@@ -5,27 +5,27 @@ body:
   - type: input
     id: tv
     attributes:
-      label: TV model and year / Модель и год ТВ
+      label: TV model and year / Модель и год ТВ / Televizor modeli va yili
       placeholder: UE55BU8500 (2022)
     validations:
       required: true
   - type: input
     id: version
     attributes:
-      label: Package version / Версия пакета
-      description: Settings → «Обновление» / Настройки → Обновление
-      placeholder: "1.7.41"
+      label: Package version / Версия пакета / Paket versiyasi
+      description: Settings → Sunic Apps → «Обновление» / Настройки → Sunic Apps → Обновление
+      placeholder: "2.0.1"
     validations:
       required: true
   - type: dropdown
     id: area
     attributes:
-      label: Area / Где
+      label: Area / Где / Qayerda
       options: [Player / Плеер, Telegram bot / Telegram-бот, Updates / Обновление, Startup / Запуск, Other / Другое]
   - type: textarea
     id: what
     attributes:
-      label: What happened / Что произошло
+      label: What happened / Что произошло / Nima bo'ldi
       description: Steps, a photo of the TV screen / Шаги, фото экрана ТВ
     validations:
       required: true
