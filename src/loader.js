@@ -866,6 +866,12 @@ function bsAddSettings() {
         field: { name: 'Поддержать проект', description: 'Пакет бесплатный. Помочь развитию можно на GitHub Sponsors — QR-код для телефона.' },
         onChange: bsSupportQr
     });
+    // условие API TMDB: указать источник данных о фильмах (бот и строки пакета берут их у TMDB)
+    Lampa.SettingsApi.addParam({
+        component: C,
+        param: { name: 'bs_info_tmdb', type: 'static' },
+        field: { name: 'Данные о фильмах — TMDB', description: 'Этот продукт использует API TMDB, но не одобрен и не сертифицирован TMDB.' }
+    });
 }
 
 /* Обновление функций с GitHub: Tizen по Home держит Lampa в памяти, «следующий запуск» может быть через недели —

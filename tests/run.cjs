@@ -4,6 +4,9 @@ const fs = require('fs'), vm = require('vm'), path = require('path');
 const SRC = path.join(__dirname, '..', 'src');
 let pass = 0, fail = 0;
 function t(name, cond) { if (cond) pass++; else { fail++; console.log('FAIL', name); } }
+// Bot API шлётся POST (параметры в теле): для проверок склеиваем адрес и тело, как раньше было в адресе GET
+const tgReq = (u, b) => String(u) + (b ? '?' + b : '');
+const dec = s => { try { return decodeURIComponent(s); } catch (e) { return s; } };
 
 function load(file, name, store) {
     store = store || {};
@@ -12,7 +15,7 @@ function load(file, name, store) {
     const ctx = { window: w, XMLHttpRequest: function () {}, Node: function () {}, document: { hidden: false, addEventListener() {} },
         navigator: { userAgent: 'test', onLine: true }, location: { reload() {} }, setTimeout: () => 0, setInterval: () => 0, clearTimeout() {}, clearInterval() {},
         console, JSON, Math, Date, Infinity, String, Array, Object, Number, Promise, parseInt, parseFloat, isNaN };
-    ctx.XMLHttpRequest.prototype = { open() {}, send() {} }; ctx.Node.prototype = { appendChild() {} };
+    ctx.XMLHttpRequest.prototype = { open() {}, send() {}, setRequestHeader() {} }; ctx.Node.prototype = { appendChild() {} };
     w.window = w; vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(SRC, file), 'utf8') + ';this.M=' + name + ';', ctx);
     return { M: ctx.M, store };
@@ -114,7 +117,7 @@ t('кэш: метка ставится до #, а не во фрагмент', /
 {
     // люди по каналу ТВ: запись кусками, старая версия не затирает новую
     const store = {};
-    const ctx = { window: {}, console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: function () { this.open = () => {}; this.send = () => {}; } };
+    const ctx = { window: {}, console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: function () { this.open = () => {}; this.send = () => {}; this.setRequestHeader = () => {}; } };
     ctx.window = ctx; ctx.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
     vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
     const U = ctx.M, rec = JSON.stringify({ name: 'Аня', want: [{ id: 5, tv: true, name: 'X'.repeat(1500) }], rev: 200 });
@@ -163,7 +166,7 @@ t('кэш: метка ставится до #, а не во фрагмент', /
     // «Подписаться» на ТВ: людей несколько — выбрать, кому; подписка и подтверждение — выбранному
     const store = { bs_tg_chat: '1', bs_tg_token: '123:abc', bs_tg_users: JSON.stringify({ '2': { name: 'Аня', subs: [], want: [] } }) };
     const urls = []; let sel = null;
-    function X() { this.open = (m, u) => urls.push(u); this.send = () => {}; this.setRequestHeader = () => {}; }
+    function X() { this.open = (m, u) => { this.u = u; }; this.send = b => urls.push(tgReq(this.u, b)); this.setRequestHeader = () => {}; }
     const ctx = { window: {}, console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: X,
         Lampa: { Select: { show: o => { sel = o; } }, Controller: { enabled: () => ({ name: 'full' }), toggle() {} }, Noty: { show() {} } } };
     ctx.window = ctx; ctx.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
@@ -329,7 +332,7 @@ function fixCtx(store) {
         $: () => ({ last: () => ({ text: () => env.bal }) }),
         Lampa: { Storage: { get: k => (k === 'online_balanser' ? env.bal : '') }, Noty: { show: t => notes.push(t) }, Player: { close() {} },
             Activity: { active: () => ({ activity: { component: env.screen } }) } } };
-    ctx.XMLHttpRequest.prototype = { open() {}, send() {} }; w.window = w; vm.createContext(ctx);
+    ctx.XMLHttpRequest.prototype = { open() {}, send() {}, setRequestHeader() {} }; w.window = w; vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(SRC, 'bsfix.js'), 'utf8') + ';this.M=BSFix;', ctx);
     return { M: ctx.M, notes, env, ctx };
 }
@@ -731,7 +734,7 @@ t('обновления: непроверенная версия функций 
 {
     const store = { bs_tg_chat: '1', bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw' };
     const urls = [];
-    function X() { this.open = (m, u) => urls.push(decodeURIComponent(u)); this.send = b => { if (b) urls.push(String(b)); }; this.setRequestHeader = () => {}; }
+    function X() { this.open = (m, u) => { this.u = u; }; this.send = b => urls.push(dec(tgReq(this.u, b))); this.setRequestHeader = () => {}; }
     const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: X, Uint8Array,
         btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'), unescape, escape, encodeURIComponent, decodeURIComponent,
         Lampa: { Noty: { show() {} } } };
@@ -1584,7 +1587,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     const store = { bs_tg_chat: '1', bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw', bs_tg_lang: JSON.stringify({ 1: 'en', 2: 'uz' }),
         bs_tg_users: JSON.stringify({ 2: g, 3: g }) };
     const urls = [];
-    function X() { this.open = (m, u) => urls.push(decodeURIComponent(u)); this.send = b => { if (b) urls.push(String(b)); }; this.setRequestHeader = () => {}; }
+    function X() { this.open = (m, u) => { this.u = u; }; this.send = b => urls.push(dec(tgReq(this.u, b))); this.setRequestHeader = () => {}; }
     const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: X, Uint8Array,
         btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'), unescape, escape, encodeURIComponent, decodeURIComponent,
         Lampa: { Noty: { show() {} } } };
@@ -1656,6 +1659,102 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('язык по каналу: новый выбор применяется', JSON.parse(store.bs_tg_lang)['5'] === 'uz');
     const q2 = JSON.parse(store.bs_tg_del); q2.forEach(x => { x.at = 0; }); store.bs_tg_del = JSON.stringify(q2); urls.length = 0; T._delTick();
     t('чистый чат: по времени не удаляется, старше 48 ч — просто забываем', !urls.some(u => /deleteMessage/.test(u)) && JSON.parse(store.bs_tg_del).length === 0);
+}
+
+/* ---- bstg.js: Bot API — POST, «слишком часто» (429), уведомления не теряются, чужие не съедают лимит ---- */
+{
+    const store = { bs_tg_chat: '1', bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw', bs_tv_id: 'tvA', bs_tg_lang: JSON.stringify({ 1: 'ru' }) };
+    const xs = [], timers = [];
+    function X() { const x = this; x.h = {}; x.open = (m, u) => { x.m = m; x.u = u; }; x.setRequestHeader = (k, v) => { x.h[k] = v; }; x.send = b => { x.b = b; xs.push(x); }; x.getResponseHeader = () => ''; }
+    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setInterval: () => 0, XMLHttpRequest: X, Uint8Array,
+        setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, clearTimeout() {},
+        btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'), unescape, escape, encodeURIComponent, decodeURIComponent,
+        Lampa: { Noty: { show() {} } } };
+    let rnd = 0;
+    const wc = require('crypto').webcrypto;
+    ctx.window = ctx; ctx.crypto = { getRandomValues: a => { rnd++; return wc.getRandomValues(a); } };
+    ctx.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
+    const T = ctx.M;
+    const tg = () => xs.filter(x => /api\.telegram\.org/.test(x.u));
+    const answer = (x, status, j) => { x.status = status; x.responseText = JSON.stringify(j); x.onload(); };
+    const runTimers = () => { const l = timers.splice(0); l.forEach(t => t.fn()); return l; };
+    // POST: всё в теле, адрес короткий — длинный текст не даёт 414
+    let okV = null, failV = null;
+    xs.length = 0; T._call('sendMessage', { chat_id: 1, text: 'я'.repeat(3000) }, v => { okV = v; }, e => { failV = e; });
+    let x0 = tg()[0];
+    t('Bot API: POST, параметры в теле, а не в адресе', x0.m === 'POST' && /\/sendMessage$/.test(x0.u) && x0.h['Content-Type'] === 'application/x-www-form-urlencoded' &&
+        /^chat_id=1&text=%D1%8F/.test(x0.b) && decodeURIComponent(x0.b).length > 3000);
+    // 429: один повтор через retry_after, второй 429 — ошибка
+    timers.length = 0;
+    answer(x0, 429, { ok: false, error_code: 429, description: 'Too Many Requests: retry after 5', parameters: { retry_after: 5 } });
+    t('Bot API: 429 — ошибку не отдаём, повтор через retry_after', failV === null && timers.length === 1 && timers[0].ms === 5000);
+    runTimers();
+    const x1 = tg()[1];
+    t('Bot API: повтор — тот же запрос', x1 && x1 !== x0 && x1.b === x0.b && /\/sendMessage$/.test(x1.u));
+    answer(x1, 429, { ok: false, error_code: 429, description: 'Too Many Requests: retry after 5', parameters: { retry_after: 5 } });
+    t('Bot API: снова 429 — ошибка, больше не повторяем', /Too Many/.test(failV) && timers.length === 0 && okV === null);
+    failV = null; xs.length = 0; T._call('sendMessage', { chat_id: 1, text: 'x' }, v => { okV = v; }, e => { failV = e; });
+    answer(tg()[0], 429, { ok: false, error_code: 429, parameters: { retry_after: 3600 } });
+    t('Bot API: долгий retry_after — ждём не больше 60 с', timers.length === 1 && timers[0].ms === 60000);
+    runTimers(); answer(tg()[1], 200, { ok: true, result: { message_id: 3 } });
+    t('Bot API: повтор удался — ответ как обычно', okV && okV.message_id === 3 && failV === null);
+    xs.length = 0; T._call('sendMessage', { chat_id: 1, text: 'x' }, null, e => { failV = e; });
+    answer(tg()[0], 400, { ok: false, error_code: 400, description: 'Bad Request: chat not found' });
+    t('Bot API: другая ошибка — сразу, без повтора', /chat not found/.test(failV) && timers.length === 0);
+
+    // новая серия: не ушло — серия не «увидена», следующая проверка пришлёт снова; ушло — увидена
+    const today = new Date().toISOString().slice(0, 10), reqs = [];
+    ctx.Lampa.TMDB = { api: u => u, key: () => 'k' };
+    ctx.Lampa.Reguest = function () { this.silent = (u, ok) => reqs.push(ok); };
+    store.bs_subs = JSON.stringify([{ id: 7, name: 'Сериал', source: 'tmdb' }]);
+    store.bs_tg_seen = JSON.stringify({ 7: { s: 1, e: 1, at: 0, name: 'Сериал' } });
+    const show = { id: 7, name: 'Сериал', last_episode_to_air: { season_number: 1, episode_number: 2, air_date: today } };
+    xs.length = 0; T._check(true); reqs.shift()(show);
+    answer(tg().filter(x => /sendMessage$/.test(x.u))[0], 400, { ok: false, description: 'network' });
+    runTimers();
+    t('новая серия: сообщение не ушло — серия не отмечена увиденной', JSON.parse(store.bs_tg_seen)['7'].e === 1);
+    xs.length = 0; T._check(true); reqs.shift()(show);
+    const sm = tg().filter(x => /sendMessage$/.test(x.u));
+    t('новая серия: следующая проверка присылает её снова', sm.length === 1 && /1%2C%20%D1%81%D0%B5%D1%80%D0%B8%D1%8F%202/.test(sm[0].b));
+    answer(sm[0], 200, { ok: true, result: { message_id: 10 } });
+    runTimers();
+    t('новая серия: ушло — отмечена, больше не пришлём', JSON.parse(store.bs_tg_seen)['7'].e === 2 && JSON.parse(store.bs_tg_seen)['7'].s === 1);
+
+    // «Напомнить завтра»: два напоминания одному чату — с паузой; не ушло — возвращается в список
+    delete store.bs_subs; store.bs_tg_seen = '{}'; store.bs_tg_week = 'x';
+    store.bs_tg_later = JSON.stringify([{ id: 11, name: 'Первый', at: 1 }, { id: 12, name: 'Второй', at: 2 }]);
+    xs.length = 0; timers.length = 0; T._remind();
+    t('напоминания: сразу уходит только первое, второе — через ≥1,1 с', tg().length === 1 && timers.length === 1 && timers[0].ms >= 1100 && store.bs_tg_later === '[]');
+    answer(tg()[0], 429, { ok: false, error_code: 429, parameters: { retry_after: 1 } });
+    timers.splice(0).forEach(tm => (tm.ms === 1000 ? (tm.fn(), answer(tg()[1], 429, { ok: false, error_code: 429, parameters: { retry_after: 1 } })) : timers.push(tm)));
+    t('напоминания: не ушло (429 дважды) — вернулось в «напомнить завтра»', JSON.parse(store.bs_tg_later).map(x => x.id).join() === '11');
+    runTimers();
+    t('напоминания: второе ушло после паузы', tg().length === 3 && /%D0%92%D1%82%D0%BE%D1%80%D0%BE%D0%B9/.test(tg()[2].b));
+
+    // чужой чат: подсказка не чаще раза в 10 минут
+    const say = (c, text) => { xs.length = 0; T._handle({ update_id: 1, message: { chat: { id: +c, type: 'private' }, from: { first_name: 'X', language_code: 'ru' }, text } }); return tg().length; };
+    t('чужой чат: первое сообщение — подсказка про QR', say('66', 'привет') === 1);
+    t('чужой чат: следом ещё — молчим (лимит Telegram не тратим)', say('66', 'привет') === 0 && say('66', 'эй') === 0);
+    t('чужой чат: другому чужому — отвечаем', say('67', 'привет') === 1);
+
+    // переименование с другого ТВ: имя без разметки, как остальные имена
+    T._onBus({ t: 'rename', from: 'tvB', to: 'tvA', title: '<b>Зал</b> "1"' });
+    t('переименование: имя ТВ — без символов разметки', store.bs_tv_name === 'bЗал/b 1');
+    T._onBus({ t: 'rename', from: 'tvB', to: 'tvA', title: '<>' });
+    t('переименование: пустое после чистки — не меняем', store.bs_tv_name === 'bЗал/b 1');
+
+    // код второго ТВ и тема QR — из crypto.getRandomValues
+    rnd = 0;
+    const code = T._joinCode(), topic = T._randomTopic();
+    t('код второго ТВ и тема QR — из crypto.getRandomValues', rnd >= 2 && /^\d{8}$/.test(code) && /^lampa-[a-z2-9]{16}$/.test(topic));
+
+    // TMDB: указан источник данных в «Помощи» на всех языках
+    const helpIn = c => { let r; T._as(c, () => { r = T._help(); }); return r; };
+    store.bs_tg_lang = JSON.stringify({ 1: 'ru', 2: 'en', 3: 'uz' });
+    store.bs_tg_users = JSON.stringify({ 2: { name: 'A', want: [], subs: [] }, 3: { name: 'B', want: [], subs: [] } });
+    t('помощь: про TMDB — на трёх языках', /не одобрен и не сертифицирован TMDB/.test(helpIn('1')) && /not endorsed or certified by TMDB/.test(helpIn('2')) && /tasdiqlanmagan yoki sertifikatlanmagan/.test(helpIn('3')));
+    t('настройки: в «Проект» — строка про TMDB', /не одобрен и не сертифицирован TMDB/.test(fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8')));
 }
 
 console.log(pass + ' passed, ' + fail + ' failed');

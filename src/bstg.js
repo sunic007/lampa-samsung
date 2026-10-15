@@ -19,7 +19,8 @@
  *  «Хочу посмотреть» (закладка Lampa «Позже» — wath, синхронизируется аккаунтом), «Открыть на ТВ», у сериала —
  *  «Подписаться». Бот слушает только свой чат (bs_tg_chat).
  *  Без команд со слешем: постоянная клавиатура внизу Telegram — «Найти», «Хочу посмотреть», «Мои подписки»,
- *  «На этой неделе», «Помощь»; название можно писать и просто текстом. Меню команд бота убираем (deleteMyCommands).
+ *  «На этой неделе», «Помощь»; название можно писать и просто текстом. Меню команд бота слева от поля ввода — те же разделы
+ *  (setMyCommands, на каждом языке своё).
  *  Несколько ТВ на одном боте: Telegram отдаёт сообщения только одному опрашивающему (второй получает «Conflict») —
  *  поэтому один ТВ главный (опрашивает бота, шлёт уведомления), остальные слушают общий канал ntfy.sh, тема которого
  *  вычисляется из токена (без токена не угадать). По каналу: «я здесь» (название ТВ, главный ли, чат), «открой
@@ -153,26 +154,44 @@ var BSTelegram = (function () {
         try { var d = Date.parse(x.getResponseHeader('Date') || ''); if (d) serverSkew = d - Date.now(); } catch (e) {}
     }
     function serverNow() { return Date.now() + serverSkew; }
+    /* «Слишком часто» (429): Telegram говорит, через сколько секунд можно снова (parameters.retry_after). Повторяем
+     * тот же запрос один раз, ждём не дольше RETRY_MAX; опять 429 — ошибка, как раньше. */
+    var RETRY_MAX = 60;
+    function retryAfter(x, j) {
+        if (x.status !== 429 && !(j && j.error_code === 429)) return 0;
+        var s = j && j.parameters ? j.parameters.retry_after | 0 : 0;
+        return Math.min(Math.max(s, 1), RETRY_MAX);
+    }
+    /* POST с телом формы, а не GET: длинный текст или клавиатура в адресе давали 414 (адрес слишком длинный). */
     function call(method, params, ok, fail, wait) {
         ok = keep(ok); fail = keep(fail);
-        var q = [], k;
+        var q = [], k, retried = false;
         for (k in params) if (params.hasOwnProperty(k)) q.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k]));
-        var x = new XMLHttpRequest(), done = false;
-        var end = function (f, v) { if (!done) { done = true; if (f) f(v); } };
-        try {
-            x.open('GET', API + token() + '/' + method + (q.length ? '?' + q.join('&') : ''), true);
-            x.timeout = wait || TIMEOUT;
-            x.onload = function () {
-                var j = null;
-                try { j = JSON.parse(x.responseText); } catch (e) {}
-                noteServerTime(x);
-                if (j && j.ok) end(ok, j.result);
-                else end(fail, (j && j.description) || ('ответ ' + x.status));
-            };
-            x.onerror = function () { end(fail, 'нет связи с Telegram'); };
-            x.ontimeout = function () { end(fail, 'Telegram не ответил'); };
-            x.send();
-        } catch (e) { end(fail, e.message); }
+        (function go() {
+            var x = new XMLHttpRequest(), done = false;
+            var end = function (f, v) { if (!done) { done = true; if (f) f(v); } };
+            try {
+                x.open('POST', API + token() + '/' + method, true);
+                x.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                x.timeout = wait || TIMEOUT;
+                x.onload = function () {
+                    var j = null;
+                    try { j = JSON.parse(x.responseText); } catch (e) {}
+                    noteServerTime(x);
+                    if (j && j.ok) return end(ok, j.result);
+                    var after = retryAfter(x, j);
+                    if (after && !retried && !done) {
+                        retried = done = true;
+                        log('Telegram: слишком часто, повтор через ' + after + ' с', method);
+                        return setTimeout(go, after * 1000);
+                    }
+                    end(fail, (j && j.description) || ('ответ ' + x.status));
+                };
+                x.onerror = function () { end(fail, 'нет связи с Telegram'); };
+                x.ontimeout = function () { end(fail, 'Telegram не ответил'); };
+                x.send(q.join('&'));
+            } catch (e) { end(fail, e.message); }
+        })();
     }
 
     /** Чат из последних сообщений боту (getUpdates): самое свежее личное сообщение. skip — чаты подключённых людей:
@@ -209,7 +228,8 @@ var BSTelegram = (function () {
             '🗓 По понедельникам — что выходит на этой неделе.\n' +
             '🎬 Записали момент кнопкой «Записать» в плеере — видео придёт сюда.\n' +
             '👥 Для всей семьи: каждый подключает свой Telegram через QR-код в поиске Lampa — у каждого свои «Хочу посмотреть» и подписки. Кто подключён — в «⚙️ Настройки» → «👥 Люди».\n\n' +
-            '📋 Кнопка «Меню» внизу — все разделы. Работаю, пока Lampa запущена на ТВ.',
+            '📋 Кнопка «Меню» внизу — все разделы. Работаю, пока Lampa запущена на ТВ.\n\n' +
+            'Данные о фильмах — TMDB. Этот продукт использует API TMDB, но не одобрен и не сертифицирован TMDB.',
             "I'm your Lampa assistant 🎬\n\n" +
             "🔎 Type the name of a movie or series — I'll find it and show buttons: “▶️ Watch” (starts on the TV right away), “⭐ Want to watch”, “🔔 Subscribe”. Don't remember the name? Describe the plot — AI will help.\n" +
             'You can add a year or a studio: “Doctor Strange 2026”, “2026”, “Marvel movies 2026”, “Netflix series”.\n' +
@@ -220,7 +240,8 @@ var BSTelegram = (function () {
             "🗓 On Mondays — what's coming out this week.\n" +
             '🎬 Record a moment with the “Записать” (Record) button in the player — the video will arrive here.\n' +
             '👥 For the whole family: everyone connects their own Telegram via the QR code in Lampa search — each gets their own “Want to watch” and subscriptions. Who is connected — “⚙️ Settings” → “👥 People”.\n\n' +
-            '📋 The “Menu” button below opens all sections. I work while Lampa is running on the TV.',
+            '📋 The “Menu” button below opens all sections. I work while Lampa is running on the TV.\n\n' +
+            'Movie data: TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.',
             "Men — Lampa yordamchingizman 🎬\n\n" +
             "🔎 Film yoki serial nomini yozing — topib, tugmalarni ko'rsataman: «▶️ Ko'rish» (darhol televizorda yoqiladi), «⭐ Ko'rmoqchiman», «🔔 Obuna bo'lish». Nomini eslay olmasangiz — syujetini yozing, sun'iy intellekt yordam beradi.\n" +
             "Yil yoki studiyani ham qo'shishingiz mumkin: «Doktor Strendj 2026», «2026», «Marvel filmlari 2026», «Netflix seriallari».\n" +
@@ -231,7 +252,8 @@ var BSTelegram = (function () {
             "🗓 Har dushanba — shu hafta nimalar chiqishini yozaman.\n" +
             "🎬 Pleerdagi «Записать» tugmasi bilan yozib olingan lavha shu yerga keladi.\n" +
             "👥 Butun oila uchun: har kim o'z Telegramini Lampa qidiruvidagi QR-kod orqali ulaydi — har kimning o'z «Ko'rmoqchiman» ro'yxati va obunalari bo'ladi. Kim ulangani — «⚙️ Sozlamalar» → «👥 Odamlar».\n\n" +
-            "📋 Pastdagi «Menyu» tugmasi — barcha bo'limlar. Lampa televizorda ishlab turganda ishlayman.");
+            "📋 Pastdagi «Menyu» tugmasi — barcha bo'limlar. Lampa televizorda ishlab turganda ishlayman.\n\n" +
+            "Film ma'lumotlari — TMDB. Ushbu mahsulot TMDB API'dan foydalanadi, lekin TMDB tomonidan tasdiqlanmagan yoki sertifikatlanmagan.");
     }
     function helpText() {
         var h = help();
@@ -571,15 +593,16 @@ var BSTelegram = (function () {
             for (var i = 0; i < r.length; i++) s += a.charAt(r[i] % a.length);
             return s;
         }
-        return { sha256: sha256, hmac: hmac, bytes: bytes, hex: hex, key: key, seal: seal, open: open, secret: secret };
+        return { sha256: sha256, hmac: hmac, bytes: bytes, hex: hex, key: key, seal: seal, open: open, secret: secret, rnd: rnd };
     })();
 
     var RELAY = 'https://ntfy.sh/', TOKEN_RE = /(\d{6,12}:[A-Za-z0-9_-]{30,})/, PAIR_TIME = 15 * 60000;
     var pair = null;     // {topic, since, until, stage: 'token' | 'chat', busy, timer}
 
+    /** Тема для QR: случайность из crypto.getRandomValues (Crypt.rnd; нет его на ТВ — Math.random). 32 буквы — без перекоса. */
     function randomTopic() {
-        var a = 'abcdefghijkmnpqrstuvwxyz23456789', t = 'lampa-';
-        for (var i = 0; i < 16; i++) t += a.charAt(Math.floor(Math.random() * a.length));
+        var a = 'abcdefghijkmnpqrstuvwxyz23456789', t = 'lampa-', r = Crypt.rnd(16);
+        for (var i = 0; i < r.length; i++) t += a.charAt(r[i] % a.length);
         return t;
     }
     function pairStop() { if (pair) clearInterval(pair.timer); pair = null; }
@@ -685,7 +708,12 @@ var BSTelegram = (function () {
      * работает, кладёт в эту тему токен и чат. Бот принимает сообщения только из своего чата, так что код может
      * прислать только хозяин; тему без кода не угадать. */
 
-    function joinCode() { var c = ''; for (var i = 0; i < 8; i++) c += Math.floor(Math.random() * 10); return c; }
+    /** 8 цифр из Crypt.rnd; байты 250–255 отбрасываем, чтобы цифры были равновероятны. */
+    function joinCode() {
+        var c = '';
+        while (c.length < 8) Crypt.rnd(16).forEach(function (b) { if (b < 250 && c.length < 8) c += b % 10; });
+        return c;
+    }
     function joinTopic(code) { return 'lampa-join-' + fnv(code, 2166136261) + fnv(code + '#', 2166136261); }
     /** Код из сообщения: «1234 5678», «1234-5678», «12345678». */
     function joinFrom(t) { var m = /^\s*(\d{4})[\s-]?(\d{4})\s*$/.exec(String(t || '')); return m ? m[1] + m[2] : ''; }
@@ -853,6 +881,15 @@ var BSTelegram = (function () {
     }
     function trackedNow() { return isOwner() ? tracked() : guestTracked(guest()); }
 
+    /* Чужим отвечаем не чаще раза в 10 минут на чат: кто шлёт боту сообщения пачками, не съест лимит Telegram на
+     * отправку (и не завалит владельца запросами). Только в памяти — после перезапуска Lampa можно снова. */
+    var STRANGER_GAP = 10 * 60000, strangerAt = {};
+    function strangerOnce(c) {
+        var now = Date.now();
+        if (strangerAt[c] && now - strangerAt[c] < STRANGER_GAP) return false;
+        strangerAt[c] = now;
+        return true;
+    }
     /** Чужой чат: приглашение из QR — подключить; иначе — подсказать, где QR. */
     function stranger(u, c) {
         var msg = u.message;
@@ -863,12 +900,14 @@ var BSTelegram = (function () {
             var all = users();
             var allow = function () { return { text: L('✅ Разрешить', '✅ Allow', '✅ Ruxsat berish'), callback_data: 'ok:' + c }; };
             if (all[c] && all[c].banned) {                       // отключённый — снова только с разрешения владельца
+                if (!strangerOnce(c)) return;
                 as(c, function () { reply(L('Владелец отключил вас от Lampa. Я отправил ему запрос — когда разрешит, напишу.', "The owner disconnected you from Lampa. I've sent them a request — I'll let you know when they allow it.", "Bot egasi sizni Lampa'dan uzgan. Unga so'rov yubordim — ruxsat bersa, yozaman.")); });
                 as('', function () { reply(L('👤 ' + name + ' хочет снова подключиться к Lampa.', '👤 ' + name + ' wants to connect to Lampa again.', "👤 " + name + " Lampa'ga qayta ulanmoqchi."), [[allow()]]); });
                 return;
             }
             if (needApprove()) {
                 if (all[c] && all[c].pending && Date.now() - (all[c].at || 0) < 3600000) {   // уже спросили - не заваливаем владельца
+                    if (!strangerOnce(c)) return;
                     return as(c, function () { reply(L('⏳ Запрос уже отправлен владельцу — когда разрешит, напишу.', "⏳ Your request has already been sent to the owner — I'll let you know when they allow it.", "⏳ So'rov bot egasiga allaqachon yuborilgan — ruxsat bersa, yozaman.")); });
                 }
                 all[c] = { name: name, pending: true, at: Date.now() };
@@ -893,6 +932,7 @@ var BSTelegram = (function () {
             log('подключился', name);
             return;
         }
+        if (!strangerOnce(c)) return;
         as(c, function () { reply(L('Этот бот — для Lampa на ТВ. Чтобы подключиться, наведите камеру телефона на QR-код в поиске Lampa.', 'This bot is for Lampa on a TV. To connect, point your phone camera at the QR code in Lampa search.', "Bu bot televizordagi Lampa uchun. Ulanish uchun telefon kamerasini Lampa qidiruvidagi QR-kodga qarating.")); });
     }
 
@@ -1239,7 +1279,7 @@ var BSTelegram = (function () {
             var k2, ats = m.at && typeof m.at === 'object' ? m.at : {};
             for (k2 in m.map) if (m.map.hasOwnProperty(k2)) putLang(k2, m.map[k2], ats[k2] || 1);
         }
-        else if (m.t === 'rename' && m.to === tvId && m.title) { lsSet('bs_tv_name', String(m.title).slice(0, 40)); busHello(false); refreshSettings(); }
+        else if (m.t === 'rename' && m.to === tvId && cleanName(m.title)) { lsSet('bs_tv_name', cleanName(m.title)); busHello(false); refreshSettings(); }
         else if (m.t === 'open' && m.to === tvId && now - (m.ts || 0) < 60000) openHere(m.k, m.id, m.ref, !!m.play, !!m.g);
         else if (m.t === 'type' && m.to === tvId && now - (m.ts || 0) < 60000) {
             var why = typedText(m.text) ? typeHere(typedText(m.text)) : 'пустой текст';
@@ -1415,27 +1455,37 @@ var BSTelegram = (function () {
             var url = Lampa.TMDB.api('tv/' + c.id + '?api_key=' + Lampa.TMDB.key() + '&language=ru');
             new Lampa.Reguest().silent(url, function (json) {
                 var last = json && json.last_episode_to_air, all = loadSeen(), prev = all[c.id];
-                if (last && isNew(prev, last, Date.now())) {
-                    sent++;
-                    var name = json.name || c.name || c.title || '';
-                    var epName = last.name && !/^(серия|episode)\s*\d+$/i.test(last.name) ? ' — ' + last.name : '';
-                    var poster = json.poster_path ? 'https://image.tmdb.org/t/p/w500' + json.poster_path : null;
-                    recipients().forEach(function (r) {
-                        if (!r.list.some(function (x) { return x.id == c.id; })) return;
-                        as(r.c, function () {
-                            var text = L('🎬 Вышла новая серия\n', '🎬 New episode is out\n', '🎬 Yangi qism chiqdi\n') + name + '\n' + seEp(last.season_number, last.episode_number) + epName;
-                            send(text, poster, null, function (e) { log('не отправлено', e); }, epButtons(c.id));
-                        });
-                    });
-                    busSend({ t: 'seen', id: c.id, s: last.season_number | 0, e: last.episode_number | 0 });
-                }
+                var fresh = !!(last && isNew(prev, last, Date.now()));
+                // новая серия станет «увиденной», только когда сообщение ушло хоть кому-то: не ушло (429, сеть) —
+                // остаётся прежняя, и следующая проверка (через CHECK_EVERY) пришлёт её снова, а не потеряет
                 var nx = json && json.next_episode_to_air;
                 all[c.id] = {
-                    s: last ? last.season_number | 0 : prev ? prev.s : 0, e: last ? last.episode_number | 0 : prev ? prev.e : 0, at: Date.now(),
+                    s: last && !fresh ? last.season_number | 0 : prev ? prev.s : 0, e: last && !fresh ? last.episode_number | 0 : prev ? prev.e : 0, at: Date.now(),
                     name: (json && json.name) || c.name || c.title || '', poster: (json && json.poster_path) || '',
                     next: nx && nx.air_date ? { s: nx.season_number | 0, e: nx.episode_number | 0, d: nx.air_date } : null
                 };
                 lsSet('bs_tg_seen', JSON.stringify(trimSeen(all)));
+                if (fresh) {
+                    var name = json.name || c.name || c.title || '', sNo = last.season_number | 0, eNo = last.episode_number | 0, marked = false;
+                    var epName = last.name && !/^(серия|episode)\s*\d+$/i.test(last.name) ? ' — ' + last.name : '';
+                    var poster = json.poster_path ? 'https://image.tmdb.org/t/p/w500' + json.poster_path : null;
+                    var mark = function () {
+                        if (marked) return;
+                        marked = true; sent++;
+                        var a = loadSeen(), r0 = a[c.id] || { at: Date.now() };
+                        if (epKey(sNo, eNo) > epKey(r0.s, r0.e)) { r0.s = sNo; r0.e = eNo; }
+                        a[c.id] = r0;
+                        lsSet('bs_tg_seen', JSON.stringify(trimSeen(a)));
+                        busSend({ t: 'seen', id: c.id, s: sNo, e: eNo });
+                    };
+                    recipients().forEach(function (r) {
+                        if (!r.list.some(function (x) { return x.id == c.id; })) return;
+                        as(r.c, function () {
+                            var text = L('🎬 Вышла новая серия\n', '🎬 New episode is out\n', '🎬 Yangi qism chiqdi\n') + name + '\n' + seEp(last.season_number, last.episode_number) + epName;
+                            send(text, poster, mark, function (e) { log('не отправлено', e); }, epButtons(c.id));
+                        });
+                    });
+                }
                 setTimeout(next, 1200);
             }, function () { setTimeout(next, 1200); });
         })();
@@ -1475,30 +1525,63 @@ var BSTelegram = (function () {
         return lines.length ? weekHead() + lines.slice(0, 20).join('\n') : (all ? L('🗓 На этой неделе новых серий у ваших сериалов нет.', '🗓 No new episodes of your series this week.', "🗓 Bu hafta seriallaringizning yangi qismlari yo'q.") : '');
     }
 
+    /* Несколько сообщений в один чат — не пачкой, а через SPACING: Telegram пускает в один чат примерно одно сообщение
+     * в секунду, чаще — «слишком часто» (429). jobs — функции, уже обёрнутые keep (у каждой свой чат). */
+    var SPACING = 1100;
+    function spaced(jobs) {
+        (function next() {
+            var f = jobs.shift();
+            if (!f) return;
+            f();
+            if (jobs.length) setTimeout(next, SPACING);
+        })();
+    }
+    /* Напоминание не ушло (429, сеть) — вернуть его, чтобы следующий remind (через 10 минут) отправил снова, а не
+     * потерял. Вызываются из ответа Telegram — в контексте чата (keep). */
+    function todayBack(tag) {
+        var l = lsJson('bs_tg_today', []), i = l.indexOf(tag);
+        if (i >= 0) { l.splice(i, 1); lsSet('bs_tg_today', JSON.stringify(l)); }
+    }
+    function laterBack(x) {
+        var same = function (y) { return y && y.id === x.id; };
+        if (isOwner()) { var l = lsJson('bs_tg_later', []); if (!l.some(same)) { l.push(x); lsSet('bs_tg_later', JSON.stringify(l.slice(-50))); } }
+        else updGuest(function (g) { if (!(g.later || []).some(same)) g.later = (g.later || []).concat([x]); });
+    }
+    function weekBack(wk, prev) {
+        if (isOwner()) { if (lsGet('bs_tg_week') === wk) lsSet('bs_tg_week', prev || ''); }
+        else updGuest(function (g) { if (g.week === wk) g.week = prev || ''; });
+    }
+
     function remind() {
         if (!on('bs_tg_on', true) || !token() || !chat() || !leading()) return;
         var now = Date.now(), hour = new Date(now).getHours(), seen = loadSeen();
-        var done = lsJson('bs_tg_today', []), today = dayStr(now), changed = false, people = users(), peopleChanged = [];
+        var done = lsJson('bs_tg_today', []), today = dayStr(now), changed = false, people = users(), peopleChanged = [], queues = [];
         recipients().forEach(function (r) {
-            var ids = r.list.map(function (c) { return String(c.id); }), g = r.owner ? null : people[r.c];
+            var ids = r.list.map(function (c) { return String(c.id); }), g = r.owner ? null : people[r.c], jobs = [];
             if (!r.owner && !active(g)) return;
+            queues.push(jobs);
             as(r.c, function () {
-                // утром в день выхода (метка владельца — как раньше, у остальных — с номером чата)
+                // утром в день выхода (метка владельца — как раньше, у остальных — с номером чата); метку ставим сразу,
+                // чтобы не отправить дважды, другим ТВ сообщаем, когда ушло, не ушло — метку снимаем
                 if (hour >= 8) ids.forEach(function (id) {
                     var x = seen[id], n = x && x.next;
                     if (!n || n.d !== today) return;
                     var tag = (r.owner ? '' : r.c + '@') + id + ':' + n.s + ':' + n.e;
                     if (done.indexOf(tag) >= 0) return;
                     done.unshift(tag); changed = true;
-                    busSend({ t: 'today', tag: tag });
-                    send(L('📅 Сегодня выходит\n', '📅 Out today\n', '📅 Bugun chiqadi\n') + (x.name || '') + '\n' + seEp(n.s, n.e), posterUrl(x.poster), null, null,
-                        [[epButtons(id)[0][0]]]);
+                    jobs.push(keep(function () {
+                        send(L('📅 Сегодня выходит\n', '📅 Out today\n', '📅 Bugun chiqadi\n') + (x.name || '') + '\n' + seEp(n.s, n.e), posterUrl(x.poster),
+                            function () { busSend({ t: 'today', tag: tag }); }, function () { todayBack(tag); }, [[epButtons(id)[0][0]]]);
+                    }));
                 });
                 // «напомнить завтра»
                 var later = r.owner ? lsJson('bs_tg_later', []) : (g.later || []), keepL = later.filter(function (x) { return x.at > now; });
                 later.filter(function (x) { return x.at <= now; }).forEach(function (x) {
                     var y = seen[x.id] || {};
-                    send(L('⏰ Напоминание\n', '⏰ Reminder\n', '⏰ Eslatma\n') + (y.name || x.name || '') + (y.s ? L(' — вышла серия ', ' — episode out: ', ' — chiqqan qism: ') + y.s + '×' + y.e : ''), posterUrl(y.poster), null, null);
+                    jobs.push(keep(function () {
+                        send(L('⏰ Напоминание\n', '⏰ Reminder\n', '⏰ Eslatma\n') + (y.name || x.name || '') + (y.s ? L(' — вышла серия ', ' — episode out: ', ' — chiqqan qism: ') + y.s + '×' + y.e : ''), posterUrl(y.poster),
+                            null, function () { laterBack(x); });
+                    }));
                 });
                 if (keepL.length !== later.length) { if (r.owner) lsSet('bs_tg_later', JSON.stringify(keepL)); else { g.later = keepL; peopleChanged.push(r.c); } }
                 // сводка на неделю — с понедельника, при первом запуске недели после 9:00
@@ -1507,12 +1590,13 @@ var BSTelegram = (function () {
                 if (hour >= 9 && fresh && last !== wk) {
                     if (r.owner) lsSet('bs_tg_week', wk); else { g.week = wk; peopleChanged.push(r.c); }
                     var d0 = new Date(now), lines = weekLines(seen, ids, new Date(d0.getFullYear(), d0.getMonth(), d0.getDate()).getTime());
-                    if (lines.length) send(weekHead() + lines.slice(0, 20).join('\n'), null, null, null);
+                    if (lines.length) jobs.push(keep(function () { send(weekHead() + lines.slice(0, 20).join('\n'), null, null, function () { weekBack(wk, last); }); }));
                 }
             });
         });
         if (changed) lsSet('bs_tg_today', JSON.stringify(done.slice(0, 400)));
         if (peopleChanged.length) saveUsers(people, peopleChanged);
+        queues.forEach(spaced);                                      // после записи: ответ «не ушло» правит уже сохранённое
     }
 
     /* ---------- команды и кнопки бота (getUpdates, пока Lampa запущена) ---------- */
@@ -2345,7 +2429,7 @@ var BSTelegram = (function () {
             });
         }
         if (renameFor && renameFor.chat === to() && Date.now() - renameFor.at < 5 * 60000 && !/^\//.test(msg.text) && KB_WORDS.indexOf(plainOf(msg.text)) < 0) {
-            var title = msg.text.replace(/^\s+|\s+$/g, '').slice(0, 40), target = renameFor.id;
+            var title = cleanName(msg.text), target = renameFor.id;          // как другие имена: без символов разметки
             renameFor = null;
             if (!title) return reply(L('Название пустое — нажмите «✏️ Переименовать ТВ» ещё раз.', 'The name is empty — tap “✏️ Rename TV” again.', "Nom bo'sh — «✏️ TV nomini o'zgartirish» tugmasini qayta bosing."));
             if (target === tvId) { lsSet('bs_tv_name', title); busHello(false); refreshSettings(); }
@@ -2655,6 +2739,12 @@ var BSTelegram = (function () {
         }
         answer(said);
     }
+    /** Сообщение «вышел в хорошем качестве» не ушло (429, сеть) — фильм снова в ожидании: следующая проверка напишет. */
+    function qwBack(x) {
+        var has = function (l) { return l.some(function (y) { return y && y.id == x.id; }); };
+        if (isOwner()) { var l = qwOwner(); if (!has(l)) qwSaveOwner(l.concat([x]).slice(0, QWAIT_MAX)); }
+        else updGuest(function (g) { if (!has(g.qwait || [])) g.qwait = (g.qwait || []).concat([x]).slice(0, QWAIT_MAX); });
+    }
     /** Главный ТВ: фильмы, которых ждут, — вышло нормальное качество? Написать и убрать из ожидания. */
     function qualityCheck() {
         if (!token() || !chat() || !leading()) return;
@@ -2678,13 +2768,17 @@ var BSTelegram = (function () {
                 if (stay.length === j.list.length) return;
                 if (j.c) { var all = users(), g = all[j.c]; if (g) { g.qwait = stay; saveUsers(all, [j.c]); } }
                 else qwSaveOwner(stay);
-                ready.forEach(function (r) {
-                    as(j.c, function () {
-                        send(L('🎬 «' + r.x.name + '» вышел в хорошем качестве: ', '🎬 “' + r.x.name + '” is out in good quality: ', "🎬 «" + r.x.name + "» yaxshi sifatda chiqdi: ") + qualityName(r.q), posterUrl(r.x.poster), null,
-                            function (e) { log('качество — не отправлено', e); },
-                            [[watchBtn('m', r.x.id), openBtn('m', r.x.id)]]);
+                var jobs = [];                                        // несколько фильмов одному человеку — не пачкой
+                as(j.c, function () {
+                    ready.forEach(function (r) {
+                        jobs.push(keep(function () {
+                            send(L('🎬 «' + r.x.name + '» вышел в хорошем качестве: ', '🎬 “' + r.x.name + '” is out in good quality: ', "🎬 «" + r.x.name + "» yaxshi sifatda chiqdi: ") + qualityName(r.q), posterUrl(r.x.poster), null,
+                                function (e) { log('качество — не отправлено', e); qwBack(r.x); },
+                                [[watchBtn('m', r.x.id), openBtn('m', r.x.id)]]);
+                        }));
                     });
                 });
+                spaced(jobs);
             });
         }
     }
@@ -3279,5 +3373,6 @@ var BSTelegram = (function () {
         }, 15000);
     }
 
-    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _botDesc: function (l) { return [botDesc(l || 'ru'), botShort(l || 'ru')]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow };
+    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _botDesc: function (l) { return [botDesc(l || 'ru'), botShort(l || 'ru')]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow,
+        _call: call, _check: check, _remind: remind, _joinCode: joinCode, _randomTopic: randomTopic };
 })();
