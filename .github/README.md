@@ -82,7 +82,7 @@
 </div>
 <br>
 
-<sub>The extra features of this package and the Telegram bot are in Russian; Lampa itself supports several languages. The full feature table is in the <a href="README.ru.md#все-возможности">Russian README</a>.</sub>
+<sub>The extra features of this package and the Telegram bot are in Russian; Lampa itself supports several languages. The full feature table is in the <a href="README.ru.md#возможности">Russian README</a>.</sub>
 
 ## Content sources
 

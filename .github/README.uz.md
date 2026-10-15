@@ -82,7 +82,7 @@
 </div>
 <br>
 
-<sub>Paketning qo'shimcha imkoniyatlari va Telegram-bot rus tilida; Lampa'ning o'zi bir nechta tilni qo'llab-quvvatlaydi. To'liq jadval — <a href="README.ru.md#все-возможности">rus tilidagi README</a>'da.</sub>
+<sub>Paketning qo'shimcha imkoniyatlari va Telegram-bot rus tilida; Lampa'ning o'zi bir nechta tilni qo'llab-quvvatlaydi. To'liq jadval — <a href="README.ru.md#возможности">rus tilidagi README</a>'da.</sub>
 
 ## Kontent manbalari
 
