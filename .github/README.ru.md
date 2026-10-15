@@ -28,20 +28,20 @@
 </div>
 
 <p align="center">
-  <picture><img src="../docs/screenshots/01.png" width="24.4%" alt=""></picture>
+  <picture><img src="../docs/screenshots/01.png" width="24.4%" alt="Карточка фильма с одной кнопкой «Смотреть»"></picture>
   <a href="../docs/screenshots/02.gif"><img src="../docs/screenshots/02.gif" width="24.4%" alt="Telegram bot"></a>
-  <picture><img src="../docs/screenshots/03.png" width="24.4%" alt=""></picture>
-  <picture><img src="../docs/screenshots/04.png" width="24.4%" alt=""></picture>
+  <picture><img src="../docs/screenshots/03.png" width="24.4%" alt="Плеер: сам перезапускает зависшее видео, режимы день и ночь, таймер сна"></picture>
+  <picture><img src="../docs/screenshots/04.png" width="24.4%" alt="Вопрос «Вы ещё смотрите?» в плеере"></picture>
 </p>
 
-<p align="center"><picture><img src="../docs/screenshots/watch-on-tv.gif" width="100%" alt=""></picture></p>
+<p align="center"><picture><img src="../docs/screenshots/watch-on-tv.gif" width="100%" alt="Нажали в телефоне — фильм идёт на телевизоре"></picture></p>
 
 <details>
 <summary><b>Ещё скриншоты</b></summary>
 <br>
 <p align="center">
-  <picture><img src="../docs/screenshots/05.png" width="49%" alt=""></picture>
-  <picture><img src="../docs/screenshots/06.png" width="49%" alt=""></picture>
+  <picture><img src="../docs/screenshots/05.png" width="49%" alt="Настройки Sunic Apps в Lampa"></picture>
+  <picture><img src="../docs/screenshots/06.png" width="49%" alt="Каталог Lampa на Samsung Smart TV"></picture>
 </p>
 </details>
 
@@ -50,8 +50,8 @@
 ## Установка и подключение
 
 <p align="center">
-  <picture><img src="../docs/screenshots/install.gif" width="20.4%" alt=""></picture>
-  <picture><img src="../docs/screenshots/bot-setup.gif" width="76.6%" alt=""></picture>
+  <picture><img src="../docs/screenshots/install.gif" width="20.4%" alt="Установка Lampa через TV Installer"></picture>
+  <picture><img src="../docs/screenshots/bot-setup.gif" width="76.6%" alt="Подключение Telegram-бота"></picture>
 </p>
 
 <sub>Слева — установка Lampa через TV Installer, справа — подключение Telegram-бота.</sub>
@@ -207,11 +207,19 @@ Telegram-бот, Интерфейс, Обновление. Разделы сам
 </div>
 </details>
 
+## Данные и приватность
+
+<div align="justify">
+
+Пакет не добавляет рекламы и аналитики, разработчик не получает ваших данных. Telegram-бот работает на вашем телевизоре: его токен, одобренные вами люди и ваши списки хранятся только на ТВ. Подключение телефона идёт через сервис ntfy.sh в зашифрованном виде. Данные о фильмах — из TMDB. ИИ-поиск отправляет описание или скриншот только в тот ИИ-сервис, чей ключ вы добавили (Groq, Gemini или OpenRouter). Сторонние онлайн-источники, которые вы включаете в Lampa, работают внутри приложения — включайте только те, которым доверяете.
+
+</div>
+
 ## Использование проекта
 
 <div align="justify">
 
-Хотите использовать пакет в своём проекте, сборке, статье или видео? Пожалуйста, — только <b>оставьте ссылку на этот репозиторий</b> и <b>сообщите мне</b>: напишите в <a href="https://t.me/sunicapps">группу в Telegram</a> или откройте <a href="https://github.com/sunic007/lampa-samsung/issues/new/choose">issue</a>. Код — по лицензии MIT (сама Lampa — по своей лицензии, см. THIRD_PARTY_NOTICES).
+Хотите использовать пакет в своём проекте, сборке, статье или видео? Пожалуйста, — только <b>оставьте ссылку на этот репозиторий</b>. Буду рад, если <b>сообщите мне</b> (по желанию): напишите в <a href="https://t.me/sunicapps">группу в Telegram</a> или откройте <a href="https://github.com/sunic007/lampa-samsung/issues/new/choose">issue</a>. Код — по лицензии MIT (сама Lampa — по своей лицензии, см. THIRD_PARTY_NOTICES).
 
 </div>
 
@@ -225,4 +233,4 @@ Lampa для Samsung и TV Installer бесплатные. Если они ва�
 
 ---
 
-<div align="justify"><sub>Проект не хранит, не размещает и не распространяет фильмы, сериалы и другие материалы и не связан с сервисами контента, с которыми может использоваться. Samsung и Tizen — товарные знаки Samsung Electronics; проект не связан с Samsung и не одобрен ею. Lampa — проект <a href="https://github.com/yumata/lampa">yumata/lampa</a>, плагины и сервер — <a href="https://lampabs.com">byskaz</a>; этот пакет их не изменяет. Сторонние компоненты и лицензии — <a href="../licenses/THIRD_PARTY_NOTICES.md">THIRD_PARTY_NOTICES.md</a>.</sub></div>
+<div align="justify"><sub>Проект не хранит, не размещает и не распространяет фильмы, сериалы и другие материалы и не связан с сервисами контента, с которыми может использоваться. Samsung и Tizen — товарные знаки Samsung Electronics; проект не связан с Samsung и не одобрен ею. Telegram — товарный знак Telegram FZ-LLC; проект не связан с Telegram. Данные и изображения фильмов — <a href="https://www.themoviedb.org">TMDB</a>: этот продукт использует API TMDB, но не одобрен и не сертифицирован TMDB. Lampa — проект <a href="https://github.com/yumata/lampa">yumata/lampa</a>, плагины и сервер — <a href="https://lampabs.com">byskaz</a>; этот пакет их не изменяет. Сторонние компоненты и лицензии — <a href="../licenses/THIRD_PARTY_NOTICES.md">THIRD_PARTY_NOTICES.md</a>.</sub></div>

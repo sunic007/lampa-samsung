@@ -28,20 +28,20 @@
 </div>
 
 <p align="center">
-  <picture><img src="../docs/screenshots/en/01.png" width="24.4%" alt=""></picture>
+  <picture><img src="../docs/screenshots/en/01.png" width="24.4%" alt="Movie page with a single Watch button"></picture>
   <a href="../docs/screenshots/en/02.gif"><img src="../docs/screenshots/en/02.gif" width="24.4%" alt="Telegram bot"></a>
-  <picture><img src="../docs/screenshots/en/03.png" width="24.4%" alt=""></picture>
-  <picture><img src="../docs/screenshots/en/04.png" width="24.4%" alt=""></picture>
+  <picture><img src="../docs/screenshots/en/03.png" width="24.4%" alt="Player: restarts a stuck video, day and night modes, sleep timer"></picture>
+  <picture><img src="../docs/screenshots/en/04.png" width="24.4%" alt="“Are you still watching?” prompt in the player"></picture>
 </p>
 
-<p align="center"><picture><img src="../docs/screenshots/en/watch-on-tv.gif" width="100%" alt=""></picture></p>
+<p align="center"><picture><img src="../docs/screenshots/en/watch-on-tv.gif" width="100%" alt="Tap on the phone — the movie plays on the TV"></picture></p>
 
 <details>
 <summary><b>More screenshots</b></summary>
 <br>
 <p align="center">
-  <picture><img src="../docs/screenshots/en/05.png" width="49%" alt=""></picture>
-  <picture><img src="../docs/screenshots/en/06.png" width="49%" alt=""></picture>
+  <picture><img src="../docs/screenshots/en/05.png" width="49%" alt="Sunic Apps settings in Lampa"></picture>
+  <picture><img src="../docs/screenshots/en/06.png" width="49%" alt="Lampa catalog on a Samsung Smart TV"></picture>
 </p>
 </details>
 
@@ -50,8 +50,8 @@
 ## Install and connect
 
 <p align="center">
-  <picture><img src="../docs/screenshots/en/install.gif" width="20.4%" alt=""></picture>
-  <picture><img src="../docs/screenshots/en/bot-setup.gif" width="76.6%" alt=""></picture>
+  <picture><img src="../docs/screenshots/en/install.gif" width="20.4%" alt="Installing Lampa with TV Installer"></picture>
+  <picture><img src="../docs/screenshots/en/bot-setup.gif" width="76.6%" alt="Connecting the Telegram bot"></picture>
 </p>
 
 <sub>Left — installing Lampa with TV Installer, right — connecting the Telegram bot.</sub>
@@ -85,7 +85,7 @@
 </div>
 <br>
 
-<sub>The extra features of this package and the Telegram bot are in Russian; Lampa itself supports several languages. The full feature table is in the <a href="README.ru.md#возможности">Russian README</a>.</sub>
+<sub>The Telegram bot speaks English, Russian and Uzbek and follows the Lampa language; the package's settings on the TV are in Russian. The full feature table is in the <a href="README.ru.md#возможности">Russian README</a>.</sub>
 
 ## Content sources
 
@@ -127,11 +127,19 @@ No. It is a player; it does not host, store or distribute any media.
 </div>
 </details>
 
+## Data and privacy
+
+<div align="justify">
+
+This package adds no ads or analytics, and the developer receives none of your data. The Telegram bot runs on your TV: its token, the people you approved and your lists are stored only on the TV. Pairing a phone goes through the ntfy.sh relay, encrypted. Movie data comes from TMDB. AI search sends your description or screenshot only to the AI service whose key you added (Groq, Gemini or OpenRouter). Third-party online sources you turn on in Lampa run inside the app — enable only the ones you trust.
+
+</div>
+
 ## Using this project
 
 <div align="justify">
 
-Want to use the package in your project, build, article or video? You are welcome to — please <b>keep a link to this repository</b> and <b>let me know</b>: write in the <a href="https://t.me/sunicapps">Telegram group</a> or open an <a href="https://github.com/sunic007/lampa-samsung/issues/new/choose">issue</a>. The code is under the MIT license (Lampa itself — its own license, see THIRD_PARTY_NOTICES).
+Want to use the package in your project, build, article or video? You are welcome to — please <b>keep a link to this repository</b>. I'd also be glad if you <b>let me know</b> (optional): write in the <a href="https://t.me/sunicapps">Telegram group</a> or open an <a href="https://github.com/sunic007/lampa-samsung/issues/new/choose">issue</a>. The code is under the MIT license (Lampa itself — its own license, see THIRD_PARTY_NOTICES).
 
 </div>
 
@@ -145,4 +153,4 @@ Lampa for Samsung and TV Installer are free. If they help you, you can support d
 
 ---
 
-<div align="justify"><sub>This project does not host, store or distribute any films, series or other media and is not affiliated with the content services it can be used with. Samsung and Tizen are trademarks of Samsung Electronics; this project is not affiliated with or endorsed by Samsung. Lampa is the <a href="https://github.com/yumata/lampa">yumata/lampa</a> project, plugins and server — <a href="https://lampabs.com">byskaz</a>; this package does not modify them. Third-party licenses — <a href="../licenses/THIRD_PARTY_NOTICES.md">THIRD_PARTY_NOTICES.md</a>.</sub></div>
+<div align="justify"><sub>This project does not host, store or distribute any films, series or other media and is not affiliated with the content services it can be used with. Samsung and Tizen are trademarks of Samsung Electronics; this project is not affiliated with or endorsed by Samsung. Telegram is a trademark of Telegram FZ-LLC; the project is not affiliated with Telegram. Movie data and images: <a href="https://www.themoviedb.org">TMDB</a> — this product uses the TMDB API but is not endorsed or certified by TMDB. Lampa is the <a href="https://github.com/yumata/lampa">yumata/lampa</a> project, plugins and server — <a href="https://lampabs.com">byskaz</a>; this package does not modify them. Third-party licenses — <a href="../licenses/THIRD_PARTY_NOTICES.md">THIRD_PARTY_NOTICES.md</a>.</sub></div>

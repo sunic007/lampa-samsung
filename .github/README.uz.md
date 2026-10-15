@@ -28,20 +28,20 @@
 </div>
 
 <p align="center">
-  <picture><img src="../docs/screenshots/uz/01.png" width="24.4%" alt=""></picture>
+  <picture><img src="../docs/screenshots/uz/01.png" width="24.4%" alt="Bitta «Ko'rish» tugmasi bilan film sahifasi"></picture>
   <a href="../docs/screenshots/uz/02.gif"><img src="../docs/screenshots/uz/02.gif" width="24.4%" alt="Telegram bot"></a>
-  <picture><img src="../docs/screenshots/uz/03.png" width="24.4%" alt=""></picture>
-  <picture><img src="../docs/screenshots/uz/04.png" width="24.4%" alt=""></picture>
+  <picture><img src="../docs/screenshots/uz/03.png" width="24.4%" alt="Pleer: qotib qolgan videoni qayta ishga tushiradi, kun va tun rejimi, uyqu taymeri"></picture>
+  <picture><img src="../docs/screenshots/uz/04.png" width="24.4%" alt="Pleerda «Hali ko'ryapsizmi?» so'rovi"></picture>
 </p>
 
-<p align="center"><picture><img src="../docs/screenshots/uz/watch-on-tv.gif" width="100%" alt=""></picture></p>
+<p align="center"><picture><img src="../docs/screenshots/uz/watch-on-tv.gif" width="100%" alt="Telefonda bosing — film televizorda boshlanadi"></picture></p>
 
 <details>
 <summary><b>Ko'proq skrinshotlar</b></summary>
 <br>
 <p align="center">
-  <picture><img src="../docs/screenshots/uz/05.png" width="49%" alt=""></picture>
-  <picture><img src="../docs/screenshots/uz/06.png" width="49%" alt=""></picture>
+  <picture><img src="../docs/screenshots/uz/05.png" width="49%" alt="Lampa'dagi Sunic Apps sozlamalari"></picture>
+  <picture><img src="../docs/screenshots/uz/06.png" width="49%" alt="Samsung Smart TV'da Lampa katalogi"></picture>
 </p>
 </details>
 
@@ -50,8 +50,8 @@
 ## O'rnatish va ulash
 
 <p align="center">
-  <picture><img src="../docs/screenshots/uz/install.gif" width="20.4%" alt=""></picture>
-  <picture><img src="../docs/screenshots/uz/bot-setup.gif" width="76.6%" alt=""></picture>
+  <picture><img src="../docs/screenshots/uz/install.gif" width="20.4%" alt="Lampa'ni TV Installer bilan o'rnatish"></picture>
+  <picture><img src="../docs/screenshots/uz/bot-setup.gif" width="76.6%" alt="Telegram-botni ulash"></picture>
 </p>
 
 <sub>Chapda — Lampa'ni TV Installer orqali o'rnatish, o'ngda — Telegram-botni ulash.</sub>
@@ -85,7 +85,7 @@
 </div>
 <br>
 
-<sub>Paketning qo'shimcha imkoniyatlari va Telegram-bot rus tilida; Lampa'ning o'zi bir nechta tilni qo'llab-quvvatlaydi. To'liq jadval — <a href="README.ru.md#возможности">rus tilidagi README</a>'da.</sub>
+<sub>Telegram-bot o'zbek, rus va ingliz tillarida gapiradi va Lampa tiliga moslashadi; paketning televizordagi sozlamalari rus tilida. To'liq jadval — <a href="README.ru.md#возможности">rus tilidagi README</a>'da.</sub>
 
 ## Kontent manbalari
 
@@ -127,11 +127,19 @@ Yo'q. Bu pleyer: u hech qanday media kontentni saqlamaydi va tarqatmaydi.
 </div>
 </details>
 
+## Ma'lumotlar va maxfiylik
+
+<div align="justify">
+
+Paket reklama va analitika qo'shmaydi, dasturchi sizning ma'lumotlaringizni olmaydi. Telegram-bot televizoringizda ishlaydi: uning tokeni, siz tasdiqlagan odamlar va ro'yxatlaringiz faqat televizorda saqlanadi. Telefonni ulash ntfy.sh xizmati orqali shifrlangan holda o'tadi. Filmlar haqidagi ma'lumotlar — TMDB'dan. Sun'iy intellekt qidiruvi tavsif yoki skrinshotni faqat kalitini qo'shgan xizmatingizga yuboradi (Groq, Gemini yoki OpenRouter). Lampa'da yoqadigan uchinchi tomon onlayn manbalari ilova ichida ishlaydi — faqat ishonganlaringizni yoqing.
+
+</div>
+
 ## Loyihadan foydalanish
 
 <div align="justify">
 
-Paketni o'z loyihangiz, yig'mangiz, maqola yoki videongizda ishlatmoqchimisiz? Marhamat — faqat <b>ushbu repozitoriyga havolani qoldiring</b> va <b>menga xabar bering</b>: <a href="https://t.me/sunicapps">Telegram guruhiga</a> yozing yoki <a href="https://github.com/sunic007/lampa-samsung/issues/new/choose">issue</a> oching. Kod MIT litsenziyasi ostida (Lampa'ning o'zi — o'z litsenziyasi bilan, THIRD_PARTY_NOTICES'ga qarang).
+Paketni o'z loyihangiz, yig'mangiz, maqola yoki videongizda ishlatmoqchimisiz? Marhamat — faqat <b>ushbu repozitoriyga havolani qoldiring</b>. <b>Xabar bersangiz</b>, xursand bo'laman (ixtiyoriy): <a href="https://t.me/sunicapps">Telegram guruhiga</a> yozing yoki <a href="https://github.com/sunic007/lampa-samsung/issues/new/choose">issue</a> oching. Kod MIT litsenziyasi ostida (Lampa'ning o'zi — o'z litsenziyasi bilan, THIRD_PARTY_NOTICES'ga qarang).
 
 </div>
 
@@ -145,4 +153,4 @@ Lampa for Samsung va TV Installer bepul. Foydali bo'lsa, rivojlanishini <a href=
 
 ---
 
-<div align="justify"><sub>Loyiha filmlar, seriallar va boshqa materiallarni saqlamaydi, joylashtirmaydi va tarqatmaydi hamda u bilan ishlatilishi mumkin bo'lgan kontent xizmatlari bilan bog'liq emas. Samsung va Tizen — Samsung Electronics'ning savdo belgilari; loyiha Samsung bilan bog'liq emas va u tomonidan tasdiqlanmagan. Lampa — <a href="https://github.com/yumata/lampa">yumata/lampa</a> loyihasi, plaginlar va server — <a href="https://lampabs.com">byskaz</a>; bu paket ularni o'zgartirmaydi. Uchinchi tomon litsenziyalari — <a href="../licenses/THIRD_PARTY_NOTICES.md">THIRD_PARTY_NOTICES.md</a>.</sub></div>
+<div align="justify"><sub>Loyiha filmlar, seriallar va boshqa materiallarni saqlamaydi, joylashtirmaydi va tarqatmaydi hamda u bilan ishlatilishi mumkin bo'lgan kontent xizmatlari bilan bog'liq emas. Samsung va Tizen — Samsung Electronics'ning savdo belgilari; loyiha Samsung bilan bog'liq emas va u tomonidan tasdiqlanmagan. Telegram — Telegram FZ-LLC'ning savdo belgisi; loyiha Telegram bilan bog'liq emas. Filmlar ma'lumotlari va rasmlari — <a href="https://www.themoviedb.org">TMDB</a>: ushbu mahsulot TMDB API'dan foydalanadi, lekin TMDB tomonidan tasdiqlanmagan yoki sertifikatlanmagan. Lampa — <a href="https://github.com/yumata/lampa">yumata/lampa</a> loyihasi, plaginlar va server — <a href="https://lampabs.com">byskaz</a>; bu paket ularni o'zgartirmaydi. Uchinchi tomon litsenziyalari — <a href="../licenses/THIRD_PARTY_NOTICES.md">THIRD_PARTY_NOTICES.md</a>.</sub></div>
