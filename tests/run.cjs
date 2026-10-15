@@ -1629,6 +1629,9 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('настройки: ключ показан только концом, есть «Удалить»', /…wxyz/.test(cb('1', 'st:k:groq')) && !/gsk_test1234/.test(urls.join('').replace('starts with gsk_', '')) && /st:d:groq/.test(urls.join('')));
     cb('1', 'st:d:groq');
     t('настройки: «Удалить ключ» — ключ убран', !store.bs_ai_groq);
+    T._noteServerTime({ getResponseHeader: () => new Date(Date.now() - 10 * 60000).toUTCString() });
+    t('часы ТВ спешат на 10 мин — время берём у Telegram', Math.abs(T._serverNow() - (Date.now() - 10 * 60000)) < 2000);
+    T._noteServerTime({ getResponseHeader: () => new Date().toUTCString() });
     /* чистый чат */
     store.bs_tg_del = '[]';
     urls.length = 0; T._handle({ update_id: 2, message: { message_id: 77, chat: { id: 1, type: 'private' }, from: { first_name: 'X' }, text: '📋 Menu' } });

@@ -146,6 +146,13 @@ var BSTelegram = (function () {
     /* ---------- Bot API ---------- */
 
     /** wait — своё время ожидания ответа, мс (длинный опрос getUpdates). */
+    /* Часы ТВ бывают сбиты на минуты: «пришло, пока Lampa была выключена» считаем по часам Telegram (заголовок Date
+     * его ответа), а не по часам ТВ — иначе свежие сообщения выглядели старыми и не выполнялись. */
+    var serverSkew = 0;
+    function noteServerTime(x) {
+        try { var d = Date.parse(x.getResponseHeader('Date') || ''); if (d) serverSkew = d - Date.now(); } catch (e) {}
+    }
+    function serverNow() { return Date.now() + serverSkew; }
     function call(method, params, ok, fail, wait) {
         ok = keep(ok); fail = keep(fail);
         var q = [], k;
@@ -158,6 +165,7 @@ var BSTelegram = (function () {
             x.onload = function () {
                 var j = null;
                 try { j = JSON.parse(x.responseText); } catch (e) {}
+                noteServerTime(x);
                 if (j && j.ok) end(ok, j.result);
                 else end(fail, (j && j.description) || ('ответ ' + x.status));
             };
@@ -1533,7 +1541,7 @@ var BSTelegram = (function () {
             (updates || []).forEach(function (u) {
                 lsSet('bs_tg_offset', String(u.update_id + 1));
                 var md = u.message && u.message.date;
-                if (md && Date.now() / 1000 - md > STALE_UPDATE && u.message.chat) {     // пришло, пока Lampa была выключена - не выполняем
+                if (md && serverNow() / 1000 - md > STALE_UPDATE && u.message.chat) {     // пришло, пока Lampa была выключена - не выполняем
                     var sc = String(u.message.chat.id);
                     if (!staleTold[sc]) {                                                  // одно объяснение на чат, а не на каждое сообщение
                         staleTold[sc] = 1;
@@ -3271,5 +3279,5 @@ var BSTelegram = (function () {
         }, 15000);
     }
 
-    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _botDesc: function (l) { return [botDesc(l || 'ru'), botShort(l || 'ru')]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick };
+    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _botDesc: function (l) { return [botDesc(l || 'ru'), botShort(l || 'ru')]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow };
 })();
