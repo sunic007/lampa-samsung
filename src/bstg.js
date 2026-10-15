@@ -217,6 +217,7 @@ var BSTelegram = (function () {
             { command: 'tvs', description: T3(l, '📺 Телевизоры', '📺 TVs', '📺 Televizorlar') },
             { command: 'profile', description: T3(l, '👤 Профиль', '👤 Profile', '👤 Profil') },
             { command: 'help', description: T3(l, '❓ Помощь', '❓ Help', '❓ Yordam') },
+            { command: 'settings', description: T3(l, '⚙️ Настройки и ключи ИИ', '⚙️ Settings and AI keys', "⚙️ Sozlamalar va AI kalitlari") },
             { command: 'lang', description: '🌐 Язык / Language / Til' }
         ];
     }
@@ -276,7 +277,7 @@ var BSTelegram = (function () {
         var tail = [b(L('🗓 На неделе', '🗓 This week', '🗓 Bu hafta'), 'week')];
         if (isOwner()) tail.push(b(L('👥 Люди', '👥 People', '👥 Odamlar'), 'people'));
         tail.push(b(L('👤 Профиль', '👤 Profile', '👤 Profil'), 'profile'), b(L('❓ Помощь', '❓ Help', '❓ Yordam'), 'help'));
-        tail.push(b('🌐 Язык / Language / Til', 'lang'));
+        tail.push(b(L('⚙️ Настройки', '⚙️ Settings', '⚙️ Sozlamalar'), 'settings'));
         for (var i = 0; i < tail.length; i += 2) rows.push(tail.slice(i, i + 2));
         return rows;
     }
@@ -321,6 +322,81 @@ var BSTelegram = (function () {
             '❤️ Lampa for Samsung and TV Installer are free.\nSupport development: https://github.com/sponsors/sunic007',
             "❤️ Samsung uchun Lampa va TV Installer — bepul.\nRivojlanishni qo'llab-quvvatlash: https://github.com/sponsors/sunic007");
     }
+    /* ---------- «⚙️ Настройки» в боте: язык, ИИ-поиск (ключи), телевизоры, люди ----------
+     * Экраны — одно сообщение: кнопки меняют его на месте (editMessageText), чат не растёт. */
+    var AI_INFO = {
+        groq: { icon: '⚡', name: 'Groq', url: 'https://console.groq.com/keys', starts: 'gsk_' },
+        gemini: { icon: '🔷', name: 'Gemini', url: 'https://aistudio.google.com/apikey', starts: 'AIza / AQ.' },
+        openrouter: { icon: '🌐', name: 'OpenRouter', url: 'https://openrouter.ai/keys', starts: 'sk-or-' }
+    };
+    /** Экран: q (нажатая кнопка) — меняем её сообщение; нет — новое служебное сообщение. */
+    function screen(q, text, rows) {
+        if (q && q.message) {
+            return call('editMessageText', { chat_id: to(), message_id: q.message.message_id, text: text, disable_web_page_preview: 'true',
+                reply_markup: JSON.stringify({ inline_keyboard: rows }) }, null, null);
+        }
+        tmp(TMP_LONG, function () { send(text, null, null, null, rows); });
+    }
+    function settingsText() {
+        return L('⚙️ Настройки\n\n🌐 Язык: русский\n🧠 ИИ-поиск: ', '⚙️ Settings\n\n🌐 Language: English\n🧠 AI search: ', "⚙️ Sozlamalar\n\n🌐 Til: o'zbekcha\n🧠 Sun'iy intellekt qidiruvi: ") +
+            (aiReady() ? aiProviders().map(function (x) { return AI_INFO[x.p].name; }).join(', ') : L('нет ключа', 'no key', "kalit yo'q"));
+    }
+    function settingsRows() {
+        var rows = [[{ text: '🌐 Язык / Language / Til', callback_data: 'mn:lang' }],
+            [{ text: L('🧠 ИИ-поиск — ключи API', '🧠 AI search — API keys', "🧠 Sun'iy intellekt — API kalitlari"), callback_data: 'st:ai' }]];
+        if (isOwner()) rows.push([{ text: L('📺 Телевизоры', '📺 TVs', '📺 Televizorlar'), callback_data: 'mn:tvs' }, { text: L('👥 Люди', '👥 People', '👥 Odamlar'), callback_data: 'mn:people' }]);
+        rows.push([{ text: L('📋 Меню', '📋 Menu', '📋 Menyu'), callback_data: 'mn:menu' }]);
+        return rows;
+    }
+    /** Ключ в списке — только последние знаки: чат могут видеть другие. */
+    function keyMask(k) { return k ? '…' + String(k).slice(-4) : ''; }
+    function aiText() {
+        var lines = [L('🧠 ИИ-поиск — поиск по описанию («фильм, где…») и по скриншоту. Нужен бесплатный ключ API любого сервиса; можно несколько — бот спросит по очереди.',
+            '🧠 AI search — search by description (“the movie where…”) and by screenshot. You need a free API key from any service; you can add several — the bot will ask them in turn.',
+            "🧠 Sun'iy intellekt qidiruvi — tavsif («…bo'lgan film») va skrinshot bo'yicha qidiruv. Istalgan xizmatning bepul API kaliti kerak; bir nechta bo'lishi mumkin — bot navbat bilan so'raydi."), ''];
+        ['groq', 'gemini', 'openrouter'].forEach(function (p) {
+            var k = aiKey(p), own = p === 'gemini' ? ownKey() : (isOwner() ? lsGet('bs_ai_' + p) : lsJson('bs_ai_' + p + '_u', {})[to()]);
+            lines.push(AI_INFO[p].icon + ' ' + AI_INFO[p].name + ': ' + (own ? '✅ ' + keyMask(k) : k ? L('✅ ключ владельца', "✅ owner's key", '✅ egasining kaliti') : L('— нет', '— none', "— yo'q")));
+        });
+        if (cubAiReady()) lines.push(L('🤖 AI-ассистент Lampa (CUB) — включён по подписке', '🤖 Lampa AI assistant (CUB) — on with the subscription', '🤖 Lampa AI yordamchisi (CUB) — obuna bilan yoqilgan'));
+        lines.push('', L('Нет подписки CUB — бесплатного ключа хватит. Выберите сервис:', 'No CUB subscription? A free key is enough. Choose a service:', "CUB obunasi yo'qmi? Bepul kalit yetarli. Xizmatni tanlang:"));
+        return lines.join('\n');
+    }
+    function aiRows() {
+        var rows = ['groq', 'gemini', 'openrouter'].map(function (p) {
+            return [{ text: AI_INFO[p].icon + ' ' + AI_INFO[p].name + (p === 'groq' ? L(' — самый быстрый', ' — the fastest', ' — eng tezkori') : ''), callback_data: 'st:k:' + p }];
+        });
+        if (aiReady()) rows.push([{ text: L('🔍 Проверить ключи', '🔍 Check keys', '🔍 Kalitlarni tekshirish'), callback_data: 'mn:pic' }]);
+        rows.push([{ text: L('⬅️ Настройки', '⬅️ Settings', '⬅️ Sozlamalar'), callback_data: 'st:main' }]);
+        return rows;
+    }
+    function aiKeyText(p) {
+        var i = AI_INFO[p], has = p === 'gemini' ? ownKey() : (isOwner() ? lsGet('bs_ai_' + p) : lsJson('bs_ai_' + p + '_u', {})[to()]);
+        return i.icon + ' ' + i.name + '\n\n' + L('1. Откройте сайт кнопкой ниже и войдите (бесплатно).\n2. Создайте ключ API — он начинается с ' + i.starts + '.\n3. Скопируйте ключ и пришлите сюда обычным сообщением.\n\nКлюч сохранится на ТВ, а сообщение с ним я сразу удалю.',
+            '1. Open the site with the button below and sign in (free).\n2. Create an API key — it starts with ' + i.starts + '.\n3. Copy the key and send it here as a normal message.\n\nThe key is saved on the TV and I delete the message with it right away.',
+            "1. Quyidagi tugma bilan saytni oching va kiring (bepul).\n2. API kalitini yarating — u " + i.starts + " bilan boshlanadi.\n3. Kalitni nusxalang va shu yerga oddiy xabar qilib yuboring.\n\nKalit televizorda saqlanadi, u bilan xabarni darhol o'chiraman.") +
+            (has ? '\n\n' + L('Сейчас: ✅ ', 'Now: ✅ ', 'Hozir: ✅ ') + keyMask(has) : '') + (isOwner() ? '' : '\n' + L('Ключ будет ваш: лимит — только ваш.', 'The key will be yours: the limit is yours only.', "Kalit sizniki bo'ladi: limit faqat sizniki."));
+    }
+    function aiKeyRows(p) {
+        var has = p === 'gemini' ? ownKey() : (isOwner() ? lsGet('bs_ai_' + p) : lsJson('bs_ai_' + p + '_u', {})[to()]);
+        var rows = [[{ text: L('🔗 Получить ключ ', '🔗 Get a key at ', '🔗 Kalit olish: ') + AI_INFO[p].name, url: AI_INFO[p].url }]];
+        if (has) rows.push([{ text: L('🗑 Удалить ключ', '🗑 Delete the key', "🗑 Kalitni o'chirish"), callback_data: 'st:d:' + p }]);
+        rows.push([{ text: L('⬅️ ИИ-поиск', '⬅️ AI search', "⬅️ Sun'iy intellekt"), callback_data: 'st:ai' }]);
+        return rows;
+    }
+    /** Кнопки экранов настроек (st:…). */
+    function settingsAction(q, a) {
+        if (a === 'main') return screen(q, settingsText(), settingsRows());
+        if (a === 'ai') return screen(q, aiText(), aiRows());
+        var k = /^k:(groq|gemini|openrouter)$/.exec(a);
+        if (k) return screen(q, aiKeyText(k[1]), aiKeyRows(k[1]));
+        var d = /^d:(groq|gemini|openrouter)$/.exec(a);
+        if (d) {
+            setAiKey(d[1], '');
+            call('answerCallbackQuery', { callback_query_id: q.id, text: L('Ключ удалён', 'Key deleted', "Kalit o'chirildi") }, null, null);
+            return screen(q, aiText(), aiRows());
+        }
+    }
     function askTitle() { return reply(L('Напишите название фильма или сериала 👇', 'Type the name of a movie or series 👇', 'Film yoki serial nomini yozing 👇')); }
     /** Всё, что отправляет раздел меню, — служебное: подсказки исчезают через 2 минуты, списки и помощь — через 10. */
     function menuAction(a) { return tmp(a === 'find' || a === 'type' || a === 'lang' ? 2 * TMP_SHORT : TMP_LONG, function () { return menuDo(a); }); }
@@ -337,6 +413,7 @@ var BSTelegram = (function () {
         if (a === 'help') return sendKb(helpText() + '\n\n' + supportText());
         if (a === 'support') return reply(supportText());              // кнопка из старых сообщений
         if (a === 'lang') return reply('🌐 ' + L('Выберите язык', 'Choose a language', 'Tilni tanlang'), langRows());
+        if (a === 'settings') return screen(null, settingsText(), settingsRows());
         if (a === 'menu') return sendMenu();
     }
 
@@ -2054,7 +2131,8 @@ var BSTelegram = (function () {
         pic: ['по картинке', 'by picture', "rasm bo'yicha"],
         week: ['на этой неделе', 'this week', 'bu hafta'],
         subs: ['мои подписки', 'подписки', 'my subscriptions', 'subscriptions', 'obunalarim', 'obunalar'],
-        lang: ['язык', 'language', 'til', 'язык / language / til']
+        lang: ['язык', 'language', 'til', 'язык / language / til'],
+        settings: ['настройки', 'settings', 'sozlamalar']
     };
     var KB_WORDS = [];
     (function () { for (var k in WORDS) if (WORDS.hasOwnProperty(k)) KB_WORDS = KB_WORDS.concat(WORDS[k]); })();
@@ -2081,6 +2159,12 @@ var BSTelegram = (function () {
         if (u.callback_query) {
             var q = u.callback_query, sm = /^([wosxvq]):([mt]):(\d+)$/.exec(q.data || ''), m = /^([ul]):(\d+)$/.exec(q.data || '');
             if (!q.message) return;
+            var st = /^st:([\w:]+)$/.exec(q.data || '');
+            if (st) {
+                if (!/^d:/.test(st[1])) call('answerCallbackQuery', { callback_query_id: q.id }, null, null);
+                delLater(to(), q.message.message_id, TMP_LONG);
+                return settingsAction(q, st[1]);
+            }
             var lg = /^lg:(ru|en|uz)$/.exec(q.data || '');
             if (lg) {
                 call('answerCallbackQuery', { callback_query_id: q.id }, null, null);
@@ -2263,6 +2347,7 @@ var BSTelegram = (function () {
         if (c === 'profile' || isWord(plain, 'profile')) return menuAction('profile');
         if (c === 'tvs' || isWord(plain, 'tvs')) return tvsInfo();
         if (c === 'lang' || isWord(plain, 'lang')) return menuAction('lang');
+        if (c === 'settings' || isWord(plain, 'settings')) return menuAction('settings');
         if (isWord(plain, 'find')) return askTitle();
         if (c === 'type' || isWord(plain, 'type')) return typeStart();
         if (c === 'want' || isWord(plain, 'want')) return wantList();

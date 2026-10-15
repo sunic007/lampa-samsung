@@ -1156,7 +1156,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
         const c = T._cubCards([{ id: 1, title: 'Интерстеллар', poster_path: '/a.jpg' }, { id: 2, name: 'Тьма', poster_path: '/b.jpg' }, { id: 3, title: 'Без постера' }]);
         return c.length === 2 && c[0].media_type === 'movie' && c[1].media_type === 'tv';
     })());
-    t('меню бота: команды у кнопки «Меню» слева от поля ввода', T._commands.map(c => c.command).join(',') === 'menu,find,type,want,subs,week,tvs,profile,help,lang');
+    t('меню бота: команды у кнопки «Меню» слева от поля ввода', T._commands.map(c => c.command).join(',') === 'menu,find,type,want,subs,week,tvs,profile,help,settings,lang');
     t('меню бота: «⌨️ Набрать на ТВ»', flat.indexOf('mn:type') >= 0);
     const sl = [{ media_type: 'tv', id: 1 }, { media_type: 'movie', id: 2 }, { media_type: 'movie', id: 3 }];
     const b0 = T._slideButtons(sl, 0), b1 = T._slideButtons(sl, 1);
@@ -1595,7 +1595,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     const inLang = (c, fn) => { let r; T._as(c, () => { r = fn(); }); return r; };
     t('язык: L() — у каждого свой (en / uz), не выбирал — русский', inLang('1', () => T._L('ру', 'en', 'uz')) === 'en' && inLang('2', () => T._L('ру', 'en', 'uz')) === 'uz' && inLang('3', () => T._L('ру', 'en', 'uz')) === 'ру');
     t('язык: подключённый без выбора — русский, даже если Telegram на английском', /Выберите раздел/.test(say('3', '📋 Меню', 'en')));
-    t('язык: «📋 Menu» по-английски — меню на английском', /Choose a section/.test(say('1', '📋 Menu')) && /mn:lang/.test(urls.join('')));
+    t('язык: «📋 Menu» по-английски — меню на английском, есть «⚙️ Settings»', /Choose a section/.test(say('1', '📋 Menu')) && /mn:settings/.test(urls.join('')) && /Settings/.test(urls.join('')));
     t("язык: «📋 Menyu» и «❓ Yordam» по-узбекски — узнаются", /Bo'limni tanlang/.test(say('2', '📋 Menyu')) && /Lampa yordamchingizman/.test(say('2', '❓ Yordam')));
     t('язык: слова кнопок на всех языках — не уходят в поиск', ['меню', 'menu', 'menyu', "ko'rmoqchiman", 'want to watch', 'хочу посмотреть', "tv'da yozish"].every(w => T._kbWords.indexOf(w) >= 0) &&
         T._plainOf('⭐ Koʻrmoqchiman') === "ko'rmoqchiman" && T._isWord(T._plainOf('🔔 Obunalar'), 'subs'));
@@ -1612,6 +1612,15 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
         /Watch/.test(JSON.stringify(inLang('1', () => T._slideButtons([{ media_type: 'tv', id: 1 }], 0)))) && /Ko'rish/.test(JSON.stringify(inLang('2', () => T._slideButtons([{ media_type: 'tv', id: 1 }], 0)))));
     t('язык: «Следующая серия» в Telegram по-английски, на ТВ (без языка) — по-русски', /^Next episode: 1×3 — tomorrow/.test(T._nextText({ air_date: '2026-10-14', season_number: 1, episode_number: 3 }, day, 'en')) &&
         /^Следующая серия: 1×3 — завтра/.test(T._nextText({ air_date: '2026-10-14', season_number: 1, episode_number: 3 }, day)));
+    /* настройки и ключи ИИ */
+    const cb = (c, data) => { urls.length = 0; T._handle({ callback_query: { id: 'q', data, from: { id: +c }, message: { message_id: 50, chat: { id: +c } } } }); return urls.join(String.fromCharCode(10)); };
+    t('настройки: «⚙️ Настройки» — язык, ИИ-ключи, у владельца ТВ и люди', /st:ai/.test(say('1', '/settings')) && /mn:lang/.test(urls.join('')) && /mn:people/.test(urls.join('')));
+    t('настройки: ИИ-поиск — три сервиса и подсказка без подписки CUB', /st:k:groq/.test(cb('1', 'st:ai')) && /st:k:gemini/.test(urls.join('')) && /st:k:openrouter/.test(urls.join('')) && /No CUB subscription/.test(urls.join('')) && /editMessageText/.test(urls.join('')));
+    t('настройки: экран сервиса — ссылка на сайт ключей и как прислать', /console\.groq\.com\/keys/.test(cb('2', 'st:k:groq')) && /gsk_/.test(urls.join('')));
+    store.bs_ai_groq = 'gsk_test1234567890abcdefghijklmnopqrstuvwxyz';
+    t('настройки: ключ показан только концом, есть «Удалить»', /…wxyz/.test(cb('1', 'st:k:groq')) && !/gsk_test1234/.test(urls.join('').replace('starts with gsk_', '')) && /st:d:groq/.test(urls.join('')));
+    cb('1', 'st:d:groq');
+    t('настройки: «Удалить ключ» — ключ убран', !store.bs_ai_groq);
     /* чистый чат */
     store.bs_tg_del = '[]';
     urls.length = 0; T._handle({ update_id: 2, message: { message_id: 77, chat: { id: 1, type: 'private' }, from: { first_name: 'X' }, text: '📋 Menu' } });
