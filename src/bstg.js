@@ -64,26 +64,28 @@ var BSTelegram = (function () {
     }
     function as(c, fn) { var p = cur, pt = tmpMs; cur = String(c || ''); tmpMs = 0; try { fn(); } finally { cur = p; tmpMs = pt; } }
 
-    /* ---------- чистый чат: служебное само исчезает ----------
-     * Команды человека («📋 Меню», /lang, слова с клавиатуры) удаляем сразу; служебные ответы бота (меню, помощь,
-     * списки, «Напишите название», «Включаю на ТВ») — через TMP_SHORT/TMP_LONG. Остаются результаты поиска,
-     * уведомления о сериях и качестве, запросы на подключение. Очередь — в bs_tg_del: переживает перезапуск Lampa
-     * (Telegram даёт удалять сообщения 48 часов). */
+    /* ---------- чистый чат: служебное сменяется новым ----------
+     * Команды человека («📋 Меню», /lang, слова с клавиатуры), нажатое меню и служебные ответы бота (меню, помощь,
+     * списки, настройки, «Напишите название», «Включаю на ТВ») ждут в очереди bs_tg_del и удаляются, только когда
+     * бот покажет следующее служебное сообщение, — по времени ничего не исчезает. Остаются результаты поиска,
+     * уведомления о сериях и качестве, запросы на подключение. Telegram даёт удалять сообщения 48 часов —
+     * старше из очереди просто выбрасываем. */
     var TMP_SHORT = 60000, TMP_LONG = 10 * 60000, lastMenu = {};
     function delLater(c, id, ms) {
         if (!c || !id) return;
         var q = lsJson('bs_tg_del', []);
-        q.push({ c: String(c), id: id, at: Date.now() + ms });
+        q.push({ c: String(c), id: id, at: Date.now() });
         lsSet('bs_tg_del', JSON.stringify(q.slice(-300)));
     }
     function delNow(c, id) { if (c && id) call('deleteMessage', { chat_id: c, message_id: id }, null, null); }
     function delTick() {
         var now = Date.now(), q = lsJson('bs_tg_del', []), left = [];
         if (!q.length) return;
-        q.forEach(function (x) { if (x.at <= now) delNow(x.c, x.id); else left.push(x); });
+        q.forEach(function (x) { if (now - x.at < 47 * 3600000) left.push(x); });
+        if (left.length === q.length) return;
         lsSet('bs_tg_del', JSON.stringify(left));
     }
-    /** fn отправит служебные сообщения — они удалятся через ms. */
+    /** fn отправит служебные сообщения — их уберёт следующее служебное. */
     function tmp(ms, fn) { var p = tmpMs; tmpMs = ms; try { return fn(); } finally { tmpMs = p; } }
     /** Отправлено сообщение: служебное — в очередь на удаление. */
     function sent(m) {
@@ -302,7 +304,6 @@ var BSTelegram = (function () {
     function tvNames() { return allTvs().map(function (d) { return d.text.replace(/^📺 /, ''); }); }
     function sendMenu() {
         var tvs = tvNames(), c = to();
-        if (lastMenu[c]) { delNow(c, lastMenu[c]); lastMenu[c] = 0; }      // одно меню в чате — старое убираем
         tmp(TMP_LONG, function () { send(L('📺 На связи: ', '📺 Online: ', '📺 Aloqada: ') + tvs.join(', ') + (anyAi() ? L(' · 🧠 ИИ-поиск включён', ' · 🧠 AI search is on', " · 🧠 AI qidiruv yoqilgan") : '') +
             L('\n\nВыберите раздел:', '\n\nChoose a section:', "\n\nBo'limni tanlang:"), null, function (m) { if (m && m.message_id) lastMenu[c] = m.message_id; }, null, menuRows()); });
     }
@@ -2192,15 +2193,15 @@ var BSTelegram = (function () {
             if (lg) {
                 call('answerCallbackQuery', { callback_query_id: q.id }, null, null);
                 setLang(lg[1]);
-                delNow(to(), q.message.message_id);
-                tmp(15000, function () { sendKb(L('✅ Язык: русский', '✅ Language: English', "✅ Til: o'zbekcha")); });
+                delLater(to(), q.message.message_id);
+                tmp(TMP_SHORT, function () { sendKb(L('✅ Язык: русский', '✅ Language: English', "✅ Til: o'zbekcha")); });
                 return setTimeout(keep(sendMenu), 400);
             }
             var mn = /^mn:(\w+)$/.exec(q.data || '');
             if (mn) {                                                   // нажали плитку — само меню больше не нужно
                 call('answerCallbackQuery', { callback_query_id: q.id }, null, null);
                 if (q.message.message_id === lastMenu[to()]) lastMenu[to()] = 0;
-                delNow(to(), q.message.message_id);
+                delLater(to(), q.message.message_id);              // уберётся, когда появится ответ
                 return menuAction(mn[1]);
             }
             var ku = /^ku:(-?\d+)$/.exec(q.data || '');
@@ -2330,7 +2331,7 @@ var BSTelegram = (function () {
         renameFor = null;
         // «⌨️ Набрать на ТВ»: следующее сообщение (не команда и не кнопка) — в поиск Lampa
         if (typeFor && typeFor.chat === to() && Date.now() - typeFor.at < TYPE_WAIT && !/^\//.test(msg.text) &&
-            KB_WORDS.indexOf(plainOf(msg.text)) < 0) { delNow(to(), msg.message_id); return tmp(TMP_SHORT, function () { typeSend(msg.text); }); }
+            KB_WORDS.indexOf(plainOf(msg.text)) < 0) { delLater(to(), msg.message_id); return tmp(TMP_SHORT, function () { typeSend(msg.text); }); }
         if (typeFor && typeFor.chat === to()) typeFor = null;
         var jc = isOwner() && joinFrom(msg.text);
         if (jc) return joinSend(jc);
@@ -2353,7 +2354,7 @@ var BSTelegram = (function () {
         var c = cmd ? cmd[1].toLowerCase() : '', arg = cmd ? cmd[2] : t, plain = plainOf(t);
         // команда или слово с клавиатуры — техническое: убираем сразу, ответ на него тоже служебный
         if ((c && c !== 'find' && c !== 'start') || KB_WORDS.indexOf(plain) >= 0) {
-            delNow(to(), msg.message_id);
+            delLater(to(), msg.message_id);                       // уберётся вместе с прошлым ответом, когда придёт новый
             return tmp(TMP_LONG, function () { return command(c, plain, arg, t); });
         }
         return command(c, plain, arg, t);

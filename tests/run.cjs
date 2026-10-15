@@ -1632,7 +1632,8 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     /* чистый чат */
     store.bs_tg_del = '[]';
     urls.length = 0; T._handle({ update_id: 2, message: { message_id: 77, chat: { id: 1, type: 'private' }, from: { first_name: 'X' }, text: '📋 Menu' } });
-    t('чистый чат: «📋 Меню» человека удаляется сразу', urls.some(u => /deleteMessage/.test(u) && /message_id=77/.test(u)));
+    t('чистый чат: «📋 Меню» человека ждёт ответа — в очереди, сразу не удаляется', !urls.some(u => /deleteMessage/.test(u) && /message_id=77/.test(u)) && JSON.parse(store.bs_tg_del).some(x => x.id === 77));
+    store.bs_tg_del = '[]';
     ctx.Lampa.Reguest = function () { this.silent = function () {}; this.clear = function () {}; }; ctx.Lampa.TMDB = { api: u => u, key: () => 'k' };
     urls.length = 0; T._handle({ update_id: 3, message: { message_id: 78, chat: { id: 1, type: 'private' }, from: { first_name: 'X' }, text: 'Sintel' } });
     t('чистый чат: поиск (название фильма) не удаляется', !urls.some(u => /deleteMessage/.test(u) && /message_id=78/.test(u)));
@@ -1644,7 +1645,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('чистый чат: новое служебное — прежнее служебное удалено сразу', urls.some(u => /deleteMessage/.test(u) && /message_id=90/.test(u)) &&
         JSON.parse(store.bs_tg_del).map(x => x.id).join() === '92');
     const q2 = JSON.parse(store.bs_tg_del); q2.forEach(x => { x.at = 0; }); store.bs_tg_del = JSON.stringify(q2); urls.length = 0; T._delTick();
-    t('чистый чат: срок вышел — сообщение удалено, очередь пуста', urls.some(u => /deleteMessage/.test(u) && /message_id=92/.test(u)) && JSON.parse(store.bs_tg_del).length === 0);
+    t('чистый чат: по времени не удаляется, старше 48 ч — просто забываем', !urls.some(u => /deleteMessage/.test(u)) && JSON.parse(store.bs_tg_del).length === 0);
 }
 
 console.log(pass + ' passed, ' + fail + ' failed');
