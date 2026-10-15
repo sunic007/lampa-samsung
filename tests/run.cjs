@@ -610,32 +610,86 @@ t('Smart Hub: остальные запуски приложений прохо�
 t('Smart Hub: в config.xml нет службы и превью', !/<tizen:service|metadata\/use\.preview/.test(fs.readFileSync(path.join(SRC, 'config.xml'), 'utf8')));
 
 
-/* ---- loader.js: «Проверить и обновить» дожидается GitHub и запоминает новую версию до перезагрузки ---- */
-function ghCheck(resp, status, store, cdn) {
-    const src = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
-    const fn = src.slice(src.indexOf('function bsGhCheck('), src.indexOf('function bsCheckNow('));
+/* ---- update.js: новая версия годится, только когда все её файлы уже на CDN ---- */
+function updCheck(manifest, head, store) {
     const ls = Object.assign({}, store || {}), got = [];
-    function X() { this.open = (m, u) => { this.u = u; }; this.send = () => { this.status = /jsdelivr/.test(this.u) ? (cdn || 200) : status; this.responseText = resp; this.onload(); }; }
-    const ctx = { window: { localStorage: { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); }, removeItem: k => { delete ls[k]; } } },
-        XMLHttpRequest: X, BS_PACKAGE_VERSION: '1.7.40', setTimeout: () => 0, Date, JSON, String };
+    function X() {
+        this.open = (m, u) => { this.m = m; this.u = u; };
+        this.send = () => {
+            if (/version\.json/.test(this.u)) { this.status = manifest ? 200 : 500; this.responseText = manifest ? JSON.stringify(manifest) : 'oops'; }
+            else this.status = head(this.u);
+            this.onload();
+        };
+    }
+    const w = { localStorage: { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); }, removeItem: k => { delete ls[k]; } }, location: { reload() {} } };
+    const ctx = { window: w, XMLHttpRequest: X, document: { write() {}, createElement: () => ({ style: {} }), body: { appendChild() {} } },
+        setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, JSON, Date, Math, String, Number, console: { log() {} } };
+    w.window = w; vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync(path.join(SRC, 'update.js'), 'utf8'), ctx);
+    w.BSUpdate.check((v, m) => { got.push(v, m); });
+    return { v: got[0], m: got[1], ls, U: w.BSUpdate };
+}
+const M46 = { version: '1.7.46', files: ['loader.js', 'bstg.js'], notes: { title: 'Новое', items: ['Пункт 1'] } };
+let uc = updCheck(M46, () => 200);
+t('обновление: все файлы на CDN — версия готова и запомнена', uc.v === '1.7.46' && JSON.parse(uc.ls.bs_upd).ok === 1 && JSON.parse(uc.ls.bs_upd).m === 0);
+uc = updCheck(M46, () => 503);
+t('обновление: CDN ещё отвечает 503 — версию не запоминаем (не будет кругов перезагрузок)', uc.v === '' && !uc.ls.bs_upd);
+uc = updCheck(M46, u => (/fastly/.test(u) ? 200 : 503));
+t('обновление: основной CDN не готов, fastly готов — запоминаем зеркало', uc.v === '1.7.46' && JSON.parse(uc.ls.bs_upd).m === 1);
+uc = updCheck(M46, u => (/bstg\.js/.test(u) ? 503 : 200));
+t('обновление: хоть один файл не отдаётся — версия не готова', uc.v === '');
+uc = updCheck(M46, () => 200, { bs_upd: JSON.stringify({ v: '1.7.46', files: ['loader.js'], ok: 1 }) });
+t('обновление: та же версия уже работает — нового нет', uc.v === '');
+uc = updCheck(M46, () => 200, { bs_upd_bad: '1.7.46|' + Date.now() });
+t('обновление: версия, на которой Lampa не поднялась, — не берём', uc.v === '' && !uc.ls.bs_upd);
+uc = updCheck(null, () => 200);
+t('обновление: GitHub не ответил — без версии', uc.v === '');
+uc = updCheck(M46, () => 200, { bs_upd: JSON.stringify({ v: '1.7.45', files: ['loader.js'], m: 1, ok: 1 }) });
+t('обновление: при запуске берём зеркало, где проверка нашла файлы', /fastly\.jsdelivr\.net/.test(uc.U._base));
+
+/* ---- loader.js: «Проверить и обновить» — «что нового» в окно, согласие даёт «плохой» версии ещё шанс ---- */
+function ghCheck(v, m, store) {
+    const src = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
+    const fn = src.slice(src.indexOf('function bsGhCheck('), src.indexOf('function bsEsc('));
+    const ls = Object.assign({}, store || {}), got = [];
+    const ctx = { window: { localStorage: { getItem: k => (k in ls ? ls[k] : null), setItem: (k, x) => { ls[k] = String(x); }, removeItem: k => { delete ls[k]; } },
+        BSUpdate: { check: cb => cb(v, m) } }, setTimeout: () => 0, Date, JSON, String, Object };
+    ctx.BSUpdate = ctx.window.BSUpdate;
     vm.createContext(ctx); vm.runInContext(fn + ';bsGhCheck((v, info) => { got.push(v); got.push(info); });', Object.assign(ctx, { got }));
     return { v: got[0], info: got[1], ls };
 }
-let ghc = ghCheck(JSON.stringify({ version: '1.7.46', files: ['loader.js'], notes: { title: 'Новое', items: ['Пункт 1', 'Пункт 2'] } }), 200);
-t('проверить и обновить: нашли версию — ничего не меняем, пока не согласились', ghc.v === '1.7.46' && !ghc.ls.bs_upd);
-t('проверить и обновить: «что нового» пришло в окно', ghc.info && ghc.info.notes && ghc.info.notes.title === 'Новое' && ghc.info.notes.items.length === 2);
+let ghc = ghCheck('1.7.46', M46);
+t('проверить и обновить: «что нового» пришло в окно', ghc.v === '1.7.46' && ghc.info.notes.title === 'Новое' && ghc.info.notes.items.length === 1);
+ghc = ghCheck('', null);
+t('проверить и обновить: нового нет — без окна', ghc.v === '' && !ghc.info);
+ghc = ghCheck('1.7.46', M46, { bs_upd_bad: '1.7.46|1', bs_upd_skip: '999' });
 ghc.info.apply();
-t('проверить и обновить: «Обновить сейчас» — версия запомнена до перезагрузки', JSON.parse(ghc.ls.bs_upd).v === '1.7.46');
-ghc = ghCheck(JSON.stringify({ version: '1.7.40', files: ['loader.js'] }), 200);
-t('проверить и обновить: та же версия — ничего не меняем', ghc.v === '' && !ghc.ls.bs_upd);
-ghc = ghCheck('oops', 500);
-t('проверить и обновить: GitHub не ответил — продолжаем без него', ghc.v === '');
-ghc = ghCheck(JSON.stringify({ version: '1.7.46', files: ['loader.js'] }), 200, { bs_upd_bad: '1.7.46|1' });
-t('проверить и обновить: «плохую» версию без согласия не трогаем', ghc.v === '1.7.46' && ghc.ls.bs_upd_bad === '1.7.46|1');
-ghc.info.apply();
-t('проверить и обновить: согласились — «плохой» версии даём ещё шанс', !ghc.ls.bs_upd_bad && JSON.parse(ghc.ls.bs_upd).v === '1.7.46');
-ghc = ghCheck(JSON.stringify({ version: '1.7.46', files: ['loader.js'] }), 200, {}, 404);
-t('проверить и обновить: тега на jsDelivr ещё нет — не перезагружаем впустую', ghc.v === '' && !ghc.ls.bs_upd);
+t('проверить и обновить: согласились — «плохой» версии даём ещё шанс', !ghc.ls.bs_upd_bad && !ghc.ls.bs_upd_skip);
+
+/* ---- loader.js: обновления не ставятся на глазах — одним перезапуском, когда Lampa ушла в фон ---- */
+function applyEnv(opt) {
+    const src = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
+    const fn = src.slice(src.indexOf('function bsApplyUpdate('), src.indexOf('function bsUpdateCheck('));
+    const ls = Object.assign({}, opt.store || {}), notes = [], env = { reloads: 0 };
+    const ctx = { window: { localStorage: { getItem: k => (k in ls ? ls[k] : null), setItem: (k, x) => { ls[k] = String(x); }, removeItem: k => { delete ls[k]; } } },
+        document: { hidden: !!opt.hidden }, location: { reload: () => { env.reloads++; } }, Date, JSON, String, parseInt,
+        bsNoty: t => notes.push(t), bsPlayerOpen: () => !!opt.player, bsUpdatePending: null };
+    vm.createContext(ctx); vm.runInContext(fn + ';this.apply = bsApplyUpdate; this.hide = bsReloadForUpdate; this.fn = bsFnPending;', ctx);
+    return { ctx, env, notes, ls };
+}
+let ae = applyEnv({});
+ae.ctx.apply({ hash: 'h2', app_version: '3.3.7' }); ae.ctx.apply({ hash: 'h3', app_version: '3.3.8' });
+t('обновления: Lampa на экране — не перезапускаем, говорим один раз', ae.env.reloads === 0 && ae.notes.length === 1);
+ae.ctx.document.hidden = true; ae.ctx.hide();
+t('обновления: ушли из Lampa — одна перезагрузка на всё готовое', ae.env.reloads === 1);
+ae.ctx.hide();
+t('обновления: не чаще раза в 10 минут — без кругов', ae.env.reloads === 1);
+ae = applyEnv({ hidden: true, player: true }); ae.ctx.apply({ hash: 'h2' });
+t('обновления: видео открыто — не перезапускаем даже в фоне', ae.env.reloads === 0);
+ae = applyEnv({ hidden: true, store: { bs_upd: JSON.stringify({ v: '9.9.9', files: ['loader.js'], ok: 1 }) } });
+t('обновления: готовая версия функций ставится при уходе в фон', ae.ctx.hide() === true && ae.env.reloads === 1);
+ae = applyEnv({ hidden: true, store: { bs_upd: JSON.stringify({ v: '9.9.9', files: ['loader.js'] }) } });
+t('обновления: непроверенная версия функций (без ok) — не перезапускаем', ae.ctx.hide() === false && ae.env.reloads === 0);
 
 
 /* ---- bstg.js: шифрование и подпись сообщений через ntfy ---- */
@@ -1304,6 +1358,35 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('обновление: все зеркала не ответили — час на пакете, потом снова с первого', !!r.store.bs_upd_skip && !('bs_upd_mirror' in r.store));
     r = mk({ bs_upd: upd, bs_upd_mirror: '7' });
     t('обновление: испорченный номер зеркала — основной', /cdn\.jsdelivr\.net/.test(r.written()));
+}
+/* ---- bstg.js: качество фильма в поиске бота и «Сообщить о качестве» ---- */
+{
+    const store = { bs_tv_id: 'ZZZZZZZZ', bs_tg_chat: '1', bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw' };
+    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: function () {},
+        Uint8Array, btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'), unescape, escape,
+        encodeURIComponent, decodeURIComponent, Lampa: { Noty: { show() {} } } };
+    ctx.window = ctx; ctx.crypto = require('crypto').webcrypto;
+    ctx.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
+    const T = ctx.M, now = Date.parse('2026-10-15');
+    t('качество: названия как у значков Lampa', T._qualityName('bd') === 'Blu-ray' && T._qualityName('webdl') === 'WEB-DL' && T._qualityName('CAMRip') === 'CAMRip' && T._qualityName('') === '');
+    t('качество: экранка — TS/CAMRip/TC, а WEB-DL и Blu-ray — нормально', T._qualityLow('ts') && T._qualityLow('camrip') && T._qualityLow('TC') && !T._qualityLow('webdl') && !T._qualityLow('bd'));
+    const fresh = { media_type: 'movie', id: 1, title: 'Новинка', release_date: '2026-09-20' };
+    const old = { media_type: 'movie', id: 2, title: 'Старый', release_date: '1999-10-15' };
+    t('качество: подпись — нормальное качество', T._qualityLine(Object.assign({}, fresh, { _q: 'webdl' }), now) === '📀 Качество: WEB-DL');
+    t('качество: подпись — только экранка', T._qualityLine(Object.assign({}, fresh, { _q: 'ts' }), now) === '⚠️ Пока только экранка (TS)');
+    t('качество: новинка без качества — «ещё нет», старый без данных — молчим', T._qualityLine(Object.assign({}, fresh, { _q: '' }), now) === '⏳ В хорошем качестве ещё нет' &&
+        T._qualityLine(Object.assign({}, old, { _q: '' }), now) === '');
+    t('качество: ждать есть смысл — экранка или новинка без качества', T._waitable(Object.assign({}, fresh, { _q: 'camrip' }), now) && T._waitable(Object.assign({}, fresh, { _q: '' }), now) &&
+        !T._waitable(Object.assign({}, fresh, { _q: 'bd' }), now) && !T._waitable(Object.assign({}, old, { _q: '' }), now) && !T._waitable({ media_type: 'tv', id: 3, _q: '' }, now));
+    t('качество: качество ещё не узнали — ни строки, ни кнопки', T._qualityLine(fresh, now) === '' && !T._waitable(fresh, now));
+    const btns = q => [].concat.apply([], T._slideButtons([Object.assign({}, fresh, { _q: q })], 0, false)).map(b => b.callback_data);
+    t('качество: экранка — кнопка «Сообщить о качестве» под фильмом', btns('ts').indexOf('q:m:1') >= 0);
+    t('качество: нормальное качество — кнопки нет', btns('webdl').indexOf('q:m:1') < 0);
+    T._onBus({ t: 'qw', from: 'AAAAAAAA', list: [{ id: 5, name: 'Фильм', at: 1 }] });
+    t('качество: список ожидания владельца — общий для всех ТВ', JSON.parse(store.bs_tg_qwait)[0].id === 5);
+    const d = T._botDesc();
+    t('бот: описание «отвечает, пока Lampa открыта на ТВ» — в пределах Telegram (512 / 120)', d[0].length <= 512 && d[1].length <= 120 && /пока Lampa открыта/.test(d[0]) && /пока Lampa открыта/.test(d[1]));
 }
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

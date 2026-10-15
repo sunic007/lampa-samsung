@@ -135,8 +135,12 @@ var BSTelegram = (function () {
         { command: 'profile', description: '👤 Профиль' },
         { command: 'help', description: '❓ Помощь' }
     ];
+    var BOT_DESC = 'Помощник Lampa для телевизора: найдёт фильм или сериал и включит на ТВ, сообщит о новых сериях и о выходе фильма в хорошем качестве.\n\n⚠️ Бот работает внутри Lampa на телевизоре — отвечает, только пока Lampa открыта хотя бы на одном ТВ. Бот молчит — включите Lampa на ТВ.';
+    var BOT_SHORT = 'Lampa на ТВ: найти фильм, включить на телевизоре, новые серии. Отвечает, пока Lampa открыта на ТВ.';
     function setCommands() {
         call('setMyCommands', { commands: JSON.stringify(COMMANDS) }, null, null);
+        call('setMyDescription', { description: BOT_DESC }, null, null);
+        call('setMyShortDescription', { short_description: BOT_SHORT }, null, null);
         call('setChatMenuButton', { menu_button: JSON.stringify({ type: 'commands' }) }, null, null);
     }
 
@@ -168,6 +172,7 @@ var BSTelegram = (function () {
             '👤 ' + (isOwner() ? 'Владелец бота' : 'Вы подключены' + (me.name ? ' как ' + me.name : '') + ' — свои списки и подписки'),
             '📺 Телевизоры на связи: ' + tvNames().join(', '),
             '🔔 Подписок: ' + subsN,
+            '📀 Жду хорошего качества: ' + (isOwner() ? qwOwner() : ((g || {}).qwait || [])).length,
             '🧠 ИИ-поиск: ' + (ai.length ? ai.join(', ') : 'нет ключа — пришлите ключ Groq, Gemini или OpenRouter (подробнее — «🖼 По картинке»)')
         ];
         if (isOwner()) {
@@ -950,6 +955,8 @@ var BSTelegram = (function () {
             r.s = m.s | 0; r.e = m.e | 0; r.at = r.at || now;
             all[m.id] = r;
             lsSet('bs_tg_seen', JSON.stringify(trimSeen(all)));
+        } else if (m.t === 'qw' && Object.prototype.toString.call(m.list) === '[object Array]') {
+            lsSet('bs_tg_qwait', JSON.stringify(m.list.slice(0, QWAIT_MAX)));
         } else if (m.t === 'today' && m.tag) {
             var done = lsJson('bs_tg_today', []);
             if (done.indexOf(m.tag) < 0) { done.unshift(m.tag); lsSet('bs_tg_today', JSON.stringify(done.slice(0, 200))); }
@@ -1222,11 +1229,17 @@ var BSTelegram = (function () {
                 isLeader = true; leader = { id: tvId, at: Date.now() }; busHello(false); log('главный ТВ', tvName());
                 busSend({ t: 'who', users: true });                  // люди со всех ТВ: вдруг гостя разрешили на другом
             }
+            var staleTold = {};
             (updates || []).forEach(function (u) {
                 lsSet('bs_tg_offset', String(u.update_id + 1));
                 var md = u.message && u.message.date;
-                if (md && Date.now() / 1000 - md > STALE_UPDATE && u.message.chat) {     // пришло давно (ТВ был без бота) - не отвечаем позже
-                    call('sendMessage', { chat_id: u.message.chat.id, text: '⏳ Этот запрос пришёл давно — напишите его ещё раз.' }, null, null);
+                if (md && Date.now() / 1000 - md > STALE_UPDATE && u.message.chat) {     // пришло, пока Lampa была выключена - не выполняем
+                    var sc = String(u.message.chat.id);
+                    if (!staleTold[sc]) {                                                  // одно объяснение на чат, а не на каждое сообщение
+                        staleTold[sc] = 1;
+                        call('sendMessage', { chat_id: sc, text: '⏳ Сообщение от ' + hhmm(md * 1000) + ' пришло, пока Lampa на ТВ была выключена — ' +
+                            'бот работает внутри Lampa. Сейчас ТВ на связи: напишите ещё раз.' }, null, null);
+                    }
                     return;
                 }
                 try { handle(u); } catch (e) { log('команда', e.message); }
@@ -1803,7 +1816,7 @@ var BSTelegram = (function () {
 
     function handleIn(u) {
         if (u.callback_query) {
-            var q = u.callback_query, sm = /^([wosxv]):([mt]):(\d+)$/.exec(q.data || ''), m = /^([ul]):(\d+)$/.exec(q.data || '');
+            var q = u.callback_query, sm = /^([wosxvq]):([mt]):(\d+)$/.exec(q.data || ''), m = /^([ul]):(\d+)$/.exec(q.data || '');
             if (!q.message) return;
             var mn = /^mn:(\w+)$/.exec(q.data || '');
             if (mn) { call('answerCallbackQuery', { callback_query_id: q.id }, null, null); return menuAction(mn[1]); }
@@ -2124,7 +2137,108 @@ var BSTelegram = (function () {
         var tv = r.media_type === 'tv', name = (tv ? r.name : r.title) || r.original_name || r.original_title || '';
         var y = String((tv ? r.first_air_date : r.release_date) || '').slice(0, 4), about = String(r.overview || '');
         if (about.length > 180) about = about.slice(0, 177).replace(/\s+\S*$/, '') + '…';
-        return name + (y ? ' (' + y + ')' : '') + '\n' + (tv ? 'Сериал' : 'Фильм') + (r.vote_average ? ' · ★ ' + (+r.vote_average).toFixed(1) : '') + (about ? '\n\n' + about : '');
+        var ql = qualityLine(r);
+        return name + (y ? ' (' + y + ')' : '') + '\n' + (tv ? 'Сериал' : 'Фильм') + (r.vote_average ? ' · ★ ' + (+r.vote_average).toFixed(1) : '') +
+            (ql ? '\n' + ql : '') + (about ? '\n\n' + about : '');
+    }
+    /* ---------- качество фильма (как значок на карточке Lampa: release_quality от CUB) ----------
+     * В поиске бота под фильмом — «📀 Качество: WEB-DL»; только экранка или ещё нет — кнопка «🔔 Сообщить о качестве»:
+     * главный ТВ раз в 3 часа проверяет такие фильмы и пишет человеку, когда вышло нормальное качество. */
+    var QUAL = {}, QUAL_LIFE = 6 * 3600000, QWAIT_MAX = 30, QWAIT_LIFE = 180 * 86400000;
+    var Q_NAMES = { bd: 'Blu-ray', bdrip: 'BDRip', bluray: 'Blu-ray', webdl: 'WEB-DL', webrip: 'WEBRip', hdrip: 'HDRip', dvdrip: 'DVDRip',
+        dvd: 'DVD', tvrip: 'TVRip', hdtv: 'HDTV', ts: 'TS', telesync: 'TS', tc: 'TC', telecine: 'TC', camrip: 'CAMRip', cam: 'CAMRip',
+        scr: 'Screener', screener: 'Screener', '4k': '4K', uhd: '4K' };
+    function qualityKey(q) { return String(q || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+    function qualityName(q) { var k = qualityKey(q); return k ? (Q_NAMES[k] || String(q).toUpperCase().slice(0, 16)) : ''; }
+    /** Экранка: снято в кинотеатре — смотреть такое никто не хочет. */
+    function qualityLow(q) { return /^(cam|camrip|ts|telesync|tc|telecine|scr|screener)$/.test(qualityKey(q)); }
+    /** Фильм, вышедший недавно (или ещё не вышедший): качества нет — ждать есть смысл. Старый без качества — у CUB нет данных. */
+    function recentMovie(r, now) {
+        var d = Date.parse(String(r.release_date || '')), day = 86400000;
+        return !d || d > (now || Date.now()) - 180 * day;
+    }
+    /** Есть смысл ждать хорошее качество: только экранка или пока ничего (r._q уже узнали). */
+    function waitable(r, now) {
+        if (r.media_type === 'tv' || r._q === undefined) return false;
+        return qualityLow(r._q) || (!r._q && recentMovie(r, now));
+    }
+    function qualityLine(r, now) {
+        if (r.media_type === 'tv' || r._q === undefined) return '';
+        if (qualityLow(r._q)) return '⚠️ Пока только экранка (' + qualityName(r._q) + ')';
+        if (r._q) return '📀 Качество: ' + qualityName(r._q);
+        return recentMovie(r, now) ? '⏳ В хорошем качестве ещё нет' : '';
+    }
+    /** cb(release_quality или ''), не дольше 4 с. Кэш на QUAL_LIFE. */
+    function qualityGet(id, cb) {
+        cb = keep(cb);
+        var c = QUAL[id];
+        if (c && Date.now() - c.at < QUAL_LIFE) return cb(c.q);
+        var done = false, fin = function (q) { if (done) return; done = true; QUAL[id] = { q: q || '', at: Date.now() }; cb(q || ''); };
+        setTimeout(function () { if (!done) { done = true; cb(''); } }, 4000);
+        try {
+            Lampa.Api.sources.cub.full({ id: id, method: 'movie', card: { id: id, source: 'cub' } }, function (j) {
+                var m = j && (j.movie || j);
+                fin(m && m.release_quality);
+            }, function () { fin(''); });
+        } catch (e) { fin(''); }
+    }
+    /** Перед показом карточки узнать качество фильма (сериалам не нужно). */
+    function withQuality(r, cb) {
+        if (!r || r.media_type === 'tv' || r._q !== undefined) return cb();
+        qualityGet(r.id, function (q) { r._q = q; cb(); });
+    }
+    function qwOwner() { var l = lsJson('bs_tg_qwait', []); return Object.prototype.toString.call(l) === '[object Array]' ? l : []; }
+    /** Список владельца — общий для всех ТВ (по каналу), как его подписки. */
+    function qwSaveOwner(l) { lsSet('bs_tg_qwait', JSON.stringify(l)); busSend({ t: 'qw', list: l }); }
+    function qualityWait(card, kind, name, answer) {
+        var m = mini(card, kind), has = function (l) { return l.some(function (x) { return x && x.id == m.id; }); };
+        m.at = Date.now();
+        m.poster = card.poster_path || '';
+        var said = '🔔 Сообщу, когда «' + name + '» выйдет в хорошем качестве', already = 'Уже жду — сообщу, когда «' + name + '» выйдет в хорошем качестве';
+        if (isOwner()) {
+            var l = qwOwner();
+            if (has(l)) return answer(already);
+            qwSaveOwner([m].concat(l).slice(0, QWAIT_MAX));
+        } else {
+            var g = guest();
+            if (!g) return answer('Нет доступа');
+            if (has(g.qwait || [])) return answer(already);
+            updGuest(function (x) { x.qwait = [m].concat(x.qwait || []).slice(0, QWAIT_MAX); });
+        }
+        answer(said);
+    }
+    /** Главный ТВ: фильмы, которых ждут, — вышло нормальное качество? Написать и убрать из ожидания. */
+    function qualityCheck() {
+        if (!token() || !chat() || !leading()) return;
+        var now = Date.now(), jobs = [{ c: '', list: qwOwner() }], people = users(), ids = {}, res = {};
+        Object.keys(people).forEach(function (k) { var g = people[k]; if (active(g) && g.qwait && g.qwait.length) jobs.push({ c: k, list: g.qwait }); });
+        jobs.forEach(function (j) { j.list.forEach(function (x) { if (x && x.id) ids[x.id] = 1; }); });
+        var list = Object.keys(ids);
+        (function next(i) {
+            if (i >= list.length) return apply();
+            delete QUAL[list[i]];                                     // нужен свежий ответ, не кэш
+            qualityGet(list[i], function (q) { res[list[i]] = q; setTimeout(keep(function () { next(i + 1); }), 500); });
+        })(0);
+        function apply() {
+            jobs.forEach(function (j) {
+                var stay = [], ready = [];
+                j.list.forEach(function (x) {
+                    var q = res[x.id];
+                    if (q && !qualityLow(q)) ready.push({ x: x, q: q });
+                    else if (now - (x.at || now) < QWAIT_LIFE) stay.push(x);
+                });
+                if (stay.length === j.list.length) return;
+                if (j.c) { var all = users(), g = all[j.c]; if (g) { g.qwait = stay; saveUsers(all, [j.c]); } }
+                else qwSaveOwner(stay);
+                ready.forEach(function (r) {
+                    as(j.c, function () {
+                        send('🎬 «' + r.x.name + '» вышел в хорошем качестве: ' + qualityName(r.q), posterUrl(r.x.poster), null,
+                            function (e) { log('качество — не отправлено', e); },
+                            [[{ text: '▶️ Смотреть', callback_data: 'v:m:' + r.x.id }, { text: '📺 Открыть на ТВ', callback_data: 'o:m:' + r.x.id }]]);
+                    });
+                });
+            });
+        }
     }
     /* Результаты поиска — одним сообщением-слайдером: постер и описание, ◀ 3 / 20+ ▶ меняют их в том же сообщении
      * (editMessageMedia). Все найденные: TMDB отдаёт по 20 на страницу — дошли до конца, а страницы ещё есть, ▶
@@ -2234,6 +2348,7 @@ var BSTelegram = (function () {
     function slideButtons(list, i, more) {
         var r = list[i], k = r.media_type === 'tv' ? 't' : 'm', row2 = [{ text: '📺 Открыть на ТВ', callback_data: 'o:' + k + ':' + r.id }];
         if (k === 't') row2.push({ text: '🔔 Подписаться', callback_data: 's:t:' + r.id });
+        else if (waitable(r)) row2.push({ text: '🔔 Сообщить о качестве', callback_data: 'q:m:' + r.id });
         var rows = [[{ text: '▶️ Смотреть', callback_data: 'v:' + k + ':' + r.id }, { text: '⭐ Хочу посмотреть', callback_data: 'w:' + k + ':' + r.id }], row2];
         if (list.length > 1 || more) rows.push([
             { text: '◀', callback_data: 'p:' + ((i - 1 + list.length) % list.length) },
@@ -2283,6 +2398,9 @@ var BSTelegram = (function () {
 
     function showSlides(ss) {
         var list = ss.list;
+        withQuality(list[0], function () { showFirst(ss, list); });
+    }
+    function showFirst(ss, list) {
         call('sendPhoto', { chat_id: to(), photo: posterUrl(list[0].poster_path), caption: resultCaption(list[0]),
             reply_markup: JSON.stringify({ inline_keyboard: slideButtons(list, 0, hasMore(ss)) }) }, function (msg) {
             if (msg && msg.message_id) {
@@ -2317,6 +2435,9 @@ var BSTelegram = (function () {
         function show() {
             i = Math.max(0, Math.min(ss.list.length - 1, i));
             var r = ss.list[i];
+            withQuality(r, function () { showOne(r); });
+        }
+        function showOne(r) {
             call('editMessageMedia', { chat_id: to(), message_id: mid,
                 media: JSON.stringify({ type: 'photo', media: posterUrl(r.poster_path), caption: resultCaption(r) }),
                 reply_markup: JSON.stringify({ inline_keyboard: slideButtons(ss.list, i, hasMore(ss)) }) }, function () { answer(); }, function (e) { answer(); log('слайдер', e); });
@@ -2417,6 +2538,7 @@ var BSTelegram = (function () {
         tmdbGet((kind === 't' ? 'tv/' : 'movie/') + id, function (j) {
             if (!j || !j.id) return answer('TMDB не ответил, попробуйте ещё раз');
             var card = toCard(j, kind), name = card.title || card.name || '';
+            if (act === 'q') return qualityWait(card, kind, name, answer);
             if ((act === 'o' || act === 'v') && !isOwner() && !guestPlay()) return answer('Владелец запретил гостям включать видео на ТВ');
             if (act !== 'o' && act !== 'v' && !isOwner()) {
                 if (act === 's' && subscribed(card.id)) return answer('Вы уже подписаны');
@@ -2613,6 +2735,14 @@ var BSTelegram = (function () {
         setTimeout(function () { check(false); }, 40000);
         setInterval(function () { check(false); }, 30 * 60000);
         setTimeout(remind, 70000);
+        setTimeout(qualityCheck, 90000);
+        setInterval(qualityCheck, 3 * 3600000);
+        // описание бота «отвечает, пока Lampa открыта на ТВ» — один раз (главный ТВ), без рассылки людям
+        setTimeout(function () {
+            if (!token() || !chat() || lsGet('bs_tg_desc') === '1' || !leading()) return;
+            lsSet('bs_tg_desc', '1');
+            setCommands();
+        }, 25000);
         setTimeout(function () {
             // '9': новая нижняя клавиатура — старая (с «Профилем» и «Помощью») у людей остаётся, пока бот не пришлёт новую
             if (!token() || !chat() || lsGet('bs_tg_cmds') === '9') return;
@@ -2655,5 +2785,5 @@ var BSTelegram = (function () {
         }, 15000);
     }
 
-    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _onConflict: onConflict, _cubCards: cubCards, _commands: COMMANDS, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle };
+    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _botDesc: function () { return [BOT_DESC, BOT_SHORT]; }, _onConflict: onConflict, _cubCards: cubCards, _commands: COMMANDS, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle };
 })();

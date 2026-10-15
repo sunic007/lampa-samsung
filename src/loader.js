@@ -337,44 +337,22 @@ function bsAnnounce() {
 function bsGhCheck(cb) {
     var done = false, fin = function (v, info) { if (!done) { done = true; cb(v || '', info || null); } };
     var ls = window.localStorage;
-    try { if (ls.getItem('bs_gh_update') === 'false') return fin(''); } catch (e) { return fin(''); }
-    var num = function (v) { var m = /(\d+)\.(\d+)\.(\d+)/.exec(String(v || '')); return m ? +m[1] * 1e6 + +m[2] * 1e3 + +m[3] : 0; };
-    var pkg = '';
-    try { pkg = tizen.application.getCurrentApplication().appInfo.version; } catch (e) {}
-    try {
-        var x = new XMLHttpRequest();
-        x.open('GET', 'https://raw.githubusercontent.com/sunic007/lampa-samsung/main/version.json?t=' + Date.now(), true);
-        x.timeout = 10000;
-        x.onload = function () {
-            try {
-                var m = JSON.parse(x.responseText), now = window.BS_REMOTE_VERSION || pkg || BS_PACKAGE_VERSION;
-                var ok = x.status === 200 && m && m.version && m.files && m.files.length &&
-                    m.files.every(function (f) { return /^[\w.-]+\.js$/.test(f); });
-                if (!ok || !/^\d+\.\d+\.\d+$/.test(m.version) || num(m.version) <= num(now)) return fin('');
-                // тег версии на jsDelivr уже есть? иначе перезагрузка ушла бы впустую
-                var c = new XMLHttpRequest();
-                c.open('GET', 'https://cdn.jsdelivr.net/gh/sunic007/lampa-samsung@v' + m.version + '/src/loader.js', true);
-                c.timeout = 8000;
-                c.onload = function () {
-                    if (c.status !== 200) return fin('');
-                    fin(m.version, {
-                        notes: bsNotes(m.notes),
-                        apply: function () {
-                            // согласились обновить - даём версии ещё шанс, даже если раньше на ней не поднялась
-                            if (String(ls.getItem('bs_upd_bad') || '').split('|')[0] === m.version) ls.removeItem('bs_upd_bad');
-                            ls.setItem('bs_upd', JSON.stringify({ v: m.version, files: m.files }));
-                            ls.removeItem('bs_upd_skip');
-                        }
-                    });
-                };
-                c.onerror = c.ontimeout = function () { fin(''); };
-                c.send();
-            } catch (e) { fin(''); }
-        };
-        x.onerror = x.ontimeout = function () { fin(''); };
-        x.send();
-    } catch (e) { fin(''); }
-    setTimeout(function () { fin(''); }, 12000);
+    // update.js: версия годится, только когда все её файлы уже есть на CDN (проверка — до 30 с)
+    if (!window.BSUpdate || !BSUpdate.check) return fin('');
+    BSUpdate.check(function (v, m) {
+        if (!v) return fin('');
+        fin(v, {
+            notes: bsNotes(m && m.notes),
+            apply: function () {
+                // согласились обновить - даём версии ещё шанс, даже если раньше на ней не поднялась
+                try {
+                    if (String(ls.getItem('bs_upd_bad') || '').split('|')[0] === v) ls.removeItem('bs_upd_bad');
+                    ls.removeItem('bs_upd_skip');
+                } catch (e) {}
+            }
+        });
+    });
+    setTimeout(function () { fin(''); }, 30000);
 }
 
 /** «Что нового» из version.json: только строки, не больше 6 пунктов - это идёт в окно на ТВ. */
@@ -445,24 +423,40 @@ function bsHasUpdate(a) {
     return !!(a && a.hash && bsRunningHash && a.hash !== bsRunningHash);
 }
 
+/* Обновления не ставятся на глазах (до 1.7.63 Lampa перезапускалась посреди меню, на каждую сборку byskaz).
+ * Готовое — новая сборка Lampa (byskaz) и новая версия функций (GitHub, все файлы на CDN) — ставится одним
+ * перезапуском, когда Lampa уходит в фон (Home, другое приложение), или при следующем запуске. Во время видео — никогда. */
 function bsApplyUpdate(a) {
-    var what = 'Lampa ' + (a.app_version || '');
-    if (bsPlayerOpen()) {
-        if (!bsUpdatePending) bsNoty('Вышла новая версия ' + what + '. Обновлю после закрытия плеера.', 8000);
-        bsUpdatePending = a;
-        return;
-    }
-    bsUpdatePending = null;
-    bsNoty('Вышла новая версия ' + what + ' — обновляю…', 5000);
-    setTimeout(function () {
-        if (bsPlayerOpen()) { bsUpdatePending = a; return; }
-        location.reload();
-    }, 5000);
+    var told = !!bsUpdatePending;
+    bsUpdatePending = a;
+    if (document.hidden) return bsReloadForUpdate();
+    if (!told) bsNoty('Вышла новая версия Lampa ' + (a.app_version || '') + ' — встанет сама, когда выйдете из Lampa или при следующем запуске.', 8000);
+}
+function bsVerNum(v) { var m = /(\d+)\.(\d+)\.(\d+)/.exec(String(v || '')); return m ? +m[1] * 1e6 + +m[2] * 1e3 + +m[3] : 0; }
+/** Новая версия функций уже проверена и ждёт перезапуска (update.js записал bs_upd с ok). */
+function bsFnPending() {
+    try {
+        var u = JSON.parse(window.localStorage.getItem('bs_upd') || 'null'), pkg = '';
+        try { pkg = tizen.application.getCurrentApplication().appInfo.version; } catch (e) {}
+        return u && u.ok && bsVerNum(u.v) > bsVerNum(window.BS_REMOTE_VERSION || pkg) ? u.v : '';
+    } catch (e) { return ''; }
+}
+/** Lampa скрыта: применить всё готовое одним перезапуском. Не чаще раза в 10 минут — защита от кругов. */
+function bsReloadForUpdate() {
+    if (!(bsUpdatePending || bsFnPending()) || bsPlayerOpen()) return false;
+    var last = 0;
+    try { last = parseInt(window.localStorage.getItem('bs_upd_reload_at') || '0', 10) || 0; } catch (e) {}
+    if (Date.now() - last < 10 * 60 * 1000) return false;
+    try { window.localStorage.setItem('bs_upd_reload_at', String(Date.now())); } catch (e) {}
+    location.reload();
+    return true;
 }
 
 function bsUpdateCheck() {
-    if (!bsAutoUpdateOn()) return;
     bsLastUpdateCheck = Date.now();
+    // функции пакета — своя настройка «Обновлять с GitHub» (внутри check); годная версия встанет при уходе в фон
+    try { if (window.BSUpdate && BSUpdate.check) BSUpdate.check(function () {}); } catch (e) {}
+    if (!bsAutoUpdateOn()) return;
     bsCheckNow(function (a) {
         if (!a) return;
         if (!bsRunningHash) { bsRunningHash = a.hash; return; }   // запущены без данных о сборке — запоминаем текущую
@@ -483,14 +477,10 @@ function bsStartAutoUpdate() {
     bsRunningHash = bsSource === 'bundled' || bsSource === 'local' ? BS_BUNDLED_HASH : (bsRemote && bsRemote.hash) || null;
     setInterval(function () { if (!document.hidden) bsUpdateCheck(); }, BS_UPDATE_EVERY);
     document.addEventListener('visibilitychange', function () {
-        if (!document.hidden && Date.now() - bsLastUpdateCheck > BS_UPDATE_ON_RESUME) bsUpdateCheck();
+        if (document.hidden) { bsReloadForUpdate(); return; }               // ушли из Lampa — ставим готовое
+        if (Date.now() - bsLastUpdateCheck > BS_UPDATE_ON_RESUME) bsUpdateCheck();
     });
     window.addEventListener('online', function () { setTimeout(bsUpdateCheck, 3000); });
-    try {
-        Lampa.Player.listener.follow('destroy', function () {
-            if (bsUpdatePending) { var a = bsUpdatePending; setTimeout(function () { bsApplyUpdate(a); }, 1500); }
-        });
-    } catch (e) {}
     // Работаем из встроенной копии — сразу пробуем сервер: как только он ответит, перейдём на него.
     setTimeout(bsUpdateCheck, bsSource === 'bundled' ? 15000 : 60000);
 }
