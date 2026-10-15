@@ -41,6 +41,9 @@ x = decide({}, res({}, DEAD_DIRECT), 'fast'); t('источники: прямы�
 x = decide({}, res({}, SLOW_DIRECT), 'fast'); t('источники: медленные, но живые — до запуска не трогаем', !('skazonline_servers' in x.store));
 x = decide({}, res({}, SLOW_DIRECT), 'full'); t('источники: заметно медленнее -> со следующего запуска', JSON.parse(x.store.bs_srv_pending).family === 'cf' && !('skazonline_servers' in x.store));
 x = decide({ bs_srv_manual: String(Date.now()) }, res({}, SLOW_DIRECT), 'full'); t('источники: выбраны вручную — советы «быстрее» не перебивают', !x.store.bs_srv_pending);
+x = decide({ bs_srv_set: 'cf' }, res({}, SLOW_DIRECT), 'full'); t('источники: переключили в настройках Skaz — это ручной выбор, советы не перебивают', !JSON.parse(x.store.bs_srv_pending || '{}').family && !!x.store.bs_srv_manual);
+x = decide({ bs_srv_set: 'cf' }, res({}, DEAD_DIRECT), 'fast'); t('источники: переключили в Skaz на мёртвые — всё равно спасаем', x.store.skazonline_servers === 'true');
+x = decide({ bs_srv_set: 'direct' }, res({}, SLOW_DIRECT), 'full'); t('источники: сами не переключали — совет как обычно', JSON.parse(x.store.bs_srv_pending).family === 'cf');
 x = decide({}, res({}, Object.assign({}, ON, { onlinecf3: S(70), onlinecf4: S(75) })), 'full'); t('источники: малая разница — не прыгаем', !x.store.bs_srv_pending && !('skazonline_servers' in x.store));
 const ALL_DEAD = {}; Object.keys(ON).forEach(k => { ALL_DEAD[k] = S(null); });
 x = decide({}, res({}, ALL_DEAD), 'full'); t('источники: все мертвы — ничего не меняем', !('skazonline_servers' in x.store));
@@ -1194,6 +1197,27 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('по-русски: дубляж лучше прочих русских', C._pickRu(opts) === opts[3]);
     t('по-русски: без дубляжа — любая русская, не украинская/оригинал', C._pickRu([opts[0], opts[1], opts[2]]) === opts[2]);
     t('по-русски: русских нет — ничего', C._pickRu([opts[0], opts[1], opts[4]]) === null);
+}
+{
+    // настройки Skaz (onlines.js) не перебиваем: тип перевода и его вопрос «Продолжить?»
+    const run = (lampa, local, card) => {
+        const said = [], store = Object.assign({}, local);
+        const ctx = { $: () => ({}), document: { addEventListener() {} }, console: { log() {} }, setTimeout, setInterval, clearInterval, Date, Math, JSON, String, Object, Array, parseInt, isNaN,
+            localStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } },
+            Lampa: { Noty: { show: x => said.push(x) }, Utils: { hash: s => s },
+                Storage: { get: (k, d) => (k in lampa ? lampa[k] : d), field: k => lampa[k], cache: () => ({ 'Show': { season: 1, episode: 3 } }) } } };
+        ctx.window = ctx; vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bscontinue.js'), 'utf8') + ';this.M=BSContinue;', ctx);
+        const o = { movie: card }; ctx.M._autoResume(o);
+        return { said: said.join(' | '), ep: o.lampac_continue_episode };
+    };
+    const film = { id: 7, title: 'Фильм', original_title: 'Film' };
+    t('skaz: новый фильм — сразу по-русски', /русскую/.test(run({}, {}, film).said));
+    t('skaz: в Skaz запомнен оригинал — по-русски не включаем', run({ skaz_voice_pref: 'orig' }, {}, film).said === '');
+    t('skaz: «Запоминать тип перевода» выключен — по-русски как обычно', /русскую/.test(run({ skaz_voice_pref: 'sub', skaz_voice_auto: false }, {}, film).said));
+    const show = { id: 9, name: 'Шоу', original_name: 'Show', number_of_seasons: 2 };
+    const rec = { bs_resume: JSON.stringify([{ card: show, s: 1, e: 3, pos: 100, dur: 1000 }]) };
+    t('skaz: новый вид — продолжаем сериал сами', run({}, rec, show).ep > 0);
+    t('skaz: классический вид с «Предлагать продолжение» — его ответ не перебиваем', run({ skaz_ui_mode: 'classic', lampac_continue_play: true }, rec, show).ep === undefined);
 }
 /* ---- bstg.js: failover главного ТВ ---- */
 {

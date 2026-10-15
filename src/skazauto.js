@@ -43,6 +43,14 @@ var BSSkaz = (function () {
     function setLampa(k, v) {
         if (window.Lampa && Lampa.Storage) Lampa.Storage.set(k, v);
         else lsSet(k, String(v));
+        if (k === 'skazonline_servers') lsSet('bs_srv_set', v === true ? 'cf' : 'direct');
+    }
+    /** Серверы переключили сами в настройках Skaz («Проксировать серверы»), а не мы — это ручной выбор: советы
+     *  «быстрее — со следующего запуска» его не перебивают (как и выбор в нашем пункте). Мёртвые серверы — всё равно меняем. */
+    function noteSkazToggle() {
+        var set = lsGet('bs_srv_set'), cur = curFamily();
+        if (set && set !== cur) { lsSet('bs_srv_manual', String(Date.now())); lsSet('bs_srv_pending', '{}'); }
+        lsSet('bs_srv_set', cur);
     }
 
     function enabled() { return lsGet('bs_srv_auto') !== 'false'; }
@@ -185,6 +193,7 @@ var BSSkaz = (function () {
     function manualRecently() { return Date.now() - (parseInt(lsGet('bs_srv_manual') || '0', 10) || 0) < MANUAL_KEEP; }
     /** Отложенный совет «со следующего запуска» — применить до старта Lampa. */
     function applyPending() {
+        noteSkazToggle();                                       // переключили в Skaz после совета — совет снят
         var p = pending();
         // p.domain — совет из версий до 1.7.61 (сервер ТВ by Skaz): не применяем, просто убираем
         if (p.family) setLampa('skazonline_servers', p.family === 'cf');
@@ -192,6 +201,7 @@ var BSSkaz = (function () {
     }
 
     function decide(res, mode) {
+        noteSkazToggle();
         var reload = false, manual = manualRecently(), pend = pending();
         recheck = false;
 

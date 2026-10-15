@@ -195,8 +195,8 @@ var BSContinue = (function () {
         if (pending || o.lampac_continue_episode || !o.movie || !(o.movie.id > 0)) return;
         var list = load(), i = find(list, o.movie);
         if (i < 0) {
-            // фильм ещё не смотрели — «Смотреть» сразу включает русскую озвучку (bs_ru_auto)
-            if (!isTv(o.movie) && on('bs_ru_auto', true)) {
+            // фильм ещё не смотрели — «Смотреть» сразу включает русскую озвучку (bs_ru_auto), если в Skaz не выбрано иное
+            if (!isTv(o.movie) && on('bs_ru_auto', true) && !skazWantsOriginal()) {
                 pending = { id: o.movie.id, tv: false, episode: 0, until: Date.now() + 60000, ru: true, depth: 0 };
                 quiet('Включаю русскую озвучку', 3000);
                 log('фильм — сразу по-русски', o.movie.id);
@@ -205,6 +205,7 @@ var BSContinue = (function () {
         }
         if (!on('bs_online_resume', true)) return;
         var r = list[i];
+        if (isTv(o.movie) && skazAsksContinue()) return;    // Skaz уже спросил «Продолжить?» — его ответ, в том числе «Нет», не перебиваем
         if (isTv(o.movie)) {
             var t = targetEpisode(o.movie, r);
             if (!t.known || !t.episode) return;                 // плагин не помнит источник/сезон — пусть выбирают
@@ -244,6 +245,20 @@ var BSContinue = (function () {
         if (/многоголос|профессион|mvo/i.test(t)) return 2;
         return 1;
     }
+    /** Skaz (onlines.js) запоминает тип перевода (skaz_voice_pref) — выбрали оригинал или субтитры: по-русски не включаем. */
+    function skazWantsOriginal() {
+        try {
+            if (Lampa.Storage.get('skaz_voice_auto', true) === false) return false;
+            var p = Lampa.Storage.get('skaz_voice_pref', '');
+            return p === 'orig' || p === 'sub';
+        } catch (e) { return false; }
+    }
+    /** Классический вид Skaz с «Предлагать продолжение» сам спрашивает «Продолжить?» перед экраном источников. */
+    function skazAsksContinue() {
+        try { return Lampa.Storage.get('skaz_ui_mode', 'modern') === 'classic' && Lampa.Storage.field('lampac_continue_play') === true; }
+        catch (e) { return false; }
+    }
+
     function pickRu(list) {
         var best = null, bs = 0;
         for (var i = 0; i < list.length; i++) { var sc = ruScore(list[i]); if (sc > bs) { bs = sc; best = list[i]; } }
@@ -386,5 +401,5 @@ var BSContinue = (function () {
         return (r.s | 0) === (s | 0) && (r.e | 0) === (e | 0) ? r : null;
     }
 
-    return { start: start, onDraw: onDraw, _ruScore: ruScore, _pickRu: pickRu, resume: resume, last: last, _record: record, _load: load, _label: label, _newer: newer, hubItems: hubItems, _targetEpisode: targetEpisode };
+    return { start: start, onDraw: onDraw, _ruScore: ruScore, _pickRu: pickRu, resume: resume, last: last, _record: record, _load: load, _label: label, _newer: newer, hubItems: hubItems, _targetEpisode: targetEpisode, _autoResume: autoResume };
 })();

@@ -15,7 +15,7 @@
 | Целевой ТВ | Samsung 2022 (Tizen 6.5, браузер на Chromium 85) |
 | Сервер Lampa | `http://lampa.byskaz.ru/lampa-main/` (Lampa + патч byskaz) |
 | Установка | установщик на телефоне (подписывает сам) или Tizen Studio с сертификатом Samsung — см. «Установка» |
-| Проверка | автотесты `tests/run.cjs` (438), Chromium 85, официальный эмулятор Samsung TV 10.0 — см. «Эмулятор» |
+| Проверка | автотесты `tests/run.cjs` (446), Chromium 85, официальный эмулятор Samsung TV 10.0 — см. «Эмулятор» |
 
 ---
 
