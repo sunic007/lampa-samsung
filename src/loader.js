@@ -47,6 +47,22 @@ function bsKeepUpdatesOnClear(S) {
     S.clear.__bs = true;
 }
 try { bsKeepUpdatesOnClear(window.Storage && window.Storage.prototype); } catch (e) {}
+
+/* «Очистить кеш» (без данных) в Lampa пишет '' во все ключи, где есть 'online_', 'file_view_', 'storage_', — под это
+ * попадали наши настройки bs_online_resume и bs_src_online_mod, а '' у нас читается как «выкл.»: функции тихо
+ * выключались. Lampa сначала шлёт событие clear, потом чистит (в том же вызове) — запоминаем наши bs_* и сразу после
+ * возвращаем те, что она обнулила. */
+function bsKeepOursOnCacheClear(S) {
+    if (!S || !S.listener || !S.listener.follow) return;
+    S.listener.follow('clear', function (e) {
+        if (e && e.full) return;                                   // «кеш и данные» — стирается всё (кроме bs_upd*)
+        var ls = window.localStorage, keep = {}, k, i;
+        try { for (i = 0; i < ls.length; i++) { k = ls.key(i); if (k && k.indexOf('bs_') === 0) keep[k] = ls.getItem(k); } } catch (x) {}
+        setTimeout(function () {
+            for (var n in keep) if (keep.hasOwnProperty(n) && keep[n] !== '') { try { if (ls.getItem(n) === '') ls.setItem(n, keep[n]); } catch (x) {} }
+        }, 0);
+    });
+}
 function bsStartInterrupted() {
     try {
         var ls = window.localStorage, v = window.BS_REMOTE_VERSION;
@@ -914,6 +930,7 @@ var bsReadyTimer = setInterval(function () {
     if (!window.appready || !window.Lampa) return;
     clearInterval(bsReadyTimer);
     try { window.localStorage.removeItem('bs_upd_intr'); } catch (e) {}      // поднялась — счёт прерванных запусков с нуля
+    try { bsKeepOursOnCacheClear(Lampa.Storage); } catch (e) {}
     bsHideStatus();
     var err = document.getElementById('bs-error');
     if (err && err.parentNode) err.parentNode.removeChild(err);

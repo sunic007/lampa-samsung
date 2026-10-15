@@ -1538,6 +1538,21 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
         !('bs_tg_token' in data) && !('menu_always' in data) && !('online_view' in data));
     t('очистка данных: перехват ставится один раз', FakeStorage.prototype.clear.__bs === true);
 }
+{
+    // «Очистить кеш» (без данных): Lampa пишет '' в ключи с 'online_' — наши настройки возвращаем
+    const L = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
+    const fn = L.slice(L.indexOf('function bsKeepOursOnCacheClear'), L.indexOf('\n}', L.indexOf('function bsKeepOursOnCacheClear')) + 2);
+    const data = { bs_online_resume: 'false', bs_src_online_mod: 'true', online_view: '[1]', bs_empty: '' };
+    const ls = { get length() { return Object.keys(data).length; }, key: i => Object.keys(data)[i], getItem: k => (k in data ? data[k] : null), setItem: (k, v) => { data[k] = String(v); } };
+    let handler = null; const later = [];
+    const ctx = { window: { localStorage: ls }, setTimeout: f => later.push(f) };
+    vm.createContext(ctx); vm.runInContext(fn + ';this.f = bsKeepOursOnCacheClear;', ctx);
+    ctx.f({ listener: { follow: (n, h) => { if (n === 'clear') handler = h; } } });
+    const lampaClear = full => { handler({ full }); if (!full) Object.keys(data).forEach(k => { if (/online_|file_view_|storage_/.test(k)) data[k] = ''; }); later.splice(0).forEach(f => f()); };
+    lampaClear(false);
+    t('очистка кеша: наши настройки с online_ в имени не выключаются', data.bs_online_resume === 'false' && data.bs_src_online_mod === 'true' && data.online_view === '');
+    t('очистка кеша: пустое значение не выдумываем', data.bs_empty === '');
+}
 /* ---- loader.js: ошибки плагинов в уведомлениях — коротко и красной точкой ---- */
 {
     const src = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
