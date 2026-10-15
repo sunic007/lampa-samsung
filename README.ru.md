@@ -9,7 +9,7 @@
 управлять ТВ с телефона. Это плеер — сам он фильмы и сериалы не хранит и не раздаёт.
 
 **⬇️ [Скачать samsung.wgt](https://github.com/sunic007/lampa-samsung/releases/latest/download/samsung.wgt)** — последняя версия
-· все версии — [Releases](https://github.com/sunic007/lampa-samsung/releases)
+· [Releases](https://github.com/sunic007/lampa-samsung/releases)
 · история — [CHANGELOG.md](CHANGELOG.md)
 · для разработчиков — [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
 · установка с телефона — **[TV Installer](https://github.com/sunic007/tvinstaller)**

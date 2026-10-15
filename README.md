@@ -9,7 +9,7 @@ and is tuned for the TV: it updates itself, keeps the player from freezing and a
 from your phone. It is a player — it does not host or provide any movies or series.
 
 **⬇️ [Download samsung.wgt](https://github.com/sunic007/lampa-samsung/releases/latest/download/samsung.wgt)** — latest version
-· all versions — [Releases](https://github.com/sunic007/lampa-samsung/releases)
+· [Releases](https://github.com/sunic007/lampa-samsung/releases)
 · changelog — [CHANGELOG.md](CHANGELOG.md) (RU)
 · for developers — [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) (RU)
 · install from your phone — **[TV Installer](https://github.com/sunic007/tvinstaller)**
