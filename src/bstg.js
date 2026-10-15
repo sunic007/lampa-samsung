@@ -97,7 +97,18 @@ var BSTelegram = (function () {
         code = String(code || '').toLowerCase().slice(0, 2);
         return code === 'uz' ? 'uz' : !code || /^(ru|uk|be|kk|ky|tg)$/.test(code) ? 'ru' : 'en';
     }
-    function lang() { var c = to(), l = langMap()[c]; return LANGS.indexOf(l) >= 0 ? l : (langHint[c] || 'ru'); }
+    /** Язык Lampa на этом ТВ, приведённый к языкам бота (ru/en/uz): украинский, белорусский и т. п. — русский. */
+    function lampaLang() {
+        var l = '';
+        try { l = String(Lampa.Storage.get('language', 'ru') || ''); } catch (e) {}
+        return l === 'uz' ? 'uz' : l === 'en' ? 'en' : 'ru';
+    }
+    /** Выбрал сам — его язык; подключённый, но не выбирал, — язык Lampa на ТВ; чужой — язык его Telegram. */
+    function lang() {
+        var c = to(), l = langMap()[c];
+        if (LANGS.indexOf(l) >= 0) return l;
+        return allowed(c) ? lampaLang() : (langHint[c] || 'ru');
+    }
     /** Текст на языке того, кому отвечаем. uz не задан — русский. */
     function L(ru, en, uz) { var l = lang(); return l === 'en' ? en : l === 'uz' ? (uz || ru) : ru; }
     function setLang(l) {

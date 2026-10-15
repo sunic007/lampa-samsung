@@ -1612,6 +1612,13 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
         /Watch/.test(JSON.stringify(inLang('1', () => T._slideButtons([{ media_type: 'tv', id: 1 }], 0)))) && /Ko'rish/.test(JSON.stringify(inLang('2', () => T._slideButtons([{ media_type: 'tv', id: 1 }], 0)))));
     t('язык: «Следующая серия» в Telegram по-английски, на ТВ (без языка) — по-русски', /^Next episode: 1×3 — tomorrow/.test(T._nextText({ air_date: '2026-10-14', season_number: 1, episode_number: 3 }, day, 'en')) &&
         /^Следующая серия: 1×3 — завтра/.test(T._nextText({ air_date: '2026-10-14', season_number: 1, episode_number: 3 }, day)));
+    store.bs_tg_lang = JSON.stringify({ 2: 'uz' });
+    ctx.Lampa.Storage = { get: (k, d) => (k === 'language' ? 'en' : d) };
+    t('язык: не выбирал — как язык Lampa на ТВ (English)', inLang('3', () => T._L('ру', 'en', 'uz')) === 'en' && inLang('2', () => T._L('ру', 'en', 'uz')) === 'uz');
+    ctx.Lampa.Storage = { get: (k, d) => (k === 'language' ? 'uk' : d) };
+    t('язык: Lampa на украинском — бот по-русски', inLang('3', () => T._L('ру', 'en', 'uz')) === 'ру');
+    delete ctx.Lampa.Storage;
+    store.bs_tg_lang = JSON.stringify({ 1: 'en', 2: 'uz', 3: 'en' });
     /* настройки и ключи ИИ */
     const cb = (c, data) => { urls.length = 0; T._handle({ callback_query: { id: 'q', data, from: { id: +c }, message: { message_id: 50, chat: { id: +c } } } }); return urls.join(String.fromCharCode(10)); };
     t('настройки: «⚙️ Настройки» — профиль, язык, ИИ-ключи, у владельца ТВ и люди', /st:ai/.test(say('1', '/settings')) && /st:prof/.test(urls.join('')) && /mn:lang/.test(urls.join('')) && /st:people/.test(urls.join('')));
