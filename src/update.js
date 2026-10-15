@@ -177,7 +177,10 @@
         } catch (e) { fin(''); }
     }
     var waits = 0, t = setInterval(function () {
-        if (window.appready) { clearInterval(t); statHide(); set('bs_upd_try', null); if (remote) set('bs_upd_ran', upd.v); setTimeout(check, 20000); }
+        if (window.appready) {
+            clearInterval(t); statHide(); set('bs_upd_try', null); if (remote) set('bs_upd_ran', upd.v); setTimeout(check, 20000);
+            setTimeout(function () { window.BSBoot.hide(); }, 3000);         // страховка: карточку прячет loader.js, но не должна остаться
+        }
         else if (++waits > 90) clearInterval(t);                // 3 минуты не поднялась — try остаётся, в следующий раз — пакет
     }, 2000);
     window.BSUpdate = { local: LOCAL, check: check, _num: num, _base: base, _mirror: mirror, _verify: verify };

@@ -141,6 +141,8 @@ var BSSkaz = (function () {
      * («Проверить и выбрать сервер») — обычной плашкой Lampa: их он ждёт. */
     var toastEl = null, toastTimer = null;
     function toast(text, time) {
+        // один вид для всех уведомлений — карточка Lampa.Noty (оформление в bs.css); своя строка — только до запуска Lampa
+        try { if (window.appready && window.Lampa && Lampa.Noty) return Lampa.Noty.show(text, { time: time || 5000 }); } catch (e) {}
         try {
             if (!toastEl) {
                 var st = document.createElement('style');

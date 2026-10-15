@@ -1,36 +1,50 @@
 /*
- * Все уведомления Lampa (Lampa.Noty: и Lampa, и плагинов Skaz, и пакета) — не сплошная полоса во всю ширину снизу,
- * а тихая полупрозрачная плашка в правом нижнем углу: не перекрывает картинку, не забирает пульт, гаснет сама.
+ * Все уведомления Lampa (Lampa.Noty: и Lampa, и плагинов Skaz, и пакета) — в том же виде, что карточка загрузки
+ * (update.js BSBoot): тёмная карточка внизу по центру, слева цветная точка (обычное — зелёная, ошибка — красная).
+ * Раньше — зелёная полоса Lampa во всю ширину, потом тихая плашка в правом углу. Не забирает пульт, гаснет сама.
  * !important и html body — потому что app.css Lampa подгружается позже нашего файла.
  */
 html body .noty {
-  left: auto !important;
-  right: 2.2em !important;
-  bottom: 1.6em !important;
-  max-width: 42% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: 8% !important;
+  min-width: 22em !important;
+  max-width: 64% !important;
   max-height: 60% !important;
   overflow: hidden !important;
-  background: rgba(0, 0, 0, 0.38) !important;
-  color: rgba(255, 255, 255, 0.82) !important;
-  border-radius: 0.6em !important;
+  background: rgba(12, 14, 22, 0.82) !important;
+  color: #fff !important;
+  border-radius: 1.1em !important;
+  box-shadow: 0 0.5em 2.2em rgba(0, 0, 0, 0.4) !important;
   -webkit-backdrop-filter: none !important;
           backdrop-filter: none !important;
   pointer-events: none !important;
-  -webkit-transform: translateY(0.6em) !important;
-          transform: translateY(0.6em) !important;
+  -webkit-transform: translate(-50%, 1.2em) !important;
+          transform: translate(-50%, 1.2em) !important;
 }
 html body .noty.noty--visible {
-  -webkit-transform: none !important;
-          transform: none !important;
+  -webkit-transform: translate(-50%, 0) !important;
+          transform: translate(-50%, 0) !important;
 }
 html body .noty .noty__body {
-  padding: 0.45em 0.9em !important;
-  text-align: left !important;
+  padding: 0.9em 1.6em 0.95em !important;
+  text-align: center !important;
 }
 html body .noty .noty__text {
-  font-size: 0.95em !important;
-  line-height: 1.35 !important;
+  font-size: 1.1em !important;
+  line-height: 1.4 !important;
 }
+html body .noty .noty__text:before {
+  content: '';
+  display: inline-block;
+  vertical-align: 0.1em;
+  width: 0.55em;
+  height: 0.55em;
+  margin-right: 0.7em;
+  border-radius: 50%;
+  background: #65eaa7;
+}
+html body .noty.noty--style--error .noty__text:before { background: #ff7b6e; }
 /* панель плеера видна — уведомления над ней, не на кнопках */
 html body.bs-panel-up .noty,
 html body.bs-panel-up .bs-toast {
