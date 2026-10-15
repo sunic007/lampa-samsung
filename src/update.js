@@ -104,8 +104,8 @@
     }
     function statDraw() {
         if (!statOn) return;
-        // «Обновляю» — только при первом запуске новой версии; дальше это обычный запуск (та же надпись, что у loader.js)
-        if (get('bs_upd_ran') === upd.v) return window.BSBoot.set('Запускаю Lampa', '', 0.08 * statLoaded / files.length);
+        // «Обновляю» — только при первом запуске новой версии; дальше это обычный запуск
+        if (get('bs_upd_ran') === upd.v) return;                        // обычный запуск — без карточки, только экран Lampa
         var sec = Math.round((Date.now() - statStart) / 1000);
         window.BSBoot.set('Обновляю Lampa до ' + upd.v, 'загружено ' + statLoaded + ' из ' + files.length + ' · ' + sec + ' с', statLoaded / files.length);
     }

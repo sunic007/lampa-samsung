@@ -77,25 +77,10 @@ try {
 
 /* ---------- строка статуса на экране загрузки ---------- */
 
-/* Запуск — одна надпись «Запускаю Lampa» и полоска по этапам (связь → сервер → загрузка Lampa); что именно ждём — серым
- * и только если этап затянулся (BS_PHASE_SLOW). Свой экран загрузки Lampa не трогаем: как только он появился (.lp-step),
- * наша карточка уходит — на экране всегда одна надпись, и оригинал Lampa остаётся как есть. */
-var BS_PHASE_SLOW = 4, bsLampaOwn = false;
-var bsPh = { key: '', at: 0, part: 0, what: '' };
-/** Этап запуска: key — этап, part — доля полоски (только растёт), what — что ждём (покажется, если долго). */
-function bsPhase(key, part, what) {
-    if (key !== bsPh.key) { bsPh.key = key; bsPh.at = Date.now(); }
-    bsPh.part = Math.max(bsPh.part, part || 0);
-    bsPh.what = what || '';
-    bsPhaseDraw();
-}
-function bsPhaseDraw() {
-    if (!bsPh.key) return;
-    var waited = Math.round((Date.now() - bsPh.at) / 1000), detail = '';
-    if (bsPh.what && waited >= 15) detail = 'жду: ' + bsPh.what + ' — уже ' + waited + ' с';
-    else if (bsPh.what && waited >= BS_PHASE_SLOW) detail = bsPh.what + '…';
-    bsStatus('Запускаю Lampa', detail, bsPh.part);
-}
+/* Обычный запуск — только оригинальный экран загрузки Lampa, своих надписей не добавляем. Наша карточка (update.js,
+ * BSBoot) — только при обновлении («Обновляю Lampa до …») и при ошибке; при обновлении уходит, как только Lampa
+ * показала свой экран загрузки (.lp-step). */
+var bsLampaOwn = false;
 
 /** Одна карточка загрузки (update.js, BSBoot): title — что делаем, detail — подробности, part — см. BSBoot.set. */
 function bsStatus(text, detail, part) {
@@ -217,7 +202,6 @@ function createScript(src,error){
 function startAppWithDeepLink(){
     if (bsStarted) return;
     if (!bsSrvReady) {
-        bsPhase('srv', 0.15, 'выбираю сервер Skaz для фильмов');
         bsSrvWaiting = startAppWithDeepLink;
         return;
     }
@@ -226,7 +210,6 @@ function startAppWithDeepLink(){
     try { localFirst = window.localStorage.getItem('bs_local_first') !== 'false'; } catch (e) {}
     if (localFirst && bsRemote && bsRemote.hash === BS_BUNDLED_HASH) {
         bsSource = 'local';
-        bsPhase('app', 0.3, 'запускаю Lampa ' + BS_BUNDLED_VERSION + ' из пакета');
         createScript('app.js', function () {
             console.log('Local copy error');
             bsSource = 'server';
@@ -235,7 +218,6 @@ function startAppWithDeepLink(){
         return;
     }
     bsSource = 'server';
-    bsPhase('app', 0.3, 'загружаю Lampa' + (bsRemote && bsRemote.app_version ? ' ' + bsRemote.app_version : '') + ' с сервера byskaz');
 
     createScript(BS_SERVER + 'app.min.js?v' + Math.random(), function(){
         console.log('Server app.min.js failed — bundled copy');
@@ -257,7 +239,6 @@ function loadFromLocal(){
     // «новую версию», перезапустит, загрузка снова сорвётся — и так по кругу каждые полминуты.
     if (bsRemote && bsRemote.hash) { try { window.localStorage.setItem('bs_failed_hash', bsRemote.hash + '|' + Date.now()); } catch (e) {} }
     bsSource = 'bundled';
-    bsPhase('bundled', 0.3, 'сервер обновлений недоступен — запускаю встроенную версию ' + BS_BUNDLED_VERSION);
 
     createScript('app.js', function(){
         console.log('Load local error');
@@ -326,8 +307,6 @@ function countdown() {
         bsDropOldCopy();
     }
     else {
-        bsPhase('net', 0.08, timeLeft < 15 ? 'сервер обновлений не отвечает, пробую ещё' : 'проверяю связь с сервером обновлений');
-
         // Проверяем связь маленьким файлом, а не всем app.min.js (2 МБ не успевали за таймаут).
         checking = true;
         checkConnection(
@@ -878,7 +857,6 @@ var bsStageTimer = setInterval(function () {
         if (!bsLampaOwn) { bsLampaOwn = true; bsHideStatus(); }
         return;
     }
-    bsPhaseDraw();                                                  // наши этапы — обновить «жду … уже N с»
 }, 500);
 
 var bsReadyTimer = setInterval(function () {

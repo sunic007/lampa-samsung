@@ -1388,20 +1388,27 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     const d = T._botDesc();
     t('бот: описание «отвечает, пока Lampa открыта на ТВ» — в пределах Telegram (512 / 120)', d[0].length <= 512 && d[1].length <= 120 && /пока Lampa открыта/.test(d[0]) && /пока Lampa открыта/.test(d[1]));
 }
-/* ---- loader.js: запуск — одна надпись «Запускаю Lampa», подробности только если этап затянулся ---- */
+/* ---- update.js: карточка загрузки — только при обновлении, обычный запуск — только экран Lampa ---- */
 {
-    const src = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
-    const fn = src.slice(src.indexOf('var BS_PHASE_SLOW'), src.indexOf('/** Одна карточка загрузки'));
-    let now = 0; const shown = [];
-    const ctx = { Date: { now: () => now }, Math, bsStatus: (t, d, p) => shown.push({ t, d, p }) };
-    vm.createContext(ctx); vm.runInContext(fn + ';this.phase = bsPhase; this.draw = bsPhaseDraw;', ctx);
-    ctx.phase('net', 0.08, 'проверяю связь'); ctx.phase('srv', 0.15, 'выбираю сервер'); ctx.phase('app', 0.3, 'загружаю Lampa');
-    t('запуск: на всех этапах одна надпись «Запускаю Lampa»', shown.every(x => x.t === 'Запускаю Lampa'));
-    t('запуск: этап идёт быстро — без подробностей', shown.every(x => x.d === ''));
-    t('запуск: полоска только растёт', shown[0].p < shown[1].p && shown[1].p < shown[2].p);
-    ctx.phase('lampa:x', 0.1, 'шаг'); t('запуск: полоска не откатывается назад', shown[shown.length - 1].p === 0.3);
-    now = 5000; ctx.draw(); t('запуск: этап затянулся (4 с+) — видно, что ждём', shown[shown.length - 1].d === 'шаг…');
-    now = 16000; ctx.draw(); t('запуск: совсем долго — «жду … уже N с»', /^жду: шаг — уже 16 с$/.test(shown[shown.length - 1].d));
+    const run = store => {
+        const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+        let appended = 0;
+        const node = () => ({ style: {}, className: '', textContent: '' });
+        const el = () => ({ style: {}, className: '', set innerHTML(v) {}, querySelector: () => node() });
+        const w = { localStorage: ls, location: { reload() {} } };
+        const ctx = { window: w, document: { write() {}, createElement: el, body: { appendChild: () => { appended++; } } },
+            setInterval: () => 0, clearInterval() {}, setTimeout: () => 0, JSON, Date, Math, String, Number, console: { log() {} } };
+        w.window = w; vm.createContext(ctx);
+        vm.runInContext(fs.readFileSync(path.join(SRC, 'update.js'), 'utf8'), ctx);
+        w.bsUpdLoaded();
+        return appended;
+    };
+    const upd = JSON.stringify({ v: '9.9.9', files: ['loader.js', 'bstg.js'] });
+    t('загрузка: первый запуск новой версии — карточка «Обновляю Lampa»', run({ bs_upd: upd }) === 1);
+    t('загрузка: обычный запуск той же версии — без карточки', run({ bs_upd: upd, bs_upd_ran: '9.9.9' }) === 0);
+    t('загрузка: запуск из пакета — без карточки', run({}) === 0);
+    const L = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
+    t('загрузка: loader.js сам ничего не пишет при обычном запуске', L.indexOf("'Запускаю Lampa'") < 0 && L.indexOf('bsPhase') < 0);
 }
 /* ---- loader.js: ошибки плагинов в уведомлениях — коротко и красной точкой ---- */
 {
