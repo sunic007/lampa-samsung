@@ -33,6 +33,8 @@
   <picture><img src="../docs/screenshots/en/04.png" width="24.4%" alt=""></picture>
 </p>
 
+<p align="center"><picture><img src="../docs/screenshots/en/watch-on-tv.gif" width="100%" alt=""></picture></p>
+
 <details>
 <summary><b>More screenshots</b></summary>
 <br>
