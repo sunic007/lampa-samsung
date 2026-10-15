@@ -267,16 +267,16 @@ var BSWatch = (function () {
         var revert = function (state) { try { Lampa.Storage.set('bs_kids', String(state)); } catch (e) {} lsSet('bs_kids', String(state)); };
         if (want) {
             askPin('Придумайте ПИН для выхода из детского режима (4 цифры)', function (pin) {
-                if (pin.length < 4) { revert(false); return noty('ПИН — 4 цифры. Детский режим не включён'); }
+                if (pin.length < 4) { revert(false); return noty('Нужен ПИН из 4 цифр'); }
                 lsSet('bs_kids_pin', pin);
                 lsSet('bs_kids', 'true');
                 hideAdult();
-                noty('Детский режим включён. Выключить — с этим ПИН');
+                noty('Детский режим включён');
             });
         } else {
             if (!lsGet('bs_kids_pin')) { lsSet('bs_kids', 'false'); return; }
             askPin('ПИН детского режима', function (pin) {
-                if (pin && pin === lsGet('bs_kids_pin')) { lsSet('bs_kids', 'false'); try { window.localStorage.removeItem('bs_kids_pin'); } catch (e) {} noty('Детский режим выключен. Скрытые пункты вернутся после перезапуска'); }
+                if (pin && pin === lsGet('bs_kids_pin')) { lsSet('bs_kids', 'false'); try { window.localStorage.removeItem('bs_kids_pin'); } catch (e) {} noty('Детский режим выключен — пункты вернутся после перезапуска'); }
                 else { revert(true); noty('Неверный ПИН'); }
             });
         }

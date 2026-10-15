@@ -134,7 +134,7 @@ var BSGuard = (function () {
         if (!forceInner()) return false;
         learn(work.url);
         log('HLS: плеер ТВ не справился — встроенный', hostKey(work.url));
-        noty('Плеер ТВ не справился с этим потоком — переключаю на плеер Lampa…', 4000);
+        noty('Переключаю на плеер Lampa', 4000);
         s.avplay = false;
         switchTo({ name: work.quality_switched || 'auto', url: work.url });
         return true;
@@ -283,7 +283,7 @@ var BSGuard = (function () {
         // Картинки нет — сразу сказать, что происходит, иначе кажется, что всё зависло
         if (hlsWait && !s.hinted && Date.now() - s.lastProgressAt > HLS_HINT) {
             s.hinted = true;
-            noty('Подключаюсь к потоку… Если плеер ТВ не справится, включу плеер Lampa', HLS_START_LIMIT - HLS_HINT);
+            noty('Подключаюсь к потоку…', HLS_START_LIMIT - HLS_HINT);
         }
         var limit = s.played ? cfg.PLAY_LIMIT : hlsWait ? (s.avSignal ? HLS_START_LIMIT : HLS_QUIET) : cfg.START_LIMIT;
         if (Date.now() - s.lastProgressAt > limit) escalate(s.played ? 'остановился' : 'не запускается');
@@ -298,11 +298,11 @@ var BSGuard = (function () {
 
         if (s.iptv) {
             if (s.steps === 1 && work && work.url) {
-                noty('Канал ' + why + ' — переподключаюсь…');
+                noty('Канал не отвечает — переподключаюсь');
                 switchTo({ name: work.quality_switched || 'auto', url: work.url });
                 return;
             }
-            return giveUp('Канал не отвечает. Попробуйте другой канал.');
+            return giveUp('Канал не работает — выберите другой');
         }
 
         // Плеер ТВ не запустил поток .m3u8 — та же серия во встроенном плеере (hls.js), до смены источника
@@ -310,14 +310,14 @@ var BSGuard = (function () {
 
         // Видео ни разу не пошло, а это онлайн-источник с автоподбором — перебор качеств (по 25 с на каждое)
         // только тянет время: сразу другой источник.
-        if (!s.everPlayed && autoAvailable()) return giveUp('Источник не запускается — подбираю другой…', function () { try { BSFix.autoNext(); } catch (e) {} });
+        if (!s.everPlayed && autoAvailable()) return giveUp('Источник не работает — ищу другой', function () { try { BSFix.autoNext(); } catch (e) {} });
 
         // Шаг 0: видео шло и встало — сначала тот же поток с того же места.
         if (!s.restarted && s.played && s.lastTime > 5 && work && work.url) return restartSame(why === 'выдал ошибку' ? 'Ошибка потока' : 'Поток ' + why);
 
         var next = work ? nextQuality(work) : null;
         if (next && s.steps <= 3) {
-            noty('Поток ' + why + ' — переключаю качество на ' + next.name + '…', 6000);
+            noty('Переключаю качество на ' + next.name, 6000);
             s.tried.push(next.url);
             switchTo(next);
             return;
@@ -347,7 +347,7 @@ var BSGuard = (function () {
         s.lastTime = -1;
         s.played = false;
         try { Lampa.PlayerPanel.listener.send('quality', { name: q.name, url: q.url }); }
-        catch (e) { log('смена качества не удалась', e.message); giveUp('Не удалось переключить качество.'); }
+        catch (e) { log('смена качества не удалась', e.message); giveUp('Не удалось сменить качество'); }
     }
 
     function autoAvailable() {

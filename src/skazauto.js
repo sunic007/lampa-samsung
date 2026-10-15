@@ -204,11 +204,11 @@ var BSSkaz = (function () {
             if (wf === true) {
                 suspectFamily = '';
                 setLampa('skazonline_servers', other === 'cf');
-                notice('Источники: ' + famName(cf) + ' не отвечают, переключился на ' + famName(other));
+                notice('Серверы фильмов не отвечают — перешёл на ' + (other === 'cf' ? 'резервные' : 'основные'));
                 reload = mode === 'full';
             } else if (wf === 'later' && !manual && pend.family !== other) {
                 pend.family = other; savePending(pend);
-                notice('Источники ' + famName(other) + ' быстрее (' + fmt(so) + ') — со следующего запуска');
+                notice('Нашёл серверы быстрее — включу при следующем запуске');
             }
         } else if (mode === 'full') suspectFamily = '';
         return reload;
@@ -222,11 +222,11 @@ var BSSkaz = (function () {
     function reloadSoon(reason) {
         var lastAt = parseInt(lsGet('bs_srv_reload_at') || '0', 10) || 0;
         if (Date.now() - lastAt < RELOAD_GAP) {
-            notice('Новый сервер Skaz включится при следующем запуске');
+            notice('Новый сервер — при следующем запуске');
             return;
         }
         if (playerOpen()) {
-            if (!pendingReload) notice('Новый сервер включу после закрытия плеера');
+            if (!pendingReload) notice('Новый сервер — после закрытия плеера');
             pendingReload = reason;
             return;
         }
@@ -269,14 +269,14 @@ var BSSkaz = (function () {
             var reload = enabled() && decide(res, 'full');
             if (reload) reloadSoon('server');
             else if (recheck) setTimeout(function () { check(false); }, 20000);   // подтвердить, что сервер правда умер
-            else if (manual) say('Серверы источников: ' + famName(curFamily()) + ' ' + fmt(familyStat(res, curFamily())));
+            else if (manual) say('Серверы фильмов: ' + famName(curFamily()) + ' · ' + fmt(familyStat(res, curFamily())));
             for (var i = 0; i < ws.length; i++) { try { ws[i](res); } catch (e) {} }
         });
     }
 
     /** Экран выбора серверов источников с пингом, джиттером и потерями; выбор вручную. Сервер ТВ by Skaz — в его настройках. */
     function showPicker() {
-        say('Проверяю серверы источников…');
+        say('Проверяю серверы…');
         check(false, function (res) {
             var items = [];
             items.push({ title: 'Серверы онлайн-источников (фильмы и сериалы)', separator: true });
@@ -293,7 +293,7 @@ var BSSkaz = (function () {
                     lsSet('bs_srv_manual', String(Date.now())); lsSet('bs_srv_pending', '{}');
                     if (a.kind === 'family' && a.value !== curFamily()) setLampa('skazonline_servers', a.value === 'cf');
                     else return;
-                    say('Сервер выбран. Перезапускаю Lampa…');
+                    say('Сервер выбран — перезапускаю Lampa');
                     setTimeout(function () { location.reload(); }, 1500);
                 }
             });

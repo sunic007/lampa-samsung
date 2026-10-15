@@ -333,8 +333,7 @@ function bsAnnounce() {
     try { last = window.localStorage.getItem('bs_version'); } catch (e) {}
 
     if (bsSource === 'bundled') {
-        bsNoty('Нет связи с сервером обновлений — работает встроенная версия Lampa ' + cur +
-            '. Обновится автоматически, когда сервер станет доступен.', 9000);
+        bsNoty('Нет связи с сервером — встроенная Lampa ' + cur, 6000);
         return;
     }
 
@@ -343,8 +342,8 @@ function bsAnnounce() {
         window.localStorage.setItem('bs_checked', String(Date.now()));
     } catch (e) {}
 
-    if (!last) bsNoty('Lampa ' + cur + ' запущена. Обновления с сервера byskaz ставятся автоматически.', 8000);
-    else if (last !== cur) bsNoty('Lampa обновлена: ' + last + ' → ' + cur, 8000);
+    if (!last) bsNoty('Lampa ' + cur + ' запущена', 5000);
+    else if (last !== cur) bsNoty('Lampa обновлена: ' + last + ' → ' + cur, 6000);
 }
 
 /** Запрос assembly.json. onResult(assembly) или onResult(null), если сервер недоступен. */
@@ -409,7 +408,7 @@ function bsUpdateDialog(gh, info, lampaV, onYes) {
         buttons_position: 'outside',
         buttons: [
             { name: 'Обновить сейчас', onSelect: function () { close(); onYes(); } },
-            { name: 'Позже', onSelect: function () { close(); bsNoty('Хорошо. Обновление встанет само при следующем запуске Lampa.', 5000); } }
+            { name: 'Позже', onSelect: function () { close(); bsNoty('Обновится при следующем запуске', 4000); } }
         ],
         onBack: close
     });
@@ -450,7 +449,7 @@ function bsApplyUpdate(a) {
     var told = !!bsUpdatePending;
     bsUpdatePending = a;
     if (document.hidden) return bsReloadForUpdate();
-    if (!told) bsNoty('Вышла новая версия Lampa ' + (a.app_version || '') + ' — встанет сама, когда выйдете из Lampa или при следующем запуске.', 8000);
+    if (!told) bsNoty('Lampa ' + (a.app_version || '') + ' обновится при следующем запуске', 6000);
 }
 function bsVerNum(v) { var m = /(\d+)\.(\d+)\.(\d+)/.exec(String(v || '')); return m ? +m[1] * 1e6 + +m[2] * 1e3 + +m[3] : 0; }
 /** Новая версия функций уже проверена и ждёт перезапуска (update.js записал bs_upd с ok). */
@@ -763,18 +762,17 @@ function bsAddSettings() {
             // сначала GitHub (функции пакета), потом сервер Lampa; перезагрузка — только когда оба ответили
             bsGhCheck(function (gh, info) { bsCheckNow(function (a) {
                 var lampaNew = !!(a && bsHasUpdate(a));
-                if (!gh && !a) return bsNoty('Сервер обновлений недоступен. Попробуйте позже.');
+                if (!gh && !a) return bsNoty('Сервер обновлений недоступен');
                 // обновлять нечего — не перезагружаем (плагины Skaz и так обновляются сами при запуске)
                 if (!gh && !lampaNew) {
-                    return bsNoty('Обновлений нет: Lampa ' + bsRunningVersion() + ', функции ' +
-                        BS_PACKAGE_VERSION + ' — последние.', 5000);
+                    return bsNoty('Обновлений нет · Lampa ' + bsRunningVersion() + ', функции ' + BS_PACKAGE_VERSION, 5000);
                 }
                 // есть что обновить - сначала показываем, что именно, и спрашиваем
                 bsUpdateDialog(gh, info, lampaNew ? (a.app_version || '') : '', function () {
                     if (info) info.apply();
                     // плагины byskaz/Skaz кэшируются на сутки — при обновлении берём и свежие плагины
                     try { window.localStorage.setItem('bs_plugins_salt', String(Date.now() % 100000)); } catch (e) {}
-                    bsNoty('Обновляю… Lampa перезапустится через пару секунд.', 3000);
+                    bsNoty('Обновляю — Lampa перезапустится', 3000);
                     setTimeout(function () { location.reload(); }, 2000);
                 });
             }); });

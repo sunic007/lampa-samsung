@@ -167,7 +167,7 @@
                     set('bs_upd_mirror', null);
                     if (was !== m.version) {
                         try { console.log('BS update', 'на GitHub ' + m.version + ' (зеркало ' + i + '), сейчас ' + now); } catch (e) {}
-                        try { Lampa.Noty.show('Готово обновление ' + m.version + ' — встанет само, когда выйдете из Lampa или при следующем запуске', { time: 6000 }); } catch (e) {}
+                        try { Lampa.Noty.show('Обновление ' + m.version + ' готово — встанет при следующем запуске', { time: 5000 }); } catch (e) {}
                     }
                     fin(m.version, m);
                 });

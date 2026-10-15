@@ -63,11 +63,11 @@ var BSRch = (function () {
         if (loadingActive) {
             // ждали ссылку на видео (getFileUrl) — снимаем «Загрузку», список источника остаётся
             try { Lampa.Loading.stop(); } catch (e) {}
-            noty('Источник не отдал видео: нет связи с сервером Skaz (RCH). Выберите другой источник или озвучку.');
+            noty('Нет связи с сервером Skaz — выберите другой источник');
             return;
         }
         if (c && c === activeComponent() && generation(c) === client.__bsGen) {
-            quiet('Источник не ответил (нет связи RCH со Skaz) — следующий');
+            quiet('Источник не ответил — пробую следующий');
             try { c.doesNotAnswer({ timeout: true }); } catch (e) { log('doesNotAnswer', e); }
         }
     }
@@ -201,7 +201,7 @@ var BSRch = (function () {
                         if (ok) return success();
                         if (loadingActive) { try { Lampa.Loading.stop(); } catch (e) {} }
                         var c = activeComponent();
-                        noty('Не удалось загрузить клиент RCH с серверов Skaz. Выберите другой источник.');
+                        noty('Нет связи с сервером Skaz — выберите другой источник');
                         if (c && !loadingActive) { try { c.doesNotAnswer({ timeout: true }); } catch (e) {} }
                         if (typeof complite === 'function') complite();
                     });

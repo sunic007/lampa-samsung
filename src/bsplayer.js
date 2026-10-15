@@ -152,7 +152,7 @@ var BSPlayer = (function () {
         try { cur = Lampa.PlayerVideo.video().currentTime || 0; } catch (e) {}
         // Только главы, которые есть в этом файле (разметка — на фильм, а файл бывает урезан).
         var list = s.chapters.filter(function (c) { return !dur || c.start < dur - 5; });
-        if (!list.length) return noty('Глав для этого файла нет');
+        if (!list.length) return noty('Глав нет');
         var items = list.map(function (c, i) {
             var next = list[i + 1];
             return { title: fmtTime(c.start) + ' — ' + c.title, subtitle: c.descr, start: c.start,
@@ -243,7 +243,7 @@ var BSPlayer = (function () {
         var lv = DAY[(DAY.indexOf(dayLevel()) + 1) % DAY.length];
         lsSet('bs_picture', lv ? 'd' + lv : 'off');
         nightApply();
-        if (lv && onTvPlayer()) noty('В плеере ТВ ярче не сделать: кнопка ⚙ на пульте → Изображение → Режим «Яркий» или «Динамический»', 6000);
+        if (lv && onTvPlayer()) noty('Ярче — в настройках ТВ: Изображение → «Яркий»', 6000);
         else noty(lv ? 'День: ярче на ' + lv + '%' : 'День выключен', 2000);
     }
 
@@ -288,7 +288,7 @@ var BSPlayer = (function () {
                     for (var k = 0; k < tracks.length; k++) tracks[k].selected = false;
                     hit.selected = true;
                     hit.enabled = true;
-                    noty('Дорожка как в прошлый раз: ' + esc(saved.lang || '№' + saved.index), 3000);
+                    noty('Озвучка как в прошлый раз: ' + esc(saved.lang || '№' + saved.index), 3000);
                 } catch (err) {}
             }
         }, 1500);

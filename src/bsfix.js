@@ -192,7 +192,7 @@ var BSFix = (function () {
                     undo = function () { S.field = field; };
                     var mb = Math.round(bps / 1e6);
                     linkAdd('качество ' + from + ' → ' + k + ' (канал ~' + mb + ' Мбит/с)');
-                    if (Date.now() - qNoteAt > 30 * 60000) { qNoteAt = Date.now(); quiet('Старт в ' + k + ': интернет ~' + mb + ' Мбит/с, ' + from + ' грузился бы долго'); }
+                    if (Date.now() - qNoteAt > 30 * 60000) { qNoteAt = Date.now(); quiet('Включаю ' + k + ' — интернет ~' + mb + ' Мбит/с'); }
                 }
             }
         } catch (e) {}
@@ -432,7 +432,7 @@ var BSFix = (function () {
             try { voice = (c.getChoice() || {}).voice_name || ''; } catch (e) {}
             var a = auto;
             a.racing = true;
-            quiet('«' + from + '» не работает — проверяю другие источники…');
+            quiet('«' + from + '» не работает — ищу другой источник');
             P.race(c, a.tried.concat([lp.balanser]), { season: lp.season | 0, episode: lp.episode | 0, voice: voice }, function (win, results) {
                 a.racing = false;
                 if (auto !== a || !onScreen(c) || playerOpen()) return;          // ушли с экрана или уже смотрят другое
@@ -445,14 +445,14 @@ var BSFix = (function () {
         }
         var nx = '';
         try { nx = c.nextSource(); } catch (e) {}
-        quiet('«' + from + '» не работает — пробую следующий источник');
+        quiet('«' + from + '» не работает — ищу другой источник');
         return switchTo(c, lp, nx, '');
     }
 
     function playerOpen() { try { return !!Lampa.Player.opened(); } catch (e) { return false; } }
     function giveUpAuto() {
         auto = null;
-        quiet('Рабочий источник не нашёлся — выберите другой вручную');
+        quiet('Рабочий источник не найден — выберите вручную');
         return false;
     }
 

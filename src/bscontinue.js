@@ -198,7 +198,7 @@ var BSContinue = (function () {
             // фильм ещё не смотрели — «Смотреть» сразу включает русскую озвучку (bs_ru_auto)
             if (!isTv(o.movie) && on('bs_ru_auto', true)) {
                 pending = { id: o.movie.id, tv: false, episode: 0, until: Date.now() + 60000, ru: true, depth: 0 };
-                quiet('Включаю фильм в русской озвучке…', 3000);
+                quiet('Включаю русскую озвучку', 3000);
                 log('фильм — сразу по-русски', o.movie.id);
             }
             return;
@@ -266,7 +266,7 @@ var BSContinue = (function () {
                 if (folder) { pending.depth++; pending.until = Date.now() + 60000; return enter(folder); }
             }
             pending = null;
-            if (!hit) return quiet('Русской озвучки в этом источнике нет — выберите вручную', 4000);
+            if (!hit) return quiet('Русской озвучки нет — выберите вручную', 4000);
             log('русская озвучка', [hit.translate, hit.voice_name, hit.title].filter(Boolean).join(' / '));
             return enter(hit);
         }

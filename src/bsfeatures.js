@@ -114,7 +114,7 @@ var BSFeatures = (function () {
         sleepAt = Date.now() + min * 60000;
         sleepTimer = setInterval(function () {
             var left = sleepAt - Date.now();
-            if (left <= 60000 && left > 59000) noty('Таймер сна: осталась 1 минута');
+            if (left <= 60000 && left > 59000) noty('Сон через 1 минуту');
             if (left <= 0) { clearInterval(sleepTimer); sleepTimer = null; sleepFire(); }
             else if (left % 60000 < 1000) sleepButton();
         }, 1000);
@@ -130,7 +130,7 @@ var BSFeatures = (function () {
     function sleepHint() {
         if (lsGet('bs_sleep_hint')) return;
         lsSet('bs_sleep_hint', '1');
-        setTimeout(function () { noty('Чтобы телевизор потом выключался сам: настройки ТВ → Общие → Экономия энергии → Автовыключение → 1 час', 10000); }, 3500);
+        setTimeout(function () { noty('Чтобы ТВ выключался сам: Общие → Экономия энергии → Автовыключение', 10000); }, 3500);
     }
     function tvOff() {
         try { tizen.application.getCurrentApplication().exit(); } catch (e) { try { Lampa.Player.close(); } catch (e2) {} }
@@ -169,7 +169,7 @@ var BSFeatures = (function () {
         sleepAt = 0; sleepEpisode = false;
         try { if (playerOpen()) Lampa.PlayerVideo.pause(); } catch (e) {}
         sleepButton();
-        noty('Сон: пауза. Нажмите любую кнопку в течение минуты, иначе Lampa закроется.', 15000);
+        noty('Сон: нажмите любую кнопку, иначе Lampa закроется через минуту', 15000);
         // минута до выключения — звук плавно тише (bsvolume.js); отменили или выключаем — громкость как была,
         // чтобы утром ТВ не включился еле слышным
         var unfade = function () {};

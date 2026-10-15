@@ -166,7 +166,7 @@ var BSSources = (function () {
                         if (o !== s && o.group === s.group && enabled(o)) {
                             lsSet(o.key, 'false');
                             try { Lampa.Storage.set(o.key, false); } catch (e) {}
-                            noty(o.name + ' выключен: включён ' + s.name + ' (одинаковые кнопки)');
+                            noty(o.name + ' выключен — включён ' + s.name);
                         }
                     });
                     load(s.url);

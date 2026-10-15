@@ -212,11 +212,11 @@ var BSTelegram = (function () {
             if (me && me.username) lsSet('bs_tg_bot', me.username);
             call('getUpdates', {}, function (updates) {
                 var c = chatFrom(updates, users());
-                if (!c) return noty('Напишите своему боту @' + me.username + ' любое сообщение и нажмите «Подключить» ещё раз', 7000);
+                if (!c) return noty('Напишите боту @' + me.username + ' и нажмите «Подключить» ещё раз', 7000);
                 lsSet('bs_tg_chat', c);
                 call('sendMessage', { chat_id: c, text: '✅ Lampa подключена.\n\n' + HELP, reply_markup: JSON.stringify(KB) },
                     function () { noty('Telegram подключён: @' + me.username, 4000); refreshSettings(); setCommands(); check(false); },
-                    function (e) { noty('Чат найден, но сообщение не ушло: ' + e, 6000); });
+                    function (e) { noty('Сообщение не ушло: ' + e, 6000); });
             }, function (e) { noty('Telegram: ' + e, 5000); });
         }, function (e) { noty('Токен не подошёл: ' + e, 6000); });
     }
@@ -1031,7 +1031,7 @@ var BSTelegram = (function () {
             });
             if (b.length) { log('смотреть сразу', card.id); return b.trigger('hover:enter'); }
             if (++tries < 20) setTimeout(click, 300);
-            else noty('Не нашёл кнопку «Смотреть» — нажмите её на карточке', 4000);
+            else noty('Нажмите «Смотреть» на карточке', 4000);
         })();
     }
 
