@@ -77,17 +77,18 @@ try {
 
 /* ---------- строка статуса на экране загрузки ---------- */
 
-function bsStatus(text) {
-    var el = document.getElementById('bs-status');
+/** Одна карточка загрузки (update.js, BSBoot): title — что делаем, detail — подробности, part — см. BSBoot.set. */
+function bsStatus(text, detail, part) {
+    if (window.BSBoot) return BSBoot.set(text, detail, part);
+    var el = document.getElementById('bs-status');            // update.js не загрузился — простая строка, как раньше
     if (!el) {
         el = document.createElement('div');
         el.id = 'bs-status';
         el.style.cssText = 'position:fixed;left:0;right:0;bottom:9%;z-index:1000;text-align:center;' +
-            'font-family:sans-serif;font-size:1.5em;color:rgba(255,255,255,.85);text-shadow:0 1px 3px rgba(0,0,0,.6);' +
-            'padding:0 5%;-webkit-transition:opacity .4s;transition:opacity .4s';
+            'font-family:sans-serif;font-size:1.5em;color:rgba(255,255,255,.85);text-shadow:0 1px 3px rgba(0,0,0,.6);padding:0 5%';
         document.body.appendChild(el);
     }
-    el.textContent = text;
+    el.textContent = text + (detail ? ' — ' + detail : '');
 }
 
 /* Ошибки до готовности Lampa — выводим на экран, чтобы было видно, почему запуск встал. */
@@ -119,13 +120,14 @@ window.addEventListener('error', function (e) {
 // может идти 1.5–2 минуты. Только после 150 с считаем, что загрузка действительно встала.
 setTimeout(function () {
     if (!window.appready) {
-        bsStatus('Lampa не запустилась за 2.5 минуты' + (bsStage ? ' (этап: ' + (BS_STAGES[bsStage] || bsStage) + ')' : '') +
-            '. Сфотографируйте экран и перезапустите приложение.');
+        bsStatus('Lampa не запустилась за 2,5 минуты', (bsStage ? 'Этап: ' + (BS_STAGES[bsStage] || bsStage) + '. ' : '') +
+            'Сфотографируйте экран и перезапустите приложение.', false);
         clearInterval(bsStageTimer);
     }
 }, 150000);
 
 function bsHideStatus() {
+    if (window.BSBoot) BSBoot.hide();
     var el = document.getElementById('bs-status');
     if (!el) return;
     el.style.opacity = '0';
@@ -164,7 +166,7 @@ function createScript(src,error){
 function startAppWithDeepLink(){
     if (bsStarted) return;
     if (!bsSrvReady) {
-        bsStatus('Выбираю лучший сервер Skaz…');
+        bsStatus('Выбираю сервер', 'для фильмов и сериалов Skaz');
         bsSrvWaiting = startAppWithDeepLink;
         return;
     }
@@ -173,7 +175,7 @@ function startAppWithDeepLink(){
     try { localFirst = window.localStorage.getItem('bs_local_first') !== 'false'; } catch (e) {}
     if (localFirst && bsRemote && bsRemote.hash === BS_BUNDLED_HASH) {
         bsSource = 'local';
-        bsStatus('Запускаю Lampa ' + BS_BUNDLED_VERSION + ' (последняя версия, из пакета)…');
+        bsStatus('Запускаю Lampa', 'версия ' + BS_BUNDLED_VERSION + ' из пакета');
         createScript('app.js', function () {
             console.log('Local copy error');
             bsSource = 'server';
@@ -182,7 +184,7 @@ function startAppWithDeepLink(){
         return;
     }
     bsSource = 'server';
-    bsStatus('Загружаю Lampa' + (bsRemote && bsRemote.app_version ? ' ' + bsRemote.app_version : '') + ' с сервера byskaz…');
+    bsStatus('Загружаю Lampa', (bsRemote && bsRemote.app_version ? 'версия ' + bsRemote.app_version + ' · ' : '') + 'сервер byskaz');
 
     createScript(BS_SERVER + 'app.min.js?v' + Math.random(), function(){
         console.log('Server app.min.js failed — bundled copy');
@@ -204,11 +206,11 @@ function loadFromLocal(){
     // «новую версию», перезапустит, загрузка снова сорвётся — и так по кругу каждые полминуты.
     if (bsRemote && bsRemote.hash) { try { window.localStorage.setItem('bs_failed_hash', bsRemote.hash + '|' + Date.now()); } catch (e) {} }
     bsSource = 'bundled';
-    bsStatus('Сервер обновлений недоступен — запускаю встроенную версию ' + BS_BUNDLED_VERSION);
+    bsStatus('Запускаю Lampa', 'сервер обновлений недоступен — встроенная версия ' + BS_BUNDLED_VERSION);
 
     createScript('app.js', function(){
         console.log('Load local error');
-        bsStatus('Не удалось запустить Lampa. Проверьте интернет и перезапустите приложение.');
+        bsStatus('Не удалось запустить Lampa', 'Проверьте интернет и перезапустите приложение.', false);
     })
 }
 
@@ -273,8 +275,8 @@ function countdown() {
         bsDropOldCopy();
     }
     else {
-        if (timeLeft < 15) bsStatus('Нет связи с сервером обновлений, пробую ещё… (' + timeLeft + ' с)');
-        else bsStatus('Проверяю связь с сервером обновлений…');
+        if (timeLeft < 15) bsStatus('Проверяю связь', 'сервер обновлений не отвечает, пробую ещё · ' + timeLeft + ' с');
+        else bsStatus('Проверяю связь', 'сервер обновлений');
 
         // Проверяем связь маленьким файлом, а не всем app.min.js (2 МБ не успевали за таймаут).
         checking = true;
@@ -820,14 +822,15 @@ var bsStage = '', bsStageSince = 0;
 
 var bsStageTimer = setInterval(function () {
     if (window.appready) { clearInterval(bsStageTimer); return; }
-    var el = document.querySelector('.lp-status');
-    var raw = el ? el.textContent : '';
+    var el = document.querySelector('.lp-status'), st = document.querySelector('.lp-step');
+    var raw = el ? el.textContent : '', step = st ? st.textContent : '';
     if (!raw || !bsStarted) return;
     if (raw !== bsStage) { bsStage = raw; bsStageSince = Date.now(); }
     var name = BS_STAGES[raw] || raw;
     var waited = Math.round((Date.now() - bsStageSince) / 1000);
-    if (waited >= 15) bsStatus('Lampa ждёт: ' + name + ' — уже ' + waited + ' с');
-    else bsStatus('Lampa: ' + name + '…');
+    // свою надпись Lampa не показывает (bs.css) — её шаг и состояние идут в общую карточку
+    if (waited >= 15) bsStatus('Запускаю Lampa', (step ? step + ' · ' : '') + 'жду: ' + name + ' — уже ' + waited + ' с');
+    else bsStatus('Запускаю Lampa', (step ? step + ' · ' : '') + name);
 }, 500);
 
 var bsReadyTimer = setInterval(function () {

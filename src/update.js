@@ -58,28 +58,57 @@
         else { set('bs_upd_mirror', null); set('bs_upd_skip', String(Date.now() + 3600000)); }
         try { window.location.reload(); } catch (e) {}
     };
-    // Статистика на экране загрузки: пока модули идут с CDN, видно, что происходит (вместо пустого фона Lampa)
-    var statStart = Date.now(), statLoaded = 0, statEl = null, statTimer = null;
-    function statText() {
-        var sec = Math.round((Date.now() - statStart) / 1000);
-        return 'Обновляю Lampa до ' + upd.v + ': загружено ' + statLoaded + ' из ' + files.length + ' · ' + sec + ' с';
+    /* Один экран загрузки на всё — карточка внизу (стили в bs.css): обновление функций, выбор сервера, шаги Lampa.
+     * Раньше было три надписи сразу: своя у Lampa, строка загрузчика и строка обновления. Свою Lampa теперь не
+     * показывает (.lp-step/.lp-status скрыты в bs.css), loader.js читает её шаги и пишет сюда же. */
+    var boot = null;
+    function bootEl() {
+        if (boot) return boot;
+        if (!document.body) return null;
+        var el = document.createElement('div');
+        el.className = 'bs-boot';
+        el.innerHTML = '<div class="bs-boot__title"><span class="bs-boot__spin"></span><span class="bs-boot__text"></span></div>' +
+            '<div class="bs-boot__detail"></div><div class="bs-boot__bar is-wait"><div class="bs-boot__fill"></div></div>';
+        document.body.appendChild(el);
+        boot = { el: el, text: el.querySelector('.bs-boot__text'), detail: el.querySelector('.bs-boot__detail'),
+            bar: el.querySelector('.bs-boot__bar'), fill: el.querySelector('.bs-boot__fill') };
+        return boot;
     }
+    window.BSBoot = {
+        /** title — что делаем; detail — подробности; part — доля 0..1 (полоска), без неё — «ждём», false — ошибка. */
+        set: function (title, detail, part) {
+            var b = bootEl();
+            if (!b) return;
+            b.el.className = 'bs-boot' + (part === false ? ' is-stop' : '');
+            if (title !== null && title !== undefined) b.text.textContent = title;
+            b.detail.textContent = detail || '';
+            var known = typeof part === 'number' && part >= 0;
+            b.bar.className = 'bs-boot__bar' + (known ? '' : ' is-wait');
+            b.fill.style.width = known ? Math.round(Math.min(1, part) * 100) + '%' : '';
+        },
+        hide: function () {
+            if (!boot) return;
+            var el = boot.el;
+            boot = null;
+            el.className += ' is-gone';
+            setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 500);
+        }
+    };
+    // загрузка новой версии функций с CDN: сколько файлов пришло — полоской
+    var statStart = Date.now(), statLoaded = 0, statTimer = null, statOn = false;
     function statShow() {
-        if (!remote || statEl) return;
-        statEl = document.createElement('div');
-        statEl.id = 'bs-upd-stat';
-        statEl.style.cssText = 'position:fixed;left:0;right:0;bottom:22%;z-index:999;text-align:center;font-family:sans-serif;' +
-            'font-size:1.3em;color:rgba(255,255,255,.85);text-shadow:0 1px 3px rgba(0,0,0,.6);padding:0 5%';
-        statEl.textContent = statText();
-        document.body.appendChild(statEl);
-        statTimer = setInterval(function () { if (statEl) statEl.textContent = statText(); }, 1000);
+        if (!remote || statOn) return;
+        statOn = true;
+        statDraw();
+        statTimer = setInterval(statDraw, 1000);
     }
-    function statHide() {
-        clearInterval(statTimer);
-        if (statEl && statEl.parentNode) statEl.parentNode.removeChild(statEl);
-        statEl = null;
+    function statDraw() {
+        if (!statOn) return;
+        var sec = Math.round((Date.now() - statStart) / 1000);
+        window.BSBoot.set('Обновляю Lampa до ' + upd.v, 'загружено ' + statLoaded + ' из ' + files.length + ' · ' + sec + ' с', statLoaded / files.length);
     }
-    window.bsUpdLoaded = function () { statLoaded++; if (statEl) statEl.textContent = statText(); };
+    function statHide() { statOn = false; clearInterval(statTimer); }
+    window.bsUpdLoaded = function () { statLoaded++; statDraw(); if (statLoaded >= files.length) statHide(); };
 
     var html = remote ? '<link rel="stylesheet" href="' + base + 'bs.css">' : '';
     for (var i = 0; i < files.length; i++) html += '<script src="' + base + files[i] + '"' + (remote ? ' onload="bsUpdLoaded()" onerror="bsUpdFail()"' : '') + '><\/script>';
