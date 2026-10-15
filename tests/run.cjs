@@ -1644,6 +1644,13 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     urls.length = 0; T._as('1', () => T._tmp(60000, () => T._sent({ message_id: 92 })));
     t('чистый чат: новое служебное — прежнее служебное удалено сразу', urls.some(u => /deleteMessage/.test(u) && /message_id=90/.test(u)) &&
         JSON.parse(store.bs_tg_del).map(x => x.id).join() === '92');
+    store.bs_tg_del = JSON.stringify([{ c: '1', id: 95, at: Date.now() }]); urls.length = 0;
+    T._as('1', () => T._tmp(60000, () => T._sent({ message_id: 94 })));
+    t('чистый чат: пришедшее позже, но более раннее сообщение не удаляет новое', !urls.some(u => /deleteMessage/.test(u) && /message_id=95/.test(u)));
+    T._onBus({ t: 'lang', from: 'tv2', id: '5', l: 'en', at: 2000 }); T._onBus({ t: 'langs', from: 'tv3', map: { 5: 'uz' }, at: { 5: 1000 } });
+    t('язык по каналу: более свежий выбор побеждает старый', JSON.parse(store.bs_tg_lang)['5'] === 'en');
+    T._onBus({ t: 'lang', from: 'tv2', id: '5', l: 'uz', at: 3000 });
+    t('язык по каналу: новый выбор применяется', JSON.parse(store.bs_tg_lang)['5'] === 'uz');
     const q2 = JSON.parse(store.bs_tg_del); q2.forEach(x => { x.at = 0; }); store.bs_tg_del = JSON.stringify(q2); urls.length = 0; T._delTick();
     t('чистый чат: по времени не удаляется, старше 48 ч — просто забываем', !urls.some(u => /deleteMessage/.test(u)) && JSON.parse(store.bs_tg_del).length === 0);
 }

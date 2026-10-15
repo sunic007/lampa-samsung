@@ -95,7 +95,8 @@ var BSTelegram = (function () {
     /** Появилось новое служебное сообщение — прежние служебные в этом чате убираем сразу: в чате одно, последнее. */
     function clearTmp(c, except) {
         var q = lsJson('bs_tg_del', []), left = [];
-        q.forEach(function (x) { if (x.c === String(c) && x.id !== except) delNow(x.c, x.id); else left.push(x); });
+        // только более ранние: номера сообщений в чате растут, а ответы Telegram могут прийти не по порядку
+        q.forEach(function (x) { if (x.c === String(c) && x.id < except) delNow(x.c, x.id); else left.push(x); });
         if (left.length !== q.length) lsSet('bs_tg_del', JSON.stringify(left));
         if (lastMenu[c] && lastMenu[c] !== except) lastMenu[c] = 0;
     }
@@ -123,11 +124,19 @@ var BSTelegram = (function () {
     }
     /** Текст на языке того, кому отвечаем. uz не задан — русский. */
     function L(ru, en, uz) { var l = lang(); return l === 'en' ? en : l === 'uz' ? (uz || ru) : ru; }
+    /** Когда выбран язык ({чат: время}) — по каналу побеждает более свежий выбор (ТВ мог быть выключен). */
+    function langAt() { var m = lsJson('bs_tg_lang_at', {}); return m && typeof m === 'object' ? m : {}; }
+    function putLang(id, l, at) {
+        var m = langMap(), a = langAt();
+        if (LANGS.indexOf(l) < 0 || (a[id] || 0) > (at || 0)) return;
+        m[id] = l; a[id] = at || 0;
+        lsSet('bs_tg_lang', JSON.stringify(m)); lsSet('bs_tg_lang_at', JSON.stringify(a));
+    }
     function setLang(l) {
         if (LANGS.indexOf(l) < 0) return;
-        var m = langMap(); m[to()] = l;
-        lsSet('bs_tg_lang', JSON.stringify(m));
-        busSend({ t: 'lang', id: to(), l: l });
+        var at = Date.now();
+        putLang(to(), l, at);
+        busSend({ t: 'lang', id: to(), l: l, at: at });
     }
     /** Кнопки выбора языка. */
     function langRows() {
@@ -420,7 +429,7 @@ var BSTelegram = (function () {
         }
     }
     function askTitle() { return reply(L('Напишите название фильма или сериала 👇', 'Type the name of a movie or series 👇', 'Film yoki serial nomini yozing 👇')); }
-    /** Всё, что отправляет раздел меню, — служебное: подсказки исчезают через 2 минуты, списки и помощь — через 10. */
+    /** Всё, что отправляет раздел меню, — служебное: уберётся, когда бот покажет следующее. */
     function menuAction(a) { return tmp(a === 'find' || a === 'type' || a === 'lang' ? 2 * TMP_SHORT : TMP_LONG, function () { return menuDo(a); }); }
     function menuDo(a) {
         if (a === 'find') return askTitle();
@@ -432,7 +441,7 @@ var BSTelegram = (function () {
         if (a === 'tvs') return tvsInfo();
         if (a === 'people') return isOwner() ? peopleList() : null;
         if (a === 'profile') return reply(profileText(), [[{ text: L('📋 Меню', '📋 Menu', '📋 Menyu'), callback_data: 'mn:menu' }]]);
-        if (a === 'help') return sendKb(helpText() + '\n\n' + supportText());
+        if (a === 'help') return tmp(0, function () { sendKb(helpText() + '\n\n' + supportText()); });   // с кнопкой «Меню» — не удаляем
         if (a === 'support') return reply(supportText());              // кнопка из старых сообщений
         if (a === 'lang') return reply('🌐 ' + L('Выберите язык', 'Choose a language', 'Tilni tanlang'), langRows());
         if (a === 'settings') return screen(null, settingsText(), settingsRows());
@@ -794,7 +803,7 @@ var BSTelegram = (function () {
     }
     function sendAllUsers() {
         var u = users(); for (var k in u) if (u.hasOwnProperty(k)) busUser(k, u[k]);
-        var lm = langMap(); if (Object.keys(lm).length) busSend({ t: 'langs', map: lm });
+        var lm = langMap(); if (Object.keys(lm).length) busSend({ t: 'langs', map: lm, at: langAt() });
     }
     function inviteCode() {
         var t = token(), salt = lsGet('bs_tg_invite_salt') || '';
@@ -1217,11 +1226,10 @@ var BSTelegram = (function () {
         }
         else if (m.t === 'u' && m.id && m.rev) onUserPart(m);
         else if (m.t === 'cfg') onCfg(m);
-        else if (m.t === 'lang' && m.id && LANGS.indexOf(m.l) >= 0) { var lm = langMap(); lm[String(m.id)] = m.l; lsSet('bs_tg_lang', JSON.stringify(lm)); }
+        else if (m.t === 'lang' && m.id) putLang(String(m.id), m.l, m.at | 0 || 1);
         else if (m.t === 'langs' && m.map && typeof m.map === 'object') {
-            var lm2 = langMap(), k2;
-            for (k2 in m.map) if (m.map.hasOwnProperty(k2) && LANGS.indexOf(m.map[k2]) >= 0 && !lm2[k2]) lm2[k2] = m.map[k2];
-            lsSet('bs_tg_lang', JSON.stringify(lm2));
+            var k2, ats = m.at && typeof m.at === 'object' ? m.at : {};
+            for (k2 in m.map) if (m.map.hasOwnProperty(k2)) putLang(k2, m.map[k2], ats[k2] || 1);
         }
         else if (m.t === 'rename' && m.to === tvId && m.title) { lsSet('bs_tv_name', String(m.title).slice(0, 40)); busHello(false); refreshSettings(); }
         else if (m.t === 'open' && m.to === tvId && now - (m.ts || 0) < 60000) openHere(m.k, m.id, m.ref, !!m.play, !!m.g);
@@ -2193,9 +2201,11 @@ var BSTelegram = (function () {
             if (lg) {
                 call('answerCallbackQuery', { callback_query_id: q.id }, null, null);
                 setLang(lg[1]);
-                delLater(to(), q.message.message_id);
-                tmp(TMP_SHORT, function () { sendKb(L('✅ Язык: русский', '✅ Language: English', "✅ Til: o'zbekcha")); });
-                return setTimeout(keep(sendMenu), 400);
+                delNow(to(), q.message.message_id);
+                // с подтверждением приходит нижняя кнопка «Меню» на новом языке — его не удаляем (вместе с ним
+                // некоторые Telegram убирают и кнопку); меню — когда оно дошло
+                return call('sendMessage', { chat_id: to(), text: L('✅ Язык: русский', '✅ Language: English', "✅ Til: o'zbekcha"), reply_markup: JSON.stringify(kb()) },
+                    function () { sendMenu(); }, function () { sendMenu(); });
             }
             var mn = /^mn:(\w+)$/.exec(q.data || '');
             if (mn) {                                                   // нажали плитку — само меню больше не нужно
@@ -2310,6 +2320,22 @@ var BSTelegram = (function () {
         if (!msg) return;
         if (msg.photo || (msg.document && /^image\//.test(msg.document.mime_type || ''))) return photoSearch(msg);
         if (typeof msg.text !== 'string') return;
+        // ключ ИИ — раньше переименования и «Набрать на ТВ»: иначе ключ мог стать названием ТВ или уйти в поиск
+        if (isGeminiKey(msg.text)) {                                         // похоже на ключ — сразу из чата, в поиск не отдаём (у каждого свой)
+            var key = msg.text.replace(/\s+/g, ''), kind = keyKind(key), kname = kind === 'gemini' ? 'Gemini' : OA[kind].name;
+            call('deleteMessage', { chat_id: to(), message_id: msg.message_id }, null, null);
+            return (kind === 'gemini' ? geminiCheck : function (k, cb) { oaCheck(kind, k, cb); })(key, function (good, why) {
+                if (good === false) return reply(L('❌ Похоже на ключ ' + kname + ', но он не подошёл: ' + why + '\nСообщение удалено. Проверьте ключ и пришлите ещё раз.',
+                    '❌ Looks like a ' + kname + ' key, but it was rejected: ' + why + '\nI deleted the message. Check the key and send it again.',
+                    "❌ " + kname + " kalitiga o'xshaydi, lekin qabul qilinmadi: " + why + "\nXabar o'chirildi. Kalitni tekshirib, qayta yuboring."));
+                setAiKey(kind, key);
+                reply(L('✅ ' + (isOwner() ? 'Ключ' : 'Ваш ключ') + ' ' + kname + ' сохранён на ТВ «' + tvName() + '», сообщение с ним удалено.',
+                    '✅ ' + (isOwner() ? 'The ' : 'Your ') + kname + ' key is saved on TV “' + tvName() + '” and the message with it is deleted.',
+                    '✅ ' + (isOwner() ? '' : 'Sizning ') + kname + " kalitingiz «" + tvName() + "» televizorida saqlandi, kalitli xabar o'chirildi.") +
+                    (good ? '' : L('\n(Проверить сейчас не удалось — проверю на первой картинке.)', "\n(Couldn't check it now — I'll check it with the first picture.)", "\n(Hozir tekshirib bo'lmadi — birinchi rasmda tekshiraman.)")) +
+                    L('\nТеперь пришлите скриншот или постер 🖼', '\nNow send a screenshot or a poster 🖼', '\nEndi skrinshot yoki poster yuboring 🖼'));
+            });
+        }
         if (renameFor && renameFor.chat === to() && Date.now() - renameFor.at < 5 * 60000 && !/^\//.test(msg.text) && KB_WORDS.indexOf(plainOf(msg.text)) < 0) {
             var title = msg.text.replace(/^\s+|\s+$/g, '').slice(0, 40), target = renameFor.id;
             renameFor = null;
@@ -2335,21 +2361,6 @@ var BSTelegram = (function () {
         if (typeFor && typeFor.chat === to()) typeFor = null;
         var jc = isOwner() && joinFrom(msg.text);
         if (jc) return joinSend(jc);
-        if (isGeminiKey(msg.text)) {                                         // похоже на ключ — сразу из чата, в поиск не отдаём (у каждого свой)
-            var key = msg.text.replace(/\s+/g, ''), kind = keyKind(key), kname = kind === 'gemini' ? 'Gemini' : OA[kind].name;
-            call('deleteMessage', { chat_id: to(), message_id: msg.message_id }, null, null);
-            return (kind === 'gemini' ? geminiCheck : function (k, cb) { oaCheck(kind, k, cb); })(key, function (good, why) {
-                if (good === false) return reply(L('❌ Похоже на ключ ' + kname + ', но он не подошёл: ' + why + '\nСообщение удалено. Проверьте ключ и пришлите ещё раз.',
-                    '❌ Looks like a ' + kname + ' key, but it was rejected: ' + why + '\nI deleted the message. Check the key and send it again.',
-                    "❌ " + kname + " kalitiga o'xshaydi, lekin qabul qilinmadi: " + why + "\nXabar o'chirildi. Kalitni tekshirib, qayta yuboring."));
-                setAiKey(kind, key);
-                reply(L('✅ ' + (isOwner() ? 'Ключ' : 'Ваш ключ') + ' ' + kname + ' сохранён на ТВ «' + tvName() + '», сообщение с ним удалено.',
-                    '✅ ' + (isOwner() ? 'The ' : 'Your ') + kname + ' key is saved on TV “' + tvName() + '” and the message with it is deleted.',
-                    '✅ ' + (isOwner() ? '' : 'Sizning ') + kname + " kalitingiz «" + tvName() + "» televizorida saqlandi, kalitli xabar o'chirildi.") +
-                    (good ? '' : L('\n(Проверить сейчас не удалось — проверю на первой картинке.)', "\n(Couldn't check it now — I'll check it with the first picture.)", "\n(Hozir tekshirib bo'lmadi — birinchi rasmda tekshiraman.)")) +
-                    L('\nТеперь пришлите скриншот или постер 🖼', '\nNow send a screenshot or a poster 🖼', '\nEndi skrinshot yoki poster yuboring 🖼'));
-            });
-        }
         var t = msg.text.replace(/^\s+|\s+$/g, ''), cmd = /^\/(\w+)(?:@\w+)?\s*([\s\S]*)$/.exec(t);
         var c = cmd ? cmd[1].toLowerCase() : '', arg = cmd ? cmd[2] : t, plain = plainOf(t);
         // команда или слово с клавиатуры — техническое: убираем сразу, ответ на него тоже служебный
@@ -3230,7 +3241,7 @@ var BSTelegram = (function () {
             Object.keys(people).forEach(function (k) { if (active(people[k])) as(k, function () { sendKb(news()); }); });
         }, 20000);
         setInterval(remind, 10 * 60000);
-        setInterval(function () { try { delTick(); } catch (e) {} }, 15000);       // служебные сообщения — удалить в срок
+        setInterval(function () { try { delTick(); } catch (e) {} }, 15000);       // очередь служебных: старше 48 ч — забыть
         setInterval(poll, 15000);                                    // страховка: опрос оборвался (сеть) — поднять
         loadDevName();
         setTimeout(function () {
