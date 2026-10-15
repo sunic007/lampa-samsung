@@ -39,7 +39,7 @@ about new episodes. No server needed — the bot runs inside Lampa on the TV.
   takes over within a minute.
 
 **Connect:** create a bot with [@BotFather](https://t.me/BotFather) → in Lampa open
-**Settings → Telegram → “Подключить с телефона”**, scan the QR code and paste the token → send any message to your bot.
+**Settings → Sunic Apps → Telegram-бот → “Подключить с телефона”**, scan the QR code and paste the token → send any message to your bot.
 
 ## What this package adds
 
@@ -74,12 +74,12 @@ the TV, gets the Samsung certificate and installs the latest Lampa from GitHub; 
    any installer that signs the package.
 3. Start Lampa. The package applies the byskaz starter settings itself.
 
-New versions install over the old one; settings are kept. Package settings are in **Settings → “Обновление”**.
+New versions install over the old one; settings are kept. All package settings are in one section, **Settings → Sunic Apps** (player, sources, Telegram bot, interface, kids mode, updates).
 
 ## Support the project
 
 The package and TV Installer are free. If they are useful to you, you can support development on
-**[GitHub Sponsors](https://github.com/sponsors/sunic007)** (in Lampa: Settings → “Обновление” → “Поддержать проект”).
+**[GitHub Sponsors](https://github.com/sponsors/sunic007)** (in Lampa: Settings → Sunic Apps → “Обновление” → “Поддержать проект”).
 
 ## Disclaimer
 

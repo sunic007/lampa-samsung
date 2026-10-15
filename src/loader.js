@@ -6,7 +6,7 @@ console.log('Start load');
  * Иначе (на сервере новая сборка) — app.min.js с сервера, обновления приходят сами.
  * Встроенная копия включается и тогда, когда сервер недоступен.
  * Всё, что происходит, показывается пользователю: строка статуса при запуске,
- * уведомление после запуска и раздел «Настройки → Обновление».
+ * уведомление после запуска и раздел «Настройки → Sunic Apps → Обновление».
  */
 var BS_SERVER = 'http://lampa.byskaz.ru/lampa-main/';
 var BS_PACKAGE_VERSION = 'dev';   // версия пакета .wgt — pack.py подставляет её из config.xml
@@ -535,17 +535,27 @@ function bsStartAutoUpdate() {
     } catch (e) {}
 })();
 
-/* Настройки дополнений — по разделам Lampa, а не все в «Обновление». Модули регистрируют пункты в 'bs_update';
- * здесь они собираются и после запуска модулей (bsFlushSettings) выкладываются по BS_SETTINGS_LAYOUT — по смыслу,
- * с заголовками групп, а не в порядке загрузки модулей. '#…' — заголовок группы, '#^…' — группа встаёт в начало
- * раздела, выше пунктов Lampa (главное: автовыбор плеера — над «Типом плеера»), остальные — после них. Не из раскладки — остаются
- * в «Обновление» (версия, обновления). BS_SETTINGS_HIDDEN — в меню не показываются, работают по сохранённым значениям.
- * BS_SETTINGS_NEEDS — пункт виден, только когда включено то, без чего он не работает. */
+/* Все наши настройки — в одном своём разделе «Sunic Apps» (BS_ROOT), внутри — подразделы (BS_SECTIONS). В разделы
+ * самой Lampa ничего не кладём: новая Lampa может их переименовать или переделать, а наш раздел от неё не зависит, и
+ * сразу видно, где Lampa, а где наши функции. Модули регистрируют пункты в 'bs_update'; здесь они собираются и после
+ * запуска модулей (bsFlushSettings) выкладываются по BS_SETTINGS_LAYOUT — по смыслу, с заголовками групп ('#…'), а не
+ * в порядке загрузки модулей. Не из раскладки — остаются в «Обновление» (версия, обновления). BS_SETTINGS_HIDDEN — в меню
+ * не показываются, работают по сохранённым значениям. BS_SETTINGS_NEEDS — пункт виден, только когда включено то, без
+ * чего он не работает. */
+var BS_ROOT = 'bs_apps';
+var BS_SECTIONS = [                                            // [раздел, название, подсказка]
+    ['bs_player', 'Плеер', 'Надёжность воспроизведения, продолжение, сон, громкость'],
+    ['bs_online', 'Онлайн-источники', 'Источники фильмов и серверы Skaz'],
+    ['bs_telegram', 'Telegram-бот', 'Управление Lampa с телефона'],
+    ['bs_iface', 'Интерфейс', 'Кнопки на карточке, строки и меню'],
+    ['bs_sec_kids', 'Детский режим', 'Спрятать взрослое под ПИН'],
+    ['bs_update', 'Обновление', 'Версии и автообновление']
+];
 var BS_SETTINGS_LAYOUT = [
-    ['player', ['#^Надёжность воспроизведения', 'bs_player_auto', 'bs_guard', 'bs_bw_quality', 'bs_buffer',
+    ['bs_player', ['#Надёжность воспроизведения', 'bs_player_auto', 'bs_guard', 'bs_bw_quality', 'bs_buffer',
         '#Во время просмотра', 'bs_resume_ask', 'bs_noads', 'bs_segments', 'bs_track_memory', 'bs_next_countdown', 'bs_still', 'bs_sleep', 'bs_vol_memory', 'bs_vol_night']],
-    ['interface', ['#Дополнительно', 'bs_watch_btn', 'bs_online_resume', 'bs_ru_auto', 'bs_menu_turk', 'bs_continue_row']],
-    ['parental_control', ['#Дополнительно', 'bs_kids']],
+    ['bs_iface', ['bs_watch_btn', 'bs_online_resume', 'bs_ru_auto', 'bs_menu_turk', 'bs_continue_row']],
+    ['bs_sec_kids', ['bs_kids']],
     ['bs_telegram', ['#Подключение', 'bs_tg_phone', 'bs_tg_join', 'bs_tg_help', 'bs_tg_token', 'bs_tg_link', 'bs_tv_name',
         '#Бот', 'bs_tg_on', 'bs_tg_shots', 'bs_search_qr', 'bs_tg_check',
         '#Люди и доступ', 'bs_tg_approve', 'bs_tg_guest_play', 'bs_tg_invite_reset']],
@@ -603,7 +613,7 @@ function bsSettingsRefresh() {
 }
 
 /** Пункт в его раздел: зависимый — со скрытием, а тот, от кого зависят, — с обновлением видимости. */
-function bsSettingsAdd(add, api, data, to, top) {
+function bsSettingsAdd(add, api, data, to) {
     var copy = {}, k, name = data.param.name;
     for (k in data) if (data.hasOwnProperty(k)) copy[k] = data[k];
     copy.component = to;
@@ -611,7 +621,6 @@ function bsSettingsAdd(add, api, data, to, top) {
     copy.onRender = function (item) {
         if (render) render.apply(this, arguments);
         if (BS_SETTINGS_NEEDS[name] && !bsSettingsNeedOk(name)) item.addClass('hide');
-        if (top) item.addClass('bs-top');
     };
     copy.onChange = function () {
         var r = change ? change.apply(this, arguments) : undefined;
@@ -624,18 +633,20 @@ function bsSettingsAdd(add, api, data, to, top) {
 function bsRouteSettings() {
     var api = Lampa.SettingsApi, add = api.addParam;
     if (!add || add.__bsRoute) return;
+    // В главном списке настроек — одна папка «Sunic Apps»; подразделы — только шаблоны (не addComponent), их открывают кнопки
     api.addComponent({
-        component: 'bs_online',
-        name: 'Онлайн-источники',
+        component: BS_ROOT,
+        name: 'Sunic Apps',
         icon: '<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-            '<rect x="4" y="7" width="28" height="18" rx="3" stroke="currentColor" stroke-width="3"/>' +
-            '<path d="M15 12l7 4-7 4z" fill="currentColor"/><path d="M11 30h14" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>'
+            '<rect x="4" y="4" width="12" height="12" rx="3" stroke="currentColor" stroke-width="3"/>' +
+            '<rect x="20" y="4" width="12" height="12" rx="3" stroke="currentColor" stroke-width="3"/>' +
+            '<rect x="4" y="20" width="12" height="12" rx="3" stroke="currentColor" stroke-width="3"/>' +
+            '<rect x="20" y="20" width="12" height="12" rx="3" fill="currentColor"/></svg>'
     });
-    api.addComponent({
-        component: 'bs_telegram',
-        name: 'Telegram',
-        icon: '<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-            '<path d="M5 17l25-10-4 22-8-6-4 5v-7l12-11-15 9z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/></svg>'
+    BS_SECTIONS.forEach(function (s) {
+        Lampa.Template.add('settings_' + s[0], '<div></div>');
+        add.call(api, { component: BS_ROOT, param: { name: 'bs_go_' + s[0], type: 'button' }, field: { name: s[1], description: s[2] },
+            onChange: function () { Lampa.Settings.create(s[0]); } });
     });
     api.addParam = function (data) {
         var name = data && data.component === 'bs_update' && data.param ? data.param.name : '';
@@ -647,27 +658,25 @@ function bsRouteSettings() {
     };
     api.addParam.__bsRoute = true;
     api.addParam.__bsOrig = add;
-    // Группы '#^' — в начало раздела: Lampa добавляет пункты плагинов в конец, переставляем при открытии
     try {
         Lampa.Settings.listener.follow('open', function (e) {
             if (e && e.body && e.body.find) bsSettingsHideLampa(e.body);
-            var tops = e && e.body && e.body.find ? e.body.find('.bs-top') : null;
-            if (!tops || !tops.length) return;
-            var first = e.body.find('.settings-param, .settings-param-title, .settings-folder').not('.bs-top').first();
-            if (first.length) tops.insertBefore(first);
+            bsSectionBack(e);
         });
     } catch (e) {}
 }
 
-/** Раздел Lampa есть в её меню настроек? Новая Lampa может переименовать «player»/«interface»/«parental_control» —
- * тогда пункты уходят в наш раздел «Обновление», а не пропадают. Свои разделы (bs_…) и непонятный ответ — как есть. */
-function bsSectionOr(to) {
-    if (to.indexOf('bs_') === 0) return to;
-    try {
-        var main = Lampa.Template.string('settings_main');
-        if (main && main.indexOf('data-component="' + to + '"') < 0) { console.log('BS settings: no section', to); return 'bs_update'; }
-    } catch (e) {}
-    return to;
+/** «Назад» из подраздела — в «Sunic Apps» на ту же кнопку, а не в главный список. Lampa хранит params открытого раздела
+ * (и пересоздаёт его с новыми при обновлении) — поэтому ставим onBack при каждом открытии. */
+function bsSectionBack(e) {
+    if (!e || !e.params || e.params.onBack) return;
+    for (var i = 0; i < BS_SECTIONS.length; i++) {
+        if (BS_SECTIONS[i][0] !== e.name) continue;
+        e.params.onBack = (function (idx) {
+            return function () { Lampa.Settings.create(BS_ROOT, { last_index: idx }); };
+        })(i);
+        return;
+    }
 }
 
 /** После запуска модулей: пункты — по разделам в порядке раскладки, с заголовками групп. */
@@ -676,18 +685,17 @@ function bsFlushSettings() {
     if (!add || bsSettingsFlushed) return;
     bsSettingsFlushed = true;
     for (var i = 0; i < BS_SETTINGS_LAYOUT.length; i++) {
-        var to = bsSectionOr(BS_SETTINGS_LAYOUT[i][0]), list = BS_SETTINGS_LAYOUT[i][1], title = '', top = false;
+        var to = BS_SETTINGS_LAYOUT[i][0], list = BS_SETTINGS_LAYOUT[i][1], title = '';
         for (var j = 0; j < list.length; j++) {
             var name = list[j];
-            if (name.charAt(0) === '#') { top = name.charAt(1) === '^'; title = name.slice(top ? 2 : 1); continue; }
+            if (name.charAt(0) === '#') { title = name.slice(1); continue; }
             var data = bsSettingsPending[name];
             if (!data) continue;
             if (title) {                                       // заголовок — только если в группе есть пункты
-                add.call(api, { component: to, param: { name: 'bs_hdr_' + to + '_' + j, type: 'title' }, field: { name: title },
-                    onRender: top ? function (item) { item.addClass('bs-top'); } : null });
+                add.call(api, { component: to, param: { name: 'bs_hdr_' + to + '_' + j, type: 'title' }, field: { name: title } });
                 title = '';
             }
-            bsSettingsAdd(add, api, data, to, top);
+            bsSettingsAdd(add, api, data, to);
             delete bsSettingsPending[name];
         }
     }
@@ -703,14 +711,6 @@ function bsAddSettings() {
         param: { name: 'bs_torrents', type: 'trigger', 'default': false },
         field: { name: 'Торренты', description: 'Показать настройки «Парсер» и «TorrServer».' },
         onChange: function (v) { try { window.localStorage.setItem('bs_torrents', String(v === true || v === 'true')); } catch (e) {} }
-    });
-
-    Lampa.SettingsApi.addComponent({
-        component: C,
-        name: 'Обновление',
-        icon: '<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-            '<path d="M30 18a12 12 0 1 1-3.5-8.5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>' +
-            '<path d="M28 4v7h-7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     });
 
     /* Раздел «Обновление» — три части, у каждой сказано, откуда она обновляется:

@@ -1409,19 +1409,23 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('загрузка: запуск из пакета — без карточки', run({}) === 0);
     const L = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
     t('загрузка: loader.js сам ничего не пишет при обычном запуске', L.indexOf("'Запускаю Lampa'") < 0 && L.indexOf('bsPhase') < 0);
-    // новая Lampa переименовала раздел настроек — наши пункты уходят в «Обновление», а не пропадают
-    const sec = L.slice(L.indexOf('function bsSectionOr'), L.indexOf('/** После запуска модулей'));
-    const secOr = (tpl) => {
-        const c = { Lampa: { Template: { string: () => tpl } }, console: { log() {} } };
-        vm.createContext(c); vm.runInContext(sec, c);
-        return ['player', 'parental_control', 'bs_online'].map(x => c.bsSectionOr(x)).join(',');
-    };
-    const APP = fs.readFileSync(path.join(SRC, 'app.js'), 'utf8');
-    t('совместимость: разделы настроек из раскладки есть во встроенной Lampa',
-        ['player', 'interface', 'parental_control'].every(x => APP.indexOf('data-component=\\"' + x + '\\"') >= 0));
-    t('совместимость: раздел есть — пункты в нём', secOr('<div data-component="player"></div><div data-component="parental_control">') === 'player,parental_control,bs_online');
-    t('совместимость: раздел переименовали — пункты в «Обновление»', secOr('<div data-component="player"></div>') === 'player,bs_update,bs_online');
-    t('совместимость: шаблона нет — раскладка как есть', secOr('') === 'player,parental_control,bs_online');
+    // все наши настройки — в одном разделе «Sunic Apps»; в разделы самой Lampa ничего не кладём
+    const sv = L.slice(L.indexOf('var BS_ROOT'), L.indexOf('var BS_SETTINGS_NEEDS'));
+    const c = { console: { log() {} } };
+    vm.createContext(c); vm.runInContext(sv.replace(/^var /gm, 'this.'), c);
+    const secIds = c.BS_SECTIONS.map(s => s[0]);
+    t('настройки: один раздел «Sunic Apps» в главном списке', c.BS_ROOT === 'bs_apps' && (L.match(/addComponent\(/g) || []).length === 1);
+    t('настройки: пункты — только в наших подразделах, не в разделах Lampa', c.BS_SETTINGS_LAYOUT.every(x => secIds.indexOf(x[0]) >= 0));
+    t('настройки: у каждого подраздела есть название и подсказка', c.BS_SECTIONS.every(s => s[1] && s[2]) && secIds.indexOf('bs_update') >= 0);
+    const back = L.match(/function bsSectionBack\([\s\S]*?\n\}/)[0];
+    const opened = [];
+    const c2 = { BS_ROOT: 'bs_apps', BS_SECTIONS: c.BS_SECTIONS, Lampa: { Settings: { create: (n, p) => opened.push(n + ':' + p.last_index) } } };
+    vm.createContext(c2); vm.runInContext(back, c2);
+    const e1 = { name: 'bs_telegram', params: {} }; c2.bsSectionBack(e1); e1.params.onBack();
+    t('настройки: «Назад» из подраздела — в «Sunic Apps» на его кнопку', opened[0] === 'bs_apps:' + secIds.indexOf('bs_telegram'));
+    const own = () => 'own', e2 = { name: 'bs_player', params: { onBack: own } }, e3 = { name: 'interface', params: {} };
+    c2.bsSectionBack(e2); c2.bsSectionBack(e3);
+    t('настройки: чужой «Назад» и разделы Lampa не трогаем', e2.params.onBack === own && !e3.params.onBack);
 }
 /* ---- loader.js: ошибки плагинов в уведомлениях — коротко и красной точкой ---- */
 {
