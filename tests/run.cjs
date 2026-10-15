@@ -1156,7 +1156,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
         const c = T._cubCards([{ id: 1, title: 'Интерстеллар', poster_path: '/a.jpg' }, { id: 2, name: 'Тьма', poster_path: '/b.jpg' }, { id: 3, title: 'Без постера' }]);
         return c.length === 2 && c[0].media_type === 'movie' && c[1].media_type === 'tv';
     })());
-    t('меню бота: команды у кнопки «Меню» слева от поля ввода', T._commands.map(c => c.command).join(',') === 'menu,find,type,want,subs,week,tvs,profile,help');
+    t('меню бота: команды у кнопки «Меню» слева от поля ввода', T._commands.map(c => c.command).join(',') === 'menu,find,type,want,subs,week,tvs,profile,help,lang');
     t('меню бота: «⌨️ Набрать на ТВ»', flat.indexOf('mn:type') >= 0);
     const sl = [{ media_type: 'tv', id: 1 }, { media_type: 'movie', id: 2 }, { media_type: 'movie', id: 3 }];
     const b0 = T._slideButtons(sl, 0), b1 = T._slideButtons(sl, 1);
@@ -1525,7 +1525,8 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
 {
     const L = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
     const fn = L.slice(L.indexOf('var BS_KEEP_ON_CLEAR'), L.indexOf('try { bsKeepUpdatesOnClear('));
-    const data = { bs_upd: '{"v":"2.0.0"}', bs_upd_ran: '2.0.0', bs_upd_mirror: '1', bs_tg_token: 'x', menu_always: 'true', online_view: '[]' };
+    const data = { bs_upd: '{"v":"2.0.0"}', bs_upd_ran: '2.0.0', bs_upd_mirror: '1', bs_tg_token: 'x', bs_tg_chat: '1', bs_tg_users: '{}', bs_subs: '[]', bs_gemini_keys: '{}',
+        bs_tv_name: 'Зал', bs_tv_id: 'a1', bs_ai_groq: 'k', bs_subscribed_x: '1', bs_player_default: '1', menu_always: 'true', online_view: '[]' };
     function FakeStorage() {}
     FakeStorage.prototype = {
         get length() { return Object.keys(data).length; }, key: i => Object.keys(data)[i], getItem: k => (k in data ? data[k] : null),
@@ -1535,7 +1536,9 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     ctx.f(FakeStorage.prototype); ctx.f(FakeStorage.prototype);
     new FakeStorage().clear();
     t('очистка данных: записи обновления остаются, остальное стёрто', data.bs_upd === '{"v":"2.0.0"}' && data.bs_upd_ran === '2.0.0' && data.bs_upd_mirror === '1' &&
-        !('bs_tg_token' in data) && !('menu_always' in data) && !('online_view' in data));
+        !('bs_player_default' in data) && !('bs_subscribed_x' in data) && !('menu_always' in data) && !('online_view' in data));
+    t('очистка данных: Telegram-бот остаётся подключённым (токен, чат, люди, подписки, ключи ИИ, ТВ)',
+        ['bs_tg_token', 'bs_tg_chat', 'bs_tg_users', 'bs_subs', 'bs_gemini_keys', 'bs_ai_groq', 'bs_tv_name', 'bs_tv_id'].every(k => k in data));
     t('очистка данных: перехват ставится один раз', FakeStorage.prototype.clear.__bs === true);
 }
 {
@@ -1575,5 +1578,54 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     c2.Lampa.Noty.show('Привет', { time: 1 }, 'extra');
     t('совместимость: сбой нашей правки — уведомление Lampa всё равно показано', got.length === 1 && got[0][0] === 'Привет' && got[0][2] === 'extra');
 }
+/* ---- bstg.js: бот на трёх языках (ru / en / uz) ---- */
+{
+    const g = { name: 'Аня', at: 1, want: [], subs: [], muted: [], later: [] };
+    const store = { bs_tg_chat: '1', bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw', bs_tg_lang: JSON.stringify({ 1: 'en', 2: 'uz' }),
+        bs_tg_users: JSON.stringify({ 2: g, 3: g }) };
+    const urls = [];
+    function X() { this.open = (m, u) => urls.push(decodeURIComponent(u)); this.send = b => { if (b) urls.push(String(b)); }; this.setRequestHeader = () => {}; }
+    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: X, Uint8Array,
+        btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'), unescape, escape, encodeURIComponent, decodeURIComponent,
+        Lampa: { Noty: { show() {} } } };
+    ctx.window = ctx; ctx.crypto = require('crypto').webcrypto;
+    ctx.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
+    const T = ctx.M, say = (c, text, lc) => { urls.length = 0; T._handle({ update_id: 1, message: { chat: { id: +c, type: 'private' }, from: { first_name: 'X', language_code: lc }, text } }); return urls.join('\n'); };
+    const inLang = (c, fn) => { let r; T._as(c, () => { r = fn(); }); return r; };
+    t('язык: L() — у каждого свой (en / uz), не выбирал — русский', inLang('1', () => T._L('ру', 'en', 'uz')) === 'en' && inLang('2', () => T._L('ру', 'en', 'uz')) === 'uz' && inLang('3', () => T._L('ру', 'en', 'uz')) === 'ру');
+    t('язык: подключённый без выбора — русский, даже если Telegram на английском', /Выберите раздел/.test(say('3', '📋 Меню', 'en')));
+    t('язык: «📋 Menu» по-английски — меню на английском', /Choose a section/.test(say('1', '📋 Menu')) && /mn:lang/.test(urls.join('')));
+    t("язык: «📋 Menyu» и «❓ Yordam» по-узбекски — узнаются", /Bo'limni tanlang/.test(say('2', '📋 Menyu')) && /Lampa yordamchingizman/.test(say('2', '❓ Yordam')));
+    t('язык: слова кнопок на всех языках — не уходят в поиск', ['меню', 'menu', 'menyu', "ko'rmoqchiman", 'want to watch', 'хочу посмотреть', "tv'da yozish"].every(w => T._kbWords.indexOf(w) >= 0) &&
+        T._plainOf('⭐ Koʻrmoqchiman') === "ko'rmoqchiman" && T._isWord(T._plainOf('🔔 Obunalar'), 'subs'));
+    t('язык: «🌐 Язык / Language / Til» и /lang — кнопки выбора', /lg:uz/.test(say('3', '🌐 Язык / Language / Til')) && /lg:en/.test(say('1', '/lang')));
+    urls.length = 0; T._handle({ callback_query: { id: 'q', data: 'lg:en', from: { id: 3 }, message: { message_id: 5, chat: { id: 3 } } } });
+    t('язык: выбрали English — запомнили и ответили по-английски', JSON.parse(store.bs_tg_lang)['3'] === 'en' && /Language: English/.test(urls.join('\n')));
+    t('язык: чужому — на языке его Telegram', /This bot is for Lampa/.test(say('9', 'hi', 'en')) && /Bu bot televizordagi Lampa/.test(say('8', 'salom', 'uz')) && /Этот бот — для Lampa/.test(say('7', 'привет', 'ru')));
+    t('язык: TMDB — en-US для английского, ru для русского и узбекского', inLang('1', T._tmdbLang) === 'en-US' && inLang('2', T._tmdbLang) === 'ru');
+    t('язык: меню команд на каждом языке, есть /lang', T._commandsFor('en')[0].description === '📋 Main menu' && T._commandsFor('uz').some(c => c.command === 'lang') && T._commandsFor('ru')[0].description === '📋 Главное меню');
+    t('язык: описание бота en/uz — в пределах Telegram (512 / 120)', ['en', 'uz'].every(l => { const d = T._botDesc(l); return d[0].length <= 512 && d[1].length <= 120 && d[0] !== T._botDesc('ru')[0]; }));
+    const seenW = { 1: { name: 'Солдаты', next: { s: 12, e: 17, d: '2026-10-16' } } }, day = new Date(2026, 9, 13).getTime();
+    t('язык: сводка недели — дни и месяцы на языке человека', inLang('1', () => T._weekLines(seenW, ['1'], day))[0] === '• Fri 16 Oct — Солдаты 12×17' && /^• пт 16 окт/.test(inLang('3x', () => T._weekLines(seenW, ['1'], day))[0]));
+    t('язык: подпись поиска и кнопки — по-английски', /\nSeries/.test(inLang('1', () => T._caption({ media_type: 'tv', name: 'X', first_air_date: '2004-01-26' }))) &&
+        /Watch/.test(JSON.stringify(inLang('1', () => T._slideButtons([{ media_type: 'tv', id: 1 }], 0)))) && /Ko'rish/.test(JSON.stringify(inLang('2', () => T._slideButtons([{ media_type: 'tv', id: 1 }], 0)))));
+    t('язык: «Следующая серия» в Telegram по-английски, на ТВ (без языка) — по-русски', /^Next episode: 1×3 — tomorrow/.test(T._nextText({ air_date: '2026-10-14', season_number: 1, episode_number: 3 }, day, 'en')) &&
+        /^Следующая серия: 1×3 — завтра/.test(T._nextText({ air_date: '2026-10-14', season_number: 1, episode_number: 3 }, day)));
+    /* чистый чат */
+    store.bs_tg_del = '[]';
+    urls.length = 0; T._handle({ update_id: 2, message: { message_id: 77, chat: { id: 1, type: 'private' }, from: { first_name: 'X' }, text: '📋 Menu' } });
+    t('чистый чат: «📋 Меню» человека удаляется сразу', urls.some(u => /deleteMessage/.test(u) && /message_id=77/.test(u)));
+    ctx.Lampa.Reguest = function () { this.silent = function () {}; this.clear = function () {}; }; ctx.Lampa.TMDB = { api: u => u, key: () => 'k' };
+    urls.length = 0; T._handle({ update_id: 3, message: { message_id: 78, chat: { id: 1, type: 'private' }, from: { first_name: 'X' }, text: 'Sintel' } });
+    t('чистый чат: поиск (название фильма) не удаляется', !urls.some(u => /deleteMessage/.test(u) && /message_id=78/.test(u)));
+    T._as('1', () => T._tmp(60000, () => T._sent({ message_id: 90 })));
+    T._as('1', () => T._sent({ message_id: 91 }));
+    const q = JSON.parse(store.bs_tg_del);
+    t('чистый чат: служебный ответ — в очередь на удаление, обычный — нет', q.some(x => x.id === 90 && x.c === '1') && !q.some(x => x.id === 91));
+    q.forEach(x => { x.at = 0; }); store.bs_tg_del = JSON.stringify(q); urls.length = 0; T._delTick();
+    t('чистый чат: срок вышел — сообщение удалено, очередь пуста', urls.some(u => /deleteMessage/.test(u) && /message_id=90/.test(u)) && JSON.parse(store.bs_tg_del).length === 0);
+}
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
