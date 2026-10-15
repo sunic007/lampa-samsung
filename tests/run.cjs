@@ -1640,8 +1640,11 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     T._as('1', () => T._sent({ message_id: 91 }));
     const q = JSON.parse(store.bs_tg_del);
     t('чистый чат: служебный ответ — в очередь на удаление, обычный — нет', q.some(x => x.id === 90 && x.c === '1') && !q.some(x => x.id === 91));
-    q.forEach(x => { x.at = 0; }); store.bs_tg_del = JSON.stringify(q); urls.length = 0; T._delTick();
-    t('чистый чат: срок вышел — сообщение удалено, очередь пуста', urls.some(u => /deleteMessage/.test(u) && /message_id=90/.test(u)) && JSON.parse(store.bs_tg_del).length === 0);
+    urls.length = 0; T._as('1', () => T._tmp(60000, () => T._sent({ message_id: 92 })));
+    t('чистый чат: новое служебное — прежнее служебное удалено сразу', urls.some(u => /deleteMessage/.test(u) && /message_id=90/.test(u)) &&
+        JSON.parse(store.bs_tg_del).map(x => x.id).join() === '92');
+    const q2 = JSON.parse(store.bs_tg_del); q2.forEach(x => { x.at = 0; }); store.bs_tg_del = JSON.stringify(q2); urls.length = 0; T._delTick();
+    t('чистый чат: срок вышел — сообщение удалено, очередь пуста', urls.some(u => /deleteMessage/.test(u) && /message_id=92/.test(u)) && JSON.parse(store.bs_tg_del).length === 0);
 }
 
 console.log(pass + ' passed, ' + fail + ' failed');

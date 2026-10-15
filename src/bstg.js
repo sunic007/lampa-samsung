@@ -86,7 +86,17 @@ var BSTelegram = (function () {
     /** fn отправит служебные сообщения — они удалятся через ms. */
     function tmp(ms, fn) { var p = tmpMs; tmpMs = ms; try { return fn(); } finally { tmpMs = p; } }
     /** Отправлено сообщение: служебное — в очередь на удаление. */
-    function sent(m) { if (tmpMs && m && m.message_id) delLater(to(), m.message_id, tmpMs); return m; }
+    function sent(m) {
+        if (tmpMs && m && m.message_id) { clearTmp(to(), m.message_id); delLater(to(), m.message_id, tmpMs); }
+        return m;
+    }
+    /** Появилось новое служебное сообщение — прежние служебные в этом чате убираем сразу: в чате одно, последнее. */
+    function clearTmp(c, except) {
+        var q = lsJson('bs_tg_del', []), left = [];
+        q.forEach(function (x) { if (x.c === String(c) && x.id !== except) delNow(x.c, x.id); else left.push(x); });
+        if (left.length !== q.length) lsSet('bs_tg_del', JSON.stringify(left));
+        if (lastMenu[c] && lastMenu[c] !== except) lastMenu[c] = 0;
+    }
 
     /* ---------- язык бота: у каждого человека свой (ru / en / uz) ----------
      * Выбор хранится в bs_tg_lang ({чат: язык}) и ходит по каналу на другие ТВ. Кто не выбирал — русский, как раньше;
