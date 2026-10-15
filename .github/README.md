@@ -126,6 +126,14 @@ No. It is a player; it does not host, store or distribute any media.
 </div>
 </details>
 
+## Using this project
+
+<div align="justify">
+
+Want to use the package in your project, build, article or video? You are welcome to — please <b>keep a link to this repository</b> and <b>let me know</b>: write in <a href="https://github.com/sunic007/lampa-samsung/discussions">Discussions</a> or open an <a href="https://github.com/sunic007/lampa-samsung/issues/new/choose">issue</a>. The code is under the MIT license (Lampa itself — its own license, see THIRD_PARTY_NOTICES).
+
+</div>
+
 ## Support the project
 
 <div align="justify">

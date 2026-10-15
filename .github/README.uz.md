@@ -126,6 +126,14 @@ Yo'q. Bu pleyer: u hech qanday media kontentni saqlamaydi va tarqatmaydi.
 </div>
 </details>
 
+## Loyihadan foydalanish
+
+<div align="justify">
+
+Paketni o'z loyihangiz, yig'mangiz, maqola yoki videongizda ishlatmoqchimisiz? Marhamat — faqat <b>ushbu repozitoriyga havolani qoldiring</b> va <b>menga xabar bering</b>: <a href="https://github.com/sunic007/lampa-samsung/discussions">Muhokamalar</a>da yozing yoki <a href="https://github.com/sunic007/lampa-samsung/issues/new/choose">issue</a> oching. Kod MIT litsenziyasi ostida (Lampa'ning o'zi — o'z litsenziyasi bilan, THIRD_PARTY_NOTICES'ga qarang).
+
+</div>
+
 ## Loyihani qo'llab-quvvatlash
 
 <div align="justify">

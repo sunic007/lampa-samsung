@@ -206,6 +206,14 @@ Telegram-бот, Интерфейс, Обновление. Разделы сам
 </div>
 </details>
 
+## Использование проекта
+
+<div align="justify">
+
+Хотите использовать пакет в своём проекте, сборке, статье или видео? Пожалуйста, — только <b>оставьте ссылку на этот репозиторий</b> и <b>сообщите мне</b>: напишите в <a href="https://github.com/sunic007/lampa-samsung/discussions">Обсуждениях</a> или откройте <a href="https://github.com/sunic007/lampa-samsung/issues/new/choose">issue</a>. Код — по лицензии MIT (сама Lampa — по своей лицензии, см. THIRD_PARTY_NOTICES).
+
+</div>
+
 ## Поддержать проект
 
 <div align="justify">
