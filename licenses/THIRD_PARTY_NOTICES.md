@@ -12,7 +12,11 @@ The `.wgt` package bundles the following third-party software. Each part keeps i
 | jQuery Scrollbar | `src/vender/scrollbar` | MIT | https://github.com/gromo/jquery.scrollbar |
 | QR code generator | `src/vender/qrcode` | MIT | https://github.com/kazuhikoarase/qrcode-generator |
 
-The Lampa source code is publicly available at the links above; this repository contains the bundled build unmodified.
+The bundled Lampa build is version **3.3.6** (`src/app.js`, the version is in its `app_version`). Its source code is
+[yumata/lampa-source at commit c1f06f9](https://github.com/yumata/lampa-source/tree/c1f06f9820e7709bca4c4c6677c802840f5cbe51)
+(GPL-2.0). `src/app.js` and Lampa's resources are included unmodified; `src/index.html` is based on Lampa's page with
+the package's loader added. If a link stops working, ask in the [Telegram group](https://t.me/sunicapps) or open an
+issue — the matching source will be provided.
 The Skaz (byskaz) plugins are **not** included — Lampa loads them from the byskaz servers at runtime.
 
 The package's own code (`src/bs*.js`, `src/loader.js`, `src/update.js`, `src/skazauto.js`, `src/playerguard.js`,
