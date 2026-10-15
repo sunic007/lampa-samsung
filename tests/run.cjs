@@ -1241,6 +1241,13 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('shots: готовая запись запоминается в своём ключе, переключатель не затирается', st.bs_tg_shots_sent === '["77","1"]' && !('bs_tg_shots' in st));
     const T = mk({});
     t('что нового: метка пакета — по версии его кода', T._newsPkgFlag('1.7.50') === '7' && T._newsPkgFlag('1.7.55') === '8' && T._newsPkgFlag('1.7.62') === '9' && T._newsPkgFlag('1.7.40') === '');
+    // офисный ТВ: пакет 1.7.50 (ждёт '7'), модули с GitHub уже отправили «9» — ни один из двух кодов больше не пишет
+    st = { bs_tg_cmds: '9' }; const P50 = mk(st, '1.7.50');
+    t('что нового: уже отправленное не повторяется после отката на пакет', P50._newsDue() === false && st.bs_tg_cmds === '7' && st.bs_tg_news === '9' && P50._newsDue() === false);
+    st = { bs_tg_cmds: '7' }; const P50b = mk(st, '1.7.50');
+    t('что нового: новое — ровно один раз', P50b._newsDue() === true && P50b._newsDue() === false && st.bs_tg_cmds === '7');
+    st = {}; const Fresh = mk(st, '1.7.63');
+    t('что нового: новая установка — один раз, метка пакета не нужна', Fresh._newsDue() === true && Fresh._newsDue() === false && st.bs_tg_cmds === '9');
     t('что нового: уже виденное — по большей из меток', mk({ bs_tg_cmds: '7', bs_tg_news: '9' })._newsSeen() === 9 && mk({ bs_tg_cmds: '9' })._newsSeen() === 9 && mk({ bs_tg_cmds: '7' })._newsSeen() === 7);
 }
 /* ---- bstg.js: failover главного ТВ ---- */

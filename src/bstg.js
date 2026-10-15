@@ -146,6 +146,13 @@ var BSTelegram = (function () {
     function newsSeen() { return Math.max(parseInt(lsGet('bs_tg_news'), 10) || 0, parseInt(lsGet('bs_tg_cmds'), 10) || 0); }
     /** Метка, которую ждёт bstg.js этой версии пакета ('' — тот код ничего такого не шлёт). */
     function newsPkgFlag(pkg) { var n = verNum(pkg); return n >= 1007059 ? '9' : n >= 1007052 ? '8' : n >= 1007043 ? '7' : ''; }
+    /** Пора разослать «что нового»? Отмечает его увиденным (раз и навсегда) и ставит метку для кода пакета. */
+    function newsDue() {
+        var seen = newsSeen();                                      // до newsPkgMark: та может понизить bs_tg_cmds
+        lsSet('bs_tg_news', String(Math.max(seen, BOT_NEWS)));
+        newsPkgMark();
+        return seen < BOT_NEWS;
+    }
     function newsPkgMark() {
         var pkg = '';
         try { pkg = tizen.application.getCurrentApplication().appInfo.version; } catch (e) {}
@@ -2774,9 +2781,7 @@ var BSTelegram = (function () {
         }, 25000);
         setTimeout(function () {
             // новая нижняя клавиатура — старая (с «Профилем» и «Помощью») у людей остаётся, пока бот не пришлёт новую
-            newsPkgMark();
-            if (!token() || !chat() || newsSeen() >= BOT_NEWS) return;
-            lsSet('bs_tg_news', String(BOT_NEWS));
+            if (!newsDue() || !token() || !chat()) return;
             if (!leading()) return;
             setCommands();
             var news = '✨ Меню стало компактнее: внизу одна кнопка «📋 Меню», внутри все разделы.\n' +
@@ -2815,5 +2820,5 @@ var BSTelegram = (function () {
         }, 15000);
     }
 
-    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _botDesc: function () { return [BOT_DESC, BOT_SHORT]; }, _newsSeen: newsSeen, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: COMMANDS, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle };
+    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _botDesc: function () { return [BOT_DESC, BOT_SHORT]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: COMMANDS, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle };
 })();
