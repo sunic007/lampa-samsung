@@ -274,11 +274,8 @@ var BSTelegram = (function () {
             [b(L('⭐ Хочу посмотреть', '⭐ Want to watch', "⭐ Ko'rmoqchiman"), 'want'), b(L('🔔 Подписки', '🔔 Subscriptions', '🔔 Obunalar'), 'subs')]
         ];
         // остальное — парами: у владельца есть «Люди», у гостя нет; «Поддержать» — внизу «Помощи»
-        var tail = [b(L('🗓 На неделе', '🗓 This week', '🗓 Bu hafta'), 'week')];
-        if (isOwner()) tail.push(b(L('👥 Люди', '👥 People', '👥 Odamlar'), 'people'));
-        tail.push(b(L('👤 Профиль', '👤 Profile', '👤 Profil'), 'profile'), b(L('❓ Помощь', '❓ Help', '❓ Yordam'), 'help'));
-        tail.push(b(L('⚙️ Настройки', '⚙️ Settings', '⚙️ Sozlamalar'), 'settings'));
-        for (var i = 0; i < tail.length; i += 2) rows.push(tail.slice(i, i + 2));
+        // «Профиль» и «Люди» — в «⚙️ Настройках»; сами настройки — рядом с «Помощью»
+        rows.push([b(L('🗓 На неделе', '🗓 This week', '🗓 Bu hafta'), 'week'), b(L('❓ Помощь', '❓ Help', '❓ Yordam'), 'help'), b(L('⚙️ Настройки', '⚙️ Settings', '⚙️ Sozlamalar'), 'settings')]);
         return rows;
     }
     function tvNames() { return allTvs().map(function (d) { return d.text.replace(/^📺 /, ''); }); }
@@ -342,12 +339,13 @@ var BSTelegram = (function () {
             (aiReady() ? aiProviders().map(function (x) { return AI_INFO[x.p].name; }).join(', ') : L('нет ключа', 'no key', "kalit yo'q"));
     }
     function settingsRows() {
-        var rows = [[{ text: '🌐 Язык / Language / Til', callback_data: 'mn:lang' }],
+        var rows = [[{ text: L('👤 Профиль', '👤 Profile', '👤 Profil'), callback_data: 'st:prof' }, { text: '🌐 Язык / Language / Til', callback_data: 'mn:lang' }],
             [{ text: L('🧠 ИИ-поиск — ключи API', '🧠 AI search — API keys', "🧠 Sun'iy intellekt — API kalitlari"), callback_data: 'st:ai' }]];
-        if (isOwner()) rows.push([{ text: L('📺 Телевизоры', '📺 TVs', '📺 Televizorlar'), callback_data: 'mn:tvs' }, { text: L('👥 Люди', '👥 People', '👥 Odamlar'), callback_data: 'mn:people' }]);
+        if (isOwner()) rows.push([{ text: L('📺 Телевизоры', '📺 TVs', '📺 Televizorlar'), callback_data: 'mn:tvs' }, { text: L('👥 Люди', '👥 People', '👥 Odamlar'), callback_data: 'st:people' }]);
         rows.push([{ text: L('📋 Меню', '📋 Menu', '📋 Menyu'), callback_data: 'mn:menu' }]);
         return rows;
     }
+    function backRow() { return [{ text: L('⬅️ Настройки', '⬅️ Settings', '⬅️ Sozlamalar'), callback_data: 'st:main' }]; }
     /** Ключ в списке — только последние знаки: чат могут видеть другие. */
     function keyMask(k) { return k ? '…' + String(k).slice(-4) : ''; }
     function aiText() {
@@ -388,6 +386,8 @@ var BSTelegram = (function () {
     function settingsAction(q, a) {
         if (a === 'main') return screen(q, settingsText(), settingsRows());
         if (a === 'ai') return screen(q, aiText(), aiRows());
+        if (a === 'prof') return screen(q, profileText(), [backRow()]);
+        if (a === 'people') return isOwner() ? peopleList(q) : null;
         var k = /^k:(groq|gemini|openrouter)$/.exec(a);
         if (k) return screen(q, aiKeyText(k[1]), aiKeyRows(k[1]));
         var d = /^d:(groq|gemini|openrouter)$/.exec(a);
@@ -857,7 +857,8 @@ var BSTelegram = (function () {
         as(c, function () { reply(L('Этот бот — для Lampa на ТВ. Чтобы подключиться, наведите камеру телефона на QR-код в поиске Lampa.', 'This bot is for Lampa on a TV. To connect, point your phone camera at the QR code in Lampa search.', "Bu bot televizordagi Lampa uchun. Ulanish uchun telefon kamerasini Lampa qidiruvidagi QR-kodga qarating.")); });
     }
 
-    function peopleList() {
+    /** q — открыто из настроек: показываем в том же сообщении. */
+    function peopleList(q) {
         if (!isOwner()) return reply(L('Список людей видит только владелец бота.', 'Only the bot owner can see the list of people.', "Odamlar ro'yxatini faqat bot egasi ko'radi."));
         var u = users(), ids = Object.keys(u).filter(function (i) { return active(u[i]); });
         var waiting = Object.keys(u).filter(function (i) { return u[i] && u[i].pending; });
@@ -872,7 +873,8 @@ var BSTelegram = (function () {
                 '👥 Nobody else uses the bot.\nOthers connect by pointing a camera at the QR code in Lampa search on the TV.',
                 "👥 Sizdan boshqa hech kim botdan foydalanmaydi.\nBoshqalar televizordagi Lampa qidiruvidagi QR-kodga kamerani qaratib ulanadi.");
         if (waiting.length) text += L('\n\n⏳ Ждут разрешения: ', '\n\n⏳ Waiting for permission: ', '\n\n⏳ Ruxsat kutmoqda: ') + waiting.map(function (i) { return u[i].name; }).join(', ');
-        reply(text, rows);
+        rows.push(backRow());
+        screen(q, text, rows);
     }
 
     /** Человек (не владелец): «Хочу посмотреть», убрать, подписаться — в его списках. */
@@ -2237,7 +2239,7 @@ var BSTelegram = (function () {
                 if (cf[1] === 'ap') lsSet('bs_tg_approve', String(!needApprove()));
                 if (cf[1] === 'play') lsSet('bs_tg_guest_play', String(!guestPlay()));
                 cfgSend();
-                return peopleList();
+                return peopleList(q);
             }
             if (q.data === 'n') return call('answerCallbackQuery', { callback_query_id: q.id }, null, null);
             var rn = /^rn(?::(\w+))?$/.exec(q.data || '');

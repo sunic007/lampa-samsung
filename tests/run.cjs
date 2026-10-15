@@ -1149,7 +1149,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('сводка: неделя считается с понедельника', T._weekKey(new Date(2026, 9, 18, 12).getTime()) === '2026-10-12' && T._weekKey(day) === '2026-10-12' && T._weekKey(new Date(2026, 9, 19).getTime()) === '2026-10-19');
     t('бот поиск: подпись — название, год, тип, рейтинг', /^Солдаты \(2004\)\nСериал · ★ 7\.5/.test(T._caption({ media_type: 'tv', name: 'Солдаты', first_air_date: '2004-01-26', vote_average: 7.46, overview: 'Про армию' })));
     const mr = T._menuRows(), flat = [].concat.apply([], mr).map(b => b.callback_data);
-    t('меню бота: разделы кнопками «mn:», как у бота Skaz', ['mn:find', 'mn:pic', 'mn:type', 'mn:want', 'mn:subs', 'mn:week', 'mn:tvs', 'mn:profile', 'mn:help'].every(c => flat.indexOf(c) >= 0) && mr.every(r => r.length <= 2));
+    t('меню бота: разделы кнопками «mn:», как у бота Skaz', ['mn:find', 'mn:pic', 'mn:type', 'mn:want', 'mn:subs', 'mn:week', 'mn:tvs', 'mn:help', 'mn:settings'].every(c => flat.indexOf(c) >= 0) && flat.indexOf('mn:profile') < 0 && mr.every(r => r.length <= 3));
     t('меню бота: без повторов, «Поддержать» — в «Помощи», а не отдельной плиткой', flat.length === new Set(flat).size && flat.indexOf('mn:support') < 0);
     t('меню бота: плитки парами — рядов не больше шести', mr.length <= 6);
     t('бот: AI-ассистент CUB — сериал узнаётся по name, без постера — мимо', (() => {
@@ -1614,7 +1614,8 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
         /^Следующая серия: 1×3 — завтра/.test(T._nextText({ air_date: '2026-10-14', season_number: 1, episode_number: 3 }, day)));
     /* настройки и ключи ИИ */
     const cb = (c, data) => { urls.length = 0; T._handle({ callback_query: { id: 'q', data, from: { id: +c }, message: { message_id: 50, chat: { id: +c } } } }); return urls.join(String.fromCharCode(10)); };
-    t('настройки: «⚙️ Настройки» — язык, ИИ-ключи, у владельца ТВ и люди', /st:ai/.test(say('1', '/settings')) && /mn:lang/.test(urls.join('')) && /mn:people/.test(urls.join('')));
+    t('настройки: «⚙️ Настройки» — профиль, язык, ИИ-ключи, у владельца ТВ и люди', /st:ai/.test(say('1', '/settings')) && /st:prof/.test(urls.join('')) && /mn:lang/.test(urls.join('')) && /st:people/.test(urls.join('')));
+    t('настройки: у гостя нет «Люди»', !/st:people/.test(say('2', '/settings')) && /st:prof/.test(urls.join('')));
     t('настройки: ИИ-поиск — три сервиса и подсказка без подписки CUB', /st:k:groq/.test(cb('1', 'st:ai')) && /st:k:gemini/.test(urls.join('')) && /st:k:openrouter/.test(urls.join('')) && /No CUB subscription/.test(urls.join('')) && /editMessageText/.test(urls.join('')));
     t('настройки: экран сервиса — ссылка на сайт ключей и как прислать', /console\.groq\.com\/keys/.test(cb('2', 'st:k:groq')) && /gsk_/.test(urls.join('')));
     store.bs_ai_groq = 'gsk_test1234567890abcdefghijklmnopqrstuvwxyz';
