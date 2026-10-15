@@ -50,7 +50,7 @@ about new episodes. No server needed — the bot runs inside Lampa on the TV.
   skip intros and credits, chapters.
 - 📺 **Samsung AVPlay** hardware playback (4K/HLS), faster start, quality matched to your internet speed.
 - 🔈 Per-title volume with a night limit, 🌙 day/night brightness, audio track memory, sleep timer.
-- 🧒 **Kids mode** (PIN), 💤 “Are you still watching?”, 🇹🇷 Turkish series section.
+- 💤 “Are you still watching?”, 🇹🇷 Turkish series section.
 - 🛡 **Works without the server** — a bundled copy of Lampa starts if the server is unavailable.
 
 The full feature table is in the [Russian README](README.ru.md#что-добавляет-этот-пакет).
@@ -74,7 +74,7 @@ the TV, gets the Samsung certificate and installs the latest Lampa from GitHub; 
    any installer that signs the package.
 3. Start Lampa. The package applies the byskaz starter settings itself.
 
-New versions install over the old one; settings are kept. All package settings are in one section, **Settings → Sunic Apps** (player, sources, Telegram bot, interface, kids mode, updates).
+New versions install over the old one; settings are kept. All package settings are in one section, **Settings → Sunic Apps** (player, sources, Telegram bot, interface, updates).
 
 ## Support the project
 

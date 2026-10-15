@@ -28,6 +28,25 @@ var bsStarted = false;
  * она грузилась, — это не сбой версии: метку снимаем. Но не больше двух раз подряд (bs_upd_intr), иначе версия, на
  * которой Lampa висит (человек не дождался и вышел), никогда не уйдёт. */
 var BS_UPD_FORGIVE = 2;
+
+/* «Кеш и данные → Очистить кеш и данные» в Lampa (и «Сбросить» в окне ошибок плагинов) делают localStorage.clear() —
+ * стиралась и запись, какая версия функций скачана (bs_upd…): следующий запуск шёл на старых модулях пакета, пока
+ * проверка не найдёт новую версию снова («Lampa вернулась на прошлую версию»). Записи обновления — не данные человека:
+ * их переживаем, остальное стирается как обычно. */
+var BS_KEEP_ON_CLEAR = /^bs_upd/;
+function bsKeepUpdatesOnClear(S) {
+    var clear = S && S.clear;
+    if (!clear || clear.__bs) return;
+    S.clear = function () {
+        var keep = {}, k, i;
+        try { for (i = 0; i < this.length; i++) { k = this.key(i); if (k && BS_KEEP_ON_CLEAR.test(k)) keep[k] = this.getItem(k); } } catch (e) {}
+        var r = clear.apply(this, arguments);
+        for (k in keep) if (keep.hasOwnProperty(k)) { try { this.setItem(k, keep[k]); } catch (e) {} }
+        return r;
+    };
+    S.clear.__bs = true;
+}
+try { bsKeepUpdatesOnClear(window.Storage && window.Storage.prototype); } catch (e) {}
 function bsStartInterrupted() {
     try {
         var ls = window.localStorage, v = window.BS_REMOTE_VERSION;
@@ -566,14 +585,12 @@ var BS_SECTIONS = [                                            // [раздел,
     ['bs_online', 'Онлайн-источники', 'Источники фильмов и серверы Skaz'],
     ['bs_telegram', 'Telegram-бот', 'Управление Lampa с телефона'],
     ['bs_iface', 'Интерфейс', 'Кнопки на карточке, строки и меню'],
-    ['bs_sec_kids', 'Детский режим', 'Спрятать взрослое под ПИН'],
     ['bs_update', 'Обновление', 'Версии и автообновление']
 ];
 var BS_SETTINGS_LAYOUT = [
     ['bs_player', ['#Надёжность воспроизведения', 'bs_player_auto', 'bs_guard', 'bs_bw_quality', 'bs_buffer',
         '#Во время просмотра', 'bs_resume_ask', 'bs_noads', 'bs_segments', 'bs_track_memory', 'bs_next_countdown', 'bs_still', 'bs_sleep', 'bs_vol_memory', 'bs_vol_night']],
     ['bs_iface', ['bs_watch_btn', 'bs_online_resume', 'bs_ru_auto', 'bs_menu_turk', 'bs_continue_row']],
-    ['bs_sec_kids', ['bs_kids']],
     ['bs_telegram', ['#Подключение', 'bs_tg_phone', 'bs_tg_join', 'bs_tg_help', 'bs_tg_token', 'bs_tg_link', 'bs_tv_name',
         '#Бот', 'bs_tg_on', 'bs_tg_shots', 'bs_search_qr', 'bs_tg_check',
         '#Люди и доступ', 'bs_tg_approve', 'bs_tg_guest_play', 'bs_tg_invite_reset']],
@@ -593,7 +610,7 @@ var BS_SETTINGS_NEEDS = {
  *  — торренты: «Парсер», «TorrServer», плеер для торрентов — на ТВ не используются (онлайн-источники),
  *    вернуть — «Торренты» в «Онлайн-источниках». Выключили автоматику — пункты снова видны;
  *  — «Родительский контроль» Клубнички (sisi_pin_manage): PIN и Telegram хранит сервер Skaz, он отвечает ошибкой,
- *    и пункт ничего не делает. Прячем всегда; защита от 18+ — наш детский режим. */
+ *    и пункт ничего не делает. Прячем всегда; защита от 18+ — родительский контроль Lampa и детский профиль CUB. */
 function bsLsOn(k, def) { var v = null; try { v = window.localStorage.getItem(k); } catch (e) {} return v === null ? def : v === 'true'; }
 var BS_SETTINGS_HIDE_IF = [
     { sel: '[data-name="player"], [data-name="player_hls_method"]', when: function () { return bsLsOn('bs_player_auto', true); } },

@@ -1003,7 +1003,29 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('отсчёт: короткие ролики — нет', !W._wantCountdown(10, 200, F));
     t('ещё смотрите: 3 серии без нажатий — спросить на 4-й', !W._wantStill(3, 3) && W._wantStill(4, 3));
     t('ещё смотрите: выключено', !W._wantStill(10, 0));
-    t('детский режим: распознаёт 18+ пункты', W._hideAdultText.test('Клубничка') && W._hideAdultText.test('18+') && !W._hideAdultText.test('Фильмы'));
+}
+{
+    // свой детский режим убран: включённый переносим в родительский контроль Lampa с тем же ПИН
+    const kids = (store, lampa) => {
+        const said = [];
+        const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+        const ctx = { window: { localStorage: ls }, localStorage: ls, $: () => ({}), document: { addEventListener() {} }, console: { log() {} },
+            setTimeout: f => f(), clearTimeout() {}, setInterval() {}, clearInterval() {}, Date, Math, JSON, String, Object, Array, parseInt, parseFloat, isNaN,
+            Lampa: { Noty: { show: x => said.push(x) }, Storage: { field: k => lampa[k], set: (k, v) => { lampa[k] = v; } } } };
+        ctx.window.Lampa = ctx.Lampa;
+        vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bswatch.js'), 'utf8') + ';this.M=BSWatch;', ctx);
+        const moved = ctx.M._kidsMigrate();
+        return { moved, said: said.join('|') };
+    };
+    let st = { bs_kids: 'true', bs_kids_pin: '4321' }, lp = {};
+    let r = kids(st, lp);
+    t('детский режим: включённый — родительский контроль Lampa с тем же ПИН', r.moved && lp.parental_control === true && lp.parental_control_pin === '4321' && /родительский контроль/.test(r.said));
+    t('детский режим: свои ключи убраны', !('bs_kids' in st) && !('bs_kids_pin' in st));
+    st = { bs_kids: 'true', bs_kids_pin: '1111' }; lp = { parental_control: true, parental_control_pin: '9999' };
+    kids(st, lp);
+    t('детский режим: у Lampa контроль уже включён — её ПИН не трогаем', lp.parental_control_pin === '9999');
+    st = { bs_kids: 'false' }; lp = {}; r = kids(st, lp);
+    t('детский режим: был выключен — ничего не включаем и не пишем', !r.moved && !('parental_control' in lp) && r.said === '' && !('bs_kids' in st));
 }
 
 
@@ -1498,6 +1520,23 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('запуск прерван третий раз подряд: метку оставляем — зависшая версия уйдёт', st.bs_upd_try === '1.7.63');
     st = run({ bs_upd_try: '1.7.63' }, true);
     t('Lampa уже поднялась: ничего не трогаем', st.bs_upd_try === '1.7.63' && !('bs_upd_intr' in st));
+}
+/* ---- loader.js: «Очистить кеш и данные» в Lampa не откатывает функции на версию пакета ---- */
+{
+    const L = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
+    const fn = L.slice(L.indexOf('var BS_KEEP_ON_CLEAR'), L.indexOf('try { bsKeepUpdatesOnClear('));
+    const data = { bs_upd: '{"v":"2.0.0"}', bs_upd_ran: '2.0.0', bs_upd_mirror: '1', bs_tg_token: 'x', menu_always: 'true', online_view: '[]' };
+    function FakeStorage() {}
+    FakeStorage.prototype = {
+        get length() { return Object.keys(data).length; }, key: i => Object.keys(data)[i], getItem: k => (k in data ? data[k] : null),
+        setItem: (k, v) => { data[k] = String(v); }, clear: () => { Object.keys(data).forEach(k => delete data[k]); }
+    };
+    const ctx = {}; vm.createContext(ctx); vm.runInContext(fn + ';this.f = bsKeepUpdatesOnClear;', ctx);
+    ctx.f(FakeStorage.prototype); ctx.f(FakeStorage.prototype);
+    new FakeStorage().clear();
+    t('очистка данных: записи обновления остаются, остальное стёрто', data.bs_upd === '{"v":"2.0.0"}' && data.bs_upd_ran === '2.0.0' && data.bs_upd_mirror === '1' &&
+        !('bs_tg_token' in data) && !('menu_always' in data) && !('online_view' in data));
+    t('очистка данных: перехват ставится один раз', FakeStorage.prototype.clear.__bs === true);
 }
 /* ---- loader.js: ошибки плагинов в уведомлениях — коротко и красной точкой ---- */
 {

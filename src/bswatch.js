@@ -8,8 +8,8 @@
  *  2. «Вы ещё смотрите?» (bs_still, 3 серии): столько серий подряд без единого нажатия на пульт — пауза и вопрос.
  *     ОК — смотреть дальше, Назад — закрыть плеер. Сериал не крутится всю ночь, трафик не тратится.
  *  3. Предыдущая и следующая серия — кнопки ⏮ ⏭ по бокам от пуска/паузы, как в YouTube («Что сказали?» убрано).
- *  4. Детский режим (bs_kids, ПИН): прячет «Клубничку» (18+), «Пиратские плагины» и установку плагинов, не открывает
- *     карточки «для взрослых» (adult у TMDB). Выключение — только с ПИН.
+ *  4. Детский режим — свой убран (2.0.1): у Lampa лучше — родительский контроль с ПИН и детский профиль CUB (фильмы
+ *     по возрасту). У кого наш был включён — kidsMigrate включает родительский контроль Lampa с тем же ПИН.
  *
  *  5. «Продолжить или сначала» (bs_resume_ask: давно/всегда/нет): фильм или серию не досмотрели и включили снова
  *     спустя RESUME_GAP — пауза и выбор по центру экрана, как в других плеерах: «Продолжить просмотр» / «Начать
@@ -227,65 +227,20 @@ var BSWatch = (function () {
         } catch (e) { log('button', e.message); }
     }
 
-    /* ---------- 4. детский режим ---------- */
+    /* ---------- 4. детский режим: перенос в родительский контроль Lampa ---------- */
 
-    var ADULT_TEXT = /клубничк|18\s*\+|xxx|porn|для взрослых/i;
-    var ADULT_COMP = /^(sisi|xxx|porn|adult|strawberry)/i;
-    // Без ПИН режим не действует: Lampa пишет переключатель в тот же ключ ещё до ввода ПИН, и отменённый ввод иначе
-    // оставил бы режим включённым без способа выключить.
-    function kids() { return on('bs_kids', false) && !!lsGet('bs_kids_pin'); }
-
-    function hideAdult(root) {
-        if (!kids()) return;
+    function kidsMigrate() {
+        var was = lsGet('bs_kids') === 'true', pin = lsGet('bs_kids_pin');
+        try { window.localStorage.removeItem('bs_kids'); window.localStorage.removeItem('bs_kids_pin'); } catch (e) {}
+        if (!was || !pin) return false;
         try {
-            $('.menu .menu__item', root || document).each(function () { if (ADULT_TEXT.test($(this).text())) $(this).remove(); });
-        } catch (e) {}
-    }
-
-    function hookKidsPush() {
-        var A = Lampa.Activity, push = A.push;
-        if (!push || push.__bsKids) return;
-        A.push = function (o) {
-            if (kids() && o && (ADULT_COMP.test(String(o.component || '')) || ADULT_TEXT.test(String(o.title || '')) ||
-                (o.card && o.card.adult) || (o.movie && o.movie.adult))) {
-                noty('Недоступно в детском режиме');
-                return;
+            if (!Lampa.Storage.field('parental_control')) {
+                Lampa.Storage.set('parental_control_pin', pin);
+                Lampa.Storage.set('parental_control', true);
             }
-            return push.apply(this, arguments);
-        };
-        A.push.__bsKids = true;
-    }
-
-    function askPin(title, cb) {
-        try {
-            Lampa.Input.edit({ title: title, value: '', free: true, nosave: true }, function (v) { cb(String(v || '').replace(/\D/g, '')); });
-        } catch (e) { cb(''); }
-    }
-
-    function kidsToggle(v) {
-        var want = v === true || v === 'true';
-        var revert = function (state) { try { Lampa.Storage.set('bs_kids', String(state)); } catch (e) {} lsSet('bs_kids', String(state)); };
-        if (want) {
-            askPin('Придумайте ПИН для выхода из детского режима (4 цифры)', function (pin) {
-                if (pin.length < 4) { revert(false); return noty('Нужен ПИН из 4 цифр'); }
-                lsSet('bs_kids_pin', pin);
-                lsSet('bs_kids', 'true');
-                hideAdult();
-                noty('Детский режим включён');
-            });
-        } else {
-            if (!lsGet('bs_kids_pin')) { lsSet('bs_kids', 'false'); return; }
-            askPin('ПИН детского режима', function (pin) {
-                if (pin && pin === lsGet('bs_kids_pin')) { lsSet('bs_kids', 'false'); try { window.localStorage.removeItem('bs_kids_pin'); } catch (e) {} noty('Детский режим выключен — пункты вернутся после перезапуска'); }
-                else { revert(true); noty('Неверный ПИН'); }
-            });
-        }
-    }
-
-    function settingsOpen(e) {
-        if (!kids() || !e || e.name !== 'main' || !e.body) return;
-        e.body.find('[data-component="pirate_store"],[data-component="sisi"],[data-component="plugins"],[data-component="skaz_plugins"]').remove();
-        e.body.find('.settings-folder').each(function () { if (ADULT_TEXT.test($(this).text())) $(this).remove(); });
+        } catch (e) { log('kids', e.message); }
+        setTimeout(function () { noty('Детский режим — теперь родительский контроль Lampa, ПИН прежний', 8000); }, 6000);
+        return true;
     }
 
     /* ---------- настройки и запуск ---------- */
@@ -308,17 +263,12 @@ var BSWatch = (function () {
             field: { name: 'Продолжить или сначала', description: 'Не досмотрели и включили снова — спросит, откуда смотреть.' },
             onChange: function (v) { lsSet('bs_resume_ask', String(v)); }
         });
-        api.addParam({
-            component: C, param: { name: 'bs_kids', type: 'trigger', 'default': false },
-            field: { name: 'Детский режим', description: 'Скрывает взрослое и плагины. Выключить — по ПИН.' },
-            onChange: kidsToggle
-        });
     }
 
     function start() {
         restoreAutonext();
         try { addSettings(); } catch (e) {}
-        try { hookKidsPush(); } catch (e) { log('kids', e.message); }
+        try { kidsMigrate(); } catch (e) { log('kids', e.message); }
         // любое нажатие на пульт — человек у экрана
         document.addEventListener('keydown', function () { idleEpisodes = 0; }, true);
         try {
@@ -340,12 +290,7 @@ var BSWatch = (function () {
             Lampa.PlayerVideo.listener.follow('timeupdate', onTime);
             Lampa.PlayerVideo.listener.follow('timeupdate', onResumeFrame);
         } catch (e) { log('listen', e.message); }
-        try {
-            Lampa.Settings.listener.follow('open', settingsOpen);
-            Lampa.Listener.follow('activity', function () { setTimeout(hideAdult, 300); });
-            setTimeout(hideAdult, 1000); setTimeout(hideAdult, 8000);
-        } catch (e) {}
     }
 
-    return { start: start, _wantCountdown: wantCountdown, _wantStill: wantStill, _wantResume: wantResume, _epLines: epLines, _hideAdultText: ADULT_TEXT };
+    return { start: start, _wantCountdown: wantCountdown, _wantStill: wantStill, _wantResume: wantResume, _epLines: epLines, _kidsMigrate: kidsMigrate };
 })();
