@@ -1009,9 +1009,28 @@ def not_planned_reason(comments):
     return ''
 
 
-def done_text(lang, title, rel, url=None):
+NOTE_PREFIX = re.compile(r'^\s*(?:\*\*)?(ответ|javob|reply)\s*:\s*(?:\*\*)?\s*', re.I)
+
+
+def done_note(comments):
+    """Пояснение разработчика для группы: последний комментарий владельца или участника, начатый с «Ответ:»
+    (Javob: / Reply:) — например, где включить новое. Чужие комментарии не берём: текст уходит в группу."""
+    for c in reversed(comments or []):
+        body = c.get('body') or ''
+        if '<!-- tg' in body or c.get('author_association') not in ('OWNER', 'MEMBER', 'COLLABORATOR'):
+            continue
+        m = NOTE_PREFIX.match(body)
+        if m:
+            s = re.sub(r'[*_`#>]', '', body[m.end():])
+            return cut_multiline(s.strip(), 600)
+    return ''
+
+
+def done_text(lang, title, rel, url=None, note=''):
     b = '<b>%s</b>' % html.escape(title, quote=False)
     lines = [t(lang, 'done', title='<a href="%s">%s</a>' % (html.escape(url), b) if url else b)]
+    if note:
+        lines.append(html.escape(note, quote=False))
     if rel and rel[0] == 'in':
         lines.append(t(lang, 'in_release', version=html.escape(rel[1]), url=html.escape(rel[2] or '')))
     elif rel and rel[0] == 'next':
@@ -1059,11 +1078,12 @@ def notify(event, gh, tg, repo, allowed_chats=None, dry=False):
     rel = release_info(gh, repo, n) if reason == 'completed' else None
     url = issue.get('html_url') or 'https://github.com/%s/issues/%d' % (repo, n)   # ответ на это сообщение — дополнение к задаче
     why = not_planned_reason(comments) if reason == 'not_planned' else ''
+    note = done_note(comments) if reason == 'completed' else ''
     sent = []
     for mk in uniq:
         lang = mk['lang']
         if reason == 'completed':
-            text, markup = done_text(lang, issue.get('title') or '', rel, url), rate_keyboard(short, n)
+            text, markup = done_text(lang, issue.get('title') or '', rel, url, note), rate_keyboard(short, n)
         else:
             key = 'not_planned_suggestion' if 'enhancement' in labels else 'not_planned'
             text = t(lang, key, reason=(': ' + html.escape(why, quote=False)) if why else '',

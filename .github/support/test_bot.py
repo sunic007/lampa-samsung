@@ -683,5 +683,24 @@ class DailyLimits(unittest.TestCase):
         self.assertEqual(llm.sent, 2)
 
 
+
+class DoneNote(unittest.TestCase):
+    def c(self, body, assoc='OWNER'):
+        return {'body': body, 'author_association': assoc}
+
+    def test_owner_reply_goes_to_group(self):
+        note = bot.done_note([self.c('Ответ: включите в «Настройки → Sunic Apps → Интерфейс».'), self.c('технический комментарий')])
+        self.assertEqual(note, 'включите в «Настройки → Sunic Apps → Интерфейс».')
+
+    def test_strangers_and_bot_markers_are_ignored(self):
+        self.assertEqual(bot.done_note([self.c('Ответ: реклама', 'NONE'), self.c('Ответ: x <!-- tg:chat=1;msg=2 -->')]), '')
+        self.assertEqual(bot.done_note([self.c('просто комментарий')]), '')
+
+    def test_note_is_escaped_in_message(self):
+        text = bot.done_text('ru', 'Мультики', ('in', '2.2.0', 'https://x'), None, 'нажмите <b>ОК</b>')
+        self.assertIn('нажмите &lt;b&gt;ОК&lt;/b&gt;', text)
+        self.assertLess(text.index('нажмите'), text.index('2.2.0'))
+
+
 if __name__ == '__main__':
     unittest.main()
