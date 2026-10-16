@@ -15,6 +15,10 @@ on:
         description: 'Только показать решения в журнале: ничего не отправлять и не подтверждать'
         type: boolean
         default: false
+      selftest:
+        description: 'Самопроверка: тестовые сообщения, ответы — в журнал (ничего не отправляется)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -47,4 +51,4 @@ jobs:
           SUPPORT_CHAT_ID: ${{ vars.SUPPORT_CHAT_ID }}
           SUPPORT_GROUP: sunicapps
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
-        run: python3 .github/support/bot.py poll
+        run: python3 .github/support/bot.py ${{ inputs.selftest && 'selftest' || 'poll' }}

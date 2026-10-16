@@ -604,6 +604,7 @@ class Bot:
         self.chat_id = str(chat_id).strip() if chat_id else ''
         self.secret, self.dry, self.now = secret, dry, now
         self.me = None
+        self.show = False   # selftest: показать текст ответов в журнале
         self.llm_calls = self.replies = self.issues = 0
         self.per_user = {}
         self.open_cache = {}
@@ -636,6 +637,8 @@ class Bot:
             p['reply_markup'] = markup
         if self.dry:
             log('  [dry] sendMessage (%d chars)' % len(text))
+            if self.show:
+                log('    ' + text.replace('\n', '\n    '))
             return {'message_id': 0}
         return self.tg.call('sendMessage', **p)
 
@@ -1059,6 +1062,30 @@ def redact(s):
     return re.sub(r'bot\d{6,12}:[A-Za-z0-9_-]{30,}', 'bot***', s)
 
 
+SELFTEST = [
+    'Как установить Lampa на телевизор Samsung?',
+    'В TV Installer не находится телевизор, пишет ошибку подключения',
+    'Добавьте, пожалуйста, тёмную тему в TV Installer',
+    'Lampa ishlamayapti, video ochilmayapti',
+    'Всем привет!',
+]
+
+
+def selftest(bot):
+    """Сообщения «как из группы» — без отправки и без задач: решения и тексты ответов в журнал."""
+    bot.show = True
+    bot.me = bot.tg.call('getMe')
+    chat = {'id': -1, 'type': 'supergroup', 'username': bot.group}
+    for i, text in enumerate(SELFTEST, 1):
+        log('\n> ' + text)
+        bot.handle_message({'message_id': i, 'date': int(bot.now()), 'chat': chat, 'text': text,
+                            'from': {'id': 1000 + i, 'is_bot': False, 'language_code': 'ru'}})
+    log('\n> (задача закрыта как выполненная)')
+    log('    ' + done_text('ru', 'Тёмная тема в TV Installer', ('next',)).replace('\n', '\n    '))
+    log('done: llm=%d replies=%d issues=%d' % (bot.llm_calls, bot.replies, bot.issues))
+    return 0
+
+
 def main(argv):
     cmd = argv[1] if len(argv) > 1 else 'poll'
     token = os.environ.get('TELEGRAM_BOT_TOKEN') or ''
@@ -1075,6 +1102,8 @@ def main(argv):
         chats = {c.strip() for c in (os.environ.get('SUPPORT_CHAT_ID') or '').split(',') if c.strip()} or None
         notify(event, gh, tg, os.environ.get('GITHUB_REPOSITORY', ''), chats, dry)
         return 0
+    if cmd == 'selftest':
+        dry = True
     gh = GitHub(os.environ.get('SUPPORT_TOKEN') or '', http)
     llm = LLM(os.environ.get('LLM_API_KEY'), http, os.environ.get('LLM_MODEL') or None, os.environ.get('LLM_API_URL') or None)
     if not gh.token:
@@ -1091,6 +1120,8 @@ def main(argv):
     log('knowledge base: %d chars' % len(kb))
     bot = Bot(tg, gh, llm, kb, os.environ.get('SUPPORT_GROUP') or 'sunicapps', os.environ.get('SUPPORT_CHAT_ID'),
               secret=token, dry=dry)
+    if cmd == 'selftest':
+        return selftest(bot)
     bot.run()
     return 0
 
