@@ -452,6 +452,9 @@ class LLM:
             else:
                 if url and model:
                     self.targets.append((url, key, model))
+                else:   # формат ключа не узнали (у Google бывают новые) — считаем ключом Gemini
+                    for m in ([model] if model else PROVIDERS[0][2]):
+                        self.targets.append((url or PROVIDERS[0][1], key, m))
 
     @property
     def enabled(self):
@@ -1078,6 +1081,12 @@ def main(argv):
         log('no SUPPORT_TOKEN — questions are answered, issues are not created')
     if not llm.enabled:
         log('no LLM_API_KEY — keyword rules only')
+    if llm.enabled and dry:   # проверочный запуск: работает ли ключ
+        try:
+            llm.chat([{'role': 'user', 'content': 'Reply with JSON {"ok":true}'}])
+            log('llm check: ok')
+        except ApiError as e:
+            log('llm check failed: ' + redact(str(e)))
     kb = load_kb(http) if llm.enabled else ''
     log('knowledge base: %d chars' % len(kb))
     bot = Bot(tg, gh, llm, kb, os.environ.get('SUPPORT_GROUP') or 'sunicapps', os.environ.get('SUPPORT_CHAT_ID'),
