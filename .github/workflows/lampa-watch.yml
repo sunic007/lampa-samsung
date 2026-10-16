@@ -1,0 +1,81 @@
+name: Lampa update watch
+
+# Вышла новая Lampa на сервере Skaz (lampa.byskaz.ru) — обновить запасную копию в пакете (src/app.js и ресурсы),
+# прогнать тесты и открыть pull request «Lampa X.Y.Z» со списком изменений у yumata. Выпуск — вручную, после проверки.
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: lampa-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Compare versions
+        id: cmp
+        run: |
+          python3 - <<'PY'
+          import json, re, urllib.request, os
+          a = json.load(urllib.request.urlopen(urllib.request.Request('http://lampa.byskaz.ru/lampa-main/assembly.json?t=1', headers={'User-Agent': 'Mozilla/5.0'}), timeout=60))
+          loader = open('src/loader.js', encoding='utf-8').read()
+          have_v = re.search(r"var BS_BUNDLED_VERSION = '([^']*)'", loader).group(1)
+          have_h = re.search(r"var BS_BUNDLED_HASH = '([^']*)'", loader).group(1)
+          new = a['hash'] != have_h
+          print('Skaz:', a['app_version'], a['hash'], '| в пакете:', have_v, have_h, '| новая:', new)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('new=%s\nversion=%s\nhash=%s\nhave=%s\n' % ('1' if new else '', a['app_version'], a['hash'], have_v))
+          PY
+      - name: Pull request already open?
+        id: pr
+        if: steps.cmp.outputs.new
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HASH: ${{ steps.cmp.outputs.hash }}
+        run: |
+          n=$(gh pr list --head "lampa-$HASH" --state open --json number -q 'length')
+          echo "open=$([ "$n" != "0" ] && echo 1)" >> "$GITHUB_OUTPUT"
+      - name: Update bundled copy, test, open pull request
+        if: steps.cmp.outputs.new && !steps.pr.outputs.open
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.cmp.outputs.version }}
+          HASH: ${{ steps.cmp.outputs.hash }}
+          HAVE: ${{ steps.cmp.outputs.have }}
+        run: |
+          python3 tools/update_bundled.py
+          node tests/run.cjs > tests.log 2>&1 && TESTS="✅ $(tail -1 tests.log)" || TESTS="❌ $(tail -1 tests.log) — посмотрите лог в Actions"
+          # что поменялось у yumata: коммиты lampa-source за последние 10 дней (точной привязки сборки к коммиту нет)
+          SINCE=$(date -u -d '10 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          gh api "repos/yumata/lampa-source/commits?since=$SINCE&per_page=30" -q '.[] | "- " + (.commit.message|split("\n")[0]) + " (" + .commit.committer.date[0:10] + ", [" + .sha[0:7] + "](" + .html_url + "))"' > changes.md || echo "- (не удалось получить список)" > changes.md
+          git config user.name sunic007
+          git config user.email 199752350+sunic007@users.noreply.github.com
+          git checkout -b "lampa-$HASH"
+          git add -A src
+          git commit -m "Lampa $VERSION (Skaz $HASH) — запасная копия в пакете"
+          git push -u origin "lampa-$HASH"
+          {
+            echo "На сервере Skaz вышла **Lampa $VERSION** (сборка \`$HASH\`). В пакете была $HAVE."
+            echo
+            echo "Автотесты: $TESTS"
+            echo
+            echo "Изменения у yumata (lampa-source, последние 10 дней):"
+            cat changes.md
+            echo
+            echo "Перед выпуском: проверить на ТВ (настройки Sunic Apps, плеер, бот), обновить версию в licenses/THIRD_PARTY_NOTICES.md, CHANGELOG и \`python tools/pack.py --bump\`."
+          } > body.md
+          gh pr create --title "Lampa $VERSION — обновить запасную копию" --body-file body.md --head "lampa-$HASH" --base main
