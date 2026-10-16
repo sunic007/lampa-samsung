@@ -14,7 +14,7 @@ The `.wgt` package bundles the following third-party software. Each part keeps i
 
 The bundled Lampa build is version **3.3.7** (`src/app.js`, the version is in its `app_version`; the build served by
 lampa.byskaz.ru, i.e. Lampa with the byskaz server addresses). Its source code is
-[yumata/lampa-source, version 3.3.7](https://github.com/yumata/lampa-source/tree/a920439ace9e70d1b519c08b7d924b1bd1512b34)
+[yumata/lampa-source, version 3.3.7](https://github.com/yumata/lampa-source/tree/0e975aa7d0a3d9390b9e3f96e52d90979eda4970)
 (GPL-2.0). `src/app.js` and Lampa's resources are included as served by lampa.byskaz.ru, without changes by this project (the `.wgt` omits the `.eot`/`.ttf` copies of fonts that also ship as `.woff` — the TV uses only `.woff`); `src/index.html` is based on Lampa's page with
 the package's loader added. If a link stops working, ask in the [Telegram group](https://t.me/sunicapps) or open an
 issue — the matching source will be provided.
