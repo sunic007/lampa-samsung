@@ -606,5 +606,32 @@ class Notify(unittest.TestCase):
         self.assertEqual(tg.sent(), [])
 
 
+
+class NetworkErrors(unittest.TestCase):
+    def test_timeout_is_status_zero(self):
+        old = bot.urllib.request.urlopen
+
+        def boom(*a, **k):
+            raise TimeoutError('The read operation timed out')
+        bot.urllib.request.urlopen = boom
+        try:
+            self.assertEqual(bot.Http().request('POST', 'https://example.invalid/x', body={}), (0, None, {}))
+        finally:
+            bot.urllib.request.urlopen = old
+
+    def test_llm_timeout_falls_to_next_model(self):
+        class H:
+            calls = []
+
+            def request(self, method, url, headers=None, body=None, timeout=40, raw=False):
+                self.calls.append(body['model'])
+                if len(self.calls) == 1:
+                    return 0, None, {}
+                return 200, {'choices': [{'message': {'content': '{"ok":true}'}}]}, {}
+        h = H()
+        self.assertEqual(bot.LLM('AIzaTEST', h).chat([]), '{"ok":true}')
+        self.assertEqual(len(h.calls), 2)
+
+
 if __name__ == '__main__':
     unittest.main()

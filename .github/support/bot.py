@@ -372,6 +372,9 @@ class Http:
         except urllib.error.HTTPError as e:
             text = e.read().decode('utf-8', 'replace')
             return e.code, (text if raw else _json(text)), dict(e.headers or {})
+        except (urllib.error.URLError, OSError) as e:   # таймаут, обрыв — как ответ «0»: следующая модель / правила
+            log('  network: %s %s' % (type(e).__name__, url.split('?')[0].split('/bot')[0]))
+            return 0, None, {}
 
 
 def _json(text):
