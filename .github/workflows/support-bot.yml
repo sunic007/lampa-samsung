@@ -42,6 +42,14 @@ jobs:
         with:
           python-version: '3.12'
 
+      # счётчики за сутки (запросы к ИИ, по людям) — между запусками; кэш неизменяемый: новый ключ на каждый запуск
+      - name: Restore daily counters
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .support-state
+          key: support-state-${{ github.run_id }}
+          restore-keys: support-state-
+
       - name: Poll the help group
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -51,4 +59,14 @@ jobs:
           SUPPORT_CHAT_ID: ${{ vars.SUPPORT_CHAT_ID }}
           SUPPORT_GROUP: sunicapps
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+          SUPPORT_STATE: .support-state/state.json
+          LLM_PER_DAY: ${{ vars.SUPPORT_LLM_PER_DAY }}
+          LLM_PER_USER_DAY: ${{ vars.SUPPORT_LLM_PER_USER_DAY }}
         run: python3 .github/support/bot.py ${{ inputs.selftest && 'selftest' || 'poll' }}
+
+      - name: Save daily counters
+        if: always() && hashFiles('.support-state/state.json') != ''
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .support-state
+          key: support-state-${{ github.run_id }}

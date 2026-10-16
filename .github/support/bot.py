@@ -48,6 +48,17 @@ MAX_LLM = 20          # вызовов ИИ за запуск
 MAX_REPLIES = 20      # сообщений в группу за запуск
 MAX_ISSUES = 10       # новых задач/комментариев за запуск
 MAX_PER_USER = 3      # задач от одного человека за запуск
+# Сутки (UTC), считаются между запусками (файл состояния в кэше Actions). Бесплатный Gemini Flash-Lite: ~15 запросов
+# в минуту и ~1000 в сутки на проект. Запуск раз в 5 минут = 288 запусков; без суточного предела 288 × 20 = 5760.
+#   LLM_PER_DAY 700 — 30% запаса на повторы и другие модели. Обычный человек пишет 1–3 сообщения в день →
+#   ~230 пишущих в сутки; в группах пишет 1–5% участников → хватает на группу в 5–20 тысяч человек.
+#   LLM_PER_USER_DAY 20 — один человек (или спамер) — не больше 3% суточного запаса; дальше — правила по словам.
+#   LLM_GAP 5 с между запросами → не больше 12 в минуту (предел 15).
+LLM_PER_DAY = int(os.environ.get('LLM_PER_DAY') or 700)
+LLM_PER_USER_DAY = int(os.environ.get('LLM_PER_USER_DAY') or 20)
+ISSUES_PER_USER_DAY = int(os.environ.get('ISSUES_PER_USER_DAY') or 5)
+LLM_GAP = float(os.environ.get('LLM_GAP') or 5)
+STATE_FILE = os.environ.get('SUPPORT_STATE') or ''
 ANSWER_MAX = 600
 TITLE_MAX = 80
 KB_LIMIT = int(os.environ.get('KB_LIMIT') or 10000)
@@ -443,8 +454,10 @@ PROVIDERS = [
 class LLM:
     """OpenAI-совместимый /chat/completions. Ключи — по очереди, у каждого — свои модели."""
 
-    def __init__(self, keys, http, model=None, url=None, sleep=time.sleep):
+    def __init__(self, keys, http, model=None, url=None, sleep=time.sleep, gap=0, clock=time.time):
         self.http, self.sleep = http, sleep
+        self.gap, self.clock, self.last_at = gap, clock, None
+        self.sent = 0   # HTTP-запросов к ИИ за запуск (с повторами) — в суточный счёт
         self.targets = []
         for key in [k.strip() for k in (keys or '').split(',') if k.strip()]:
             for prefix, purl, models in PROVIDERS:
@@ -469,6 +482,12 @@ class LLM:
             body = {'model': model, 'messages': messages, 'temperature': 0.2, 'max_tokens': 900,
                     'response_format': {'type': 'json_object'}}
             for attempt in range(3):
+                if self.gap and self.last_at is not None:   # не чаще LLM_GAP: предел запросов в минуту
+                    wait = self.gap - (self.clock() - self.last_at)
+                    if wait > 0:
+                        self.sleep(wait)
+                self.last_at = self.clock()
+                self.sent += 1
                 st, res, h = self.http.request('POST', url, headers={'Authorization': 'Bearer ' + key}, body=body, timeout=60)
                 if st == 200 and isinstance(res, dict):
                     try:
@@ -601,7 +620,7 @@ class Budget(Exception):
 
 
 class Bot:
-    def __init__(self, tg, gh, llm, kb='', group='sunicapps', chat_id=None, secret='', dry=False, now=time.time):
+    def __init__(self, tg, gh, llm, kb='', group='sunicapps', chat_id=None, secret='', dry=False, now=time.time, state=None):
         self.tg, self.gh, self.llm, self.kb = tg, gh, llm, kb
         self.group = (group or 'sunicapps').lstrip('@').lower()
         self.chat_id = str(chat_id).strip() if chat_id else ''
@@ -612,6 +631,9 @@ class Bot:
         self.per_user = {}
         self.open_cache = {}
         self.labels_ok = set()
+        day = time.strftime('%Y-%m-%d', time.gmtime(now()))
+        st = state if isinstance(state, dict) and state.get('day') == day else {}
+        self.state = {'day': day, 'llm': int(st.get('llm') or 0), 'u': dict(st.get('u') or {}), 't': dict(st.get('t') or {})}
 
     # --- служебное
     def is_group(self, chat):
@@ -667,7 +689,12 @@ class Bot:
         finally:
             if last is not None and not self.dry:
                 self.tg.call('getUpdates', offset=last + 1, timeout=0, limit=1, allowed_updates=['message', 'callback_query'])
-        log('done: llm=%d replies=%d issues=%d' % (self.llm_calls, self.replies, self.issues))
+            self.state['llm'] += self.llm.sent
+            self.llm.sent = 0
+            if not self.dry:
+                save_state(self.state)
+        log('done: llm=%d replies=%d issues=%d · today: AI requests %d/%d' % (
+            self.llm_calls, self.replies, self.issues, self.state['llm'], LLM_PER_DAY))
 
     def handle_update(self, u):
         if u.get('callback_query'):
@@ -730,7 +757,7 @@ class Bot:
         if bot_reply and linked:
             return None
 
-        cls = self.classify(text, ctx)
+        cls = self.classify(text, ctx, user)
         if bot_reply:
             if cls['kind'] == 'other' and THANKS.match(text.strip()):
                 return None
@@ -750,18 +777,28 @@ class Bot:
         if not self.gh.token:
             log('  no SUPPORT_TOKEN — issue skipped')
             return cls
-        if self.issues >= MAX_ISSUES or self.per_user.get(user, 0) >= MAX_PER_USER:
+        if (self.issues >= MAX_ISSUES or self.per_user.get(user, 0) >= MAX_PER_USER
+                or self.state['t'].get(str(user), 0) >= ISSUES_PER_USER_DAY):
             log('  issue limit — skipped')
             return cls
         self.per_user[user] = self.per_user.get(user, 0) + 1
+        self.state['t'][str(user)] = self.state['t'].get(str(user), 0) + 1
         self.ticket(cls, text, chat, mid, thread, bot_reply)
         return cls
 
-    def classify(self, text, ctx):
+    def classify(self, text, ctx, user=0):
         if not self.llm.enabled:
             return keyword_classify(text)
         if self.llm_calls >= MAX_LLM:
             raise Budget('llm')
+        if self.state['llm'] + self.llm.sent >= LLM_PER_DAY:
+            log('  daily AI limit (%d) — keyword rules' % LLM_PER_DAY)
+            return keyword_classify(text)
+        u = str(user)
+        if self.state['u'].get(u, 0) >= LLM_PER_USER_DAY:
+            log('  user AI limit (%d/day) — keyword rules' % LLM_PER_USER_DAY)
+            return keyword_classify(text)
+        self.state['u'][u] = self.state['u'].get(u, 0) + 1
         self.llm_calls += 1
         user = 'Message:\n<<<\n%s\n>>>' % text[:2000]
         if ctx and ctx.get('quoted'):
@@ -1089,6 +1126,27 @@ def selftest(bot):
     return 0
 
 
+def load_state():
+    try:
+        with open(STATE_FILE, encoding='utf-8') as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def save_state(state):
+    if not STATE_FILE:
+        return
+    try:
+        d = os.path.dirname(STATE_FILE)
+        if d:
+            os.makedirs(d, exist_ok=True)
+        with open(STATE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(state, f)
+    except OSError as e:
+        log('state not saved: %s' % e)
+
+
 def main(argv):
     cmd = argv[1] if len(argv) > 1 else 'poll'
     token = os.environ.get('TELEGRAM_BOT_TOKEN') or ''
@@ -1108,7 +1166,8 @@ def main(argv):
     if cmd == 'selftest':
         dry = True
     gh = GitHub(os.environ.get('SUPPORT_TOKEN') or '', http)
-    llm = LLM(os.environ.get('LLM_API_KEY'), http, os.environ.get('LLM_MODEL') or None, os.environ.get('LLM_API_URL') or None)
+    llm = LLM(os.environ.get('LLM_API_KEY'), http, os.environ.get('LLM_MODEL') or None, os.environ.get('LLM_API_URL') or None,
+              gap=LLM_GAP)
     if not gh.token:
         log('no SUPPORT_TOKEN — questions are answered, issues are not created')
     if not llm.enabled:
@@ -1122,7 +1181,7 @@ def main(argv):
     kb = load_kb(http) if llm.enabled else ''
     log('knowledge base: %d chars' % len(kb))
     bot = Bot(tg, gh, llm, kb, os.environ.get('SUPPORT_GROUP') or 'sunicapps', os.environ.get('SUPPORT_CHAT_ID'),
-              secret=token, dry=dry)
+              secret=token, dry=dry, state=load_state())
     if cmd == 'selftest':
         return selftest(bot)
     bot.run()

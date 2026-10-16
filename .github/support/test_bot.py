@@ -72,10 +72,11 @@ class FakeLLM:
     def __init__(self, *answers, enabled=True):
         self.answers = list(answers)
         self.enabled = enabled
-        self.calls = 0
+        self.calls = self.sent = 0
 
     def chat(self, messages):
         self.calls += 1
+        self.sent += 1
         a = self.answers.pop(0) if self.answers else '{}'
         if isinstance(a, Exception):
             raise a
@@ -631,6 +632,55 @@ class NetworkErrors(unittest.TestCase):
         h = H()
         self.assertEqual(bot.LLM('AIzaTEST', h).chat([]), '{"ok":true}')
         self.assertEqual(len(h.calls), 2)
+
+
+
+class DailyLimits(unittest.TestCase):
+    Q = {'kind': 'question', 'product': 'lampa', 'lang': 'ru', 'title': 'Вопрос', 'answer': 'Ответ'}
+
+    def test_user_limit_switches_to_rules(self):
+        llm = FakeLLM(*[self.Q] * 30)
+        b = make_bot(FakeTG(), FakeGH(), llm)
+        b.state['u']['42'] = bot.LLM_PER_USER_DAY
+        b.handle_message(msg('Как установить Lampa на телевизор?'))
+        self.assertEqual(llm.calls, 0)
+        b.handle_message(msg('Как установить Lampa на телевизор?', user=7))
+        self.assertEqual(llm.calls, 1)
+
+    def test_daily_limit_switches_to_rules(self):
+        llm = FakeLLM(self.Q)
+        b = make_bot(FakeTG(), FakeGH(), llm)
+        b.state['llm'] = bot.LLM_PER_DAY
+        b.handle_message(msg('Как установить Lampa на телевизор?'))
+        self.assertEqual(llm.calls, 0)
+
+    def test_state_from_other_day_is_reset(self):
+        b = bot.Bot(FakeTG(), FakeGH(), FakeLLM(), now=lambda: NOW,
+                    state={'day': '2000-01-01', 'llm': 999, 'u': {'42': 99}, 't': {'42': 9}})
+        self.assertEqual((b.state['llm'], b.state['u'], b.state['t']), (0, {}, {}))
+        today = b.state['day']
+        b = bot.Bot(FakeTG(), FakeGH(), FakeLLM(), now=lambda: NOW, state={'day': today, 'llm': 5, 'u': {}, 't': {}})
+        self.assertEqual(b.state['llm'], 5)
+
+    def test_issue_limit_per_day(self):
+        gh = FakeGH()
+        b = make_bot(FakeTG(), gh, FakeLLM({'kind': 'bug', 'product': 'lampa', 'lang': 'ru', 'title': 'Сломалось'}))
+        b.state['t']['42'] = bot.ISSUES_PER_USER_DAY
+        b.handle_message(msg('Lampa не запускается после обновления'))
+        self.assertEqual(b.issues, 0)
+
+    def test_requests_are_spaced(self):
+        waits, clock = [], [100.0]
+
+        class H:
+            def request(self, *a, **k):
+                return 200, {'choices': [{'message': {'content': '{}'}}]}, {}
+        llm = bot.LLM('AIzaTEST', H(), sleep=waits.append, gap=5, clock=lambda: clock[0])
+        llm.chat([])
+        clock[0] += 1
+        llm.chat([])
+        self.assertEqual(waits, [4.0])
+        self.assertEqual(llm.sent, 2)
 
 
 if __name__ == '__main__':
