@@ -34,3 +34,6 @@ jobs:
 
       - name: Package builds
         run: python tools/pack.py && git diff --exit-code version.json
+
+      - name: Support bot tests
+        run: python -m unittest discover -s .github/support -p "test_*.py"

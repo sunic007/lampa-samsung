@@ -1,0 +1,50 @@
+name: Support bot
+
+# Группа «Sunic Apps — вопросы и помощь» (t.me/sunicapps): каждые 5 минут бот забирает новые сообщения,
+# отвечает на вопросы по README/CHANGELOG, ошибки и предложения превращает в задачи (метка from-telegram,
+# без имён) и принимает оценки ⭐. Код и тесты — .github/support/.
+# Секреты: TELEGRAM_BOT_TOKEN (бот, без вебхука, privacy mode выключен), SUPPORT_TOKEN (PAT: Issues
+# read/write на lampa-samsung и tvinstaller; нет — только ответы), SUPPORT_LLM_KEY (ключ Gemini/Groq/
+# OpenRouter; нет — простые правила по словам). Переменные (необязательно): SUPPORT_LLM_MODEL, SUPPORT_CHAT_ID.
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Только показать решения в журнале: ничего не отправлять и не подтверждать'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: support-bot
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Poll the help group
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          SUPPORT_TOKEN: ${{ secrets.SUPPORT_TOKEN }}
+          LLM_API_KEY: ${{ secrets.SUPPORT_LLM_KEY }}
+          LLM_MODEL: ${{ vars.SUPPORT_LLM_MODEL }}
+          SUPPORT_CHAT_ID: ${{ vars.SUPPORT_CHAT_ID }}
+          SUPPORT_GROUP: sunicapps
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+        run: python3 .github/support/bot.py poll
