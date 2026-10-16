@@ -1,15 +1,23 @@
 name: Lampa update watch
 
-# Вышла новая Lampa на сервере Skaz (lampa.byskaz.ru) — обновить запасную копию в пакете (src/app.js и ресурсы),
-# прогнать тесты и открыть pull request «Lampa X.Y.Z» со списком изменений у yumata. Выпуск — вручную, после проверки.
+# Новая Lampa на сервере Skaz (lampa.byskaz.ru) — сама выпускает пакет с обновлённой запасной копией:
+#   обновить src/app.js и ресурсы → автотесты → версия +patch, CHANGELOG, NOTICES → сборка → релиз → jsDelivr →
+#   пост в Telegram-канал → старый релиз удалён. ТВ подхватят модули сами (как при обычном выпуске).
+# Тесты не прошли — релиза нет: pull request с отчётом, разбирает человек.
 on:
   schedule:
     - cron: '17 */6 * * *'
   workflow_dispatch:
+    inputs:
+      release:
+        description: 'Выпускать сразу (иначе только pull request)'
+        type: boolean
+        default: true
 
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 concurrency:
   group: lampa-watch
@@ -20,6 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.12'
@@ -40,28 +50,101 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write('new=%s\nversion=%s\nhash=%s\nhave=%s\n' % ('1' if new else '', a['app_version'], a['hash'], have_v))
           PY
-      - name: Pull request already open?
-        id: pr
+      - name: Update bundled copy and test
+        id: upd
         if: steps.cmp.outputs.new
         env:
           GH_TOKEN: ${{ github.token }}
-          HASH: ${{ steps.cmp.outputs.hash }}
         run: |
-          n=$(gh pr list --head "lampa-$HASH" --state open --json number -q 'length')
-          echo "open=$([ "$n" != "0" ] && echo 1)" >> "$GITHUB_OUTPUT"
-      - name: Update bundled copy, test, open pull request
-        if: steps.cmp.outputs.new && !steps.pr.outputs.open
+          python3 tools/update_bundled.py
+          if node tests/run.cjs > tests.log 2>&1 || node tests/run.cjs > tests.log 2>&1; then echo "ok=1" >> "$GITHUB_OUTPUT"; fi
+          echo "tests=$(tail -1 tests.log)" >> "$GITHUB_OUTPUT"
+          # что поменялось у yumata: коммиты lampa-source за 10 дней (точной привязки сборки Skaz к коммиту нет)
+          SINCE=$(date -u -d '10 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          gh api "repos/yumata/lampa-source/commits?since=$SINCE&per_page=20" \
+            -q '.[] | "- " + (.commit.message|split("\n")[0]) + " (" + .commit.committer.date[0:10] + ", [" + .sha[0:7] + "](" + .html_url + "))"' > changes.md \
+            || echo "- (не удалось получить список)" > changes.md
+          gh api "repos/yumata/lampa-source/commits?per_page=1" -q '.[0].sha' > src_sha.txt || echo "" > src_sha.txt
+      - name: Release automatically
+        if: steps.cmp.outputs.new && steps.upd.outputs.ok && (github.event_name == 'schedule' || inputs.release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.cmp.outputs.version }}
+          HASH: ${{ steps.cmp.outputs.hash }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+          git config user.name sunic007
+          git config user.email 199752350+sunic007@users.noreply.github.com
+          SRC_SHA=$(cat src_sha.txt)
+          # следующая версия пакета (patch) — и запись в CHANGELOG до сборки: из неё берутся заметки для окна на ТВ
+          NEXT=$(python3 -c "import re;v=re.search(r'<widget[^>]*\sversion=\"(\d+)\.(\d+)\.(\d+)\"',open('src/config.xml',encoding='utf-8').read()).groups();print('%s.%s.%d'%(v[0],v[1],int(v[2])+1))")
+          python3 - "$NEXT" "$VERSION" "$SRC_SHA" <<'PY'
+          import io, re, sys
+          nxt, ver, sha = sys.argv[1], sys.argv[2], sys.argv[3]
+          p = '.github/CHANGELOG.md'; s = io.open(p, encoding='utf-8', newline='').read(); nl = '\r\n' if '\r\n' in s else '\n'
+          entry = nl.join(['## %s — Lampa %s внутри пакета' % (nxt, ver),
+                           '- Запасная копия Lampa внутри пакета обновлена до свежей сборки %s (как на сервере Skaz): Lampa запускается из пакета, без загрузки ядра из сети.' % ver,
+                           '- Сделано автоматически: новая Lampa на сервере Skaz → тесты → выпуск.', '', ''])
+          i = s.index('\n## ') + 1
+          s = s[:i] + entry + s[i:]
+          io.open(p, 'w', encoding='utf-8', newline='').write(s)
+          if sha:
+              p = 'licenses/THIRD_PARTY_NOTICES.md'; s = io.open(p, encoding='utf-8', newline='').read()
+              s = re.sub(r'The bundled Lampa build is version \*\*[\d.]+\*\*', 'The bundled Lampa build is version **%s**' % ver, s)
+              s = re.sub(r'\[yumata/lampa-source, version [\d.]+\]\(https://github\.com/yumata/lampa-source/tree/[0-9a-f]+\)',
+                         '[yumata/lampa-source, version %s](https://github.com/yumata/lampa-source/tree/%s)' % (ver, sha), s)
+              io.open(p, 'w', encoding='utf-8', newline='').write(s)
+          PY
+          python3 tools/pack.py --bump patch
+          V=$(python3 -c "import json;print(json.load(open('version.json',encoding='utf-8'))['version'])")
+          [ "$V" = "$NEXT" ] || { echo "версия $V, ожидалась $NEXT"; exit 1; }
+          git add -A src .github/CHANGELOG.md licenses version.json
+          git commit -m "$V: Lampa $VERSION внутри пакета (автоматически, Skaz $HASH)"
+          git tag "v$V"
+          git push origin HEAD:main "v$V"
+          PREV=$(gh release list -R "$REPO" --limit 1 --json tagName -q '.[0].tagName' || true)
+          {
+            echo "**RU**"
+            echo "- Запасная копия Lampa внутри пакета обновлена до свежей сборки $VERSION (как на сервере Skaz)."
+            echo "- Выпущено автоматически после автотестов ($(tail -1 tests.log))."
+            echo
+            echo "**EN**"
+            echo "- The bundled Lampa copy was updated to the latest $VERSION build (as on the Skaz server). Released automatically after tests."
+            echo
+            echo "Изменения у yumata (lampa-source):"
+            cat changes.md
+            echo
+            echo "Установка: скачайте **samsung.wgt** ниже. Включённые ТВ обновятся сами."
+          } > notes.md
+          gh release create "v$V" -R "$REPO" --title "$V — Lampa $VERSION внутри пакета" --notes-file notes.md --latest "dist/samsung-$V.wgt" samsung.wgt
+          # все файлы модулей — на jsDelivr (ТВ берут их оттуда), до 10 минут
+          python3 - "$V" <<'PY'
+          import json, sys, time, urllib.request
+          v = sys.argv[1]; files = ['src/' + f for f in json.load(open('version.json', encoding='utf-8'))['files']] + ['version.json']
+          for _ in range(20):
+              ok = 0
+              for f in files:
+                  try: ok += urllib.request.urlopen('https://cdn.jsdelivr.net/gh/sunic007/lampa-samsung@v%s/%s' % (v, f), timeout=20).status == 200
+                  except Exception: pass
+              print('jsDelivr %d/%d' % (ok, len(files)))
+              if ok == len(files): break
+              time.sleep(30)
+          PY
+          # релиз от GITHUB_TOKEN не запускает другие workflow по событию release — пост в канал запускаем сами
+          gh workflow run telegram-post.yml -R "$REPO" -f tag="v$V" || true
+          if [ -n "$PREV" ] && [ "$PREV" != "v$V" ]; then gh release delete "$PREV" -R "$REPO" --yes || true; fi
+      - name: Tests failed — pull request for a human
+        if: steps.cmp.outputs.new && (!steps.upd.outputs.ok || (github.event_name == 'workflow_dispatch' && !inputs.release))
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.cmp.outputs.version }}
           HASH: ${{ steps.cmp.outputs.hash }}
           HAVE: ${{ steps.cmp.outputs.have }}
+          TESTS: ${{ steps.upd.outputs.tests }}
         run: |
-          python3 tools/update_bundled.py
-          node tests/run.cjs > tests.log 2>&1 && TESTS="✅ $(tail -1 tests.log)" || TESTS="❌ $(tail -1 tests.log) — посмотрите лог в Actions"
-          # что поменялось у yumata: коммиты lampa-source за последние 10 дней (точной привязки сборки к коммиту нет)
-          SINCE=$(date -u -d '10 days ago' +%Y-%m-%dT%H:%M:%SZ)
-          gh api "repos/yumata/lampa-source/commits?since=$SINCE&per_page=30" -q '.[] | "- " + (.commit.message|split("\n")[0]) + " (" + .commit.committer.date[0:10] + ", [" + .sha[0:7] + "](" + .html_url + "))"' > changes.md || echo "- (не удалось получить список)" > changes.md
+          n=$(gh pr list --head "lampa-$HASH" --state open --json number -q 'length')
+          [ "$n" = "0" ] || { echo "pull request уже открыт"; exit 0; }
           git config user.name sunic007
           git config user.email 199752350+sunic007@users.noreply.github.com
           git checkout -b "lampa-$HASH"
@@ -71,11 +154,9 @@ jobs:
           {
             echo "На сервере Skaz вышла **Lampa $VERSION** (сборка \`$HASH\`). В пакете была $HAVE."
             echo
-            echo "Автотесты: $TESTS"
+            echo "Автотесты: ${TESTS:-?} — автоматический выпуск остановлен, посмотрите лог в Actions."
             echo
             echo "Изменения у yumata (lampa-source, последние 10 дней):"
             cat changes.md
-            echo
-            echo "Перед выпуском: проверить на ТВ (настройки Sunic Apps, плеер, бот), обновить версию в licenses/THIRD_PARTY_NOTICES.md, CHANGELOG и \`python tools/pack.py --bump\`."
           } > body.md
-          gh pr create --title "Lampa $VERSION — обновить запасную копию" --body-file body.md --head "lampa-$HASH" --base main
+          gh pr create --title "Lampa $VERSION — проверить: автотесты не прошли" --body-file body.md --head "lampa-$HASH" --base main

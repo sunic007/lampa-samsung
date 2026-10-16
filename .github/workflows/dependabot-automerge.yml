@@ -1,0 +1,24 @@
+name: Dependabot auto-merge
+
+# Обновления от Dependabot (только действия GitHub: checkout, setup-node, setup-python — закреплены по SHA) — влить
+# самим, когда проверка «Check» на pull request прошла. pull_request_target: у запуска от Dependabot по pull_request
+# токен только на чтение. Код из pull request здесь не запускается (нет checkout) — только команды gh.
+on: pull_request_target
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for checks, then merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.html_url }}
+        run: |
+          sleep 20
+          gh pr checks "$PR" --watch --interval 20 || { echo "проверки не прошли — оставляю человеку"; exit 0; }
+          gh pr merge "$PR" --squash --delete-branch
