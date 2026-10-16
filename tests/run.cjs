@@ -305,6 +305,21 @@ t('поиск: падение плагина не выходит наружу', 
 const MN = load('bsmenu.js', 'BSMenu').M;
 t('турецкие: по языку или стране', MN._isTurkish({ original_language: 'tr' }) && MN._isTurkish({ original_language: 'en', origin_country: ['TR'] }) && !MN._isTurkish({ original_language: 'ru', origin_country: ['RU'] }));
 t('турецкие: название из TMDB экранируется', MN._esc('<b>"x"&') === '&lt;b&gt;&quot;x&quot;&amp;');
+t('мультики: пункт меню выключен, пока его не включат', !MN._kidsEnabled() && load('bsmenu.js', 'BSMenu', { bs_menu_kids: 'true' }).M._kidsEnabled());
+t('мультики: по умолчанию мультсериалы до 6 лет, выбор запоминается', MN._kidsType() === 'tv' && MN._kidsAge() === 0
+    && load('bsmenu.js', 'BSMenu', { bs_kids_age: '1', bs_kids_type: 'movie' }).M._kidsAge() === 1 && load('bsmenu.js', 'BSMenu', { bs_kids_type: 'movie' }).M._kidsType() === 'movie'
+    && load('bsmenu.js', 'BSMenu', { bs_kids_age: '9' }).M._kidsAge() === 0);
+{
+    const u1 = MN._kidsUrl('tv', { g: [35], q: 'sort_by=popularity.desc' }), u2 = MN._kidsUrl('movie', { g: [10751], lang: 'ru', age: false });
+    t('мультики: сериалы — мультфильм+жанр, без драм, возраст TV-Y; параметры не повторяются',
+        u1.indexOf('discover/tv?with_genres=16,35&without_genres=80,18,') === 0 && /certification=TV-Y&/.test(u1) && u1.split('with_genres=').length === 2);
+    t('мультики: фильмы — без ужасов и криминала; российские без рейтинга США',
+        u2.indexOf('discover/movie?with_genres=16,10751&without_genres=27,80,') === 0 && u2.indexOf('certification') < 0 && /with_original_language=ru/.test(u2));
+    const fm = load('bsmenu.js', 'BSMenu', { bs_kids_age: '1' }).M;
+    t('мультики: фильмы 7–12 лет — рейтинг PG', /certification=PG$/.test(fm._kidsUrl('movie', {})));
+}
+t('мультики: поиск — мультфильмы и детские, но не взрослая анимация и ужасы', MN._isKids({ genre_ids: [10762] }) && MN._isKids({ genre_ids: [16, 35], name: 'x' })
+    && !MN._isKids({ genre_ids: [16, 18], name: 'x' }) && MN._isKids({ genre_ids: [16, 18], title: 'Король Лев' }) && !MN._isKids({ genre_ids: [16, 27], title: 'x' }) && !MN._isKids({ genre_ids: [35] }));
 
 
 /* ---- быстрый старт: библиотеки из пакета, память дорожек ---- */

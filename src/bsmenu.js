@@ -10,6 +10,13 @@
  *  По нажатию — короткое меню (первым выделено «Популярные», для мамы это одно лишнее «ОК»): популярные, новинки,
  *  лучшие по оценкам, по жанру, по годам, поиск по названию. Поиск TMDB по языку оригинала фильтровать не умеет —
  *  ищем по названию (2 страницы) и оставляем только турецкие (язык оригинала tr или страна TR).
+ *
+ *  «Мультики» — по просьбе из группы t.me/sunicapps (lampa-samsung#3). Как «Турецкие»: короткое меню — мультсериалы
+ *  или мультфильмы, возраст (до 6 / 7–12 / до 12 лет — рейтинги TV-Y, TV-Y7 и G, PG; оба выбора запоминаются),
+ *  популярные, новинки, лучшие, по теме (обучающие, природа, наука, исторические, сказки…), по годам, российские
+ *  и турецкие, поиск по названию. Всегда без ужасов, криминала, триллеров и войны (у сериалов ещё без драм, реалити,
+ *  ток-шоу и новостей). Пункт по умолчанию выключен — включается в «Настройки → Sunic Apps → Интерфейс»; стоит
+ *  после «Турецких сериалов» (или «Сериалов»).
  */
 var BSMenu = (function () {
     var TURK = {
@@ -92,28 +99,132 @@ var BSMenu = (function () {
 
     /** Поиск только среди турецких сериалов: выдача TMDB по названию (2 страницы), из неё — турецкие. */
     function search() {
-        Lampa.Input.edit({ title: 'Название турецкого сериала', value: '', free: true, nosave: true }, function (q) {
+        searchIn('Название турецкого сериала', 'Турецких сериалов', isTurkish);
+    }
+
+    function searchIn(prompt, none, keep, type) {
+        type = type || 'tv';
+        Lampa.Input.edit({ title: prompt, value: '', free: true, nosave: true }, function (q) {
             q = String(q || '').replace(/^\s+|\s+$/g, '');
             if (!q) return;
             var found = [], seen = {}, left = 2;
             var done = function () {
                 if (--left > 0) return;
-                if (!found.length) return Lampa.Noty.show('Турецких сериалов «' + esc(q) + '» не нашлось');
+                if (!found.length) return Lampa.Noty.show(none + ' «' + esc(q) + '» не нашлось');
                 select('Найдено: ' + found.length, found.map(function (r) {
-                    var y = (r.first_air_date || '').slice(0, 4);
-                    return { title: esc(r.name || r.original_name) + (y ? ' (' + y + ')' : ''), subtitle: (r.original_name && r.original_name !== r.name ? esc(r.original_name) + ' · ' : '') + (r.vote_average ? '★ ' + (+r.vote_average).toFixed(1) : ''), card: r };
+                    var y = (r.first_air_date || r.release_date || '').slice(0, 4), name = r.name || r.title, orig = r.original_name || r.original_title;
+                    return { title: esc(name || orig) + (y ? ' (' + y + ')' : ''), subtitle: (orig && orig !== name ? esc(orig) + ' · ' : '') + (r.vote_average ? '★ ' + (+r.vote_average).toFixed(1) : ''), card: r };
                 }), function (a) {
-                    Lampa.Activity.push({ url: '', component: 'full', id: a.card.id, method: 'tv', card: a.card, source: 'tmdb' });
+                    Lampa.Activity.push({ url: '', component: 'full', id: a.card.id, method: type, card: a.card, source: 'tmdb' });
                 });
             };
             [1, 2].forEach(function (page) {
-                tmdb('search/tv?query=' + encodeURIComponent(q) + '&page=' + page, function (j) {
-                    ((j && j.results) || []).forEach(function (r) { if (isTurkish(r) && !seen[r.id]) { seen[r.id] = 1; found.push(r); } });
+                tmdb('search/' + type + '?query=' + encodeURIComponent(q) + '&page=' + page, function (j) {
+                    ((j && j.results) || []).forEach(function (r) { if (keep(r) && !seen[r.id]) { seen[r.id] = 1; found.push(r); } });
                     done();
                 }, done);
             });
         });
     }
+
+    var KIDS = { action: 'bs_kids', title: 'Мультики' };
+    // мишка
+    var KIDS_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">' +
+        '<circle cx="5.5" cy="5.5" r="3"/><circle cx="18.5" cy="5.5" r="3"/>' +
+        '<path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm-3 6.5a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4zm6 0a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4zM12 14c1.4 0 2.5.8 2.5 1.6S13.4 17.5 12 17.5s-2.5-1.1-2.5-1.9S10.6 14 12 14z"/></svg>';
+    function kidsEnabled() { return lsGet('bs_menu_kids') === 'true'; }
+    var KIDS_TYPES = [['tv', 'Мультсериалы'], ['movie', 'Мультфильмы']];
+    function kidsType() { return lsGet('bs_kids_type') === 'movie' ? 'movie' : 'tv'; }
+    // возраст — американские рейтинги (у TMDB они есть у большинства мультиков): сериалы TV-Y «2–6 лет», TV-Y7 «7+»;
+    // фильмы G «для всех», PG «детям — с родителями»
+    var KIDS_AGES = [['до 6 лет', 'TV-Y', 'G'], ['7–12 лет', 'TV-Y7', 'PG'], ['до 12 лет', 'TV-Y%7CTV-Y7', 'G%7CPG']];
+    function kidsAge() { var i = +lsGet('bs_kids_age'); return KIDS_AGES[i] ? i : 0; }
+    // темы: g — жанры TMDB (вместе с «Мультфильмом»), k — ключевые слова (%7C — «любое из»); age: false — таких мало
+    // и рейтинг у них редко указан: без возраста, для сериалов — жанр «Детский»
+    var KW_HIST = '282633%7C15126%7C12995%7C15012%7C189119';
+    var KIDS_THEMES = [
+        { t: 'Обучающие', s: 'буквы, счёт, мир вокруг', k: '18257%7C206919%7C6009', movie: { g: [10751], k: '18257%7C206919%7C6009', age: false } },
+        { t: 'Природа и животные', k: '18330%7C18165' },
+        { t: 'Наука и динозавры', k: '287067%7C12616' },
+        { t: 'Исторические', tv: { g: [10762], k: KW_HIST, age: false }, movie: { g: [36] } },
+        { t: 'Сказки', k: '3205', tv: { g: [10762], k: '3205', age: false } },
+        { t: 'Музыкальные', tv: { g: [10762], k: '283297', age: false }, movie: { g: [10402] } },
+        { t: 'Приключения', tv: { g: [10759] }, movie: { g: [12] } },
+        { t: 'Весёлые', s: 'комедии', g: [35] },
+        { t: 'Семейные', g: [10751] }
+    ];
+    var KIDS_WITHOUT = { tv: '80,18,9648,10768,10764,10767,10763', movie: '27,80,53,10752' };
+
+    /** Адрес каталога TMDB: мультики нужного типа; каждый параметр — один раз (повтор TMDB не прощает), взрослые
+     *  жанры убраны всегда. o: g — жанры, k — ключевые слова, age — с возрастом (по умолчанию да), lang, q — остальное. */
+    function kidsUrl(type, o) {
+        var g = [16].concat(o.g || []), q = 'discover/' + type + '?with_genres=' + g.join(',') + '&without_genres=' + KIDS_WITHOUT[type];
+        if (o.age !== false) q += '&certification_country=US&certification=' + KIDS_AGES[kidsAge()][type === 'tv' ? 1 : 2];
+        if (o.k) q += '&with_keywords=' + o.k;
+        if (o.lang) q += '&with_original_language=' + o.lang;
+        return q + (o.q ? '&' + o.q : '');
+    }
+    function isKids(r) {
+        var g = (r && r.genre_ids) || [], bad = [27, 80, 53, 10752];
+        for (var i = 0; i < bad.length; i++) if (g.indexOf(bad[i]) >= 0) return false;
+        if (g.indexOf(10762) >= 0) return true;
+        return g.indexOf(16) >= 0 && (r.title !== undefined || g.indexOf(18) < 0);   // сериал-мультфильм с драмой — взрослый
+    }
+
+    function openKidsList(title, type, o) {
+        Lampa.Activity.push({ url: kidsUrl(type, o), title: title, component: 'category_full', source: 'tmdb', card_type: true, page: 1 });
+    }
+
+    function openKids() {
+        var type = kidsType(), tv = type === 'tv', age = KIDS_AGES[kidsAge()];
+        var name = tv ? 'Мультсериалы' : 'Мультфильмы', T = name + ' (' + age[0] + ')';
+        var date = tv ? 'first_air_date' : 'primary_release_date';
+        select(KIDS.title, [
+            { title: name, subtitle: 'нажмите — ' + (tv ? 'мультфильмы' : 'мультсериалы'), act: 'type' },
+            { title: 'Возраст: ' + age[0], subtitle: 'нажмите, чтобы выбрать', act: 'age' },
+            { title: 'Популярные', act: 'pop' },
+            { title: 'Новинки', subtitle: 'вышли за последние 2 года', act: 'new' },
+            { title: 'Лучшие по оценкам', act: 'top' },
+            { title: 'По теме…', subtitle: 'обучающие, исторические, природа…', act: 'theme' },
+            { title: 'По годам…', act: 'year' },
+            { title: 'Российские', subtitle: tv ? 'Маша и Медведь, Смешарики, Фиксики…' : '', act: 'ru' },
+            { title: 'Турецкие', act: 'tr' },
+            { title: 'Поиск по названию…', act: 'search' }
+        ], function (a) {
+            if (a.act === 'type') { lsSet('bs_kids_type', tv ? 'movie' : 'tv'); openKids(); }
+            else if (a.act === 'age') select('Возраст', KIDS_AGES.map(function (x, i) { return { title: x[0], selected: i === kidsAge(), i: i }; }), function (x) {
+                lsSet('bs_kids_age', String(x.i)); openKids();
+            });
+            else if (a.act === 'pop') openKidsList(T + ': популярные', type, { q: 'sort_by=popularity.desc&vote_count.gte=' + (tv ? 5 : 20) });
+            else if (a.act === 'new') {
+                var y = new Date(); y.setFullYear(y.getFullYear() - 2);
+                openKidsList(T + ': новинки', type, { q: 'sort_by=popularity.desc&' + date + '.gte=' + y.toISOString().slice(0, 10) + '&' + date + '.lte=' + today() });
+            }
+            else if (a.act === 'top') openKidsList(T + ': лучшие', type, { q: 'sort_by=vote_average.desc&vote_count.gte=' + (tv ? 30 : 200) });
+            else if (a.act === 'theme') select('Тема', KIDS_THEMES.map(function (t) { return { title: t.t, subtitle: t.s || '', th: t }; }), function (x) {
+                var t = x.th, o = t[type] || { g: t.g, k: t.k };
+                openKidsList((o.age === false ? name : T) + ': ' + t.t.toLowerCase(), type, { g: o.g, k: o.k, age: o.age, q: 'sort_by=popularity.desc' });
+            });
+            else if (a.act === 'year') select('Годы', YEARS.map(function (y) { return { title: y[0], from: y[1], to: y[2] }; }), function (y) {
+                openKidsList(T + ': ' + y.title.toLowerCase(), type, { q: 'sort_by=popularity.desc' + (y.from ? '&' + date + '.gte=' + y.from : '') + (y.to ? '&' + date + '.lte=' + y.to : '') });
+            });
+            // у российских и турецких рейтингов США нет: детские — по жанру («Детский» у сериалов, «Семейный» у фильмов)
+            else if (a.act === 'ru' || a.act === 'tr') openKidsList(name + ': ' + (a.act === 'ru' ? 'российские' : 'турецкие'), type,
+                { g: [tv ? 10762 : 10751], lang: a.act, age: false, q: 'sort_by=popularity.desc' });
+            else if (a.act === 'search') searchIn(tv ? 'Название мультсериала' : 'Название мультфильма', tv ? 'Мультсериалов' : 'Мультфильмов', isKids, type);
+        });
+    }
+
+    function addKidsButton() {
+        if (!kidsEnabled() || $('.menu [data-action="' + KIDS.action + '"]').length) return;
+        var el = Lampa.Menu.addButton(KIDS_ICON, KIDS.title, openKids);
+        el.attr('data-action', KIDS.action);
+        var after = $('.menu .menu__list:eq(0) [data-action="' + TURK.action + '"]');
+        if (!after.length) after = $('.menu .menu__list:eq(0) [data-action="tv"]');
+        if (after.length) el.insertAfter(after);
+    }
+
+    function removeKidsButton() { $('.menu [data-action="' + KIDS.action + '"]').remove(); }
 
     function addButton() {
         if (!enabled() || $('.menu [data-action="' + TURK.action + '"]').length) return;
@@ -206,11 +317,22 @@ var BSMenu = (function () {
                 if (on) addButton(); else removeButton();
             }
         });
+        Lampa.SettingsApi.addParam({
+            component: 'bs_update',
+            param: { name: 'bs_menu_kids', type: 'trigger', 'default': false },
+            field: { name: 'Кнопка «Мультики» в меню', description: 'Мультфильмы и мультсериалы: возраст (до 6, 7–12 лет), темы — обучающие, исторические, природа; по годам, поиск.' },
+            onChange: function (v) {
+                var on = v === true || v === 'true';
+                lsSet('bs_menu_kids', String(on));
+                if (on) addKidsButton(); else removeKidsButton();
+            }
+        });
     }
 
     function start() {
         try { addSettings(); } catch (e) {}
         try { addButton(); } catch (e) { console.log('BS menu', e); }
+        try { addKidsButton(); } catch (e) { console.log('BS kids', e); }
         try { addWantButton(); } catch (e) { console.log('BS want', e); }
         try {
             Lampa.Listener.follow('full', function (e) {
@@ -220,5 +342,6 @@ var BSMenu = (function () {
         } catch (e) { console.log('BS watch', e); }
     }
 
-    return { start: start, open: openTurk, search: search, TURK: TURK, _isTurkish: isTurkish, _esc: esc };
+    return { start: start, open: openTurk, search: search, TURK: TURK, KIDS: KIDS, openKids: openKids,
+        _isTurkish: isTurkish, _esc: esc, _kidsUrl: kidsUrl, _kidsEnabled: kidsEnabled, _isKids: isKids, _kidsAge: kidsAge, _kidsType: kidsType };
 })();
