@@ -306,18 +306,34 @@ const MN = load('bsmenu.js', 'BSMenu').M;
 t('турецкие: по языку или стране', MN._isTurkish({ original_language: 'tr' }) && MN._isTurkish({ original_language: 'en', origin_country: ['TR'] }) && !MN._isTurkish({ original_language: 'ru', origin_country: ['RU'] }));
 t('турецкие: название из TMDB экранируется', MN._esc('<b>"x"&') === '&lt;b&gt;&quot;x&quot;&amp;');
 t('мультики: пункт меню выключен, пока его не включат', !MN._kidsEnabled() && load('bsmenu.js', 'BSMenu', { bs_menu_kids: 'true' }).M._kidsEnabled());
-t('мультики: по умолчанию мультсериалы до 6 лет, выбор запоминается', MN._kidsType() === 'tv' && MN._kidsAge() === 0
-    && load('bsmenu.js', 'BSMenu', { bs_kids_age: '1', bs_kids_type: 'movie' }).M._kidsAge() === 1 && load('bsmenu.js', 'BSMenu', { bs_kids_type: 'movie' }).M._kidsType() === 'movie'
-    && load('bsmenu.js', 'BSMenu', { bs_kids_age: '9' }).M._kidsAge() === 0);
+t('мультики: по умолчанию мультсериалы, «все детские»; выбор запоминается', MN._kidsType() === 'tv' && MN._kidsBand() === 0
+    && load('bsmenu.js', 'BSMenu', { bs_kids_band: '2', bs_kids_type: 'movie' }).M._kidsBand() === 2 && load('bsmenu.js', 'BSMenu', { bs_kids_type: 'movie' }).M._kidsType() === 'movie'
+    && load('bsmenu.js', 'BSMenu', { bs_kids_band: '9' }).M._kidsBand() === 0);
 {
-    const u1 = MN._kidsUrl('tv', { g: [35], q: 'sort_by=popularity.desc' }), u2 = MN._kidsUrl('movie', { g: [10751], lang: 'ru', age: false });
-    t('мультики: сериалы — мультфильм+жанр, без драм, возраст TV-Y; параметры не повторяются',
-        u1.indexOf('discover/tv?with_genres=16,35&without_genres=80,18,') === 0 && /certification=TV-Y&/.test(u1) && u1.split('with_genres=').length === 2);
-    t('мультики: фильмы — без ужасов и криминала; российские без рейтинга США',
-        u2.indexOf('discover/movie?with_genres=16,10751&without_genres=27,80,') === 0 && u2.indexOf('certification') < 0 && /with_original_language=ru/.test(u2));
-    const fm = load('bsmenu.js', 'BSMenu', { bs_kids_age: '1' }).M;
-    t('мультики: фильмы 7–12 лет — рейтинг PG', /certification=PG$/.test(fm._kidsUrl('movie', {})));
+    const once = u => { const ks = u.split('?')[1].split('&').map(p => p.split('=')[0]); return ks.length === new Set(ks).size; };
+    const tvAll = MN._kidsQueries('tv', { g: 35, p: { sort_by: 'popularity.desc', 'vote_count.gte': '30' } });
+    t('мультики: «все детские» — жанр «Детский» + рейтинги США и России, параметры не повторяются',
+        tvAll.length === 3 && tvAll.every(once) && /with_genres=16,10762,35&/.test(tvAll[0]) && /certification=TV-Y%7CTV-Y7/.test(tvAll[1]) && /certification_country=RU/.test(tvAll[2])
+        && tvAll.every(u => /vote_count.gte=30/.test(u) && /without_genres=80,18,/.test(u)));
+    const movSmall = load('bsmenu.js', 'BSMenu', { bs_kids_band: '1' }).M._kidsQueries('movie', { p: { '{date}.gte': '2010-01-01', '{date}.lte': '2019-12-31' } });
+    t('мультики: фильмы малышам — G, 0+ и советские; десятилетие заменяет «до 1991»', movSmall.length === 3 && movSmall.every(once)
+        && /certification=G&/.test(movSmall[0]) && /primary_release_date.lte=2019-12-31/.test(movSmall[2]) && /without_genres=27,80,/.test(movSmall[0]));
+    const su = MN._kidsQueries('movie', { only: [{ g: [16], lang: 'ru', to: '1991-12-31' }], p: { sort_by: 'vote_count.desc' } });
+    t('мультики: советские — один запрос, самые оцениваемые первыми', su.length === 1 && /with_original_language=ru/.test(su[0]) && /primary_release_date.lte=1991-12-31/.test(su[0]) && /sort_by=vote_count.desc/.test(su[0]));
+    const seen = {}, r1 = MN._kidsMerge([{ results: [{ id: 1, name: 'А', original_name: 'A', poster_path: '/a', popularity: 5 }, { id: 2, name: 'Bluey', original_name: 'Bluey', poster_path: '/b', overview: '', original_language: 'en' }] },
+        { results: [{ id: 1, name: 'А', poster_path: '/a' }, { id: 3, name: 'Б', poster_path: '/c', popularity: 9 }, { id: 4, name: 'В', original_name: 'V' }] }], seen);
+    t('мультики: выдача без повторов, без непереведённого и без обложки, популярные первыми', r1.map(r => r.id).join() === '3,1' && r1[0].source === 'tmdb');
+    t('мультики: «Царь горы» не детский, турецкие без перевода — можно', MN._kidsJunk({ id: 2122, poster_path: '/x', overview: 'о' })
+        && !MN._kidsJunk({ id: 5, name: 'İbi', original_name: 'İbi', poster_path: '/x', original_language: 'tr' }, true) && MN._kidsJunk({ id: 5, name: 'İbi', original_name: 'İbi', poster_path: '/x', original_language: 'tr' }));
+    t('мультики: повтор со следующей страницы не показывается', MN._kidsMerge([{ results: [{ id: 3, name: 'Б', poster_path: '/c' }] }], seen).length === 0);
 }
+t('мультики: в сохранённом порядке меню — после «Турецких сериалов», не в конце', (() => {
+    const r = MN._menuSortPlace(['Главная', 'Сериалы', 'Турецкие сериалы', 'Персоны', 'Shots'], 'Мультики', ['Турецкие сериалы', 'Сериалы']);
+    const r2 = MN._menuSortPlace(['Главная', 'Сериалы', 'Shots'], 'Мультики', ['Турецкие сериалы', 'Сериалы']);
+    const same = ['Мультики', 'Главная'];
+    return r.join() === 'Главная,Сериалы,Турецкие сериалы,Мультики,Персоны,Shots' && r2.join() === 'Главная,Сериалы,Мультики,Shots'
+        && MN._menuSortPlace(same, 'Мультики', ['Сериалы']) === same && MN._menuSortPlace([], 'Мультики', ['Сериалы']).length === 0;
+})());
 t('мультики: поиск — мультфильмы и детские, но не взрослая анимация и ужасы', MN._isKids({ genre_ids: [10762] }) && MN._isKids({ genre_ids: [16, 35], name: 'x' })
     && !MN._isKids({ genre_ids: [16, 18], name: 'x' }) && MN._isKids({ genre_ids: [16, 18], title: 'Король Лев' }) && !MN._isKids({ genre_ids: [16, 27], title: 'x' }) && !MN._isKids({ genre_ids: [35] }));
 

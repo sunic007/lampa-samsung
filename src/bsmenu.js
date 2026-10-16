@@ -11,12 +11,13 @@
  *  лучшие по оценкам, по жанру, по годам, поиск по названию. Поиск TMDB по языку оригинала фильтровать не умеет —
  *  ищем по названию (2 страницы) и оставляем только турецкие (язык оригинала tr или страна TR).
  *
- *  «Мультики» — по просьбе из группы t.me/sunicapps (lampa-samsung#3). Как «Турецкие»: короткое меню — мультсериалы
- *  или мультфильмы, возраст (до 6 / 7–12 / до 12 лет — рейтинги TV-Y, TV-Y7 и G, PG; оба выбора запоминаются),
- *  популярные, новинки, лучшие, по теме (обучающие, природа, наука, исторические, сказки…), по годам, российские
- *  и турецкие, поиск по названию. Всегда без ужасов, криминала, триллеров и войны (у сериалов ещё без драм, реалити,
- *  ток-шоу и новостей). Пункт по умолчанию выключен — включается в «Настройки → Sunic Apps → Интерфейс»; стоит
- *  после «Турецких сериалов» (или «Сериалов»).
+ *  «Мультики» — по просьбе из группы t.me/sunicapps (lampa-samsung#3), устроено как детские разделы Иви, Okko и
+ *  Netflix Kids: мультсериалы или мультфильмы; возраст — группа («все детские», «малыши до 6», «7–12»), а не
+ *  рейтинг одной страны; темы-полки (обучающие, животные, машинки, принцессы, динозавры…); годы десятилетиями;
+ *  советские, российские, турецкие; поиск. Каталог — свой источник «bskids»: несколько запросов TMDB сразу
+ *  (рейтинги США и России, жанр «Детский», советские), без повторов, без непереведённого и без обложки.
+ *  Всегда без ужасов, криминала, триллеров и войны (у сериалов ещё без драм, реалити, ток-шоу и новостей).
+ *  Пункт по умолчанию выключен — «Настройки → Sunic Apps → Интерфейс»; стоит после «Турецких сериалов».
  */
 var BSMenu = (function () {
     var TURK = {
@@ -133,37 +134,144 @@ var BSMenu = (function () {
         '<circle cx="5.5" cy="5.5" r="3"/><circle cx="18.5" cy="5.5" r="3"/>' +
         '<path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm-3 6.5a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4zm6 0a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4zM12 14c1.4 0 2.5.8 2.5 1.6S13.4 17.5 12 17.5s-2.5-1.1-2.5-1.9S10.6 14 12 14z"/></svg>';
     function kidsEnabled() { return lsGet('bs_menu_kids') === 'true'; }
-    var KIDS_TYPES = [['tv', 'Мультсериалы'], ['movie', 'Мультфильмы']];
     function kidsType() { return lsGet('bs_kids_type') === 'movie' ? 'movie' : 'tv'; }
-    // возраст — американские рейтинги (у TMDB они есть у большинства мультиков): сериалы TV-Y «2–6 лет», TV-Y7 «7+»;
-    // фильмы G «для всех», PG «детям — с родителями»
-    var KIDS_AGES = [['до 6 лет', 'TV-Y', 'G'], ['7–12 лет', 'TV-Y7', 'PG'], ['до 12 лет', 'TV-Y%7CTV-Y7', 'G%7CPG']];
-    function kidsAge() { var i = +lsGet('bs_kids_age'); return KIDS_AGES[i] ? i : 0; }
-    // темы: g — жанры TMDB (вместе с «Мультфильмом»), k — ключевые слова (%7C — «любое из»); age: false — таких мало
-    // и рейтинг у них редко указан: без возраста, для сериалов — жанр «Детский»
-    var KW_HIST = '282633%7C15126%7C12995%7C15012%7C189119';
-    var KIDS_THEMES = [
-        { t: 'Обучающие', s: 'буквы, счёт, мир вокруг', k: '18257%7C206919%7C6009', movie: { g: [10751], k: '18257%7C206919%7C6009', age: false } },
-        { t: 'Природа и животные', k: '18330%7C18165' },
-        { t: 'Наука и динозавры', k: '287067%7C12616' },
-        { t: 'Исторические', tv: { g: [10762], k: KW_HIST, age: false }, movie: { g: [36] } },
-        { t: 'Сказки', k: '3205', tv: { g: [10762], k: '3205', age: false } },
-        { t: 'Музыкальные', tv: { g: [10762], k: '283297', age: false }, movie: { g: [10402] } },
-        { t: 'Приключения', tv: { g: [10759] }, movie: { g: [12] } },
-        { t: 'Весёлые', s: 'комедии', g: [35] },
-        { t: 'Семейные', g: [10751] }
+
+    /* Возраст — как на детских сервисах (Иви, Okko, Netflix Kids): группа, а не рейтинг одной страны. Каталог группы —
+     * объединение нескольких запросов TMDB (у одного мультика есть рейтинг США, у другого — российский, у третьего
+     * только жанр «Детский»): по одному признаку теряется больше половины, а советских нет совсем.
+     * Участник: g — жанры (вместе), cc/c — страна и рейтинг (%7C — «любой из»), lang — язык оригинала, to — вышел до,
+     * vc — минимум оценок (отсекает безвестное). */
+    var KIDS_BANDS = [
+        { t: 'все детские', tv: [{ g: [16, 10762], vc: 3 }, { g: [16], cc: 'US', c: 'TV-Y%7CTV-Y7' }, { g: [16], cc: 'RU', c: '0%2B%7C6%2B' }],
+            movie: [{ g: [16, 10751], vc: 10 }, { g: [16], cc: 'US', c: 'G%7CPG' }, { g: [16], cc: 'RU', c: '0%2B%7C6%2B' }, { g: [16], lang: 'ru', to: '1991-12-31' }] },
+        { t: 'малыши до 6 лет', tv: [{ g: [16], cc: 'US', c: 'TV-Y' }, { g: [16], cc: 'RU', c: '0%2B' }, { g: [16, 10762], lang: 'ru' }],
+            movie: [{ g: [16], cc: 'US', c: 'G' }, { g: [16], cc: 'RU', c: '0%2B' }, { g: [16], lang: 'ru', to: '1991-12-31' }] },
+        { t: '7–12 лет', tv: [{ g: [16], cc: 'US', c: 'TV-Y7' }, { g: [16], cc: 'RU', c: '6%2B' }],
+            movie: [{ g: [16], cc: 'US', c: 'PG' }, { g: [16], cc: 'RU', c: '6%2B' }] }
     ];
+    function kidsBand() { var i = +lsGet('bs_kids_band'); return KIDS_BANDS[i] ? i : 0; }
+
+    // темы — как полки детских сервисов; k — ключевые слова TMDB (любое из), g — добавочный жанр (у сериалов и фильмов свои)
+    var KIDS_THEMES = [
+        { t: 'Обучающие', s: 'буквы, счёт, наука', k: '18257%7C206919%7C6009%7C287067' },
+        { t: 'Животные', k: '18165%7C267848%7C15162%7C977%7C18330' },
+        { t: 'Машинки и транспорт', k: '310324%7C13008%7C293629' },
+        { t: 'Принцессы и феи', k: '7376%7C2710%7C208705' },
+        { t: 'Супергерои', k: '9715%7C191219' },
+        { t: 'Динозавры', k: '12616' },
+        { t: 'Космос и роботы', k: '252634%7C14544' },
+        { t: 'Сказки', k: '3205%7C351899%7C179411' },
+        { t: 'Новогодние', k: '207317%7C252123%7C5570', tv: false },   // у мультсериалов таких меток нет — только фильмы
+        { t: 'Исторические', tv: false, movie: { g: 36 } },
+        { t: 'Музыка и песни', tv: { k: '283297' }, movie: { g: 10402 } },
+        { t: 'Приключения', tv: { g: 10759 }, movie: { g: 12 } },
+        { t: 'Весёлые', s: 'комедии', g: 35 }
+    ];
+    var KIDS_DECADES = [['2020-е', '2020-01-01', ''], ['2010-е', '2010-01-01', '2019-12-31'], ['2000-е', '2000-01-01', '2009-12-31'],
+        ['1990-е', '1990-01-01', '1999-12-31'], ['Классика: до 1990', '', '1989-12-31']];
     var KIDS_WITHOUT = { tv: '80,18,9648,10768,10764,10767,10763', movie: '27,80,53,10752' };
 
-    /** Адрес каталога TMDB: мультики нужного типа; каждый параметр — один раз (повтор TMDB не прощает), взрослые
-     *  жанры убраны всегда. o: g — жанры, k — ключевые слова, age — с возрастом (по умолчанию да), lang, q — остальное. */
-    function kidsUrl(type, o) {
-        var g = [16].concat(o.g || []), q = 'discover/' + type + '?with_genres=' + g.join(',') + '&without_genres=' + KIDS_WITHOUT[type];
-        if (o.age !== false) q += '&certification_country=US&certification=' + KIDS_AGES[kidsAge()][type === 'tv' ? 1 : 2];
-        if (o.k) q += '&with_keywords=' + o.k;
-        if (o.lang) q += '&with_original_language=' + o.lang;
-        return q + (o.q ? '&' + o.q : '');
+    /** Запросы TMDB для подборки: по одному на участника группы; o — g, k (тема), p — свои параметры (сортировка, даты,
+     *  vote_count.gte — берётся больший), only — свой список участников вместо группы. Каждый параметр — один раз. */
+    function kidsQueries(type, o) {
+        var date = type === 'tv' ? 'first_air_date' : 'primary_release_date';
+        var list = o.only || KIDS_BANDS[kidsBand()][type];
+        return list.map(function (m) {
+            var p = { with_genres: m.g.slice(), without_genres: KIDS_WITHOUT[type] }, k;
+            if (o.g && p.with_genres.indexOf(o.g) < 0) p.with_genres.push(o.g);
+            p.with_genres = p.with_genres.join(',');
+            if (m.cc) { p.certification_country = m.cc; p.certification = m.c; }
+            if (m.lang) p.with_original_language = m.lang;
+            if (m.to) p[date + '.lte'] = m.to;
+            if (m.vc) p['vote_count.gte'] = m.vc;
+            if (o.k) p.with_keywords = o.k;
+            for (k in o.p || {}) {
+                var v = o.p[k].replace('{date}', date);
+                k = k.replace('{date}', date);
+                if (k === 'vote_count.gte' && p[k] > +v) continue;
+                if (v === '') delete p[k]; else p[k] = v;
+            }
+            var q = [];
+            for (k in p) q.push(k + '=' + p[k]);
+            return 'discover/' + type + '?' + q.join('&');
+        });
     }
+
+    // не детское, хоть и с детским рейтингом или жанром: «Царь горы» (RU 0+), «Фитиль» (сатирический киножурнал)
+    var KIDS_BLOCK = { 2122: 1, 16656: 1 };
+    // без перевода (ни описания, ни русского названия) и без обложки — в Lampa такое не посмотреть, только засоряет;
+    // raw — перевод не нужен (турецкие: русского у них почти нет)
+    function kidsJunk(r, raw) {
+        var n = r.name || r.title, o = r.original_name || r.original_title;
+        return KIDS_BLOCK[r.id] || !r.poster_path || (!raw && !r.overview && n === o && r.original_language !== 'ru');
+    }
+    /** Объединить ответы участников: без повторов (seen — по всем страницам), без мусора, сначала популярные. */
+    function kidsMerge(answers, seen, raw) {
+        var out = [];
+        answers.forEach(function (j) {
+            ((j && j.results) || []).forEach(function (r) {
+                if (!r || seen[r.id] || kidsJunk(r, raw)) return;
+                seen[r.id] = 1;
+                r.source = 'tmdb';   // карточка открывается обычным TMDB
+                out.push(r);
+            });
+        });
+        out.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
+        return out;
+    }
+
+    /* Источник «bskids» для штатного каталога Lampa (category_full): страница = страницы всех запросов подборки,
+     * склеенные. Всё остальное (карточка, персоны) — как у TMDB. */
+    function kidsList(params, oncomplite, onerror) {
+        // запросы — и в адресе (url «bskids:…»): Lampa восстанавливает экран после перезапуска только по нему
+        var qs = params.bs_q || (String(params.url || '').indexOf('bskids:') === 0 ? params.url.slice(7).split('||') : []), tries = 0;
+        if (!params.bs_seen) try { Object.defineProperty(params, 'bs_seen', { value: {}, enumerable: false, writable: true }); } catch (e) { params.bs_seen = {}; }
+        function load() {
+            var page = params.page || 1, answers = [], left = qs.length, tp = 1, total = 0, ok = 0;
+            if (!left) return onerror && onerror();
+            qs.forEach(function (q, i) {
+                tmdb(q + '&page=' + page, function (j) {
+                    answers[i] = j; ok++;
+                    tp = Math.max(tp, Math.min((j && j.total_pages) || 1, 500));
+                    total += (j && j.total_results) || 0;
+                    if (--left === 0) done();
+                }, function () { if (--left === 0) done(); });
+            });
+            function done() {
+                if (!ok) return onerror && onerror();
+                var res = kidsMerge(answers, params.bs_seen, params.bs_raw);
+                // вся страница — повторы и мусор: берём следующую (иначе каталог решит, что пусто)
+                if (!res.length && page < tp && ++tries < 4) { params.page = page + 1; return load(); }
+                // для выбранного возраста ничего — показываем «все детские» (лучше, чем пустой экран)
+                if (!res.length && params.bs_fb && (params.page || 1) <= 4) {
+                    qs = params.bs_q = params.bs_fb; params.bs_fb = null; params.page = 1; tries = 0;
+                    try { Lampa.Noty.show('Для этого возраста мало — показаны все детские'); } catch (e) {}
+                    return load();
+                }
+                oncomplite({ results: res, page: page, total_pages: tp, total_results: total });
+            }
+        }
+        load();
+    }
+    function kidsSource() {
+        var src = {}, tm = Lampa.Api.sources.tmdb, k;
+        for (k in tm) src[k] = tm[k];
+        src.list = kidsList;
+        return src;
+    }
+    function registerKidsSource() {
+        if (Lampa.Api && Lampa.Api.sources && Lampa.Api.sources.tmdb && !Lampa.Api.sources.bskids) Lampa.Api.sources.bskids = kidsSource();
+    }
+
+    function openKidsList(title, type, o) {
+        registerKidsSource();
+        var fb = null;
+        if (!o.only && kidsBand()) { o.only = KIDS_BANDS[0][type]; fb = kidsQueries(type, o); o.only = null; }
+        var qs = kidsQueries(type, o);
+        Lampa.Activity.push({ url: 'bskids:' + qs.join('||'), title: title, component: 'category_full', source: 'bskids', card_type: true, page: 1,
+            bs_q: qs, bs_fb: fb, bs_raw: !!o.raw });
+    }
+
     function isKids(r) {
         var g = (r && r.genre_ids) || [], bad = [27, 80, 53, 10752];
         for (var i = 0; i < bad.length; i++) if (g.indexOf(bad[i]) >= 0) return false;
@@ -171,52 +279,70 @@ var BSMenu = (function () {
         return g.indexOf(16) >= 0 && (r.title !== undefined || g.indexOf(18) < 0);   // сериал-мультфильм с драмой — взрослый
     }
 
-    function openKidsList(title, type, o) {
-        Lampa.Activity.push({ url: kidsUrl(type, o), title: title, component: 'category_full', source: 'tmdb', card_type: true, page: 1 });
-    }
-
     function openKids() {
-        var type = kidsType(), tv = type === 'tv', age = KIDS_AGES[kidsAge()];
-        var name = tv ? 'Мультсериалы' : 'Мультфильмы', T = name + ' (' + age[0] + ')';
-        var date = tv ? 'first_air_date' : 'primary_release_date';
+        var type = kidsType(), tv = type === 'tv', band = kidsBand(), bandName = KIDS_BANDS[band].t;
+        var name = tv ? 'Мультсериалы' : 'Мультфильмы', T = band ? name + ' (' + bandName + ')' : name;
+        var POP = { sort_by: 'popularity.desc' };
         select(KIDS.title, [
             { title: name, subtitle: 'нажмите — ' + (tv ? 'мультфильмы' : 'мультсериалы'), act: 'type' },
-            { title: 'Возраст: ' + age[0], subtitle: 'нажмите, чтобы выбрать', act: 'age' },
+            { title: 'Возраст: ' + bandName, subtitle: 'нажмите, чтобы выбрать', act: 'age' },
             { title: 'Популярные', act: 'pop' },
             { title: 'Новинки', subtitle: 'вышли за последние 2 года', act: 'new' },
             { title: 'Лучшие по оценкам', act: 'top' },
-            { title: 'По теме…', subtitle: 'обучающие, исторические, природа…', act: 'theme' },
-            { title: 'По годам…', act: 'year' },
-            { title: 'Российские', subtitle: tv ? 'Маша и Медведь, Смешарики, Фиксики…' : '', act: 'ru' },
+            { title: 'По теме…', subtitle: 'обучающие, животные, машинки, принцессы…', act: 'theme' },
+            { title: 'По годам…', subtitle: '2020-е, 2010-е… классика', act: 'year' },
+            { title: 'Советские', subtitle: 'Винни-Пух, Ну, погоди!, Простоквашино…', act: 'su' },
+            { title: 'Российские', subtitle: tv ? 'Маша и Медведь, Смешарики, Фиксики…' : 'Три богатыря, Снежная королева…', act: 'ru' },
             { title: 'Турецкие', act: 'tr' },
             { title: 'Поиск по названию…', act: 'search' }
         ], function (a) {
+            var y;
             if (a.act === 'type') { lsSet('bs_kids_type', tv ? 'movie' : 'tv'); openKids(); }
-            else if (a.act === 'age') select('Возраст', KIDS_AGES.map(function (x, i) { return { title: x[0], selected: i === kidsAge(), i: i }; }), function (x) {
-                lsSet('bs_kids_age', String(x.i)); openKids();
+            else if (a.act === 'age') select('Возраст', KIDS_BANDS.map(function (x, i) { return { title: x.t, selected: i === band, i: i }; }), function (x) {
+                lsSet('bs_kids_band', String(x.i)); openKids();
             });
-            else if (a.act === 'pop') openKidsList(T + ': популярные', type, { q: 'sort_by=popularity.desc&vote_count.gte=' + (tv ? 5 : 20) });
+            else if (a.act === 'pop') openKidsList(T + ': популярные', type, { p: POP });
             else if (a.act === 'new') {
-                var y = new Date(); y.setFullYear(y.getFullYear() - 2);
-                openKidsList(T + ': новинки', type, { q: 'sort_by=popularity.desc&' + date + '.gte=' + y.toISOString().slice(0, 10) + '&' + date + '.lte=' + today() });
+                y = new Date(); y.setFullYear(y.getFullYear() - 2);
+                openKidsList(T + ': новинки', type, { p: { sort_by: 'popularity.desc', '{date}.gte': y.toISOString().slice(0, 10), '{date}.lte': today() } });
             }
-            else if (a.act === 'top') openKidsList(T + ': лучшие', type, { q: 'sort_by=vote_average.desc&vote_count.gte=' + (tv ? 30 : 200) });
-            else if (a.act === 'theme') select('Тема', KIDS_THEMES.map(function (t) { return { title: t.t, subtitle: t.s || '', th: t }; }), function (x) {
-                var t = x.th, o = t[type] || { g: t.g, k: t.k };
-                openKidsList((o.age === false ? name : T) + ': ' + t.t.toLowerCase(), type, { g: o.g, k: o.k, age: o.age, q: 'sort_by=popularity.desc' });
+            else if (a.act === 'top') openKidsList(T + ': лучшие', type, { p: { sort_by: 'vote_average.desc', 'vote_count.gte': tv ? '30' : '150' } });
+            else if (a.act === 'theme') select('Тема', KIDS_THEMES.filter(function (t) { return t[type] !== false; }).map(function (t) { return { title: t.t, subtitle: t.s || '', th: t }; }), function (x) {
+                var t = x.th, o = t[type] || t;
+                openKidsList(T + ': ' + t.t.toLowerCase(), type, { g: o.g, k: o.k, p: POP });
             });
-            else if (a.act === 'year') select('Годы', YEARS.map(function (y) { return { title: y[0], from: y[1], to: y[2] }; }), function (y) {
-                openKidsList(T + ': ' + y.title.toLowerCase(), type, { q: 'sort_by=popularity.desc' + (y.from ? '&' + date + '.gte=' + y.from : '') + (y.to ? '&' + date + '.lte=' + y.to : '') });
+            else if (a.act === 'year') select('Годы', KIDS_DECADES.map(function (d) { return { title: d[0], from: d[1], to: d[2] }; }), function (d) {
+                // «до 1991» у советских участников заменяется границами десятилетия
+                openKidsList(T + ': ' + d.title.toLowerCase(), type, { p: { sort_by: 'popularity.desc', '{date}.gte': d.from, '{date}.lte': d.to } });
             });
+            // советские: самые оцениваемые первыми — так наверху «Ёжик в тумане» и «Винни-Пух», а не безвестное
+            else if (a.act === 'su') openKidsList(name + ': советские', type, { only: [{ g: [16], lang: 'ru', to: '1991-12-31' }], p: { sort_by: 'vote_count.desc' } });
             // у российских и турецких рейтингов США нет: детские — по жанру («Детский» у сериалов, «Семейный» у фильмов)
-            else if (a.act === 'ru' || a.act === 'tr') openKidsList(name + ': ' + (a.act === 'ru' ? 'российские' : 'турецкие'), type,
-                { g: [tv ? 10762 : 10751], lang: a.act, age: false, q: 'sort_by=popularity.desc' });
+            else if (a.act === 'ru') openKidsList(name + ': российские', type, { only: [{ g: [16, tv ? 10762 : 10751], lang: 'ru' }], p: { sort_by: 'popularity.desc', '{date}.gte': '1992-01-01' } });
+            else if (a.act === 'tr') openKidsList(name + ': турецкие', type, { only: [{ g: [16, tv ? 10762 : 10751], lang: 'tr' }], p: POP, raw: true });
             else if (a.act === 'search') searchIn(tv ? 'Название мультсериала' : 'Название мультфильма', tv ? 'Мультсериалов' : 'Мультфильмов', isKids, type);
         });
     }
 
+    /** Порядок меню Lampa (menu_sort, «Редактировать»): нового пункта там нет — Lampa допишет его в конец и при
+     *  каждом запуске поставит последним. Вписываем сами после первого найденного из after. */
+    function menuSortPlace(sort, title, after) {
+        if (!sort || !sort.length || sort.indexOf(title) >= 0) return sort;
+        sort = sort.slice();
+        for (var i = 0; i < after.length; i++) {
+            var at = sort.indexOf(after[i]);
+            if (at >= 0) { sort.splice(at + 1, 0, title); return sort; }
+        }
+        sort.push(title);
+        return sort;
+    }
+
     function addKidsButton() {
         if (!kidsEnabled() || $('.menu [data-action="' + KIDS.action + '"]').length) return;
+        try {
+            var sort = Lampa.Storage.get('menu_sort', '[]'), placed = menuSortPlace(sort, KIDS.title, [TURK.title, 'Сериалы']);
+            if (placed !== sort) Lampa.Storage.set('menu_sort', placed);
+        } catch (e) {}
         var el = Lampa.Menu.addButton(KIDS_ICON, KIDS.title, openKids);
         el.attr('data-action', KIDS.action);
         var after = $('.menu .menu__list:eq(0) [data-action="' + TURK.action + '"]');
@@ -320,7 +446,7 @@ var BSMenu = (function () {
         Lampa.SettingsApi.addParam({
             component: 'bs_update',
             param: { name: 'bs_menu_kids', type: 'trigger', 'default': false },
-            field: { name: 'Кнопка «Мультики» в меню', description: 'Мультфильмы и мультсериалы: возраст (до 6, 7–12 лет), темы — обучающие, исторические, природа; по годам, поиск.' },
+            field: { name: 'Кнопка «Мультики» в меню', description: 'Мультфильмы и мультсериалы: возраст, темы (обучающие, животные, машинки…), годы, советские и российские, поиск.' },
             onChange: function (v) {
                 var on = v === true || v === 'true';
                 lsSet('bs_menu_kids', String(on));
@@ -332,7 +458,7 @@ var BSMenu = (function () {
     function start() {
         try { addSettings(); } catch (e) {}
         try { addButton(); } catch (e) { console.log('BS menu', e); }
-        try { addKidsButton(); } catch (e) { console.log('BS kids', e); }
+        try { registerKidsSource(); addKidsButton(); } catch (e) { console.log('BS kids', e); }
         try { addWantButton(); } catch (e) { console.log('BS want', e); }
         try {
             Lampa.Listener.follow('full', function (e) {
@@ -343,5 +469,6 @@ var BSMenu = (function () {
     }
 
     return { start: start, open: openTurk, search: search, TURK: TURK, KIDS: KIDS, openKids: openKids,
-        _isTurkish: isTurkish, _esc: esc, _kidsUrl: kidsUrl, _kidsEnabled: kidsEnabled, _isKids: isKids, _kidsAge: kidsAge, _kidsType: kidsType };
+        _isTurkish: isTurkish, _esc: esc, _kidsEnabled: kidsEnabled, _isKids: isKids, _kidsBand: kidsBand, _kidsType: kidsType,
+        _kidsQueries: kidsQueries, _kidsMerge: kidsMerge, _kidsJunk: kidsJunk, _menuSortPlace: menuSortPlace };
 })();
