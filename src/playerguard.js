@@ -12,6 +12,10 @@
  * Шаг 2: качеств больше нет — уведомление и закрытие плеера через CLOSE_DELAY; если видео
  *        за это время пошло, закрытие отменяется.
  * ТВ-каналы: одно переподключение к тому же адресу. Торренты не трогаем: им нужна раскачка.
+ * Возврат из Smart Hub: Lampa 3.3.7 сама восстанавливает AVPlay (tizen_lifecycle: suspend() при уходе, restoreAsync()
+ * при возврате и до 15 с ждёт PLAYING; пока идёт восстановление, вызовы AVPlay запрещены). Её флаги наружу не видны —
+ * поэтому после возврата RESUME_GRACE (25 с, дольше её 15 с) сторож поток не перезапускает: иначе смена потока
+ * посреди restoreAsync. Не восстановилось (ошибка или время вышло) — после паузы действуем как обычно.
  *
  * Запасной плеер для HLS. Плеер ТВ (AVPlay) на части серверов не играет поток .m3u8: список качеств получает,
  * куски видео — нет (Q60B, Tizen 6.5: Alloha/vkvideo.cloud — CONNECTION_FAILED, KinoPub/cdntogo.net — висит),
@@ -23,7 +27,7 @@
  * возвращаются (bs_player_forced хранит прежние, если приложение закрыли посреди просмотра).
  */
 var BSGuard = (function () {
-    var cfg = { BUFFER_GRACE: 60000, START_LIMIT: 25000, PLAY_LIMIT: 20000, ERROR_GRACE: 6000, START_ERROR_GRACE: 2000, CLOSE_DELAY: 4000, TICK: 1000 };
+    var cfg = { BUFFER_GRACE: 60000, START_LIMIT: 25000, PLAY_LIMIT: 20000, ERROR_GRACE: 6000, START_ERROR_GRACE: 2000, CLOSE_DELAY: 4000, TICK: 1000, RESUME_GRACE: 25000 };
     var s = null;          // текущий сеанс просмотра
     var timer = null;
     var HLS_START_LIMIT = 10000, HLS_QUIET = 6000, HLS_HINT = 3000, HLS_LEARN = 30 * 24 * 3600 * 1000, LEARN_KEY = 'bs_hls_inner', FORCED_KEY = 'bs_player_forced';
@@ -178,6 +182,7 @@ var BSGuard = (function () {
             offline: false,
             stalls: 0,              // остановки на подгрузку после того, как видео пошло
             closing: null,
+            graceUntil: 0,          // вернулись из Smart Hub — Lampa восстанавливает AVPlay, поток не трогаем до этого
             avplay: onTizenPlayer(),             // играет плеер ТВ (AVPlay)
             avSignal: false,                     // AVPlay сообщил о загрузке данных (буферизация, проценты)
             hls: isHls(data.url)
@@ -274,6 +279,7 @@ var BSGuard = (function () {
         if (!s) return;
         if (!playerOpen()) return stop();
         if (s.paused || document.hidden || s.closing) return;
+        if (inGrace(s, Date.now())) return;   // Lampa восстанавливает плеер после Smart Hub
         // Нет сети — ничего не переключаем, ждём её возвращения (см. 'online').
         if (navigator.onLine === false || s.offline) { s.lastProgressAt = Date.now(); return; }
         // Ошибка плеера: ждём ERROR_GRACE — плеер (hls.js, AVPlay) часто восстанавливается сам. Ошибка соединения или
@@ -287,6 +293,21 @@ var BSGuard = (function () {
         }
         var limit = s.played ? cfg.PLAY_LIMIT : hlsWait ? (s.avSignal ? HLS_START_LIMIT : HLS_QUIET) : cfg.START_LIMIT;
         if (Date.now() - s.lastProgressAt > limit) escalate(s.played ? 'остановился' : 'не запускается');
+    }
+
+    /** Идёт пауза после возврата из Smart Hub? Время вышло — снимаем. */
+    function inGrace(st, now) {
+        if (!st || !st.graceUntil) return false;
+        if (now < st.graceUntil) return true;
+        st.graceUntil = 0;
+        return false;
+    }
+    /** Вернулись в приложение: отсчёт простоя с нуля и пауза RESUME_GRACE (восстановление AVPlay силами Lampa). */
+    function onVisible(now) {
+        if (!s) return;
+        s.lastProgressAt = now;
+        s.graceUntil = now + cfg.RESUME_GRACE;
+        log('возврат в приложение — пауза сторожа', cfg.RESUME_GRACE / 1000, 'с');
     }
 
     function escalate(why) {
@@ -421,14 +442,15 @@ var BSGuard = (function () {
                 s.offline = false; s.lastProgressAt = Date.now();
                 setTimeout(function () {
                     // Сеть вернулась: если видео стоит — тот же поток с того же места (флаг шага 0 не тратим).
-                    if (s && !s.paused && Date.now() - s.lastProgressAt > 2500 && s.lastTime > 0) {
+                    // Lampa ещё восстанавливает AVPlay после Smart Hub — не мешаем, дальше решит tick после паузы
+                    if (s && !s.paused && !inGrace(s, Date.now()) && Date.now() - s.lastProgressAt > 2500 && s.lastTime > 0) {
                         var was = s.restarted; restartSame('Сеть вернулась'); s.restarted = was;
                     }
                 }, 3000);
             });
-            // Пока приложение свёрнуто, простой не считаем: при возврате отсчёт с нуля.
+            // Пока приложение свёрнуто, простой не считаем: при возврате отсчёт с нуля и пауза на восстановление AVPlay.
             document.addEventListener('visibilitychange', function () {
-                if (s && !document.hidden) s.lastProgressAt = Date.now();
+                if (s && !document.hidden) onVisible(Date.now());
             });
             Lampa.PlayerPanel.listener.follow('quality', function (e) {
                 if (!s || !e) return;          // смена качества пользователем — даём новому потоку время
@@ -452,6 +474,7 @@ var BSGuard = (function () {
         var av = window.webapis && window.webapis.avplay;
         if (!av || !av.setListener || av.setListener.__bsGuard) return;
         var setListener = av.setListener, prepareAsync = av.prepareAsync;
+        if (prepareAsync && prepareAsync.__bsGuard) prepareAsync = null;      // уже обёрнут — второй раз не оборачиваем
         av.setListener = function (l) {
             if (l && typeof l === 'object') {
                 var copy = {}, k;
@@ -473,8 +496,9 @@ var BSGuard = (function () {
             av.prepareAsync = function (ok, fail) {
                 return prepareAsync.call(av, ok, function (e) { avError('prepare ' + (e && (e.name || e.message) || '')); if (fail) return fail.apply(this, arguments); });
             };
+            av.prepareAsync.__bsGuard = true;
         }
     }
 
-    return { start: start, cfg: cfg, _hls: { isHls: isHls, hostKey: hostKey, learned: learned, learn: learn }, stalls: function () { return s ? s.stalls : 0; }, _state: function () { return s; } };
+    return { start: start, cfg: cfg, _hls: { isHls: isHls, hostKey: hostKey, learned: learned, learn: learn }, stalls: function () { return s ? s.stalls : 0; }, _state: function () { return s; }, _inGrace: inGrace, _hookAvplay: hookAvplay };
 })();

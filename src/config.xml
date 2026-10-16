@@ -1,16 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" version="2.0.5" viewmodes="maximized">
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" version="2.1.0" viewmodes="maximized">
     <access origin="*" subdomains="true"></access>
     <tizen:app-control>
         <tizen:src name="index.html" reload="disable"/>
         <tizen:operation name="http://samsung.com/appcontrol/operation/eden_resume"/>
     </tizen:app-control>
     <tizen:application id="0SG81L944p.Lampa" package="0SG81L944p" required_version="2.3"/>
+    <tizen:service id="0SG81L944p.LampaService" on-boot="true" auto-restart="true">
+        <tizen:content src="service/service.js"/>
+        <tizen:name>LampaService</tizen:name>
+        <tizen:description>Lampa helper</tizen:description>
+    </tizen:service>
     <author>Yumata Kun</author>
     <content src="index.html"/>
     <feature name="http://tizen.org/feature/screen.size.normal.1080.1920"/>
     <feature name="http://www.samsungdforum.com/feature/Voice_Recognition"/>
     <feature name="http://tizen.org/feature/speech.recognition"/>
+    <!-- Служба Node.js (service/service.js): токен бота и ключи ИИ хранятся в ней, а не в localStorage страницы -->
+    <feature name="http://tizen.org/feature/web.service"/>
     <icon src="icon.png"/>
     <tizen:metadata key="http://samsung.com/tv/metadata/prelaunch.support" value="true"/>
     <name>Lampa</name>
@@ -37,8 +44,8 @@
     <!-- Системный плеер webapis.avplay: без этой привилегии Samsung его не отдаёт -->
     <tizen:privilege name="http://developer.samsung.com/privilege/avplay"/>
     <tizen:profile name="tv-samsung"/>
-    <!-- Превью Smart Hub и служба плиток убраны (1.7.42): запущенная служба для ТВ становилась «последним
-         приложением», и вместо значка Lampa на главном экране появлялась серая заглушка. ТВ запускал её и сам
-         (use.preview=bg_service), и Lampa на старте — раньше, чем успевал включиться наш перехват. -->
+    <!-- Превью Smart Hub (use.preview=bg_service) убрано в 1.7.42: та служба становилась «последним приложением», и
+         вместо значка Lampa на главном экране появлялась серая заглушка. Служба LampaService выше (2.1.0) — другая:
+         без превью; на «Офис тв» (Tizen 6.5) значок после перезагрузки и включения из розетки проверен — нормальный. -->
     <tizen:setting screen-orientation="landscape" context-menu="enable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
 </widget>

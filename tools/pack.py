@@ -77,6 +77,14 @@ def check_sources():
     gone = [f for f in mods if not os.path.exists(os.path.join(SRC, f))]
     if not mods or gone:
         die('update.js: нет модулей %s' % (gone or 'LOCAL'))
+    # служба Tizen (tizen:service в config.xml): её файл должен лежать в пакете (os.walk ниже берёт всю src/, и
+    # service/ тоже). В update.js его нет и быть не должно: код службы приходит на ТВ только с новым .wgt
+    cfg = open(CONFIG, encoding='utf-8').read()
+    for svc in re.findall(r'<tizen:content\s+src="([^"]+)"', cfg):
+        if not os.path.exists(os.path.join(SRC, svc)):
+            die('config.xml: нет файла службы %s' % svc)
+        if svc in mods:
+            die('update.js: служба %s не может обновляться с GitHub — только с пакетом' % svc)
     loader =open(os.path.join(SRC, 'loader.js'), encoding='utf-8').read()
     m = re.search(r"var BS_BUNDLED_HASH = '([0-9a-f]+)'", loader)
     app = open(os.path.join(SRC, 'app.js'), encoding='utf-8', errors='ignore').read()
@@ -145,6 +153,14 @@ def changelog_notes(version):
     return {'title': clean(title)[:120], 'items': [short(clean(i)) for i in items[:6]]}
 
 
+def unused_font(path):
+    """Шрифт Lampa в формате, до которого ТВ не доходит: в @font-face у каждого файла указан format(), Chromium ТВ
+    берёт .woff, а .eot (для Internet Explorer) и запасной .ttf не скачивает. Есть .woff рядом — их в пакет не кладём
+    (около 2,5 МБ из 6,5)."""
+    base, ext = os.path.splitext(path)
+    return ext.lower() in ('.eot', '.ttf') and os.sep + 'fonts' + os.sep in path and os.path.exists(base + '.woff')
+
+
 def build(out, version, debug_host=None):
     tmp = out + '.tmp'
     with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as z:
@@ -152,6 +168,8 @@ def build(out, version, debug_host=None):
             for f in sorted(files):
                 full = os.path.join(root, f)
                 name = os.path.relpath(full, SRC).replace(os.sep, '/')
+                if unused_font(full):
+                    continue
                 if name == 'loader.js':
                     js = open(full, encoding='utf-8').read()
                     mark = "var BS_PACKAGE_VERSION = 'dev';"

@@ -3,31 +3,45 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#000000">
 <title>Lampa — подключить Telegram</title>
 <style>
-  :root { --bg: #141414; --fg: #eee; --muted: #9a9a9a; --accent: #2a6df4; --ok: #2e9d57; --err: #d9534f; --field: #222; }
+  /* вид — как у приложения TV Installer и у страницы, которую отдаёт ТВ (service.js, PAIR_CSS): тёмная тема, Sky */
+  :root { color-scheme: dark; }
   * { box-sizing: border-box; }
-  body { margin: 0; padding: 20px 16px; background: var(--bg); color: var(--fg); font: 17px/1.45 -apple-system, system-ui, sans-serif; }
-  h1 { font-size: 22px; margin: 0 0 12px; }
-  p { margin: 0 0 12px; color: var(--muted); }
-  textarea { width: 100%; min-height: 90px; padding: 12px; border-radius: 12px; border: 1px solid #333; background: var(--field); color: var(--fg); font: 16px monospace; }
-  button { width: 100%; margin-top: 12px; padding: 15px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font-size: 18px; }
+  body { margin: 0; background: #000000; color: #F2F3F5; font: 16px/1.45 "Bahnschrift", "Segoe UI", Roboto, system-ui, sans-serif; }
+  .w { max-width: 420px; margin: 0 auto; padding: 28px 16px 32px; }
+  .ic { width: 64px; height: 64px; border-radius: 18px; background: #1B1C1F; border: 1px solid #26282C; display: flex; align-items: center; justify-content: center; margin: 0 0 18px; }
+  h1 { font-size: 26px; line-height: 1.2; margin: 0 0 6px; font-weight: 700; }
+  .sub { color: #A6ABB3; margin: 0 0 20px; }
+  .card { background: #1B1C1F; border: 1px solid #26282C; border-radius: 20px; padding: 16px; margin: 0 0 18px; }
+  .st { display: flex; align-items: flex-start; margin: 0 0 12px; } .st:last-child { margin: 0; }
+  .n { flex: 0 0 28px; height: 28px; margin-right: 12px; border-radius: 50%; background: #11374F; color: #CDE7FF; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  label { display: block; color: #A6ABB3; font-size: 14px; margin: 0 0 8px; }
+  textarea { display: block; width: 100%; min-height: 96px; padding: 14px 16px; border-radius: 16px; border: 1px solid #565A62; background: #1B1C1F; color: #F2F3F5; font: 15px/1.4 monospace; outline: 0; resize: vertical; }
+  textarea:focus { border-color: #4599FF; }
+  button { display: block; width: 100%; height: 56px; margin: 14px 0 0; padding: 0 16px; border: 0; border-radius: 28px; background: #4599FF; color: #000000; font-family: inherit; font-size: 17px; font-weight: 700; }
   button:disabled { opacity: .6; }
-  #s { margin-top: 14px; font-size: 17px; white-space: pre-wrap; }
-  .ok { color: var(--ok); } .err { color: var(--err); }
-  ol { padding-left: 20px; color: var(--muted); }
+  .m { margin: 16px 0 0; border-radius: 16px; padding: 12px 14px; white-space: pre-wrap; }
+  .m:empty { display: none; }
+  .ok { background: #0E3B2E; color: #C6F3E1; } .err { background: #4A1E22; color: #FFD9DC; } .warn { background: #4A3313; color: #FFC46B; }
 </style>
 </head>
 <body>
-<h1>Подключить Telegram к Lampa</h1>
-<ol>
-  <li>В Telegram: <b>@BotFather</b> → <b>/newbot</b> → придумайте имя → нажмите на токен, чтобы скопировать.</li>
-  <li>Вставьте токен сюда и нажмите «Отправить на ТВ».</li>
-  <li>Напишите своему боту любое сообщение.</li>
-</ol>
+<div class="w">
+<div class="ic"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4599FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2.5"/><path d="M8 21h8M12 7.5v6M9.5 11l2.5 2.5 2.5-2.5"/></svg></div>
+<h1 id="h">Подключение Telegram-бота</h1>
+<p class="sub" id="sub">Вставьте токен бота — Lampa на телевизоре подключится сама.</p>
+<div class="card">
+  <div class="st"><span class="n">1</span><span id="s1">Откройте @BotFather → /newbot (или /mybots → бот → API Token)</span></div>
+  <div class="st"><span class="n">2</span><span id="s2">Скопируйте токен и вставьте ниже</span></div>
+  <div class="st"><span class="n">3</span><span id="s3">Нажмите «Отправить на ТВ»</span></div>
+</div>
+<label for="t" id="lbl">Токен бота от @BotFather</label>
 <textarea id="t" placeholder="123456789:AA…" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
 <button id="b">Отправить на ТВ</button>
-<div id="s"></div>
+<div id="s" class="m"></div>
+</div>
 <script>
   /* ---------- шифрование и подпись сообщений через ntfy (ES5, без WebCrypto: старые ТВ) ----------
    * SHA-256 и HMAC-SHA256 на чистом JS. seal: поток HMAC(ключ шифрования, nonce|счётчик) XOR текст, подпись
@@ -131,21 +145,71 @@
 
   // В адресе после #: тема ntfy, которую слушает ТВ, и (новые ТВ) секрет через точку — токен шифруется им,
   // в кэше ntfy его не прочитать. Без секрета (старая Lampa) токен уходит как есть.
+  // Серверы ntfy — как RELAYS в bstg.js: ТВ слушает тему на всех. Отправляем в первый; ответил 429 (у ntfy.sh — 250
+  // сообщений в сутки на IP, а дома IP общий), 5xx или нет связи — молча в следующий. Человеку — только итог.
+  var RELAYS = ['https://ntfy.sh/', 'https://ntfy.envs.net/', 'https://ntfy.adminforge.de/', 'https://ntfy.hostux.net/'];
+  // язык — телефона: ru / en / uz (украинский, казахский и т. п. — русский), остальное — английский
+  var lang = (function () {
+    var l = String((navigator.languages && navigator.languages[0]) || navigator.language || 'ru').toLowerCase().slice(0, 2);
+    return l === 'uz' ? 'uz' : /^(ru|uk|be|kk|ky|tg)$/.test(l) ? 'ru' : 'en';
+  })();
+  var T = {
+    ru: { qr: 'Откройте эту страницу через QR-код на экране ТВ.', bad: 'Это не похоже на токен бота. Скопируйте его у @BotFather целиком.', sending: 'Отправляю…',
+      ok: '✅ Отправлено. На ТВ появится «Токен получен» — теперь напишите своему боту любое сообщение.',
+      limit: 'Серверы передачи сейчас не принимают сообщения из вашей сети (суточный лимит). Выключите Wi-Fi на телефоне, откройте эту страницу через мобильный интернет и нажмите ещё раз — или попробуйте позже.',
+      fail: 'Не отправилось ({s}). Попробуйте ещё раз.', net: 'Нет связи — проверьте интернет и нажмите ещё раз.' },
+    en: { h: 'Connect a Telegram bot', sub: 'Paste the bot token — Lampa on the TV connects by itself.', s1: 'Open @BotFather → /newbot (or /mybots → bot → API Token)',
+      s2: 'Copy the token and paste it below', s3: 'Tap “Send to TV”', lbl: 'Bot token from @BotFather', b: 'Send to TV', qr: 'Open this page with the QR code on the TV screen.', bad: "This doesn't look like a bot token. Copy the whole token from @BotFather.", sending: 'Sending…',
+      ok: '✅ Sent. The TV will show “Token received” — now send your bot any message.',
+      limit: "The relay servers don't accept messages from your network right now (daily limit). Turn off Wi-Fi on the phone, open this page over mobile data and tap again — or try later.",
+      fail: "Didn't send ({s}). Try again.", net: 'No connection — check the internet and tap again.' },
+    uz: { h: 'Telegram botni ulash', sub: "Bot tokenini qo'ying — televizordagi Lampa o'zi ulanadi.", s1: "@BotFather'ni oching → /newbot (yoki /mybots → bot → API Token)",
+      s2: "Tokenni nusxalab, pastga qo'ying", s3: '«Televizorga yuborish» tugmasini bosing', lbl: '@BotFather bergan bot tokeni', b: 'Televizorga yuborish', qr: 'Bu sahifani televizor ekranidagi QR-kod orqali oching.', bad: "Bu bot tokeniga o'xshamaydi. Uni @BotFather'dan to'liq nusxalang.", sending: 'Yuboryapman…',
+      ok: '✅ Yuborildi. Televizorda «Token olindi» chiqadi — endi botingizga istalgan xabar yozing.',
+      limit: "Uzatish serverlari hozir tarmog'ingizdan xabar qabul qilmayapti (kunlik limit). Telefonda Wi-Fi'ni o'chiring, sahifani mobil internet orqali oching va qayta bosing — yoki keyinroq urinib ko'ring.",
+      fail: "Yuborilmadi ({s}). Qayta urinib ko'ring.", net: "Aloqa yo'q — internetni tekshirib, qayta bosing." }
+  }[lang];
+  ['h', 'sub', 's1', 's2', 's3', 'lbl', 'b'].forEach(function (id) { if (T[id]) document.getElementById(id).textContent = T[id]; });
+  if (lang !== 'ru') document.documentElement.lang = lang;
   var hash = (location.hash || '').replace(/^#/, '').split('.'), topic = hash[0], secret = hash[1] || '';
-  var st = function (t, cls) { var e = document.getElementById('s'); e.textContent = t; e.className = cls || ''; };
-  if (!/^lampa-[a-z0-9]{8,40}$/.test(topic)) st('Откройте эту страницу через QR-код на экране ТВ.', 'err');
+  // итог — в цветной плашке: ok — Mint, err — Rose, warn (отправляю) — Amber
+  var st = function (t, cls) { var e = document.getElementById('s'); e.textContent = t; e.className = 'm ' + (cls || 'warn'); };
+  if (!/^lampa-[a-z0-9]{8,40}$/.test(topic)) st(T.qr, 'err');
+  /** В первый сервер, который примет. cb(статус: < 300 — принят; 429 — где-то был лимит; 0 — нигде нет связи). */
+  function post(body, cb) {
+    var limit = false, last = 0;
+    (function next(i) {
+      if (i >= RELAYS.length) return cb(limit ? 429 : last);
+      var x = new XMLHttpRequest(), done = false;
+      var fin = function (s) {
+        if (done) return;
+        done = true;
+        if (s && s < 300) return cb(s);
+        if (s === 429) limit = true; else if (s) last = s;
+        next(i + 1);
+      };
+      try {
+        x.open('POST', RELAYS[i] + topic, true);
+        x.timeout = 20000;
+        x.onload = function () { fin(x.status); };
+        x.onerror = x.ontimeout = function () { fin(0); };
+        x.send(body);
+      } catch (e) { fin(0); }
+    })(0);
+  }
   document.getElementById('b').onclick = function () {
     var tok = document.getElementById('t').value.replace(/\s+/g, '');
     var m = /(\d{6,12}:[A-Za-z0-9_-]{30,})/.exec(tok);
-    if (!m) return st('Это не похоже на токен бота. Скопируйте его у @BotFather целиком.', 'err');
-    if (!/^lampa-[a-z0-9]{8,40}$/.test(topic)) return st('Откройте эту страницу через QR-код на экране ТВ.', 'err');
-    var b = this; b.disabled = true; st('Отправляю…');
-    var x = new XMLHttpRequest();
-    x.open('POST', 'https://ntfy.sh/' + topic, true);
-    x.timeout = 20000;
-    x.onload = function () { b.disabled = false; if (x.status < 300) st('✅ Отправлено. На ТВ появится «Токен получен» — теперь напишите своему боту любое сообщение.', 'ok'); else st('Не отправилось (' + x.status + '). Попробуйте ещё раз.', 'err'); };
-    x.onerror = x.ontimeout = function () { b.disabled = false; st('Нет связи — проверьте интернет и нажмите ещё раз.', 'err'); };
-    x.send(secret ? JSON.stringify(Crypt.seal(Crypt.key('lampa-pair-v2|' + secret), m[1])) : m[1]);
+    if (!m) return st(T.bad, 'err');
+    if (!/^lampa-[a-z0-9]{8,40}$/.test(topic)) return st(T.qr, 'err');
+    var b = this; b.disabled = true; st(T.sending);
+    post(secret ? JSON.stringify(Crypt.seal(Crypt.key('lampa-pair-v2|' + secret), m[1])) : m[1], function (s) {
+      b.disabled = false;
+      if (s && s < 300) st(T.ok, 'ok');
+      else if (s === 429) st(T.limit, 'err');
+      else if (s) st(T.fail.replace('{s}', s), 'err');
+      else st(T.net, 'err');
+    });
   };
 </script>
 </body>

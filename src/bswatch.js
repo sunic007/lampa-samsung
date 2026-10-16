@@ -234,7 +234,12 @@ var BSWatch = (function () {
         try { window.localStorage.removeItem('bs_kids'); window.localStorage.removeItem('bs_kids_pin'); } catch (e) {}
         if (!was || !pin) return false;
         try {
-            if (!Lampa.Storage.field('parental_control')) {
+            // включён ли контроль — у Lampa.ParentalControl.enabled() (учитывает и детский профиль CUB); нет API — по
+            // настройке. ПИН пишем в те же ключи, что ParentalControl.install: задать готовый ПИН без окна ввода API не умеет
+            var P = Lampa.ParentalControl, already = false;
+            if (P && typeof P.enabled === 'function') { try { already = !!P.enabled(); } catch (x) { already = !!Lampa.Storage.field('parental_control'); } }
+            else already = !!Lampa.Storage.field('parental_control');
+            if (!already) {
                 Lampa.Storage.set('parental_control_pin', pin);
                 Lampa.Storage.set('parental_control', true);
             }

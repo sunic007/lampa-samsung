@@ -11,8 +11,8 @@ console.log('Start load');
 var BS_SERVER = 'http://lampa.byskaz.ru/lampa-main/';
 var BS_PACKAGE_VERSION = 'dev';   // версия пакета .wgt — pack.py подставляет её из config.xml
 if (window.BS_REMOTE_VERSION) BS_PACKAGE_VERSION = window.BS_REMOTE_VERSION;   // модули пришли с GitHub (update.js)
-var BS_BUNDLED_VERSION = '3.3.6'; // версия встроенной копии app.js — update_bundled.py
-var BS_BUNDLED_HASH = 'c5701b7be6da4427afd2403b298886e3'; // hash из assembly.json этой копии — update_bundled.py
+var BS_BUNDLED_VERSION = '3.3.7'; // версия встроенной копии app.js — update_bundled.py
+var BS_BUNDLED_HASH = '88f1b98c4cb42b82030557dad34c8307'; // hash из assembly.json этой копии — update_bundled.py
 // loader.js пришёл с GitHub, а пакет на ТВ старее: app.js в пакете — та сборка, что записана в update.js пакета
 if (window.BS_REMOTE_VERSION && window.BS_PKG_APP && window.BS_PKG_APP.hash) {
     BS_BUNDLED_HASH = window.BS_PKG_APP.hash;
@@ -35,6 +35,8 @@ var BS_UPD_FORGIVE = 2;
  * их переживаем, остальное стирается как обычно. */
 // Telegram-бот (токен, чат, люди, подписки, ключи ИИ, имя и номер ТВ) — тоже: иначе бот отключался, и всё настраивать
 // заново с телефона. Остальное («кеш и данные» — полный сброс) стирается как раньше.
+// С пакета со службой Tizen сами токен и ключи ИИ лежат в её файле (service/service.js) — очистка localStorage их не
+// трогает; здесь остаются метки «секрет в службе» (bs_tg_svc, bs_ai_svc) — их тоже бережём, иначе бот «отключится».
 var BS_KEEP_ON_CLEAR = /^bs_(upd|tg_|subs$|gemini_|ai_|tv_name$|tv_id$)/;
 function bsKeepUpdatesOnClear(S) {
     var clear = S && S.clear;
@@ -609,7 +611,7 @@ var BS_SETTINGS_LAYOUT = [
     ['bs_player', ['#Надёжность воспроизведения', 'bs_player_auto', 'bs_guard', 'bs_bw_quality', 'bs_buffer',
         '#Во время просмотра', 'bs_resume_ask', 'bs_noads', 'bs_segments', 'bs_track_memory', 'bs_next_countdown', 'bs_still', 'bs_sleep', 'bs_vol_memory', 'bs_vol_night']],
     ['bs_iface', ['bs_watch_btn', 'bs_online_resume', 'bs_ru_auto', 'bs_menu_turk', 'bs_continue_row']],
-    ['bs_telegram', ['#Подключение', 'bs_tg_phone', 'bs_tg_join', 'bs_tg_help', 'bs_tg_token', 'bs_tg_link', 'bs_tv_name',
+    ['bs_telegram', ['#Подключение', 'bs_tg_phone', 'bs_tg_join', 'bs_tg_help', 'bs_tg_token', 'bs_tg_link', 'bs_tv_name', 'bs_tg_off',
         '#Бот', 'bs_tg_on', 'bs_tg_shots', 'bs_search_qr', 'bs_tg_check',
         '#Люди и доступ', 'bs_tg_approve', 'bs_tg_guest_play', 'bs_tg_invite_reset']],
     ['bs_online', ['#Источники', 'bs_auto_source', 'bs_race', 'bs_torrents', 'bs_srv_title', 'bs_srv_now', 'bs_srv_auto', 'bs_srv_pick',
@@ -699,8 +701,9 @@ function bsRouteSettings() {
     BS_SECTIONS.forEach(function (s) {
         Lampa.Template.add('settings_' + s[0], '<div></div>');
         add.call(api, { component: BS_ROOT, param: { name: 'bs_go_' + s[0], type: 'button' }, field: { name: s[1], description: s[2] },
-            onChange: function () { Lampa.Settings.create(s[0]); } });
+            onChange: function () { bsOpenSection(s[0]); } });
     });
+    try { bsPinRegister(); } catch (e) { console.log('BS pin', e); }
     api.addParam = function (data) {
         var name = data && data.component === 'bs_update' && data.param ? data.param.name : '';
         if (name && BS_SETTINGS_HIDDEN.indexOf(name) >= 0) return;
@@ -714,8 +717,55 @@ function bsRouteSettings() {
     try {
         Lampa.Settings.listener.follow('open', function (e) {
             if (e && e.body && e.body.find) bsSettingsHideLampa(e.body);
+            if (e && e.name === 'main' && e.body && e.body.find) bsSettingsRootUp(e.body);
             bsSectionBack(e);
         });
+    } catch (e) {}
+}
+
+/* ПИН родительского контроля Lampa перед «Telegram-бот» и «Онлайн-источники» (Lampa.ParentalControl.add/personal):
+ * пункты появляются в списке Lampa «Где спрашивать ПИН», отмечены по умолчанию один раз — дальше решает человек.
+ * Спрашивает сама Lampa и только при включённом родительском контроле (и по её «Как часто спрашивать»).
+ * Нет API (старая сборка Lampa) или ошибка — раздел открывается как раньше. */
+var BS_SECTIONS_PIN = { bs_telegram: 'Telegram-бот (Sunic Apps)', bs_online: 'Онлайн-источники (Sunic Apps)' };
+function bsPinApi() {
+    var P = window.Lampa && Lampa.ParentalControl;
+    return P && typeof P.add === 'function' && typeof P.personal === 'function' ? P : null;
+}
+function bsPinRegister() {
+    var P = bsPinApi();
+    if (!P) return false;
+    for (var name in BS_SECTIONS_PIN) if (BS_SECTIONS_PIN.hasOwnProperty(name)) {
+        var once = 'bs_pin_init_' + name, first = true;
+        try { first = window.localStorage.getItem(once) !== '1'; } catch (e) {}
+        try {
+            P.add('bs_pin_' + name, { title: BS_SECTIONS_PIN[name], 'default': first });
+            if (first) window.localStorage.setItem(once, '1');
+        } catch (e) { console.log('BS pin', name, e); }
+    }
+    return true;
+}
+function bsOpenSection(name) {
+    var P = BS_SECTIONS_PIN.hasOwnProperty(name) ? bsPinApi() : null;
+    if (P) {
+        try {
+            // как Lampa для своих «Настроек»: ПИН верный — открыть, нет — вернуть пульт в «Sunic Apps»
+            P.personal('bs_pin_' + name, function () { Lampa.Settings.create(name); }, false, true);
+            return;
+        } catch (e) { console.log('BS pin', name, e); }
+    }
+    Lampa.Settings.create(name);
+}
+
+/** «Sunic Apps» в главном списке настроек — сразу под «Синхронизацией» (Lampa добавляет свои папки плагинов в конец).
+ *  Нет «Синхронизации» (другая сборка Lampa) — первым. */
+function bsSettingsRootUp(body) {
+    try {
+        var me = body.find('.settings-folder[data-component="' + BS_ROOT + '"]');
+        if (!me.length) return;
+        var sync = body.find('.settings-folder[data-component="account"]');
+        if (sync.length) { if (sync.next()[0] !== me[0]) me.insertAfter(sync); }
+        else { var first = body.find('.settings-folder').first(); if (first[0] !== me[0]) me.insertBefore(first); }
     } catch (e) {}
 }
 

@@ -9,7 +9,9 @@
  *  ставит источник, сезон и озвучку из своей памяти (online_watched_last) и умеет сразу включить серию
  *  (lampac_continue_episode в объекте экрана) — мы этот номер добавляем при открытии экрана источников. Фильм: когда
  *  плагин нарисует список, выбираем то, что он сам предлагает продолжить (uiPickResume), — как автоподбор в bsfix.js.
- *  Позицию внутри видео восстанавливает сама Lampa (таймлайн).
+ *  Позицию внутри видео восстанавливает сама Lampa (таймлайн). Lampa.Timeline — главный источник: при запуске берём
+ *  то место, что свежее (наше или Lampa/CUB), досмотренную в Lampa серию считаем досмотренной; нет timeline у
+ *  плеера — пишем место в Lampa сами (Timeline.update). Нет API (старая Lampa) — только наша память.
  *
  *  Своего ряда на главной Lampa нет (1.7.0–1.7.11 был «Продолжить с места» — дублировал родной «Продолжить просмотр»
  *  Lampa; убран в 1.7.12): продолжение — плитками панели ТВ (bshub.js).
@@ -87,6 +89,75 @@ var BSContinue = (function () {
         return 'S' + r.s + ' E' + r.e + ' · осталось ' + t;
     }
 
+    /* ---------- таймлайн Lampa (Lampa.Timeline) ---------- */
+    /* Lampa хранит своё место просмотра (file_view, синхронизация CUB). Наша запись — запасная: решаем по той, что
+     * свежее (штамп updated есть в Lampa 3.x; нет штампа — по тому, где позиция дальше). В Lampa пишем только когда
+     * плагин не передал плееру timeline (иначе Lampa пишет сама) — простым объектом, без функций (handler из view()
+     * в $.param не попадает). Старые сборки Lampa без Timeline.view/update — всё как раньше, только наша память. */
+
+    /** Хеш и привязка таймлайна Lampa — как в Timeline.watched/watchedEpisode. null — API нет или карточка без названия. */
+    function lampaKey(card, s, e) {
+        try {
+            var T = Lampa.Timeline;
+            if (!card || !T || typeof T.view !== 'function' || !Lampa.Utils || typeof Lampa.Utils.hash !== 'function') return null;
+            s = s | 0; e = e | 0;
+            var tv = s > 0 && e > 0, name = tv ? (card.original_name || card.original_title) : (card.original_title || card.original_name);
+            if (!name) return null;
+            var hash = Lampa.Utils.hash(tv ? [s, s > 10 ? ':' : '', e, name].join('') : name);
+            var meta = null;
+            if (typeof T.link === 'function') { try { meta = T.link(card, s, e) || null; } catch (x) { meta = null; } }
+            return { hash: hash, meta: meta };
+        } catch (x) { return null; }
+    }
+
+    /** Место из Lampa: {time, percent, duration, updated} — только числа (handler и прочее не берём). null — нет. */
+    function lampaView(card, s, e) {
+        var k = lampaKey(card, s, e);
+        if (!k) return null;
+        try {
+            var v = k.meta ? Lampa.Timeline.view(k.hash, k.meta) : Lampa.Timeline.view(k.hash);
+            if (!v) return null;
+            return { time: +v.time || 0, percent: +v.percent || 0, duration: +v.duration || 0, updated: +v.updated || 0 };
+        } catch (x) { return null; }
+    }
+
+    /** Чья запись главнее: ours — {pos, dur, at}, tl — {time, percent, duration, updated}. 'ours' | 'lampa' | ''. */
+    function pickLater(ours, tl) {
+        var tlTime = tl ? (+tl.time || 0) || (tl.percent > 0 && (tl.duration || (ours && ours.dur)) ? Math.round(tl.percent / 100 * (tl.duration || ours.dur)) : 0) : 0;
+        var has = !!(tl && (tlTime > 0 || tl.percent > 0));
+        if (!ours || !(ours.pos > 0)) return has ? 'lampa' : '';
+        if (!has) return 'ours';
+        if (tl.updated > 0 && ours.at > 0) return ours.at > tl.updated ? 'ours' : 'lampa';
+        return ours.pos > tlTime ? 'ours' : 'lampa';
+    }
+
+    /** Поправить timeline плеера нашей записью, если она свежее: Lampa сама перемотает на time и запишет место
+     *  (и в CUB). Только не досмотренное и с разницей больше 30 с. Вернёт true, если поправили. */
+    function mergeTimeline(tl, rec) {
+        if (!tl || !rec || rec.done || !(rec.dur > 120) || !(rec.pos > 30) || rec.pos / rec.dur >= 0.9) return false;
+        if (pickLater(rec, tl) !== 'ours' || Math.abs(rec.pos - (+tl.time || 0)) <= 30) return false;
+        tl.time = rec.pos;
+        tl.percent = Math.round(rec.pos / rec.dur * 100);
+        if (!(tl.duration > 0)) tl.duration = rec.dur;
+        return true;
+    }
+
+    /** Записать место в таймлайн Lampa официальным Timeline.update — простыми полями. */
+    function lampaSave(k, pos, dur) {
+        try {
+            var T = Lampa.Timeline;
+            if (!k || !T || typeof T.update !== 'function' || !(dur > 0) || !(pos >= 0)) return false;
+            var p = { hash: k.hash, percent: Math.min(100, Math.round(pos / dur * 100)), time: Math.round(pos), duration: Math.round(dur) };
+            if (k.meta && k.meta.card) {
+                p.card = String(k.meta.card);
+                if (k.meta.season !== undefined) p.season = k.meta.season | 0;
+                if (k.meta.episode !== undefined) p.episode = k.meta.episode | 0;
+            }
+            T.update(p);
+            return true;
+        } catch (x) { log('timeline', x.message); return false; }
+    }
+
     /* ---------- что сейчас играет ---------- */
 
     var cur = null;     // {card, s, e, pos, dur}
@@ -101,7 +172,10 @@ var BSContinue = (function () {
 
     function onStart(data) {
         // следующая серия в том же плеере — 'destroy' не было, сохраняем прежнюю
-        if (cur && cur.dur > 120) record(cur.card, cur.s, cur.e, cur.pos, cur.dur);
+        if (cur && cur.dur > 120) {
+            record(cur.card, cur.s, cur.e, cur.pos, cur.dur);
+            if (cur.lk && cur.pos > 30) lampaSave(cur.lk, cur.pos, cur.dur);
+        }
         cur = null;
         try {
             // только видео из источников Skaz: продолжить можно только через них
@@ -109,7 +183,11 @@ var BSContinue = (function () {
             if (!lp) return;
             var card = (data && (data.card || data.movie)) || activeCard();
             if (!card || !(card.id > 0)) return;
-            cur = { card: card, s: (data && data.season) | 0, e: (data && data.episode) | 0, pos: 0, dur: 0, saved: 0 };
+            cur = { card: card, s: (data && data.season) | 0, e: (data && data.episode) | 0, pos: 0, dur: 0, saved: 0, lsaved: 0, lk: null };
+            if (data && data.timeline) {
+                // место ставит Lampa по timeline — наша запись свежее и дальше? подсказываем ей
+                if (mergeTimeline(data.timeline, last(card, cur.s, cur.e))) log('место из нашей памяти', data.timeline.time);
+            } else cur.lk = lampaKey(card, cur.s, cur.e);          // плагин не дал timeline — место в Lampa пишем сами
         } catch (e) { cur = null; }
     }
 
@@ -119,10 +197,14 @@ var BSContinue = (function () {
         if (d > 0 && isFinite(d)) cur.dur = d;
         if (c > 0) cur.pos = c;
         if (Date.now() - cur.saved > 15000 && cur.dur > 120 && cur.pos > 30) { cur.saved = Date.now(); record(cur.card, cur.s, cur.e, cur.pos, cur.dur); }
+        if (cur.lk && Date.now() - cur.lsaved > 60000 && cur.dur > 120 && cur.pos > 30) { cur.lsaved = Date.now(); lampaSave(cur.lk, cur.pos, cur.dur); }
     }
 
     function onStop() {
-        if (cur && cur.dur > 120) record(cur.card, cur.s, cur.e, cur.pos, cur.dur);
+        if (cur && cur.dur > 120) {
+            record(cur.card, cur.s, cur.e, cur.pos, cur.dur);
+            if (cur.lk && cur.pos > 30) lampaSave(cur.lk, cur.pos, cur.dur);
+        }
         cur = null;
         setTimeout(function () { try { if (window.BSHub) BSHub.push(); } catch (e) {} }, 3000);
     }
@@ -159,6 +241,11 @@ var BSContinue = (function () {
             w = (Lampa.Storage.cache('online_watched_last', 5000, {}) || {})[id] || null;
         } catch (e) {}
         var s = w && parseInt(w.season, 10) || (r && r.s) || 0, ep = w && parseInt(w.episode, 10) || (r && r.e) || 0;
+        // у нас серия не досмотрена, а в Lampa (в т. ч. с другого устройства через CUB) — досмотрена и свежее: следующая
+        if (r && !r.done && r.s === s && r.e === ep) {
+            var tl = lampaView(card, s, ep);
+            if (tl && tl.percent >= DONE * 100 && pickLater(r, tl) === 'lampa') r = { s: r.s, e: r.e, done: true, news: r.news };
+        }
         if (r && r.done && r.s === s && r.e === ep) ep++;
         if (r && r.news && r.done && r.news.s === s) ep = Math.max(ep, r.e + 1);
         return { season: s, episode: ep, known: !!w };
@@ -401,5 +488,6 @@ var BSContinue = (function () {
         return (r.s | 0) === (s | 0) && (r.e | 0) === (e | 0) ? r : null;
     }
 
-    return { start: start, onDraw: onDraw, _ruScore: ruScore, _pickRu: pickRu, resume: resume, last: last, _record: record, _load: load, _label: label, _newer: newer, hubItems: hubItems, _targetEpisode: targetEpisode, _autoResume: autoResume };
+    return { start: start, onDraw: onDraw, _ruScore: ruScore, _pickRu: pickRu, resume: resume, last: last, _record: record, _load: load, _label: label, _newer: newer, hubItems: hubItems, _targetEpisode: targetEpisode, _autoResume: autoResume,
+        _pickLater: pickLater, _mergeTimeline: mergeTimeline, _lampaKey: lampaKey, _lampaView: lampaView, _lampaSave: lampaSave, _onStart: onStart, _onTime: onTime, _onStop: onStop };
 })();

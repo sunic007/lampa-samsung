@@ -2073,7 +2073,7 @@
     author: 'Yumata',
     github: 'https://github.com/yumata/lampa-source',
     css_version: '3.3.6',
-    app_version: '3.3.6',
+    app_version: '3.3.7',
     cub_site: 'cub.best',
     apk_link_download: 'https://github.com/lampa-app/LAMPA/releases/download/v1.12.3/app-lite-release.apk'
   };
@@ -2579,7 +2579,7 @@
 
   var html$1E = "<div class=\"files\">\n    <div class=\"files__left\">\n        <div class=\"full-start__poster selector\">\n            <img src=\"{img}\" class=\"full-start__img\" />\n        </div>\n\n        <div class=\"files__info\">\n            <div class=\"files__title\">{title}</div>\n            <div class=\"files__title-original\">{original_title}</div>\n        </div>\n    </div>\n    <div class=\"files__body\">\n        \n    </div>\n</div>";
 
-  var html$1D = "<div class=\"about\">\n    <div>#{about_text}</div>\n\n\n    <div class=\"overhide\">\n        <div class=\"about__contacts\">\n            <div>\n                <small>#{about_channel}</small><br>\n                \@lampabyskaz\n            </div>\n\n            <div>\n                <small>#{about_group}</small><br>\n                @lampa_group\n            </div>\n\n            <div>\n                <small>#{about_version}</small><br>\n                <span class=\"version_app\"></span>\n            </div>\n\n            <div class=\"hide platform_android\">\n                <small>#{about_version} Android APK</small><br>\n                <span class=\"version_android\"></span>\n            </div>\n\n            <div>\n                <small>Hash</small><br>\n                <span>c5701b7be6da4427afd2403b298886e3</span>\n            </div>\n\n            <div>\n                <small>Builded</small><br>\n                <span>2026-10-13 20:25</span>\n            </div>\n        </div>\n    </div>\n\n    <div class=\"about__rules\">\n        <h3>#{termsofuse_t_01}</h3>\n\n        <p>#{termsofuse_t_02}</p>\n\n        <ol>\n            <li>\n                <h6>#{termsofuse_t_03}</h6>\n\n                <ol>\n                    <li><p>#{termsofuse_t_04}</p></li>\n\n                    <li><p>#{termsofuse_t_05}</p></li>\n\n                    <li><p>#{termsofuse_t_06}</p></li>\n\n                    <li><p>#{termsofuse_t_07}</p></li>\n                </ol>\n                \n            </li>\n\n            <li>\n                <h6>#{termsofuse_t_08}</h6>\n\n                <ol>\n                    <li><p>#{termsofuse_t_09}</p></li>\n                    <li><p>#{termsofuse_t_10}</p></li>\n                </ol>\n            </li>\n\n            <li>\n                <h6>#{termsofuse_t_11}</h6>\n\n                <ol>\n                    <li><p>#{termsofuse_t_12}</p></li>\n                    <li><p>#{termsofuse_t_13}</p></li>\n                </ol>\n            </li>\n        </ol>\n    </div>\n</div>";
+  var html$1D = "<div class=\"about\">\n    <div>#{about_text}</div>\n\n\n    <div class=\"overhide\">\n        <div class=\"about__contacts\">\n            <div>\n                <small>#{about_channel}</small><br>\n                \@lampabyskaz\n            </div>\n\n            <div>\n                <small>#{about_group}</small><br>\n                @lampa_group\n            </div>\n\n            <div>\n                <small>#{about_version}</small><br>\n                <span class=\"version_app\"></span>\n            </div>\n\n            <div class=\"hide platform_android\">\n                <small>#{about_version} Android APK</small><br>\n                <span class=\"version_android\"></span>\n            </div>\n\n            <div>\n                <small>Hash</small><br>\n                <span>88f1b98c4cb42b82030557dad34c8307</span>\n            </div>\n\n            <div>\n                <small>Builded</small><br>\n                <span>2026-10-16 11:38</span>\n            </div>\n        </div>\n    </div>\n\n    <div class=\"about__rules\">\n        <h3>#{termsofuse_t_01}</h3>\n\n        <p>#{termsofuse_t_02}</p>\n\n        <ol>\n            <li>\n                <h6>#{termsofuse_t_03}</h6>\n\n                <ol>\n                    <li><p>#{termsofuse_t_04}</p></li>\n\n                    <li><p>#{termsofuse_t_05}</p></li>\n\n                    <li><p>#{termsofuse_t_06}</p></li>\n\n                    <li><p>#{termsofuse_t_07}</p></li>\n                </ol>\n                \n            </li>\n\n            <li>\n                <h6>#{termsofuse_t_08}</h6>\n\n                <ol>\n                    <li><p>#{termsofuse_t_09}</p></li>\n                    <li><p>#{termsofuse_t_10}</p></li>\n                </ol>\n            </li>\n\n            <li>\n                <h6>#{termsofuse_t_11}</h6>\n\n                <ol>\n                    <li><p>#{termsofuse_t_12}</p></li>\n                    <li><p>#{termsofuse_t_13}</p></li>\n                </ol>\n            </li>\n        </ol>\n    </div>\n</div>";
 
   var html$1C = "<div class=\"error\">\n    <div class=\"error__ico\"></div>\n    <div class=\"error__body\">\n        <div class=\"error__title\">{title}</div>\n        <div class=\"error__text\">{text}</div>\n    </div>\n</div>";
 
@@ -8129,7 +8129,9 @@
       hash_string: '',
       season: null,
       episode: null,
-      serial: !!data.movie.number_of_seasons
+      serial: !!data.movie.number_of_seasons,
+      by_title: false // хеш построен из названия карточки, а не из пути файла
+
     };
     var regexps = [[/\bs(\d+)\.?ep?(\d+)\b/i, 'season', 'episode'], [/\b(\d{1,2})[x\-](\d+)\b/i, 'season', 'episode'], [/\bs(\d{2})(\d{2,3})\b/i, 'season', 'episode'], [/season (\d+) episode (\d+)/i, 'season', 'episode'], [/сезон (\d+) серия (\d+)/i, 'season', 'episode'], [/(\d+) season (\d+) episode/i, 'season', 'episode'], [/(\d+) сезон (\d+) серия/i, 'season', 'episode'], [/episode (\d+)/i, 'episode'], [/серия (\d+)/i, 'episode'], [/(\d+) episode/i, 'episode'], [/(\d+) серия/i, 'episode'], [/season (\d+)/i, 'season'], [/сезон (\d+)/i, 'season'], [/(\d+) season/i, 'season'], [/(\d+) сезон/i, 'season'], [/\bs(\d+)\b/i, 'season'], [/\bep?\.?(\d+)\b/i, 'episode'], [/\b(\d{1,3}) of (\d+)/i, 'episode'], [/\b(\d{1,3}) из (\d+)/i, 'episode'], [/ - (\d{1,3})\b/i, 'episode'], [/\[(\d{1,3})\]/i, 'episode'], [/(\d+) сер/i, 'episode']];
     var folder_regexps = [[/season (\d+)/i, 'season'], [/сезон (\d+)/i, 'season'], [/(\d+) season/i, 'season'], [/(\d+) сезон/i, 'season'], [/\bs(\d+)\b/i, 'season']];
@@ -8172,8 +8174,10 @@
     if (!data.is_file) {
       if (data.movie.number_of_seasons) {
         result.hash_string = [result.season, result.season > 10 ? ':' : '', result.episode, data.movie.original_title].join('');
+        result.by_title = true;
       } else if (data.movie.original_title && !result.serial) {
         result.hash_string = data.movie.original_title;
+        result.by_title = true;
       } else {
         result.hash_string = data.path;
       }
@@ -18738,6 +18742,10 @@
     return NoticeLampa;
   }(NoticeClass);
 
+  function escapeHtml$1(str) {
+    return (str + '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   function enrichTmdbNotice(element, oncomplite) {
     var card = element.card || {};
     if (!card.imdb_id) return oncomplite(element);
@@ -18836,7 +18844,16 @@
 
         Account$1.Api.notices(function (result) {
           var notices = result.map(function (item) {
-            var data = JSON.parse(item.data);
+            var data;
+
+            try {
+              data = JSON.parse(item.data);
+            } catch (e) {
+              return null;
+            }
+
+            if (data.type == 'discuss_reply') return _this2.discussReply(item, data);
+            if (!data.card) return null;
             var text = Lang.translate('notice_new_quality');
             var labels = [];
 
@@ -18866,7 +18883,7 @@
               data: data,
               item: item
             };
-          });
+          }).filter(Boolean);
           notices.sort(function (a, b) {
             return a.time > b.time ? -1 : a.time < b.time ? 1 : 0;
           });
@@ -18876,6 +18893,28 @@
             Notice$1.drawCount();
           });
         });
+      }
+    }, {
+      key: "discussReply",
+      value: function discussReply(item, data) {
+        var card = data.card && data.card.id ? data.card : null;
+        var method = data.method || ((item.card_id + '').indexOf('tv_') == 0 ? 'tv' : 'movie');
+        var title = card ? !Lang.selected(['ru', 'uk', 'be']) ? card.original_title || card.original_name : card.title || card.name : '';
+        return {
+          time: item.time || Utils$1.parseToDate(item.date).getTime(),
+          title: Lang.translate('notice_discuss_reply') + (title ? ': ' + escapeHtml$1(title) : ''),
+          text: escapeHtml$1(data.parent_comment || ''),
+          poster: card ? card.poster_path : '',
+          card: card,
+          method: method,
+          author: {
+            name: escapeHtml$1(data.from || ''),
+            img: Utils$1.protocol() + object$2.cub_domain + '/img/profiles/' + encodeURIComponent(data.icon || 'l_1') + '.png',
+            text: escapeHtml$1(data.comment || '')
+          },
+          data: data,
+          item: item
+        };
       }
     }, {
       key: "viewed",
@@ -19005,7 +19044,8 @@
             }).join(' ') + '</div>'));
 
             if (element.author) {
-              author_data = translate$1(element.author);
+              // author бывает {name, img, text} или по языкам {ru: {name, img, text}, ...}
+              author_data = element.author.name || element.author.img || element.author.text ? element.author : translate$1(element.author) || {};
               author_html = $("<div class=\"notice__author\">\n                        <div class=\"notice__author-img\">\n                            <img />\n                        </div>\n                        <div class=\"notice__author-body\">\n                            <div class=\"notice__author-name\"></div>\n                            <div class=\"notice__author-text\"></div>\n                        </div>\n                    </div>");
               author_html.find('.notice__author-name').html(author_data.name);
               author_html.find('.notice__author-text').html(author_data.text);
@@ -19020,7 +19060,7 @@
                   url: '',
                   component: 'full',
                   id: element.card.id,
-                  method: element.card.number_of_seasons || element.card.seasons ? 'tv' : 'movie',
+                  method: element.method || (element.card.number_of_seasons || element.card.seasons ? 'tv' : 'movie'),
                   card: element.card,
                   source: element.card.source || (Lang.selected(['ru', 'uk', 'be']) ? 'cub' : '')
                 });
@@ -19035,7 +19075,6 @@
                 if (Arrays.isObject(icon)) icon = icon[Lampa.Storage.get('tmdb_lang')] || ((_element$card2 = element.card) === null || _element$card2 === void 0 ? void 0 : _element$card2.poster_path);
                 if (icon && icon.indexOf('http') == -1) icon = TMDB$1.image('t/p/w300/' + icon);
                 var img_icon = item.find('.notice__left img')[0] || {};
-                var img_author = item.find('.notice__author img')[0] || {};
 
                 img_icon.onload = function () {
                   item.addClass('image--loaded');
@@ -19045,6 +19084,12 @@
                   img_icon.src = './img/img_broken.svg';
                 };
 
+                img_icon.src = icon ? Utils$1.fixProtocolLink(icon) : './img/img_broken.svg';
+              }
+
+              if (element.author) {
+                var img_author = item.find('.notice__author img')[0] || {};
+
                 img_author.onload = function () {
                   item.addClass('image-author--loaded');
                 };
@@ -19053,8 +19098,7 @@
                   img_author.src = './img/img_broken.svg';
                 };
 
-                img_icon.src = icon ? Utils$1.fixProtocolLink(icon) : './img/img_broken.svg';
-                if (element.author) img_author.src = author_data.img ? Utils$1.fixProtocolLink(author_data.img.indexOf('http') >= 0 ? author_data.img : TMDB$1.image('t/p/w200/' + author_data.img)) : './img/img_broken.svg';
+                img_author.src = author_data.img ? Utils$1.fixProtocolLink(author_data.img.indexOf('http') >= 0 ? author_data.img : TMDB$1.image('t/p/w200/' + author_data.img)) : './img/img_broken.svg';
               }
             });
             html.append(item);
@@ -21736,7 +21780,7 @@
       var out_day = data.air_date ? Math.round((out_air.getTime() - out_now) / (24 * 60 * 60 * 1000)) : 1;
       data.left_days = out_day > 0 ? out_day : 0;
       data.left_text = Lang.translate('full_episode_days_left') + ': ' + (data.air_date ? out_day : '- -');
-      data.timeline = Timeline$1.view(data.hash);
+      data.timeline = Timeline$1.view(data.hash, Timeline$1.link(data.card, data.season_number, data.episode_number));
       data.time = Utils$1.secondsToTime(data.runtime * 60, true);
       data.title = data.name || Lang.translate('torrent_serial_episode') + ' ' + data.episode_number;
       data.date = data.air_date ? Utils$1.parseTime(data.air_date).full : '----';
@@ -22266,7 +22310,7 @@
           var Draw = function Draw() {
             episodes.forEach(function (ep) {
               var hash = Utils$1.hash([ep.season_number, ep.season_number > 10 ? ':' : '', ep.episode_number, data.original_title].join(''));
-              var view = Timeline$1.view(hash);
+              var view = Timeline$1.view(hash, Timeline$1.link(data, ep.season_number, ep.episode_number));
               if (view.percent) viewed = {
                 ep: ep,
                 view: view
@@ -22283,7 +22327,7 @@
                     episode_number: filed.episode,
                     name: Lang.translate('full_episode') + ' ' + filed.episode
                   },
-                  view: Timeline$1.view(Utils$1.hash([filed.season, filed.season > 10 ? ':' : '', filed.episode, data.original_title].join('')))
+                  view: Timeline$1.view(Utils$1.hash([filed.season, filed.season > 10 ? ':' : '', filed.episode, data.original_title].join('')), Timeline$1.link(data, filed.season, filed.episode))
                 };
               }
             } // Если это фильм и не нашли просмотренное, то проверим по прогрессу просмотра из таймлайна
@@ -24130,7 +24174,9 @@
   var Account$1 = Account;
 
   var listener$a = Subscribe$2(),
-      viewed$1;
+      viewed$1,
+      index = {}; // ключ карточки (card|season|episode) -> hash, для поиска тайм-кода при смене названия
+
   /**
    * Инициализация
    * @returns {void}
@@ -24148,6 +24194,7 @@
   function read() {
     var no_nolisten = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
     viewed$1 = Storage.get(filename(), {});
+    buildIndex();
     listener$a.send('read', {
       data: viewed$1
     });
@@ -24157,6 +24204,94 @@
       reason: 'read',
       viewed: viewed$1
     });
+  }
+  /**
+   * Ключ индекса для привязки к карточке
+   * @param {object} meta - объект с полями card, season, episode
+   * @returns {string}
+   */
+
+
+  function indexKey(meta) {
+    return [meta.card, meta.season, meta.episode].join('|');
+  }
+  /**
+   * Добавить запись в индекс. При коллизии оставляем более свежую запись
+   * @param {string} hash - хеш записи
+   * @param {object} road - запись прогресса
+   * @returns {void}
+   */
+
+
+  function indexAdd(hash, road) {
+    if (!road || _typeof(road) !== 'object' || !road.card) return;
+    var key = indexKey(road);
+    var exist = index[key] ? viewed$1[index[key]] : null;
+    if (!exist || _typeof(exist) !== 'object' || (exist.updated || 0) <= (road.updated || 0)) index[key] = hash;
+  }
+  /**
+   * Построить индекс по всем записям прогресса
+   * @returns {void}
+   */
+
+
+  function buildIndex() {
+    index = {};
+
+    for (var hash in viewed$1) {
+      indexAdd(hash, viewed$1[hash]);
+    }
+  }
+  /**
+   * Привязка тайм-кода к карточке. Нужна, чтобы найти прогресс, если у карточки сменится оригинальное название и, как следствие, хеш
+   * @param {object} card - карточка
+   * @param {number} [season] - номер сезона (для сериала)
+   * @param {number} [episode] - номер серии (для сериала)
+   * @returns {object|null} - {card, season, episode} или null, если привязать нельзя
+   */
+
+
+  function link(card, season, episode) {
+    if (!card || !card.id) return null;
+    var type = card.original_name ? 'tv' : 'movie';
+    var source = (card.source || 'tmdb') + '';
+    var key = type + '_' + card.id; // id разных источников могут совпадать, поэтому для не tmdb/cub добавляем префикс источника
+
+    if (source !== 'tmdb' && source !== 'cub') key = source + '_' + key; // так же чистит сервер, держим ключ одинаковым на клиенте и на сервере
+
+    key = key.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 64);
+    var result = {
+      card: key
+    };
+
+    if (type == 'tv') {
+      season = parseInt(season);
+      episode = parseInt(episode); // Без сезона и серии привязка сериала не имеет смысла
+
+      if (isNaN(season) || isNaN(episode)) return null;
+      result.season = season;
+      result.episode = episode;
+    }
+
+    return result;
+  }
+  /**
+   * Выбрать из объекта только поля привязки к карточке
+   * @param {object} obj - объект с полями card, season, episode
+   * @returns {object} - {card, season, episode} или пустой объект
+   */
+
+
+  function linked(obj) {
+    var result = {};
+
+    if (obj && obj.card) {
+      result.card = obj.card;
+      if (typeof obj.season !== 'undefined') result.season = obj.season;
+      if (typeof obj.episode !== 'undefined') result.episode = obj.episode;
+    }
+
+    return result;
   }
   /**
    * Имя файла для хранения прогресса просмотра в localStorage
@@ -24176,6 +24311,9 @@
    * @param {number} [params.duration] - общая длительность файла в секундах
    * @param {number} [params.profile] - ID профиля
    * @param {number} [params.updated] - когда отметка изменилась, в миллисекундах. Для локальных изменений ставится сам
+   * @param {string} [params.card] - ключ карточки из link()
+   * @param {number} [params.season] - номер сезона (вместе с card)
+   * @param {number} [params.episode] - номер серии (вместе с card)
    * @param {boolean} [params.received] - флаг, что данные получены с сервера
    * @returns {void}
    */
@@ -24204,10 +24342,18 @@
     if (typeof params.time !== 'undefined') road.time = params.time;
     if (typeof params.duration !== 'undefined') road.duration = params.duration;
     if (typeof params.profile !== 'undefined') road.profile = params.profile;
-    if (typeof params.updated !== 'undefined') road.updated = params.updated; // округляем время и длительность до целых секунд
+    if (typeof params.updated !== 'undefined') road.updated = params.updated; // Привязка к карточке необязательна: старые записи и сторонние плагины работают только по хешу
+
+    if (params.card) {
+      road.card = params.card + '';
+      if (typeof params.season !== 'undefined') road.season = params.season;
+      if (typeof params.episode !== 'undefined') road.episode = params.episode;
+    } // округляем время и длительность до целых секунд
+
 
     road.time = Math.round(road.time);
     road.duration = Math.round(road.duration);
+    indexAdd(params.hash, road);
     Storage.set(filename(), viewed$1);
     var layers = [].concat(Activity.renderLayers());
     layers.push($(document));
@@ -24245,13 +24391,21 @@
   /**
    * Получить прогресс просмотра
    * @param {string} hash - хеш файла
-   * @return {object} - объект с прогрессом просмотра {hash, percent, time, duration, profile, updated, handler}
+   * @param {object} [meta] - привязка к карточке из link(). Если по хешу ничего нет, ищем по ней
+   * @return {object} - объект с прогрессом просмотра {hash, percent, time, duration, profile, updated, handler, [card, season, episode]}
    */
 
 
-  function view$1(hash) {
+  function view$1(hash, meta) {
     var curent = typeof viewed$1[hash] !== 'undefined' ? viewed$1[hash] : 0,
-        profile = Account$1.Permit.sync ? Account$1.Permit.account.profile.id : 0;
+        profile = Account$1.Permit.sync ? Account$1.Permit.account.profile.id : 0; // По хешу ничего нет, возможно у карточки сменилось название — ищем по привязке.
+    // Хеш оставляем новый, чтобы дальше прогресс писался уже под ним
+
+    if (typeof viewed$1[hash] == 'undefined' && meta && meta.card) {
+      var found = index[indexKey(meta)];
+      if (found && _typeof(viewed$1[found]) == 'object') curent = viewed$1[found];
+    }
+
     var road = {
       percent: 0,
       time: 0,
@@ -24277,7 +24431,7 @@
         road: road
       }
     });
-    return {
+    var result = {
       hash: hash,
       percent: road.percent,
       time: road.time,
@@ -24285,15 +24439,17 @@
       profile: road.profile,
       updated: road.updated,
       handler: function handler(percent, time, duration) {
-        return update$7({
+        return update$7(Object.assign({
           hash: hash,
           percent: percent,
           time: time,
           duration: duration,
           profile: road.profile
-        });
+        }, linked(meta)));
       }
     };
+    Object.assign(result, linked(meta));
+    return result;
   }
   /**
    * Создать прогресс просмотра
@@ -24338,7 +24494,7 @@
       var list = [];
 
       for (var i = 1; i <= max; i++) {
-        var time = view$1(Utils$1.hash([1, i, card.original_name].join('')));
+        var time = view$1(Utils$1.hash([1, i, card.original_name].join('')), link(card, 1, i));
 
         if (time.percent) {
           list.push({
@@ -24350,7 +24506,7 @@
 
       return return_time ? list : list.length;
     } else {
-      var _time = view$1(Utils$1.hash(card.original_title));
+      var _time = view$1(Utils$1.hash(card.original_title), link(card));
 
       return return_time ? _time : _time.percent;
     }
@@ -24358,7 +24514,7 @@
 
   function watchedEpisode(card, season, episode) {
     var return_time = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
-    var time = view$1(Utils$1.hash([season, season > 10 ? ':' : '', episode, card.original_name || card.original_title].join('')));
+    var time = view$1(Utils$1.hash([season, season > 10 ? ':' : '', episode, card.original_name || card.original_title].join('')), link(card, season, episode));
     return return_time ? time : time.percent;
   }
   /**
@@ -24388,7 +24544,8 @@
     format: format,
     watched: watched,
     watchedEpisode: watchedEpisode,
-    filename: filename
+    filename: filename,
+    link: link
   };
 
   var markers = ['socket', 'mirrors', 'request'];
@@ -33265,7 +33422,7 @@
 
     var updateTimeline = function updateTimeline(elem) {
       if (elem.timeline) {
-        var new_timeline = Lampa.Timeline.view(elem.timeline.hash);
+        var new_timeline = Lampa.Timeline.view(elem.timeline.hash, elem.timeline);
         elem.timeline.time = Math.round(new_timeline.time);
         elem.timeline.duration = Math.round(new_timeline.duration);
         elem.timeline.percent = new_timeline.percent;
@@ -40998,8 +41155,10 @@
         filename: element.path_human,
         path: element.path,
         is_file: formats_individual.indexOf(exe) >= 0
-      });
-      var view = Timeline$1.view(info.hash);
+      }); // Привязываем к карточке, только если хеш из названия: хеш из пути файла от названия карточки не зависит.
+      // Серию 0 парсер ставит, когда номер не распознан — такую не привязываем
+
+      var view = Timeline$1.view(info.hash, info.by_title && (!info.serial || info.episode) ? Timeline$1.link(params.movie, info.season, info.episode) : null);
       var serverView = (params.viewed || []).filter(function (v) {
         return v.file_index == element.id;
       })[0];
@@ -50827,6 +50986,7 @@ else if (element.url) {
     notice_in_quality: 'В качестве',
     notice_none_account: 'У вас еще нет никаких уведомлений, добавьте сериалы в закладки и ожидайте уведомления о новых сериях.',
     notice_none_system: 'На данный момент у вас отсутствуют уведомления. Мы обязательно оповестим вас, когда появятся новые уведомления.',
+    notice_discuss_reply: 'Ответ на комментарий',
     copy_link: 'Копировать ссылку на видео',
     copy_secuses: 'Ссылка скопирована в буфер обмена',
     copy_error: 'Ошибка при копирование ссылки',
@@ -51928,6 +52088,7 @@ else if (element.url) {
     notice_in_quality: 'As',
     notice_none_account: 'You don\'t have any notifications yet, bookmark the series and wait for notifications of new episodes.',
     notice_none_system: 'You currently have no notifications. We will be sure to notify you when new notifications become available.',
+    notice_discuss_reply: 'Reply to comment',
     copy_link: 'Copy video link',
     copy_secuses: 'Link copied to clipboard',
     copy_error: 'Error copying link',
@@ -52816,7 +52977,7 @@ else if (element.url) {
           var viewed;
           episodes.forEach(function (ep) {
             var hash = Utils$1.hash([ep.season_number, ep.season_number > 10 ? ':' : '', ep.episode_number, data.original_title].join(''));
-            var view = Timeline$1.view(hash);
+            var view = Timeline$1.view(hash, Timeline$1.link(data, ep.season_number, ep.episode_number));
             if (view.percent) viewed = {
               ep: ep,
               view: view
@@ -52833,13 +52994,13 @@ else if (element.url) {
                   episode_number: filed.episode,
                   name: Lang.translate('full_episode') + ' ' + filed.episode
                 },
-                view: Timeline$1.view(Utils$1.hash([filed.season, filed.season > 10 ? ':' : '', filed.episode, data.original_title].join('')))
+                view: Timeline$1.view(Utils$1.hash([filed.season, filed.season > 10 ? ':' : '', filed.episode, data.original_title].join('')), Timeline$1.link(data, filed.season, filed.episode))
               };
             }
           }
 
           if (!viewed && !data.original_name) {
-            var time = Timeline$1.view(Utils$1.hash([data.original_title].join('')));
+            var time = Timeline$1.view(Utils$1.hash([data.original_title].join('')), Timeline$1.link(data));
 
             if (time.percent) {
               viewed = {
@@ -56942,8 +57103,8 @@ else if (element.url) {
     console.log('App', 'is PWA:', Utils$1.isPWA());
     console.log('App', 'platform:', Storage.get('platform', 'noname'));
     console.log('App', 'version:', object$2.app_version);
-    console.log('App', 'build date:', '2026-10-13 20:25');
-    console.log('App', 'hash', 'c5701b7be6da4427afd2403b298886e3');
+    console.log('App', 'build date:', '2026-10-16 11:38');
+    console.log('App', 'hash', '88f1b98c4cb42b82030557dad34c8307');
     console.log('App', 'location:', location.href); // Записываем uid
 
     if (!Storage.get('lampa_uid', '')) Storage.set('lampa_uid', Utils$1.uid()); // Ренедрим лампу
