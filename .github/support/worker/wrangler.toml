@@ -1,0 +1,12 @@
+# Cloudflare Worker бота группы t.me/sunicapps (бесплатный тариф). Развернуть: npx wrangler deploy (из этой папки).
+# Секреты — npx wrangler secret put <ИМЯ>: TELEGRAM_BOT_TOKEN, SUPPORT_TOKEN, LLM_API_KEY, WEBHOOK_SECRET.
+name = "sunicapps-support"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[vars]
+SUPPORT_GROUP = "sunicapps"
+
+[observability]
+enabled = true

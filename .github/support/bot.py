@@ -1233,6 +1233,10 @@ def save_state(state):
 
 def main(argv):
     cmd = argv[1] if len(argv) > 1 else 'poll'
+    if cmd == 'kb':   # справочная база для бота на Cloudflare (.github/support/kb.txt): Worker берёт её готовой
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stdout.write(load_kb(Http()))
+        return 0
     token = os.environ.get('TELEGRAM_BOT_TOKEN') or ''
     if not token:
         log('no TELEGRAM_BOT_TOKEN — skip')
