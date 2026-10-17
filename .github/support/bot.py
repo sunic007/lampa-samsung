@@ -38,10 +38,11 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 
 REPOS = {'lampa-samsung': 'sunic007/lampa-samsung', 'tvinstaller': 'sunic007/tvinstaller'}
 TVI_RAW = 'https://raw.githubusercontent.com/sunic007/tvinstaller/main/.github/'
+AND_RAW = 'https://raw.githubusercontent.com/sunic007/lampa-android/main/.github/'
 LABEL = 'from-telegram'
 KIND_LABEL = {'bug': 'bug', 'suggestion': 'enhancement', 'question_unknown': 'question'}
 KINDS = ('question', 'question_unknown', 'bug', 'suggestion', 'other')
-PRODUCTS = ('lampa', 'tvinstaller', 'both', 'unknown')
+PRODUCTS = ('lampa', 'tvinstaller', 'android', 'both', 'unknown')
 LANGS = ('ru', 'uz', 'en')
 MAX_AGE = 2 * 24 * 3600
 MAX_LLM = 20          # вызовов ИИ за запуск
@@ -329,12 +330,14 @@ def changelog_latest(md, n=2, lang_ru=True):
     return md_to_text(text)
 
 
-def build_kb(lampa_readme, lampa_changelog, tvi_readme='', tvi_changelog='', limit=KB_LIMIT):
+def build_kb(lampa_readme, lampa_changelog, tvi_readme='', tvi_changelog='', and_readme='', and_changelog='', limit=KB_LIMIT):
     blocks = [
-        ['ЛАМПА ДЛЯ SAMSUNG (product=lampa) — README', readme_sections(lampa_readme), 0.50],
-        ['ЛАМПА ДЛЯ SAMSUNG — последние версии', changelog_latest(lampa_changelog), 0.12],
-        ['TV INSTALLER (product=tvinstaller) — README', readme_sections(tvi_readme) if tvi_readme else '', 0.26],
-        ['TV INSTALLER — последние версии', changelog_latest(tvi_changelog) if tvi_changelog else '', 0.12],
+        ['ЛАМПА ДЛЯ SAMSUNG (product=lampa) — README', readme_sections(lampa_readme), 0.44],
+        ['ЛАМПА ДЛЯ SAMSUNG — последние версии', changelog_latest(lampa_changelog), 0.10],
+        ['TV INSTALLER (product=tvinstaller) — README', readme_sections(tvi_readme) if tvi_readme else '', 0.22],
+        ['TV INSTALLER — последние версии', changelog_latest(tvi_changelog) if tvi_changelog else '', 0.08],
+        ['SUNIC APPS ДЛЯ LAMPA НА ANDROID (product=android) — README', readme_sections(and_readme) if and_readme else '', 0.12],
+        ['SUNIC APPS ДЛЯ LAMPA НА ANDROID — последние версии', changelog_latest(and_changelog, 1) if and_changelog else '', 0.04],
     ]
     blocks = [b for b in blocks if b[1]]
     total = sum(b[2] for b in blocks) or 1
@@ -356,13 +359,14 @@ def load_kb(http):
         except OSError:
             return ''
 
-    def remote(p):
+    def remote(p, base=TVI_RAW):
         try:
-            st, body, _ = http.request('GET', TVI_RAW + p, raw=True)
+            st, body, _ = http.request('GET', base + p, raw=True)
             return body if st == 200 else ''
         except Exception:
             return ''
-    return build_kb(local('README.ru.md'), local('CHANGELOG.md'), remote('README.ru.md'), remote('CHANGELOG.md'))
+    return build_kb(local('README.ru.md'), local('CHANGELOG.md'), remote('README.ru.md'), remote('CHANGELOG.md'),
+                    remote('README.ru.md', AND_RAW), remote('CHANGELOG.md', AND_RAW))
 
 
 # ---------------------------------------------------------------- HTTP
@@ -519,8 +523,9 @@ SYSTEM = """You are the support assistant of the Telegram group «Sunic Apps —
 Products:
 - lampa: «Lampa для Samsung» — the Lampa media center package for Samsung Smart TVs (Tizen): installs on the TV, updates itself, protects the player from freezing, adds a Telegram bot.
 - tvinstaller: «TV Installer» — an Android phone app that installs apps (Lampa and others) onto Samsung TVs over Wi-Fi.
+- android: «Sunic Apps для Lampa на Android» — a plugin for the Lampa app on Android phones/TV boxes (e.g. Lampa BS): the same Sunic Apps functions as on the TV (Telegram bot, continue watching, player watchdog). Added in Lampa → Settings → Extensions by the address https://sunic007.github.io/lampa-android/sunic.js.
 Classify the user's message. Reply with ONE JSON object only:
-{"kind":"question|question_unknown|bug|suggestion|other","product":"lampa|tvinstaller|both|unknown","lang":"ru|uz|en","title":"...","answer":"..."}
+{"kind":"question|question_unknown|bug|suggestion|other","product":"lampa|tvinstaller|android|both|unknown","lang":"ru|uz|en","title":"...","answer":"..."}
 Rules:
 - question: a question the KNOWLEDGE BASE clearly answers. Then "answer" = the answer.
 - question_unknown: a question about the products that the knowledge base does not answer (do not guess).
@@ -548,6 +553,7 @@ QUESTION_WORDS = re.compile(
     r"(\?|^(как|почему|зачем|где|когда|можно ли|есть ли|что делать|подскажите)|"
     r"\b(qanday|nega|qayerda|qachon|mumkinmi|bormi)\b|^(how|why|where|when|can i|is there|what)\b)", re.I)
 TVI_WORDS = re.compile(r'(tv ?installer|инсталлер|установщик|\bapk\b|телефон|android|андроид|smartfon|telefon|phone)', re.I)
+ANDROID_WORDS = re.compile(r'(lampa ?bs|плагин|plagin|plugin|sunic\.js|приставк|pristavka|tv ?box|android ?tv)', re.I)
 LAMPA_WORDS = re.compile(r'(lampa|лампа|lampu|плеер|фильм|сериал|бот|skaz|tizen|kino|film|player)', re.I)
 THANKS = re.compile(r"^\W*(спасибо|благодарю|помогло|получилось|работает|rahmat|raxmat|ishladi|bo'ldi|thanks?|thank you|it works|ok|ок)\W*$", re.I)
 
@@ -556,7 +562,8 @@ def keyword_classify(text):
     s = (text or '').strip()
     lang = detect_lang(s)
     tvi, lampa = bool(TVI_WORDS.search(s)), bool(LAMPA_WORDS.search(s))
-    product = 'both' if tvi and lampa else 'tvinstaller' if tvi else 'lampa' if lampa else 'unknown'
+    product = ('android' if ANDROID_WORDS.search(s) else 'both' if tvi and lampa else 'tvinstaller' if tvi
+               else 'lampa' if lampa else 'unknown')
     if len(s) < 12 or THANKS.match(s):
         kind = 'other'
     elif BUG_WORDS.search(s):
@@ -876,6 +883,7 @@ class Bot:
 
     # --- задачи GitHub
     def repo_for(self, product):
+        # плагин для Android — модули его в lampa-samsung, там же и задачи (и сообщение «готово» по закрытию)
         return REPOS['tvinstaller'] if product == 'tvinstaller' else REPOS['lampa-samsung']
 
     def ensure_label(self, repo):

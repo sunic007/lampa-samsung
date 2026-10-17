@@ -741,5 +741,21 @@ class Serve(unittest.TestCase):
         self.assertTrue(any('555' in str(x) for x in tg.sent()))
 
 
+
+class AndroidProduct(unittest.TestCase):
+    def test_kb_has_android_block(self):
+        kb = bot.build_kb('## Установка\nТВ', '## 2.2.4 — x\n- a', '## TVI\nt', '', '## Установка\nНастройки → Расширения', '## 2.2.4 — п\n- b')
+        self.assertIn('ANDROID', kb)
+        self.assertIn('Расширения', kb)
+
+    def test_keywords_android(self):
+        self.assertEqual(bot.keyword_classify('Плагин на Lampa BS не грузится, ошибка')['product'], 'android')
+        self.assertEqual(bot.keyword_classify('TV Installer не видит телевизор, ошибка')['product'], 'tvinstaller')
+
+    def test_android_issue_goes_to_lampa_samsung(self):
+        self.assertEqual(make_bot().repo_for('android'), 'sunic007/lampa-samsung')
+        self.assertEqual(bot.parse_classification('{"kind":"bug","product":"android","lang":"ru","title":"x"}', 'x')['product'], 'android')
+
+
 if __name__ == '__main__':
     unittest.main()
