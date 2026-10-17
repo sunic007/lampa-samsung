@@ -16,6 +16,9 @@ on:
       delete:
         description: 'Удалить посты канала: номера через запятую (вместо поста)'
         required: false
+      text:
+        description: 'Свой пост (вместо поста о релизе): текст как есть'
+        required: false
 
 permissions:
   contents: read
@@ -32,6 +35,7 @@ jobs:
           REPO: ${{ github.repository }}
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
           DELETE: ${{ inputs.delete }}
+          TEXT: ${{ inputs.text }}
           EVENT: ${{ github.event_name }}
         run: |
           if [ -z "$TOKEN" ]; then echo "Нет секрета TELEGRAM_BOT_TOKEN — пропускаю"; exit 0; fi
@@ -40,6 +44,10 @@ jobs:
               case "$id" in ''|*[!0-9]*) echo "не номер: $id"; continue;; esac
               curl -s "https://api.telegram.org/bot$TOKEN/deleteMessage" -d chat_id="$CHANNEL" -d message_id="$id" | grep -q '"ok":true' && echo "удалён $id" || echo "не удалён $id"
             done
+            exit 0
+          fi
+          if [ -n "$TEXT" ]; then
+            python3 -c "import json,os,urllib.parse,urllib.request;d=urllib.parse.urlencode({'chat_id':os.environ['CHANNEL'],'text':os.environ['TEXT'],'disable_web_page_preview':'true'}).encode();r=json.load(urllib.request.urlopen('https://api.telegram.org/bot%s/sendMessage'%os.environ['TOKEN'],d));print('ok, пост', r['result']['message_id'] if r.get('ok') else r)"
             exit 0
           fi
           [ -n "$TAG" ] || { echo "нужен tag"; exit 1; }
