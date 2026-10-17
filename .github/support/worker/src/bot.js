@@ -7,7 +7,7 @@
 export const REPOS = { 'lampa-samsung': 'sunic007/lampa-samsung', tvinstaller: 'sunic007/tvinstaller' };
 export const LABEL = 'from-telegram';
 export const KIND_LABEL = { bug: 'bug', suggestion: 'enhancement', question_unknown: 'question' };
-const KINDS = ['question', 'question_unknown', 'bug', 'suggestion', 'other'];
+const KINDS = ['question', 'question_unknown', 'bug', 'suggestion', 'spam', 'other'];
 const PRODUCTS = ['lampa', 'tvinstaller', 'android', 'both', 'unknown'];
 const LANGS = ['ru', 'uz', 'en'];
 const MAX_AGE = 2 * 24 * 3600;
@@ -28,6 +28,14 @@ export const TEXTS = {
         issue_from: 'Из группы Telegram', issue_more: 'Ещё одно сообщение из группы',
         issue_add: 'Дополнение из группы', bot_answer: 'Ответ бота, который не помог',
         rating: 'Оценка из Telegram: {stars} ({k}/5)', num: '№{n}',
+        mod_removed: '⚠️ Сообщение от {name} удалено: {why}.',
+        mod_warn: '⚠️ Осторожно: {why} — не скачивайте и не открывайте.',
+        mod_file: 'в группе нельзя присылать файлы приложений и архивы — так распространяют поддельные APK',
+        mod_link: 'в группе нельзя присылать сторонние ссылки',
+        mod_spam: 'реклама и предложения заработка здесь запрещены',
+        mod_official: 'Скачивайте только с официальных страниц: <a href="https://github.com/sunic007/tvinstaller/releases/latest/download/SunicTvInstaller.apk">TV Installer</a>, <a href="https://github.com/sunic007/lampa-samsung">Lampa для Samsung</a>, <a href="https://github.com/sunic007/lampa-android">плагин для Android</a>.',
+        mod_muted: 'Повторное нарушение — писать в группу можно снова через 7 дней.',
+        mod_banned: 'Третье нарушение за неделю — участник удалён из группы.',
     },
     uz: {
         footer: "Yordam bermadimi? Shu xabarga javob yozing — dasturchiga yetkazaman.",
@@ -39,6 +47,14 @@ export const TEXTS = {
         issue_from: 'Telegram guruhidan', issue_more: 'Guruhdan yana bir xabar',
         issue_add: "Guruhdan qo'shimcha", bot_answer: 'Yordam bermagan bot javobi',
         rating: 'Telegramdan baho: {stars} ({k}/5)', num: '№{n}',
+        mod_removed: "⚠️ {name} xabari o'chirildi: {why}.",
+        mod_warn: "⚠️ Ehtiyot bo'ling: {why} — yuklab olmang va ochmang.",
+        mod_file: "guruhga ilova fayllari va arxivlarni yuborish mumkin emas — soxta APK shunday tarqatiladi",
+        mod_link: "guruhga begona havolalarni yuborish mumkin emas",
+        mod_spam: "reklama va pul ishlash takliflari taqiqlangan",
+        mod_official: 'Faqat rasmiy sahifalardan yuklab oling: <a href="https://github.com/sunic007/tvinstaller/releases/latest/download/SunicTvInstaller.apk">TV Installer</a>, <a href="https://github.com/sunic007/lampa-samsung">Samsung uchun Lampa</a>, <a href="https://github.com/sunic007/lampa-android">Android uchun plagin</a>.',
+        mod_muted: "Takroriy buzilish — guruhga 7 kundan keyin yozish mumkin.",
+        mod_banned: "Bir hafta ichida uchinchi buzilish — ishtirokchi guruhdan chiqarildi.",
     },
     en: {
         footer: "Didn't help? Reply to this message — I'll pass it to the developer.",
@@ -50,6 +66,14 @@ export const TEXTS = {
         issue_from: 'From the Telegram group', issue_more: 'One more message from the group',
         issue_add: 'Follow-up from the group', bot_answer: "Bot answer that didn't help",
         rating: 'Rating from Telegram: {stars} ({k}/5)', num: '#{n}',
+        mod_removed: '⚠️ A message from {name} was removed: {why}.',
+        mod_warn: "⚠️ Careful: {why} — don't download or open it.",
+        mod_file: "app files and archives aren't allowed here — that's how fake APKs spread",
+        mod_link: "third-party links aren't allowed here",
+        mod_spam: 'ads and money-making offers are not allowed',
+        mod_official: 'Download only from the official pages: <a href="https://github.com/sunic007/tvinstaller/releases/latest/download/SunicTvInstaller.apk">TV Installer</a>, <a href="https://github.com/sunic007/lampa-samsung">Lampa for Samsung</a>, <a href="https://github.com/sunic007/lampa-android">Android plugin</a>.',
+        mod_muted: 'Repeated violation — you can post again in 7 days.',
+        mod_banned: 'Third violation this week — the member was removed.',
     },
 };
 
@@ -171,13 +195,14 @@ Products:
 - tvinstaller: «TV Installer» — an Android phone app that installs apps (Lampa and others) onto Samsung TVs over Wi-Fi.
 - android: «Sunic Apps для Lampa на Android» — a plugin for the Lampa app on Android phones/TV boxes (e.g. Lampa BS): the same Sunic Apps functions as on the TV (Telegram bot, continue watching, player watchdog). Added in Lampa → Settings → Extensions by the address https://sunic007.github.io/lampa-android/sunic.js.
 Classify the user's message. Reply with ONE JSON object only:
-{"kind":"question|question_unknown|bug|suggestion|other","product":"lampa|tvinstaller|android|both|unknown","lang":"ru|uz|en","title":"...","answer":"..."}
+{"kind":"question|question_unknown|bug|suggestion|spam|other","product":"lampa|tvinstaller|android|both|unknown","lang":"ru|uz|en","title":"...","answer":"..."}
 Rules:
 - question: a question the KNOWLEDGE BASE clearly answers. Then "answer" = the answer.
 - question_unknown: a question about the products that the knowledge base does not answer (do not guess).
 - bug: something does not work, an error, a crash, a freeze, wrong behaviour.
 - suggestion: a request to add or change a feature.
-- other: greetings, thanks, chatter, people talking to each other, off-topic, ads, spam.
+- spam: ads, scams, offers of earnings/crypto/betting/adult content, invitations to other channels or «write me in private».
+- other: greetings, thanks, chatter, people talking to each other, off-topic.
 - lang: the language of the user's message: ru (Russian), uz (Uzbek, Latin or Cyrillic), en (English or anything else).
 - answer: only for kind=question, in the user's language (lang), at most 500 characters, friendly, plain text without markdown, ONLY facts from the knowledge base; never invent menu names, versions, prices or links. Otherwise "".
 - title: for question_unknown, bug, suggestion — a short neutral summary of the problem or request, at most 70 characters, in the user's language, no names, phone numbers or other personal data. Otherwise "".
@@ -229,6 +254,40 @@ export function parseClassification(content, text) {
     if (KIND_LABEL[kind] && title.length < 4) title = fallbackTitle(text);
     return { kind, product, lang, title, answer, source: 'llm' };
 }
+// ---------------------------------------------------------------- нарушения
+const BAD_FILE = /\.(apk|xapk|apks|apkm|aab|exe|msi|bat|cmd|com|scr|pif|vbs|js|jse|wsf|ps1|jar|lnk|zip|rar|7z|tar|gz|wgt|ipk|tpk)$/i;
+const BAD_MIME = /(android\.package-archive|x-msdownload|x-msi|x-executable|zip|x-rar|x-7z|java-archive)/i;
+const OK_HOSTS = [/^(www\.)?(sunic007\.github\.io|skaz\.tv|byskaz\.ru|lampa\.mx|themoviedb\.org|youtube\.com|youtu\.be|m\.youtube\.com)$/i,
+    /\.(skaz\.tv|byskaz\.ru)$/i];
+const OK_PATHS = [[/^(www\.)?github\.com$/i, /^\/(sunic007|yumata)(\/|$)/i], [/^raw\.githubusercontent\.com$/i, /^\/sunic007\//i],
+    [/^(www\.)?(t\.me|telegram\.me)$/i, /^\/(sunicapps|sunicapps_uzb|helpiptv|sunicapps_news_bot)\/?(\d+\/?)?$/i]];
+const SPAM_WORDS = /(заработ\S* (от|до|в день|в неделю|без вложен)|пассивн\S* доход|инвестиц|криптовалют|\busdt\b|binance|казино|букмекер|ставк\S* на спорт|интим|18\+|пиши(те)? (мне )?в (лс|личк)|в личные сообщения|подписывайтесь на (мой|наш) канал|pul ishla|daromad|kripto|passive income|crypto signals?|\bdm me\b)/i;
+export function linksOf(m) {
+    const text = m.text || m.caption || '', out = [];
+    for (const e of (m.entities || m.caption_entities || [])) {
+        if (e.type === 'url') out.push(text.substr(e.offset, e.length));
+        else if (e.type === 'text_link' && e.url) out.push(e.url);
+    }
+    const bare = text.match(/(?:https?:\/\/|\bwww\.)[^\s<>"]+|\b(?:t\.me|telegram\.me|bit\.ly|tinyurl\.com|cutt\.ly|clck\.ru)\/[^\s<>"]+/gi) || [];
+    return out.concat(bare);
+}
+export function linkAllowed(raw) {
+    let u;
+    try { u = new URL(/^[a-z]+:\/\//i.test(raw) ? raw : 'https://' + raw); } catch (e) { return false; }
+    if (!/^https?:$/.test(u.protocol)) return false;
+    const host = u.hostname.toLowerCase();
+    if (OK_HOSTS.some(re => re.test(host))) return true;
+    return OK_PATHS.some(([h, p]) => h.test(host) && p.test(u.pathname));
+}
+/** Нарушение в сообщении: 'file' | 'link' | 'spam' | ''. */
+export function violation(m) {
+    const d = m.document;
+    if (d && (BAD_FILE.test(d.file_name || '') || BAD_MIME.test(d.mime_type || ''))) return 'file';
+    if (linksOf(m).some(l => !linkAllowed(l))) return 'link';
+    if (SPAM_WORDS.test(m.text || m.caption || '')) return 'spam';
+    return '';
+}
+
 export function issueFromEntities(msg) {
     for (const e of (msg || {}).entities || []) {
         const m = /^https:\/\/github\.com\/(sunic007\/(?:lampa-samsung|tvinstaller))\/issues\/(\d+)$/.exec(e.url || '');
@@ -242,7 +301,7 @@ export class Bot {
     // deps: tg(method, params) → result; gh(method, path, body?, okCodes?) → json; llm(messages) → text | throws;
     //       state {day, llm, u, t} (суточные счётчики), cfg {group, chatId, secret, llmPerDay, llmPerUserDay, issuesPerUserDay}
     constructor(deps, cfg, state, now = () => Date.now() / 1000) {
-        this.tg = deps.tg; this.gh = deps.gh; this.llm = deps.llm; this.kb = deps.kb || ''; this.hasGh = !!deps.hasGh; this.hasLlm = !!deps.hasLlm;
+        this.tg = deps.tg; this.gh = deps.gh; this.llm = deps.llm; this.kb = deps.kb || ''; this.hasGh = !!deps.hasGh; this.hasLlm = !!deps.hasLlm; this.store = deps.store || null;
         this.cfg = Object.assign({ group: 'sunicapps', chatId: '', secret: '', llmPerDay: 700, llmPerUserDay: 20, issuesPerUserDay: 5 }, cfg || {});
         this.cfg.group = String(this.cfg.group || 'sunicapps').replace(/^@/, '').toLowerCase();
         this.now = now; this.me = deps.me || null; this.openCache = {}; this.labelsOk = new Set(); this.log = deps.log || (() => {});
@@ -270,8 +329,59 @@ export class Bot {
     }
     async handleUpdate(u) {
         if (u.callback_query) return this.handleCallback(u.callback_query);
+        if (u.edited_message) return (await this.moderate(u.edited_message)) ? 'removed' : null;   // вставили ссылку потом
         if (u.message) return this.handleMessage(u.message);
         return null;
+    }
+
+    // ---------------------------------------------------------------- защита группы
+    /* Мошенники и спам: файлы приложений и архивы (поддельные APK), сторонние ссылки (в том числе спрятанные под
+     * текстом), реклама. Нарушение — сообщение удаляется, в группе — предупреждение с официальными ссылками; второе
+     * за неделю — запрет писать на 7 дней, третье — бан. Администраторов (и анонимных) не трогаем. Нет прав на удаление —
+     * хотя бы предупреждение под сообщением. Возвращает true, если сообщение — нарушение. */
+    async isAdmin(chat, user) {
+        if (!user || !this.store) return false;
+        const key = `adm:${chat}:${user}`, cached = await this.store.get(key);
+        if (cached) return cached === '1';
+        let ok = false;
+        try { const m = await this.tg('getChatMember', { chat_id: chat, user_id: user }); ok = m && (m.status === 'creator' || m.status === 'administrator'); }
+        catch (e) { this.log('getChatMember: ' + e.message); return false; }
+        await this.store.put(key, ok ? '1' : '0', 3600);
+        return ok;
+    }
+    async moderate(m, reasonFromAi) {
+        if (!m || !this.isGroup(m.chat)) return false;
+        const from = m.from || {};
+        if (m.is_automatic_forward || from.id === TG_SERVICE_USER || from.id === (this.me || {}).id) return false;
+        if (from.id === TG_ANON_ADMIN || (m.sender_chat && m.sender_chat.id === m.chat.id)) return false;   // анонимный администратор
+        const reason = reasonFromAi || violation(m);
+        if (!reason) return false;
+        if (await this.isAdmin(m.chat.id, from.id)) return false;
+        await this.punish(m, reason);
+        return true;
+    }
+    async punish(m, reason) {
+        const chat = m.chat.id, user = (m.from || {}).id || 0, lang = detectLang(m.text || m.caption || '') === 'uz' ? 'uz' : langOfUser(m.from) === 'en' ? 'en' : 'ru';
+        let deleted = false, strikes = 1;
+        try { await this.tg('deleteMessage', { chat_id: chat, message_id: m.message_id }); deleted = true; }
+        catch (e) { this.log('deleteMessage: ' + e.message + ' (нет прав администратора?)'); }
+        if (deleted && this.store && user) {
+            const key = 'strike:' + user;
+            strikes = (+(await this.store.get(key)) || 0) + 1;
+            await this.store.put(key, String(strikes), 7 * 86400);
+            try {
+                if (strikes >= 3) await this.tg('banChatMember', { chat_id: chat, user_id: user, revoke_messages: true });
+                else if (strikes === 2) await this.tg('restrictChatMember', { chat_id: chat, user_id: user, until_date: Math.floor(this.now()) + 7 * 86400,
+                    permissions: { can_send_messages: false, can_send_audios: false, can_send_documents: false, can_send_photos: false, can_send_videos: false,
+                        can_send_video_notes: false, can_send_voice_notes: false, can_send_polls: false, can_send_other_messages: false, can_add_web_page_previews: false } });
+            } catch (e) { this.log('restrict/ban: ' + e.message); }
+        }
+        this.log(`moderation: ${reason} deleted=${deleted} strikes=${strikes}`);
+        const name = escHtml(String((m.from || {}).first_name || '').slice(0, 40)) || '—';
+        const text = t(lang, deleted ? 'mod_removed' : 'mod_warn', { name, why: t(lang, 'mod_' + reason) }) + '\n' + t(lang, 'mod_official') +
+            (deleted && strikes === 2 ? '\n' + t(lang, 'mod_muted') : '') + (deleted && strikes >= 3 ? '\n' + t(lang, 'mod_banned') : '');
+        const thread = m.is_topic_message ? m.message_thread_id : null;
+        try { await this.send(chat, text, deleted ? null : m.message_id, null, thread); } catch (e) { this.log('warn: ' + e.message); }
     }
     filter(m) {
         if (!this.isGroup(m.chat)) return null;
@@ -301,6 +411,7 @@ export class Bot {
             await this.send(chat.id, `Номер этого чата: <code>${chat.id}</code>`);
             return null;
         }
+        if (await this.moderate(m)) return { kind: 'removed' };
         const f = this.filter(m);
         if (!f) return null;
         const [text, ctx] = f, mid = m.message_id, thread = m.is_topic_message ? m.message_thread_id : null, user = (m.from || {}).id || 0;
@@ -319,6 +430,7 @@ export class Bot {
             await this.send(chat.id, linkify(escHtml(cls.answer)) + '\n\n<i>' + escHtml(t(cls.lang, 'footer')) + '</i>', mid, null, thread);
             return cls;
         }
+        if (cls.kind === 'spam') { if (await this.moderate(m, 'spam')) cls.kind = 'removed'; return cls; }   // ИИ узнал рекламу
         if (cls.kind === 'other') return cls;
         if (!this.hasGh) { this.log('no SUPPORT_TOKEN — issue skipped'); return cls; }
         if ((this.state.t[user] || 0) >= this.cfg.issuesPerUserDay) { this.log('issue limit — skipped'); return cls; }

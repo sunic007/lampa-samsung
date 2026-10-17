@@ -95,7 +95,8 @@ async function handleTelegram(request, env) {
     const tg = telegram(env);
     try {
         if (!me) { me = await tg('getMe'); await env.STATE.put('me', JSON.stringify({ id: me.id, username: me.username }), { expirationTtl: 7 * 86400 }); }
-        const bot = new Bot({ tg, gh: github(env), llm: llm(env), kb: await knowledge(env), me, log, hasGh: !!env.SUPPORT_TOKEN, hasLlm: llmTargets(env).length > 0 },
+        const store = { get: k => env.STATE.get(k), put: (k, v, ttl) => env.STATE.put(k, v, ttl ? { expirationTtl: Math.max(60, ttl) } : undefined) };
+        const bot = new Bot({ tg, gh: github(env), llm: llm(env), kb: await knowledge(env), me, log, store, hasGh: !!env.SUPPORT_TOKEN, hasLlm: llmTargets(env).length > 0 },
             { group: env.SUPPORT_GROUP || 'sunicapps', chatId: env.SUPPORT_CHAT_ID || '', secret: env.TELEGRAM_BOT_TOKEN,
                 llmPerDay: +env.LLM_PER_DAY || 700, llmPerUserDay: +env.LLM_PER_USER_DAY || 20, issuesPerUserDay: +env.ISSUES_PER_USER_DAY || 5 }, state);
         const before = JSON.stringify(bot.state);
@@ -111,9 +112,20 @@ async function setup(request, env) {
     const url = new URL(request.url);
     if (!env.WEBHOOK_SECRET || url.searchParams.get('key') !== env.WEBHOOK_SECRET) return new Response('forbidden', { status: 403 });
     const tg = telegram(env);
-    await tg('setWebhook', { url: url.origin + '/tg', secret_token: env.WEBHOOK_SECRET, allowed_updates: ['message', 'callback_query'], max_connections: 5 });
+    await tg('setWebhook', { url: url.origin + '/tg', secret_token: env.WEBHOOK_SECRET, allowed_updates: ['message', 'edited_message', 'callback_query'], max_connections: 5 });
     const info = await tg('getWebhookInfo');
     return Response.json({ ok: true, url: info.url, pending: info.pending_update_count, last_error: info.last_error_message || '' });
+}
+
+/** Жив ли и что может: секреты есть (без значений), бот — администратор группы с правом удалять и ограничивать. */
+async function health(env) {
+    const out = { ok: true, bot: !!env.TELEGRAM_BOT_TOKEN, github: !!env.SUPPORT_TOKEN, ai: llmTargets(env).length > 0 };
+    try {
+        const tg = telegram(env), me = await tg('getMe'), chat = await tg('getChat', { chat_id: '@' + (env.SUPPORT_GROUP || 'sunicapps') });
+        const m = await tg('getChatMember', { chat_id: chat.id, user_id: me.id });
+        out.group = { status: m.status, can_delete: !!m.can_delete_messages, can_restrict: !!m.can_restrict_members };
+    } catch (e) { out.group = { error: redact(e.message, env) }; }
+    return Response.json(out);
 }
 
 export default {
@@ -121,7 +133,7 @@ export default {
         const path = new URL(request.url).pathname;
         if (request.method === 'POST' && path === '/tg') return handleTelegram(request, env);
         if (path === '/setup') return setup(request, env).catch(e => Response.json({ ok: false, error: redact(e.message, env) }, { status: 500 }));
-        if (path === '/health') return Response.json({ ok: true, bot: !!env.TELEGRAM_BOT_TOKEN, github: !!env.SUPPORT_TOKEN, ai: llmTargets(env).length > 0 });
+        if (path === '/health') return health(env);
         return new Response('Sunic Apps support bot', { status: 404 });
     },
 };

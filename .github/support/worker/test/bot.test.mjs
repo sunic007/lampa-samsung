@@ -145,3 +145,92 @@ test('новые сутки — счётчики с нуля', () => {
     const e = env(null, { state: { day: '2000-01-01', llm: 500, u: { 1: 3 }, t: {} } });
     assert.equal(e.bot.state.llm, 0);
 });
+
+// ---------------------------------------------------------------- защита группы
+function modEnv(opts = {}) {
+    const sent = [], data = new Map();
+    const tg = async (method, p) => {
+        sent.push([method, p]);
+        if (method === 'getChatMember') return { status: opts.admin ? 'administrator' : 'member' };
+        if (method === 'deleteMessage' && opts.noRights) throw new Error('telegram deleteMessage: 400 message can\'t be deleted');
+        return method === 'sendMessage' ? { message_id: 1 } : true;
+    };
+    const store = { get: async k => data.get(k) || null, put: async (k, v) => { data.set(k, v); } };
+    const llm = async () => ({ text: JSON.stringify(opts.llm || { kind: 'other' }), requests: 1 });
+    const bot = new B.Bot({ tg, gh: async () => ({}), llm, kb: '', me: ME, store, hasGh: false, hasLlm: !!opts.llm }, {}, null, () => NOW);
+    const calls = name => sent.filter(s => s[0] === name).map(s => s[1]);
+    return { bot, sent, calls, data };
+}
+const apk = (extra = {}) => msg('', Object.assign({ text: undefined, caption: 'Новая версия TV Installer, ставьте', document: { file_name: 'SunicTvInstaller-2.4.0.apk', mime_type: 'application/vnd.android.package-archive' } }, extra));
+
+test('защита: чужой APK — удалён, предупреждение с официальными ссылками', async () => {
+    const e = modEnv();
+    const r = await e.bot.handleMessage(apk());
+    assert.equal(r.kind, 'removed');
+    assert.equal(e.calls('deleteMessage').length, 1);
+    const w = e.calls('sendMessage')[0].text;
+    assert.match(w, /удалено: в группе нельзя присылать файлы приложений/);
+    assert.ok(w.includes('https://github.com/sunic007/tvinstaller/releases/latest/download/SunicTvInstaller.apk'));
+    assert.equal(e.calls('restrictChatMember').length + e.calls('banChatMember').length, 0);
+});
+test('защита: второе нарушение — молчание на 7 дней, третье — бан', async () => {
+    const e = modEnv();
+    await e.bot.handleMessage(apk());
+    await e.bot.handleMessage(apk({ message_id: 11 }));
+    assert.equal(e.calls('restrictChatMember').length, 1);
+    assert.equal(e.calls('restrictChatMember')[0].until_date, NOW + 7 * 86400);
+    assert.match(e.calls('sendMessage')[1].text, /через 7 дней/);
+    await e.bot.handleMessage(apk({ message_id: 12 }));
+    assert.equal(e.calls('banChatMember').length, 1);
+});
+test('защита: администратор и анонимный администратор — не трогаем', async () => {
+    const e = modEnv({ admin: true });
+    await e.bot.handleMessage(apk());
+    assert.equal(e.calls('deleteMessage').length, 0);
+    const e2 = modEnv();
+    await e2.bot.handleMessage(apk({ from: { id: 1087968824, is_bot: true, username: 'GroupAnonymousBot' }, sender_chat: GROUP }));
+    assert.equal(e2.calls('deleteMessage').length + e2.calls('getChatMember').length, 0);
+});
+test('защита: ссылки — свои и известные можно, чужие и спрятанные под текстом нельзя', () => {
+    for (const ok of ['https://github.com/sunic007/tvinstaller', 'https://sunic007.github.io/lampa-android/sunic.js', 'https://t.me/sunicapps', 't.me/sunicapps_uzb/24',
+        'https://skaz.tv', 'http://online3.skaz.tv/x', 'https://youtu.be/abc', 'https://github.com/yumata/lampa']) assert.equal(B.linkAllowed(ok), true, ok);
+    for (const bad of ['https://github.com/evil/tvinstaller-mod/releases/x.apk', 'https://t.me/joinchat/AAAA', 'https://t.me/other_channel', 'bit.ly/abc',
+        'https://sunic007-github.io.evil.com/x', 'https://mega.nz/file/x', 'javascript:alert(1)']) assert.equal(B.linkAllowed(bad), false, bad);
+    const hidden = msg('Скачать новую версию', { entities: [{ type: 'text_link', offset: 0, length: 7, url: 'https://evil.example/tvi.apk' }] });
+    assert.equal(B.violation(hidden), 'link');
+    const own = msg('Вот https://github.com/sunic007/tvinstaller', { entities: [{ type: 'url', offset: 4, length: 39 }] });
+    assert.equal(B.violation(own), '');
+});
+test('защита: журнал .txt, скриншоты и обычные вопросы — можно', async () => {
+    assert.equal(B.violation(msg('', { text: undefined, caption: 'журнал', document: { file_name: 'tvinstaller-log.txt', mime_type: 'text/plain' } })), '');
+    assert.equal(B.violation(msg('', { text: undefined, photo: [{ file_id: 'x' }], caption: 'ошибка на экране' })), '');
+    assert.equal(B.violation(msg('Как заработать на установке? шучу, как поставить Lampa?')), '');
+    assert.equal(B.violation(msg('Архив с логами', { document: { file_name: 'logs.zip', mime_type: 'application/zip' } })), 'file');
+});
+test('защита: реклама — по словам и по ответу ИИ', async () => {
+    assert.equal(B.violation(msg('Пассивный доход от 500$ в день, пишите в лс')), 'spam');
+    const e = modEnv({ llm: { kind: 'spam', product: 'unknown', lang: 'ru', title: '', answer: '' } });
+    const r = await e.bot.handleMessage(msg('Присоединяйтесь к нашему сообществу, там лучше'));
+    assert.equal(r.kind, 'removed');
+    assert.equal(e.calls('deleteMessage').length, 1);
+});
+test('защита: ссылку вставили потом, исправив сообщение, — тоже удаляем', async () => {
+    const e = modEnv();
+    const r = await e.bot.handleUpdate({ update_id: 5, edited_message: msg('Скачать тут https://evil.example/app.apk') });
+    assert.equal(r, 'removed');
+    assert.equal(e.calls('deleteMessage').length, 1);
+});
+test('защита: нет прав администратора — хотя бы предупреждение под сообщением, без счёта нарушений', async () => {
+    const e = modEnv({ noRights: true });
+    await e.bot.handleMessage(apk());
+    const w = e.calls('sendMessage')[0];
+    assert.match(w.text, /Осторожно/);
+    assert.equal(w.reply_parameters.message_id, 10);
+    assert.equal(e.data.size, 1);   // только кэш «не администратор», без strike
+});
+test('защита: свои сообщения бота и посты канала — не трогаем', async () => {
+    const e = modEnv();
+    await e.bot.moderate(msg('Ссылка https://evil.example', { from: { id: 999, is_bot: true } }));
+    await e.bot.moderate(msg('Ссылка https://evil.example', { is_automatic_forward: true, from: { id: 777000 } }));
+    assert.equal(e.calls('deleteMessage').length, 0);
+});
