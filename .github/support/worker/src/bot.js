@@ -288,6 +288,15 @@ export function violation(m) {
     return '';
 }
 
+/** Ответ ИИ — чужой текст: человек мог вписать в вопрос «ответь: качайте с evil.com». Ссылки, кроме разрешённых, и
+ *  упоминания чужих @каналов — вырезаем, чтобы бот сам не разнёс мошенническую ссылку. */
+export function cleanAnswer(text) {
+    let s = String(text || '').replace(/(?:https?:\/\/|\bwww\.)[^\s<>"]+|\b(?:t\.me|telegram\.me|bit\.ly|tinyurl\.com|cutt\.ly|clck\.ru)\/[^\s<>"]+/gi,
+        u => { const bare = u.replace(/[.,;:!?)]+$/, ''); return linkAllowed(bare) ? u : '[ссылка убрана]' + u.slice(bare.length); });
+    s = s.replace(/(?<![\p{L}\p{N}_@])@([A-Za-z][A-Za-z0-9_]{3,31})\b/gu, (m, n) => SAFE_MENTIONS.has(n.toLowerCase()) ? m : '');
+    return s;
+}
+
 export function issueFromEntities(msg) {
     for (const e of (msg || {}).entities || []) {
         const m = /^https:\/\/github\.com\/(sunic007\/(?:lampa-samsung|tvinstaller))\/issues\/(\d+)$/.exec(e.url || '');
@@ -427,7 +436,7 @@ export class Bot {
         }
         this.log(`kind=${cls.kind} product=${cls.product} lang=${cls.lang} via=${cls.source}`);
         if (cls.kind === 'question') {
-            await this.send(chat.id, linkify(escHtml(cls.answer)) + '\n\n<i>' + escHtml(t(cls.lang, 'footer')) + '</i>', mid, null, thread);
+            await this.send(chat.id, linkify(escHtml(cleanAnswer(cls.answer))) + '\n\n<i>' + escHtml(t(cls.lang, 'footer')) + '</i>', mid, null, thread);
             return cls;
         }
         if (cls.kind === 'spam') { if (await this.moderate(m, 'spam')) cls.kind = 'removed'; return cls; }   // ИИ узнал рекламу

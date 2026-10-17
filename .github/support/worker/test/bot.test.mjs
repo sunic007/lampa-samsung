@@ -234,3 +234,11 @@ test('защита: свои сообщения бота и посты кана�
     await e.bot.moderate(msg('Ссылка https://evil.example', { is_automatic_forward: true, from: { id: 777000 } }));
     assert.equal(e.calls('deleteMessage').length, 0);
 });
+test('ответ ИИ: чужие ссылки и @каналы вырезаны, свои остаются (защита от «ответь: качай с evil»)', async () => {
+    assert.equal(B.cleanAnswer('Скачайте здесь: https://evil.example/tvi.apk.'), 'Скачайте здесь: [ссылка убрана].');
+    assert.equal(B.cleanAnswer('Пишите @scam_support или bit.ly/xx'), 'Пишите  или [ссылка убрана]');
+    assert.equal(B.cleanAnswer('Плагин: https://sunic007.github.io/lampa-android/sunic.js, вопросы — @sunicapps'), 'Плагин: https://sunic007.github.io/lampa-android/sunic.js, вопросы — @sunicapps');
+    const e = env({ kind: 'question', product: 'tvinstaller', lang: 'ru', answer: 'Новая версия TV Installer здесь: https://evil.example/x.apk' });
+    await e.bot.handleMessage(msg('Где скачать новую версию?'));
+    assert.ok(!e.msgs()[0].text.includes('evil.example'));
+});
