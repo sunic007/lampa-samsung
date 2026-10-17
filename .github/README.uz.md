@@ -73,9 +73,10 @@
 
 - <b>Bitta tugma bilan «Ko'rish»</b> — film darhol boshlanadi, serial esa to'xtagan qism va joyidan davom etadi.
 - <b>Telegram-bot</b> — telefonda qidirish va televizorda yoqish, yangi qismlar haqida xabar, butun oila bitta botda, bir nechta televizor.
-- <b>Pleyer qo'riqchisi</b> — qotib qolgan videoni o'sha joydan qayta ishga tushiradi, keyin boshqa sifat yoki manbani sinab ko'radi.
-- <b>Avtoyangilanish</b> — Lampa, plaginlar va paketning o'zi qayta o'rnatmasdan yangilanadi.
-- <b>Samsung pleyeri (AVPlay)</b> — apparat 4K/HLS, tez ishga tushish, internet tezligiga mos sifat.
+- <b>Pleyer qo'riqchisi</b> — qotib qolgan videoni o'sha joydan qayta ishga tushiradi, keyin boshqa sifat yoki manbani sinab ko'radi — boshqa manba pleyerdan chiqmasdan, shu yerning o'zida topiladi.
+- <b>Avtoyangilanish</b> — Lampa, plaginlar va paketning o'zi qayta o'rnatmasdan yangilanadi. Sunic Apps yangilanishidan oldin «nima yangi» oynasi chiqadi: hozir yoki keyinroq yangilash mumkin.
+- <b>Pleyerni avtotanlash</b> — televizor pleyeri (AVPlay) apparat 4K/HLS uchun; u o'ynata olmagan oqim Lampa pleyerida ochiladi. Tez ishga tushish, internet tezligiga mos sifat.
+- <b>Multfilmlar va turk seriallari</b> — chap menyuda alohida tugmalar: yosh va mavzu bo'yicha multfilmlar (<b>Sunic Apps → Интерфейс</b>da yoqiladi), janr va yil bo'yicha turk seriallari.
 - <b>Qulaylik</b> — keyingi qismgacha sanoq, «Hali ham ko'ryapsizmi?», uyqu taymeri, kun va tun yorqinligi, har bir film uchun ovoz balandligi.
 - <b>Serversiz ham ishlaydi</b> — Lampa serveri ishlamasa, ichki nusxasi ishga tushadi.
 - <b>Hammasi bir joyda</b> — paketning barcha sozlamalari — <b>Настройки → Sunic Apps</b> bo'limida.
@@ -87,11 +88,24 @@
 
 <sub>Telegram-bot o'zbek, rus va ingliz tillarida gapiradi va Lampa tiliga moslashadi; paketning televizordagi sozlamalari rus tilida. To'liq jadval — <a href="README.ru.md#возможности">rus tilidagi README</a>'da.</sub>
 
+<details>
+<summary><b>Paket sozlamalari</b></summary>
+<br>
+
+Paketning barcha sozlamalari bitta bo'limda — <b>Настройки → Sunic Apps</b> (televizorda nomlari rus tilida). Lampa'ning o'z bo'limlari o'zgarishsiz qoladi; kattalar kontentidan himoya — Lampa'ning ota-ona nazorati va CUB bolalar profili.
+- <b>Плеер</b> (Pleyer) — ishonchlilik: pleyerni avtotanlash, pleyer qo'riqchisi, internet tezligiga mos sifat, televizor pleyeri buferi; ko'rish paytida: «davom ettirish yoki boshidan», film oldidagi reklamani o'tkazib yuborish, Skaz o'tkazish belgilari (o'zi yoki tugma bilan — Lampa pleyeri menyusida «Сегменты»), serial audio yo'lagini eslab qolish, keyingi qismgacha sanoq, «Hali ham ko'ryapsizmi?», uyqu taymeri, har bir film uchun ovoz balandligi, «kechasi balandroq emas»;
+- <b>Онлайн-источники</b> (Onlayn manbalar) — manbani avtotanlash, manbalarni oldindan tekshirish, torrentlar («Парсер» va «TorrServer»ni ko'rsatish), Skaz manba serverlari: joriylari ping bilan, avtotanlash, tekshirish va qo'lda tanlash; tanlash uchun boshqa manbalar: «Смотреть» (Ko'rish) uchun asosiy manba, Z01, Online Mod, VOD (llpp.in), Showy, Vod (arkmv);
+- <b>Telegram-бот</b> (Telegram-bot) — ulash (telefondan QR, ikkinchi televizor uchun ekrandagi kod yoki tokenni qo'lda), televizor nomi, uzish; Telegram'da yangi qismlar, Shots yozuvlari Telegram'ga, qidiruvda bot QR kodi, hozir tekshirish; odamlar va ruxsat: yangi odamlar — sizning ruxsatingiz bilan, mehmonlar televizorda video yoqadi, taklifni almashtirish;
+- <b>Интерфейс</b> (Interfeys) — kartochkadagi «Смотреть» (Ko'rish) tugmasi, «Ko'rish» to'xtagan joydan, film darhol rus tilida, menyuda «Турецкие сериалы» (Turk seriallari) va «Мультики» (Multfilmlar) tugmalari, yangi qismlar;
+- <b>Обновление</b> (Yangilanish) — Lampa versiyasi va «Lampa o'zi yangilansin», Skaz plaginlari, Sunic Apps versiyasi va «GitHub'dan yangilash», «Проверить и обновить» (tekshirish va yangilash); «Поддержать проект» (loyihani qo'llab-quvvatlash) — GitHub Sponsors uchun QR kod.
+
+</details>
+
 ## Kontent manbalari
 
 <div align="justify">
 
-Paketda filmlar, seriallar va translyatsiyalar yo'q. Nimani ko'rishingiz o'zingiz ulagan manbaga bog'liq — masalan, paket sozlangan <a href="https://skaz.tv">Skaz TV</a> obunasi (yordam: <a href="https://t.me/helpiptv">@helpiptv</a>). Faqat foydalanish huquqingiz bor manbalardan foydalaning.
+Paketda filmlar, seriallar va translyatsiyalar yo'q. Nimani ko'rishingiz o'zingiz ulagan manbaga bog'liq — masalan, paket sozlangan <a href="https://skaz.tv">Skaz TV</a> obunasi (obuna: <a href="https://skaz.tv/oplata.php">skaz.tv/oplata.php</a>, yordam: <a href="https://t.me/helpiptv">@helpiptv</a>). Faqat foydalanish huquqingiz bor manbalardan foydalaning.
 
 </div>
 
@@ -102,7 +116,37 @@ Paketda filmlar, seriallar va translyatsiyalar yo'q. Nimani ko'rishingiz o'zingi
 <br>
 <div align="justify">
 
-Kuting: video 25 soniyada (pleyer xatosida ~9 soniyada) boshlanmasa, paket oqimni o'zi qayta ishga tushiradi yoki boshqa variantni ochadi. Umuman ishlamasa — <a href="https://skaz.tv">Skaz TV</a> obunasini tekshiring va uning yordam xizmatiga yozing.
+Kuting: video 25 soniyada (pleyer xatosida — 2 soniyada) boshlanmasa, paket oqimni o'zi qayta ishga tushiradi yoki boshqa variantni ochadi. Umuman ishlamasa — <a href="https://skaz.tv">Skaz TV</a> obunasini tekshiring va uning yordam xizmatiga yozing: <a href="https://t.me/helpiptv">@helpiptv</a>.
+
+</div>
+</details>
+
+<details>
+<summary><b>Video 720p'da boshlanadi, vaholanki 1080p/4K bor</b></summary>
+<br>
+<div align="justify">
+
+Bu «Internet tezligiga mos sifat» funksiyasi: pleyer o'lchovlariga ko'ra internet yuqoriroq sifatni tortmaydi. Pleyerda almashtirish mumkin (yashil tugma), o'chirish — <b>Sunic Apps → Плеер</b>da.
+
+</div>
+</details>
+
+<details>
+<summary><b>«Подготовка» (Tayyorlanmoqda) bosqichida qotib qoldi</b></summary>
+<br>
+<div align="justify">
+
+Ekran pastida Lampa qaysi bosqichda kutayotgani ko'rinadi; aloqa yomon bo'lsa, ishga tushish 1–2 daqiqa olishi mumkin.
+
+</div>
+</details>
+
+<details>
+<summary><b>Telefondagi filmni televizorda qanday davom ettiraman?</b></summary>
+<br>
+<div align="justify">
+
+Ikkala qurilmada bitta CUB akkauntiga kiring → telefon pleyerida «Ulashish» → televizorni tanlang → televizorda «Ha».
 
 </div>
 </details>
@@ -112,7 +156,7 @@ Kuting: video 25 soniyada (pleyer xatosida ~9 soniyada) boshlanmasa, paket oqimn
 <br>
 <div align="justify">
 
-Yangilanishdan keyin «Lampa обновлена: X → Y» chiqadi; versiyalar — <b>Настройки → Sunic Apps → Обновление</b>da.
+Sunic Apps (paketning o'z funksiyalari) yangilanishidan oldin «Вышло обновление» («Yangilanish chiqdi») oynasi chiqadi: «Sunic Apps: X → Y», nima yangi va «Обновить сейчас» (hozir yangilash) / «Позже» (keyinroq — keyingi ishga tushirishda o'rnatiladi) tugmalari. «Lampa обновлена: X → Y» esa Lampa'ning o'zi (byskaz serveridagi yadro) haqida. Versiyalar — <b>Настройки → Sunic Apps → Обновление</b>da.
 
 </div>
 </details>
@@ -147,7 +191,7 @@ Paketni o'z loyihangiz, yig'mangiz, maqola yoki videongizda ishlatmoqchimisiz? M
 
 <div align="justify">
 
-Lampa for Samsung va TV Installer bepul. Foydali bo'lsa, rivojlanishini <a href="https://github.com/sponsors/sunic007"><b>GitHub Sponsors</b></a> orqali qo'llab-quvvatlashingiz mumkin.
+Samsung uchun Lampa va TV Installer bepul. Foydali bo'lsa, rivojlanishini <a href="https://github.com/sponsors/sunic007"><b>GitHub Sponsors</b></a> orqali qo'llab-quvvatlashingiz mumkin (Lampa'da: <b>Настройки → Sunic Apps → Обновление → Поддержать проект</b>).
 
 </div>
 

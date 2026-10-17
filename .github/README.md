@@ -73,9 +73,10 @@
 
 - <b>One-press “Watch”</b> — a movie starts at once, a series resumes from the episode and position you stopped at.
 - <b>Telegram bot</b> — search on your phone and start on the TV, notifications about new episodes, the whole family in one bot, several TVs.
-- <b>Player watchdog</b> — restarts a frozen video from the same position, then tries another quality or source.
-- <b>Auto-update</b> — Lampa, the plugins and the package update themselves — no reinstall.
-- <b>Samsung AVPlay</b> — hardware 4K/HLS playback, faster start, quality matched to your internet.
+- <b>Player watchdog</b> — restarts a frozen video from the same position, then tries another quality or source — another source is found right in the player, without leaving it.
+- <b>Auto-update</b> — Lampa, the plugins and the package update themselves — no reinstall. Before a Sunic Apps update a “what's new” window lets you update now or later.
+- <b>Player auto-select</b> — the TV player (AVPlay) for hardware 4K/HLS; a stream it can't play goes to the Lampa player. Faster start, quality matched to your internet.
+- <b>Cartoons and Turkish series</b> — own buttons in the left menu: cartoons by age and theme (turn on in <b>Sunic Apps → Интерфейс</b>), Turkish series by genre and year.
 - <b>Comfort</b> — next-episode countdown, “Are you still watching?”, sleep timer, day/night brightness, per-title volume.
 - <b>Works without the server</b> — a bundled copy of Lampa starts if the server is unavailable.
 - <b>All in one place</b> — every package setting is in <b>Settings → Sunic Apps</b>.
@@ -87,11 +88,24 @@
 
 <sub>The Telegram bot speaks English, Russian and Uzbek and follows the Lampa language; the package's settings on the TV are in Russian. The full feature table is in the <a href="README.ru.md#возможности">Russian README</a>.</sub>
 
+<details>
+<summary><b>Package settings</b></summary>
+<br>
+
+All package settings are in one section, <b>Settings → Sunic Apps</b> (the names on the TV are in Russian). Lampa's own sections stay as they are; to protect from adult content use Lampa's parental control and the CUB kids profile.
+- <b>Плеер</b> (Player) — reliability: player auto-select, player watchdog, quality matched to your internet, TV player buffer; while watching: “continue or start over”, skip the ad before a movie, Skaz skip marks (automatic or by button — in Lampa's player menu “Сегменты”), remember the series audio track, next-episode countdown, “Are you still watching?”, sleep timer, per-title volume, “not louder at night”;
+- <b>Онлайн-источники</b> (Online sources) — auto source pick, check sources in advance, torrents (show “Парсер” and “TorrServer”), Skaz source servers: current ones with ping, auto-select, check and manual choice; other sources to choose: the main source for “Смотреть” (Watch), Z01, Online Mod, VOD (llpp.in), Showy, Vod (arkmv);
+- <b>Telegram-бот</b> (Telegram bot) — connecting (QR from the phone, a code on the screen for a second TV, or the token by hand), the TV's name, disconnect; new episodes in Telegram, Shots recordings to Telegram, the bot's QR in search, check now; people and access: new people only with your approval, guests can start videos on the TV, change the invite;
+- <b>Интерфейс</b> (Interface) — the “Смотреть” (Watch) button on the card, “Watch” resumes from the position, a movie starts in Russian at once, the “Турецкие сериалы” (Turkish series) and “Мультики” (Cartoons) menu buttons, new episodes;
+- <b>Обновление</b> (Update) — Lampa version and “update Lampa automatically”, Skaz plugins, Sunic Apps version and “update from GitHub”, “Проверить и обновить” (check and update); “Поддержать проект” (support the project) — a QR code for GitHub Sponsors.
+
+</details>
+
 ## Content sources
 
 <div align="justify">
 
-The package contains no movies, series or streams. What you watch depends on the content source you connect yourself — for example the <a href="https://skaz.tv">Skaz TV</a> subscription the package is set up for (support: <a href="https://t.me/helpiptv">@helpiptv</a>). Use only sources you have the right to use.
+The package contains no movies, series or streams. What you watch depends on the content source you connect yourself — for example the <a href="https://skaz.tv">Skaz TV</a> subscription the package is set up for (subscription: <a href="https://skaz.tv/oplata.php">skaz.tv/oplata.php</a>, support: <a href="https://t.me/helpiptv">@helpiptv</a>). Use only sources you have the right to use.
 
 </div>
 
@@ -102,7 +116,37 @@ The package contains no movies, series or streams. What you watch depends on the
 <br>
 <div align="justify">
 
-Wait: if it hasn't started in 25 s (about 9 s after a player error) the package restarts the stream or opens another variant. If nothing works, check your <a href="https://skaz.tv">Skaz TV</a> subscription and contact its support.
+Wait: if it hasn't started in 25 s (2 s after a player error) the package restarts the stream or opens another variant. If nothing works, check your <a href="https://skaz.tv">Skaz TV</a> subscription and contact its support: <a href="https://t.me/helpiptv">@helpiptv</a>.
+
+</div>
+</details>
+
+<details>
+<summary><b>The video starts in 720p although 1080p/4K is available</b></summary>
+<br>
+<div align="justify">
+
+That is “quality matched to your internet”: by the player's measurements your connection can't carry a higher quality. You can switch it in the player (green button) or turn the feature off in <b>Sunic Apps → Плеер</b>.
+
+</div>
+</details>
+
+<details>
+<summary><b>Stuck on “Подготовка” (Preparing)</b></summary>
+<br>
+<div align="justify">
+
+The bottom of the screen shows which step Lampa is waiting for; on a poor connection the start can take 1–2 minutes.
+
+</div>
+</details>
+
+<details>
+<summary><b>How do I continue a movie from my phone on the TV?</b></summary>
+<br>
+<div align="justify">
+
+Sign in to the same CUB account on both devices → in the phone's player tap “Share” → pick the TV → on the TV answer “Yes”.
 
 </div>
 </details>
@@ -112,7 +156,7 @@ Wait: if it hasn't started in 25 s (about 9 s after a player error) the package 
 <br>
 <div align="justify">
 
-After an update you see “Lampa обновлена: X → Y”; versions are in <b>Settings → Sunic Apps → Обновление</b>.
+Before a Sunic Apps update (the package's own features) a window “Вышло обновление” (“Update available”) shows “Sunic Apps: X → Y”, what's new, and the buttons “Обновить сейчас” (update now) / “Позже” (later — it is installed on the next start). “Lampa обновлена: X → Y” is about Lampa itself (the core from the byskaz server). Versions are in <b>Settings → Sunic Apps → Обновление</b>.
 
 </div>
 </details>
@@ -147,7 +191,7 @@ Want to use the package in your project, build, article or video? You are welcom
 
 <div align="justify">
 
-Lampa for Samsung and TV Installer are free. If they help you, you can support development on <a href="https://github.com/sponsors/sunic007"><b>GitHub Sponsors</b></a>.
+Lampa for Samsung and TV Installer are free. If they help you, you can support development on <a href="https://github.com/sponsors/sunic007"><b>GitHub Sponsors</b></a> (in Lampa: <b>Settings → Sunic Apps → Обновление → Поддержать проект</b>).
 
 </div>
 

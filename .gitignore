@@ -5,6 +5,5 @@ dist/.candidate.wgt*
 # Отладка
 tools/debug/tv.log
 __pycache__/
-# Локальные настройки инструментов
 # старая папка журнала (до переноса в tools/)
 debug/

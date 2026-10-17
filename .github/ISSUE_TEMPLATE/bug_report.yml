@@ -14,7 +14,7 @@ body:
     attributes:
       label: Package version / Версия пакета / Paket versiyasi
       description: Settings → Sunic Apps → «Обновление» / Настройки → Sunic Apps → Обновление
-      placeholder: "2.0.1"
+      placeholder: "2.2.4"
     validations:
       required: true
   - type: dropdown
