@@ -1,14 +1,17 @@
 name: Support bot
 
-# Группа «Sunic Apps — вопросы и помощь» (t.me/sunicapps): каждые 5 минут бот забирает новые сообщения,
-# отвечает на вопросы по README/CHANGELOG, ошибки и предложения превращает в задачи (метка from-telegram,
-# без имён) и принимает оценки ⭐. Код и тесты — .github/support/.
+# Группа «Sunic Apps — вопросы и помощь» (t.me/sunicapps): бот отвечает на вопросы по README/CHANGELOG, ошибки и
+# предложения превращает в задачи (метка from-telegram, без имён) и принимает оценки ⭐. Код и тесты — .github/support/.
+# «На дежурстве» (bot.py serve): один запуск до 5 ч 40 мин держит длинный опрос Telegram — ответ за секунды. Короткие
+# запуски по расписанию GitHub не годились: «*/5» на деле срабатывал раз в 4–5 часов (17.10.2026). В конце смены запуск
+# сам ставит следующий (workflow_dispatch от GITHUB_TOKEN разрешён); расписание раз в час — страховка, если цепочка
+# прервалась. Один дежурный за раз (concurrency); пробные запуски (dry_run, selftest) — отдельно, коротко.
 # Секреты: TELEGRAM_BOT_TOKEN (бот, без вебхука, privacy mode выключен), SUPPORT_TOKEN (PAT: Issues
 # read/write на lampa-samsung и tvinstaller; нет — только ответы), SUPPORT_LLM_KEY (ключ Gemini/Groq/
 # OpenRouter; нет — простые правила по словам). Переменные (необязательно): SUPPORT_LLM_MODEL, SUPPORT_CHAT_ID.
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '7 * * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -23,15 +26,16 @@ on:
 permissions:
   contents: read
   issues: write
+  actions: write   # поставить следующую смену
 
 concurrency:
-  group: support-bot
+  group: support-bot-${{ (inputs.dry_run || inputs.selftest) && 'test' || 'live' }}
   cancel-in-progress: false
 
 jobs:
   poll:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -62,7 +66,8 @@ jobs:
           SUPPORT_STATE: .support-state/state.json
           LLM_PER_DAY: ${{ vars.SUPPORT_LLM_PER_DAY }}
           LLM_PER_USER_DAY: ${{ vars.SUPPORT_LLM_PER_USER_DAY }}
-        run: python3 .github/support/bot.py ${{ inputs.selftest && 'selftest' || 'poll' }}
+          SERVE_MINUTES: '340'
+        run: python3 .github/support/bot.py ${{ inputs.selftest && 'selftest' || inputs.dry_run && 'poll' || 'serve' }}
 
       - name: Save daily counters
         if: always() && hashFiles('.support-state/state.json') != ''
@@ -70,3 +75,9 @@ jobs:
         with:
           path: .support-state
           key: support-state-${{ github.run_id }}
+
+      - name: Next shift
+        if: ${{ !cancelled() && !inputs.dry_run && !inputs.selftest }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run support-bot.yml -R "${{ github.repository }}" || echo "следующую смену поставит расписание"

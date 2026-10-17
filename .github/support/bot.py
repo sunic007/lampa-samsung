@@ -49,7 +49,7 @@ MAX_REPLIES = 20      # сообщений в группу за запуск
 MAX_ISSUES = 10       # новых задач/комментариев за запуск
 MAX_PER_USER = 3      # задач от одного человека за запуск
 # Сутки (UTC), считаются между запусками (файл состояния в кэше Actions). Бесплатный Gemini Flash-Lite: ~15 запросов
-# в минуту и ~1000 в сутки на проект. Запуск раз в 5 минут = 288 запусков; без суточного предела 288 × 20 = 5760.
+# в минуту и ~1000 в сутки на проект. Бот дежурит часами (serve), лимиты MAX_* — на круг опроса; без суточного предела запросов было бы сколько угодно.
 #   LLM_PER_DAY 700 — 30% запаса на повторы и другие модели. Обычный человек пишет 1–3 сообщения в день →
 #   ~230 пишущих в сутки; в группах пишет 1–5% участников → хватает на группу в 5–20 тысяч человек.
 #   LLM_PER_USER_DAY 20 — один человек (или спамер) — не больше 3% суточного запаса; дальше — правила по словам.
@@ -406,7 +406,7 @@ class Telegram:
     def call(self, method, **params):
         url = 'https://api.telegram.org/bot%s/%s' % (self.token, method)
         for attempt in range(3):
-            st, res, _ = self.http.request('POST', url, body=params, timeout=40)
+            st, res, _ = self.http.request('POST', url, body=params, timeout=40 + int(params.get('timeout') or 0))
             res = res or {}
             if res.get('ok'):
                 return res.get('result')
@@ -696,6 +696,57 @@ class Bot:
         log('done: llm=%d replies=%d issues=%d · today: AI requests %d/%d' % (
             self.llm_calls, self.replies, self.issues, self.state['llm'], LLM_PER_DAY))
 
+    def roll_day(self):
+        """Наступили новые сутки (UTC) — счётчики ИИ и задач с нуля (режим serve работает часами)."""
+        day = time.strftime('%Y-%m-%d', time.gmtime(self.now()))
+        if self.state.get('day') != day:
+            self.state = {'day': day, 'llm': 0, 'u': {}, 't': {}}
+
+    def serve(self, seconds, clock=time.time, sleep=time.sleep):
+        """«На дежурстве»: длинный опрос Telegram (ответ — за секунды, а не по расписанию GitHub, которое срабатывает
+        раз в несколько часов) до `seconds`. Лимиты на один запуск (MAX_*) — на каждый круг, суточные — общие."""
+        self.me = self.tg.call('getMe')
+        end, offset, rounds, handled = clock() + seconds, None, 0, 0
+        allowed = ['message', 'callback_query']
+        log('serve: up to %d min' % (seconds // 60))
+        while clock() < end:
+            self.roll_day()
+            self.llm_calls = self.replies = self.issues = 0
+            self.per_user = {}
+            p = {'timeout': 50 if clock() + 60 < end else 0, 'limit': 100, 'allowed_updates': allowed}
+            if offset is not None:
+                p['offset'] = offset
+            try:
+                updates = self.tg.call('getUpdates', **p) or []
+            except ApiError as e:
+                log('getUpdates: ' + redact(str(e)))
+                sleep(15)
+                continue
+            for u in updates:
+                try:
+                    self.handle_update(u)
+                except Budget as b:
+                    log('limit reached (%s) — the rest in the next round' % b)
+                    break
+                except Exception as e:  # одно сломанное сообщение не должно держать очередь
+                    log('update %s failed: %s' % (u.get('update_id'), redact(str(e))))
+                offset = u['update_id'] + 1
+                handled += 1
+            self.state['llm'] += self.llm.sent
+            self.llm.sent = 0
+            if updates and not self.dry:
+                save_state(self.state)
+            rounds += 1
+        if offset is not None and not self.dry:   # подтвердить последние, чтобы следующий запуск их не повторил
+            try:
+                self.tg.call('getUpdates', offset=offset, timeout=0, limit=1, allowed_updates=allowed)
+            except ApiError as e:
+                log('ack: ' + redact(str(e)))
+        if not self.dry:
+            save_state(self.state)
+        log('serve done: rounds=%d updates=%d · today: AI requests %d/%d' % (rounds, handled, self.state['llm'], LLM_PER_DAY))
+        return handled
+
     def handle_update(self, u):
         if u.get('callback_query'):
             return self.handle_callback(u['callback_query'])
@@ -738,6 +789,11 @@ class Bot:
         return text, ctx
 
     def handle_message(self, m, uid=None):
+        chat = m.get('chat') or {}
+        # /id в личке бота — номер чата (для уведомлений владельцу: vars.OWNER_TG_CHAT); номер видит только сам человек
+        if chat.get('type') == 'private' and (m.get('text') or '').strip().lower() in ('/id', '/start id'):
+            self.send(chat['id'], 'Номер этого чата: <code>%s</code>' % chat['id'])
+            return None
         f = self.message_filter(m)
         if not f:
             return None
@@ -1204,6 +1260,9 @@ def main(argv):
               secret=token, dry=dry, state=load_state())
     if cmd == 'selftest':
         return selftest(bot)
+    if cmd == 'serve':
+        bot.serve(int(os.environ.get('SERVE_MINUTES') or 340) * 60)
+        return 0
     bot.run()
     return 0
 

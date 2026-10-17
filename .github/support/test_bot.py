@@ -702,5 +702,44 @@ class DoneNote(unittest.TestCase):
         self.assertLess(text.index('нажмите'), text.index('2.2.0'))
 
 
+
+class Serve(unittest.TestCase):
+    def test_long_poll_handles_and_acks(self):
+        clock = [0.0]
+
+        class TG(FakeTG):
+            def __init__(self):
+                super().__init__()
+                self.polls = []
+
+            def call(self, method, **p):
+                if method == 'getUpdates':
+                    self.polls.append(p)
+                    clock[0] += 30
+                    if len(self.polls) == 1:
+                        return [{'update_id': 7, 'message': msg('Всем привет!')}]
+                    return []
+                return super().call(method, **p)
+        tg = TG()
+        b = make_bot(tg, FakeGH(), FakeLLM({'kind': 'other'}))
+        n = b.serve(100, clock=lambda: clock[0], sleep=lambda s: None)
+        self.assertEqual(n, 1)
+        self.assertEqual(tg.polls[0]['timeout'], 50)
+        self.assertEqual(tg.polls[1].get('offset'), 8)          # следующий круг подтверждает обработанное
+        self.assertEqual(tg.polls[-1]['offset'], 8)
+
+    def test_new_day_resets_counters(self):
+        b = make_bot(FakeTG(), FakeGH(), FakeLLM())
+        b.state = {'day': '2000-01-01', 'llm': 500, 'u': {'1': 20}, 't': {}}
+        b.roll_day()
+        self.assertEqual((b.state['llm'], b.state['u']), (0, {}))
+
+    def test_private_id_command(self):
+        tg = FakeTG()
+        b = make_bot(tg, FakeGH(), FakeLLM())
+        b.handle_message({'message_id': 1, 'date': NOW, 'chat': {'id': 555, 'type': 'private'}, 'text': '/id', 'from': {'id': 555}})
+        self.assertTrue(any('555' in str(x) for x in tg.sent()))
+
+
 if __name__ == '__main__':
     unittest.main()
