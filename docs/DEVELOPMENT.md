@@ -543,6 +543,7 @@ Telegram (подраздел «Telegram-бот»):
    `GITHUB_TOKEN` (их делает `lampa-watch.yml`, он и сам запускает пост); для релиза человека ручной запуск пропускается,
    иначе пост выйдет дважды. Параметр `delete` (номера через запятую) убирает посты канала.
 7. Удалить предыдущий релиз (`gh release delete vX.Y.W --yes`; `lampa-watch.yml` делает это сам).
+   `lampa-android` подхватывает новый тег сам (`follow-samsung.yml`, раз в час).
 
 ### Наблюдение за Lampa и Skaz (автоматика)
 
@@ -560,7 +561,6 @@ Telegram (подраздел «Telegram-бот»):
   (список `SKAZ_API`), ошибок из наших файлов нет. Выход 3 — серверы Skaz/byskaz не ответили (не поломка).
   Запуск у себя: `npm i --no-save playwright@1.48.2 && npx playwright install chromium && node tests/browser-smoke.mjs`.
   Новая функция плагина Skaz в нашем коде — добавить её в `SKAZ_API`.
-   `lampa-android` подхватывает новый тег сам (`follow-samsung.yml`, раз в час).
 
 ## Проверка перед выпуском
 - `pack.py` сам запускает автотесты (`node tests/run.cjs`) и проверяет манифест, ссылки index.html, совпадение встроенной
