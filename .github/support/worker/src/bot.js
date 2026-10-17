@@ -386,7 +386,7 @@ export class Bot {
         } catch (e) { rights = 'Права бота проверить не удалось.'; }
         const verdict = reason
             ? '🧪 Проверка защиты. От обычного участника это сообщение было бы удалено, бот написал бы:\n\n' +
-              t(lang, 'mod_removed', { name: 'Участник', why: t(lang, 'mod_' + reason) }) + '\n' + t(lang, 'mod_official') +
+              t(lang, 'mod_removed', { name: 'участника', why: t(lang, 'mod_' + reason) }) + '\n' + t(lang, 'mod_official') +
               '\n\nПовтор за неделю — 7 дней без права писать, третий — бан.'
             : '🧪 Проверка защиты: нарушений нет — такое сообщение бот не тронет.';
         await this.send(m.chat.id, verdict + '\n\n' + rights + '\nВас бот не трогает: вы администратор.', m.message_id, null, m.is_topic_message ? m.message_thread_id : null);
