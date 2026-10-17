@@ -61,6 +61,32 @@ export function t(lang, key, kw) {
 export const stars = k => '⭐'.repeat(k);
 export const escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/* Ссылки в ответе бота: названия проектов — ссылками на их страницы GitHub (адрес спрятан за словом), голые адреса
+ * GitHub проектов — понятными словами. Адреса, которые человек вставляет руками (sunic.js), остаются видимыми.
+ * Только первое упоминание каждого проекта; длинные названия — раньше коротких. Вход — уже экранированный текст. */
+const GH = 'https://github.com/sunic007/';
+const PROJECT_LINKS = [
+    [/Sunic Apps (?:для|for|uchun) Lampa (?:на|on) Android|Lampa (?:на|on) Android(?: uchun)?/i, GH + 'lampa-android'],
+    [/Lampa (?:для|for) Samsung|Samsung uchun Lampa/i, GH + 'lampa-samsung'],
+    [/TV Installer/i, GH + 'tvinstaller'],
+];
+const END = '(?=[\\s.,;:!?)]|$)';
+const BARE_LINKS = [
+    [new RegExp('https?://github\\.com/sunic007/tvinstaller/releases/latest/download/SunicTvInstaller\\.apk' + END, 'g'), 'скачать TV Installer', GH + 'tvinstaller/releases/latest/download/SunicTvInstaller.apk'],
+    [new RegExp('https?://github\\.com/sunic007/lampa-samsung/releases/latest/download/samsung\\.wgt' + END, 'g'), 'скачать samsung.wgt', GH + 'lampa-samsung/releases/latest/download/samsung.wgt'],
+    [new RegExp('https?://github\\.com/sunic007/tvinstaller/?' + END, 'g'), 'TV Installer на GitHub', GH + 'tvinstaller'],
+    [new RegExp('https?://github\\.com/sunic007/lampa-samsung/?' + END, 'g'), 'Lampa для Samsung на GitHub', GH + 'lampa-samsung'],
+    [new RegExp('https?://github\\.com/sunic007/lampa-android/?' + END, 'g'), 'плагин на GitHub', GH + 'lampa-android'],
+];
+export function linkify(escaped) {
+    const slots = [];
+    const keep = html => '\u0000' + (slots.push(html) - 1) + '\u0000';
+    let s = escaped;
+    for (const [re, label, url] of BARE_LINKS) s = s.replace(re, () => keep(`<a href="${url}">${label}</a>`));
+    for (const [re, url] of PROJECT_LINKS) s = s.replace(re, m => keep(`<a href="${url}">${m}</a>`));   // без /g — первое упоминание
+    return s.replace(/\u0000(\d+)\u0000/g, (m, i) => slots[+i]);
+}
+
 // ---------------------------------------------------------------- язык, очистка
 const UZ_HINTS = /\b(qanday|qanaqa|nega|nima|qayer|qachon|ishlamayapti|ishlamaydi|ishlayapti|yordam|rahmat|kerak|bormi|yo'q|salom|assalomu|iltimos|televizor|o'rnat|yuklab|chiqmayapti|ochilmayapti|xato|taklif|qo'sh|bilan|uchun|mumkin|emas|dastur|ilova|qildim|qilsa|bo'ladi|bo'lmayapti)/i;
 const UZ_CYR = /[ўқғҳЎҚҒҲ]/;
@@ -288,7 +314,7 @@ export class Bot {
         }
         this.log(`kind=${cls.kind} product=${cls.product} lang=${cls.lang} via=${cls.source}`);
         if (cls.kind === 'question') {
-            await this.send(chat.id, escHtml(cls.answer) + '\n\n<i>' + escHtml(t(cls.lang, 'footer')) + '</i>', mid, null, thread);
+            await this.send(chat.id, linkify(escHtml(cls.answer)) + '\n\n<i>' + escHtml(t(cls.lang, 'footer')) + '</i>', mid, null, thread);
             return cls;
         }
         if (cls.kind === 'other') return cls;

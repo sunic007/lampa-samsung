@@ -49,7 +49,7 @@ test('вопрос — ответ по справке с подсказкой', 
     await e.bot.handleMessage(msg('Как установить Lampa?'));
     const m = e.msgs();
     assert.equal(m.length, 1);
-    assert.match(m[0].text, /Через TV Installer/);
+    assert.ok(m[0].text.includes('Через <a href="https://github.com/sunic007/tvinstaller">TV Installer</a>'));
     assert.match(m[0].text, /Не помогло\?/);
     assert.equal(m[0].reply_parameters.message_id, 10);
 });
@@ -98,6 +98,16 @@ test('анонимный администратор («от имени груп�
     const e2 = env({ kind: 'question', answer: 'x'.repeat(20) });
     await e2.bot.handleMessage(msg('Как установить Lampa?', { from: { id: 5, is_bot: true, username: 'otherbot' } }));
     assert.equal(e2.msgs().length, 0);
+});
+test('ссылки: названия проектов — скрытыми ссылками на GitHub, адрес плагина — виден', () => {
+    const s = B.linkify(B.escHtml('Поставьте TV Installer, затем Lampa для Samsung. Для Android — Sunic Apps для Lampa на Android: https://sunic007.github.io/lampa-android/sunic.js. TV Installer бесплатный. Скачать: https://github.com/sunic007/tvinstaller/releases/latest/download/SunicTvInstaller.apk'));
+    assert.ok(s.includes('<a href="https://github.com/sunic007/tvinstaller">TV Installer</a>, затем'));
+    assert.ok(s.includes('<a href="https://github.com/sunic007/lampa-samsung">Lampa для Samsung</a>'));
+    assert.ok(s.includes('<a href="https://github.com/sunic007/lampa-android">Sunic Apps для Lampa на Android</a>'));
+    assert.ok(s.includes(' https://sunic007.github.io/lampa-android/sunic.js'));       // вставлять руками — виден
+    assert.equal(s.split('>TV Installer</a>').length - 1, 1);                           // только первое упоминание
+    assert.ok(s.includes('<a href="https://github.com/sunic007/tvinstaller/releases/latest/download/SunicTvInstaller.apk">скачать TV Installer</a>'));
+    assert.equal(B.linkify('Lampa на Android uchun plagin'), '<a href="https://github.com/sunic007/lampa-android">Lampa на Android uchun</a> plagin');
 });
 test('/id в личке — номер чата', async () => {
     const e = env(null);
