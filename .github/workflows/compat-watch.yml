@@ -1,0 +1,172 @@
+name: Compatibility watch
+
+# Раз в час: изменились ли ядро Lampa на сервере byskaz (assembly.json → hash) или плагины Skaz (отпечатки содержимого
+# скриптов, которые грузит Lampa). ТВ берут их с серверов сразу, поэтому проверяем быстро. Изменилось — или прошло больше
+# суток с прошлой проверки — tests/browser-smoke.mjs: Lampa + плагины Skaz + наши модули в настоящем браузере.
+# Сломалось — задача «Совместимость» с отчётом (GitHub присылает уведомление) и, если задан vars.OWNER_TG_CHAT,
+# сообщение в Telegram; починилось — задача закрывается сама. История изменений — в кэше (.compat-state), сводка — в
+# итогах запуска: по ней видно, как часто Skaz и byskaz что-то меняют.
+on:
+  schedule:
+    - cron: '41 * * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Проверить в браузере, даже если ничего не изменилось'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: compat-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Restore state
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .compat-state
+          key: compat-state-${{ github.run_id }}
+          restore-keys: compat-state-
+
+      - name: Fingerprints
+        id: fp
+        env:
+          FORCE: ${{ inputs.force && '1' || '' }}
+        run: |
+          mkdir -p .compat-state
+          python3 - <<'PY'
+          import hashlib, json, os, time, urllib.request
+          SCRIPTS = [
+              'http://skaz.tv/onlines.js', 'http://skaz.tv/epg-guide.js', 'https://skaz.tv/sport.js', 'http://skaz.tv/tv.js', 'http://skaz.tv/ping.js',
+              'http://online3.skaz.tv/js/nws-client-es5.js',
+              'http://lampa.byskaz.ru/lampainit.js', 'http://lampa.byskaz.ru/catalog.js',
+              'http://lampa.byskaz.ru/plugins/privateinit.js', 'http://lampa.byskaz.ru/plugins/record.js', 'http://lampa.byskaz.ru/plugins/p.js',
+              'http://lampa.byskaz.ru/plugins/store.js', 'http://lampa.byskaz.ru/plugins/logo.js', 'http://lampa.byskaz.ru/plugins/kp_source.js',
+              'http://lampa.byskaz.ru/plugins/si.js', 'http://lampa.byskaz.ru/plugins/meta.js', 'http://lampa.byskaz.ru/plugins/t.js',
+              'http://lampa.byskaz.ru/plugins/season-episode.js', 'http://lampa.byskaz.ru/plugins/kp.js']
+          def get(u):
+              r = urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.5)'})
+              return urllib.request.urlopen(r, timeout=30).read()
+          path = '.compat-state/state.json'
+          try: st = json.load(open(path))
+          except Exception: st = {}
+          old = st.get('fp', {}); now = {}; changed = []; failed = []
+          try:
+              a = json.loads(get('http://lampa.byskaz.ru/lampa-main/assembly.json?t=%d' % time.time()))
+              now['lampa'] = '%s %s' % (a.get('app_version'), a.get('hash'))
+          except Exception as e:
+              failed.append('assembly.json')
+          for u in SCRIPTS:
+              try: now[u] = hashlib.sha256(get(u)).hexdigest()[:16]
+              except Exception: failed.append(u)
+          for k, v in now.items():
+              if old.get(k) and old[k] != v: changed.append(k)
+              if k not in old and old: changed.append(k + ' (новый)')
+          for k in failed:          # не ответил — прежний отпечаток оставляем, это не изменение
+              if k in old: now[k] = old[k]
+          hist = st.get('history', [])
+          if changed:
+              hist.append({'t': time.strftime('%Y-%m-%d %H:%M', time.gmtime()), 'changed': changed})
+          st['fp'], st['history'] = now, hist[-300:]
+          last = st.get('last_smoke', 0)
+          run = bool(changed) or not old or os.environ.get('FORCE') or time.time() - last > 86400
+          json.dump(st, open(path, 'w'), indent=1)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('run=%s\nchanged=%s\n' % ('1' if run else '', '; '.join(changed)))
+          # сводка: как часто меняется (для выбора расписания)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write('### Отпечатки\n\nИзменилось сейчас: %s\n\nНе ответили: %s\n\n' % (', '.join(changed) or 'ничего', ', '.join(failed) or 'все ответили'))
+              cnt = {}
+              for h in hist:
+                  for c in h['changed']: cnt.setdefault(c, []).append(h['t'])
+              f.write('| Что | Сколько раз менялось | Последние изменения (UTC) |\n|---|---|---|\n')
+              for k in sorted(cnt, key=lambda k: -len(cnt[k])):
+                  f.write('| %s | %d | %s |\n' % (k, len(cnt[k]), ', '.join(cnt[k][-5:])))
+          print('changed:', changed, '| failed:', failed, '| run smoke:', run)
+          PY
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        if: steps.fp.outputs.run
+        with:
+          node-version: '20'
+
+      - name: Browser check
+        id: smoke
+        if: steps.fp.outputs.run
+        run: |
+          npm i --no-save --no-audit --no-fund playwright@1.48.2 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+          set +e
+          node tests/browser-smoke.mjs --report smoke-report.json > smoke.log 2>&1
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          cat smoke.log | tail -60
+          python3 - <<'PY'
+          import json, time
+          st = json.load(open('.compat-state/state.json')); st['last_smoke'] = time.time()
+          json.dump(st, open('.compat-state/state.json', 'w'), indent=1)
+          PY
+
+      - name: Report
+        if: steps.fp.outputs.run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CODE: ${{ steps.smoke.outputs.code }}
+          CHANGED: ${{ steps.fp.outputs.changed }}
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ vars.OWNER_TG_CHAT }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess, urllib.parse, urllib.request
+          code = os.environ.get('CODE') or '1'
+          try: rep = json.load(open('smoke-report.json'))
+          except Exception: rep = {'problems': ['проверка не выдала отчёт — см. журнал'], 'warnings': [], 'lampa': '?'}
+          def gh(*a): return subprocess.run(['gh'] + list(a), capture_output=True, text=True)
+          gh('label', 'create', 'compat', '--color', 'd73a4a', '--description', 'Совместимость с Lampa / Skaz', '--force')
+          found = gh('issue', 'list', '--label', 'compat', '--state', 'open', '--json', 'number', '-q', '.[0].number').stdout.strip()
+          lines = ['Lampa на сервере: **%s**' % rep.get('lampa', '?'), 'Что изменилось у Skaz/byskaz: %s' % (os.environ.get('CHANGED') or '—'), '']
+          lines += ['- ' + p for p in rep.get('problems', [])] + ['- (предупреждение) ' + w for w in rep.get('warnings', [])]
+          errs = rep.get('ourErrors', [])[:10]
+          if errs: lines += ['', 'Ошибки из наших файлов:', '```'] + errs + ['```']
+          lines += ['', 'Журнал: ' + os.environ['RUN_URL']]
+          body = '\n'.join(lines)
+          def tg(text):
+              if not (os.environ.get('TG_TOKEN') and os.environ.get('TG_CHAT')): return
+              data = urllib.parse.urlencode({'chat_id': os.environ['TG_CHAT'], 'text': text, 'disable_web_page_preview': 'true'}).encode()
+              try: urllib.request.urlopen('https://api.telegram.org/bot%s/sendMessage' % os.environ['TG_TOKEN'], data, timeout=20)
+              except Exception as e: print('telegram:', e)
+          if code == '0':
+              print('всё в порядке')
+              if found:
+                  gh('issue', 'close', found, '--comment', 'Проверка снова проходит — закрываю.\n\n' + body)
+                  tg('✅ Lampa для Samsung: совместимость снова в порядке (Lampa %s).' % rep.get('lampa', '?'))
+          elif code == '3':
+              print('серверы Skaz/byskaz не ответили — не считаем поломкой:', rep.get('problems'), rep.get('warnings'))
+          else:
+              title = 'Совместимость: что-то сломалось после изменений у Lampa/Skaz'
+              if found: gh('issue', 'comment', found, '--body', body)
+              else:
+                  gh('issue', 'create', '--title', title, '--label', 'compat', '--body', body)
+                  tg('⚠️ Lampa для Samsung: проверка совместимости не прошла.\n' + '\n'.join(rep.get('problems', [])[:5]) + '\n' + os.environ['RUN_URL'])
+              print(body); raise SystemExit(1)
+          PY
+
+      - name: Save state
+        if: always()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .compat-state
+          key: compat-state-${{ github.run_id }}
