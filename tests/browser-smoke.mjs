@@ -21,7 +21,7 @@ const OURS = /\/(bs\w*|playerguard|skazauto|loader|update|polyfills)\.js/;
 const SKAZ_API = ['setDefaultQuality', 'find', 'getFileUrl', 'nextSource', 'switchSource', 'getChoice', 'saveChoice', 'requestParams',
     'seasonMemory', 'uiDraw', 'uiSourceMenu', 'sourceState', 'sourceOrder', 'doesNotAnswer', 'destroy'];
 const MODULES = ['BSUpdate', 'BSSkaz', 'BSGuard', 'BSFeatures', 'BSPlayer', 'BSRch', 'BSProbe', 'BSFix', 'BSSources', 'BSMenu',
-    'BSContinue', 'BSWatch', 'BSHub', 'BSTg', 'BSVolume'];
+    'BSContinue', 'BSWatch', 'BSHub', 'BSTelegram', 'BSVolume'];
 
 const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png',
     '.svg': 'image/svg+xml', '.woff': 'font/woff', '.woff2': 'font/woff2', '.lampa': 'application/json' };
