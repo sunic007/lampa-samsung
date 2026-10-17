@@ -13,6 +13,7 @@ const LANGS = ['ru', 'uz', 'en'];
 const MAX_AGE = 2 * 24 * 3600;
 const ANSWER_MAX = 600, TITLE_MAX = 80;
 const TG_SERVICE_USER = 777000;
+const TG_ANON_ADMIN = 1087968824;   // GroupAnonymousBot: администратор пишет «от имени группы» — это человек
 const SAFE_MENTIONS = new Set(['sunicapps', 'sunicapps_uzb', 'helpiptv', 'sunicapps_news_bot']);
 const NW = '[^\\p{L}\\p{N}_]';   // «не буква-цифра» для любых алфавитов (\W в JS — только латиница)
 
@@ -247,7 +248,8 @@ export class Bot {
     filter(m) {
         if (!this.isGroup(m.chat)) return null;
         const from = m.from || {};
-        if (from.is_bot || m.is_automatic_forward || m.via_bot || from.id === TG_SERVICE_USER) return null;
+        const anonAdmin = from.id === TG_ANON_ADMIN || (m.sender_chat && m.chat && m.sender_chat.id === m.chat.id);
+        if ((from.is_bot && !anonAdmin) || m.is_automatic_forward || m.via_bot || from.id === TG_SERVICE_USER) return null;
         let text = m.text || m.caption || '';
         if (!text.trim() || text.trimStart().startsWith('/')) return null;
         if (m.date && this.now() - m.date > MAX_AGE) return null;

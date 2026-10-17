@@ -91,6 +91,14 @@ test('разговор людей, чужие чаты, старые и служ
     await e.bot.handleMessage(msg('/start'));
     assert.equal(e.sent.length, 0);
 });
+test('анонимный администратор («от имени группы») — тоже человек, бот отвечает', async () => {
+    const e = env({ kind: 'question', product: 'lampa', lang: 'ru', answer: 'Через TV Installer: подготовьте ТВ и установите.' });
+    await e.bot.handleMessage(msg('Как установить Lampa?', { from: { id: 1087968824, is_bot: true, username: 'GroupAnonymousBot' }, sender_chat: GROUP }));
+    assert.equal(e.msgs().length, 1);
+    const e2 = env({ kind: 'question', answer: 'x'.repeat(20) });
+    await e2.bot.handleMessage(msg('Как установить Lampa?', { from: { id: 5, is_bot: true, username: 'otherbot' } }));
+    assert.equal(e2.msgs().length, 0);
+});
 test('/id в личке — номер чата', async () => {
     const e = env(null);
     await e.bot.handleMessage({ message_id: 1, date: NOW, chat: { id: 555, type: 'private' }, text: '/id', from: { id: 555 } });

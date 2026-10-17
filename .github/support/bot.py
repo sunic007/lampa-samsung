@@ -64,6 +64,7 @@ ANSWER_MAX = 600
 TITLE_MAX = 80
 KB_LIMIT = int(os.environ.get('KB_LIMIT') or 10000)
 TG_SERVICE_USER = 777000   # «Telegram»: автопересылки постов канала в группу обсуждений
+TG_ANON_ADMIN = 1087968824   # GroupAnonymousBot: администратор пишет «от имени группы» — это человек
 SAFE_MENTIONS = {'sunicapps', 'sunicapps_uzb', 'helpiptv', 'sunicapps_news_bot'}
 
 
@@ -766,7 +767,8 @@ class Bot:
         if not self.is_group(m.get('chat')):
             return None
         frm = m.get('from') or {}
-        if frm.get('is_bot') or m.get('is_automatic_forward') or m.get('via_bot'):
+        anon_admin = frm.get('id') == TG_ANON_ADMIN or ((m.get('sender_chat') or {}).get('id') == (m.get('chat') or {}).get('id') and m.get('sender_chat'))
+        if (frm.get('is_bot') and not anon_admin) or m.get('is_automatic_forward') or m.get('via_bot'):
             return None
         if frm.get('id') == TG_SERVICE_USER:
             return None
