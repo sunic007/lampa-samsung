@@ -450,6 +450,65 @@ ac.getFileUrl({ url: 'http://x', episode: 1 }, () => {});
 A.M.autoNext();
 t('гонка: пока проверяли, человек уже включил другое — не переключаем', ac.switched.length === 0);
 
+/* смена источника не выходя из плеера */
+A = fixCtx(); A.ctx.Lampa.Player.opened = () => true;
+A.ctx.window.BSProbe = raceProbe({ name: 'kinopub', title: 'KinoPub', verdict: 'ok', url: 'http://cdn2/ep7.mp4' }, [{ name: 'filmix', verdict: 'missing' }]);
+ac = fakeComp(A, ['zzz']); ac.requestParams = u => u; ac.getChoice = () => ({ voice_name: 'Дубляж' });
+ac.getFileUrl({ url: 'http://online3.skaz.tv/lite/rezka/movie', season: 2, episode: 7 }, () => {});
+{
+    let got = null;
+    const started = A.M.findInPlayer(r => { got = r; });
+    t('в плеере: нашёл источник — отдаёт проверенную ссылку и имя', started === true && got && got.url === 'http://cdn2/ep7.mp4' && got.title === 'KinoPub');
+    t('в плеере: список под плеером не трогаем, пока плеер открыт', ac.switched.length === 0);
+    t('в плеере: ищем ту же серию и озвучку, без упавшего', A.ctx.window.BSProbe.calls[0].want.episode === 7 && A.ctx.window.BSProbe.calls[0].want.voice === 'Дубляж'
+        && A.ctx.window.BSProbe.calls[0].exclude.indexOf('rhsprem') >= 0);
+    t('в плеере: «что играет» — уже новый источник', A.M.current().balanser === 'kinopub');
+    A.ctx.Lampa.Player.opened = () => false; A.M._afterPlayer();
+    t('в плеере: вышли из плеера — список переключён на рабочий источник', ac.switched[0] === 'kinopub');
+    A.M._afterPlayer();
+    t('в плеере: второй выход — ничего не переключает', ac.switched.length === 1);
+}
+A = fixCtx(); A.ctx.Lampa.Player.opened = () => true;
+A.ctx.window.BSProbe = raceProbe(null, [{ name: 'a', verdict: 'dead' }]);
+ac = fakeComp(A, ['x']); ac.requestParams = u => u; ac.getChoice = () => ({});
+ac.getFileUrl({ url: 'http://x', episode: 1 }, () => {});
+{ let got = 1; A.M.findInPlayer(r => { got = r; }); t('в плеере: рабочего нет — так и говорит (null)', got === null); }
+A = fixCtx({ bs_auto_source: 'false' }); ac = fakeComp(A, ['x']); ac.requestParams = u => u; ac.getFileUrl({ url: 'http://x' }, () => {});
+A.ctx.window.BSProbe = raceProbe(null, []);
+t('в плеере: автоподбор выключен — не ищем', A.M.findInPlayer(() => {}) === false);
+A = fixCtx(); ac = fakeComp(A, ['x']); ac.requestParams = u => u; ac.getFileUrl({ url: 'http://x' }, () => {});
+t('в плеере: без проверки источников — по-старому (false)', A.M.findInPlayer(() => {}) === false);
+{
+    // сторож: источник не пошёл — ищет другой, не закрывая плеер, и подменяет поток
+    const fx = { cb: null, current: () => ({ name: 'Rezka', time: 0 }), findInPlayer(cb) { this.cb = cb; return true; }, played() {} };
+    const g = guardEnv({ tizen: true, bsfix: fx });
+    g.fire('player:start', { url: 'http://cdn/1080.mp4' }); g.clock.run(27000);
+    t('сторож: источник не пошёл — «ищу другой, не выходя из плеера», плеер открыт', g.notes.some(n => /Rezka.*ищу другой, не выходя из плеера/.test(n)) && g.events.indexOf('close') < 0 && !!fx.cb);
+    g.clock.run(9000);
+    t('сторож: пока ищем — не закрывает и не дёргает качество', g.events.indexOf('close') < 0 && !g.events.some(e => /^quality/.test(e)));
+    fx.cb({ name: 'kinopub', title: 'KinoPub', url: 'http://cdn2/ep.mp4', verdict: 'ok' });
+    t('сторож: нашёл — поток подменён в том же плеере и написано, на какой источник', g.events.indexOf('quality http://cdn2/ep.mp4') >= 0
+        && g.notes.some(n => /Переключаю на «KinoPub» — поток проверен/.test(n)) && g.events.indexOf('close') < 0);
+    g.fire('video:timeupdate', { current: 1 }); g.clock.run(500); g.fire('video:timeupdate', { current: 2 }); g.clock.run(15000);
+    t('сторож: новый поток пошёл — остаёмся в плеере', g.events.indexOf('close') < 0);
+
+    const fx2 = { current: () => ({ name: 'Rezka', time: 0 }), findInPlayer(cb) { cb(null); return true; }, played() {} };
+    const g2 = guardEnv({ tizen: true, bsfix: fx2 });
+    g2.fire('player:start', { url: 'http://cdn/1080.mp4' }); g2.clock.run(32000);
+    t('сторож: рабочего источника нет — подсказка и закрытие плеера', g2.notes.some(n => /Рабочий источник не найден/.test(n)) && g2.events.indexOf('close') >= 0);
+
+    const fx3 = { current: () => ({ name: 'Rezka', time: 0 }), findInPlayer() { return true; }, played() {} };
+    const g3 = guardEnv({ tizen: true, bsfix: fx3 });
+    g3.fire('player:start', { url: 'http://cdn/1080.mp4' }); g3.clock.run(26000);
+    t('сторож: поиск молчит — не ждём вечно', g3.events.indexOf('close') < 0);
+    g3.clock.run(26000);
+    t('сторож: …через 20 с — закрытие с подсказкой', g3.events.indexOf('close') >= 0 && g3.notes.some(n => /Рабочий источник не найден/.test(n)));
+
+    const fx4 = { current: () => ({ name: 'Rezka', time: 0 }), findInPlayer() { return false; }, played() {}, autoNext() { this.next = true; } };
+    const g4 = guardEnv({ tizen: true, bsfix: fx4 });
+    g4.fire('player:start', { url: 'http://cdn/1080.mp4' }); g4.clock.run(32000);
+    t('сторож: искать в плеере нельзя — по-старому: закрытие и автоподбор', g4.events.indexOf('close') >= 0 && fx4.next === true);
+}
 A = fixCtx(); A.ctx.window.BSProbe = raceProbe(null, []);
 ac = fakeComp(A, ['deadone']);
 t('плагин сам переключается: мёртвый по проверке обходим', ac.nextSource() === 'firstok');
@@ -522,6 +581,7 @@ function guardEnv(opt) {
     const ctx = { window: w, Lampa, document: doc, navigator: { onLine: true }, console: { log() {} },
         setTimeout: (f, ms) => set(f, ms || 0), clearTimeout: id => { timers = timers.filter(x => x.id !== id); }, setInterval: (f, ms) => set(f, ms, true), clearInterval: id => { timers = timers.filter(x => x.id !== id); },
         Date: { now: () => now }, Math, JSON, String, Object, Array, parseFloat, parseInt, isNaN };
+    if (opt.bsfix) { w.BSFix = opt.bsfix; ctx.BSFix = opt.bsfix; ctx.$ = () => ({ addClass() {} }); }
     w.window = w; vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(SRC, 'playerguard.js'), 'utf8') + ';this.M=BSGuard;', ctx);
     ctx.M.start();
@@ -744,8 +804,10 @@ function applyEnv(opt) {
     const ls = Object.assign({}, opt.store || {}), notes = [], env = { reloads: 0 };
     const ctx = { window: { localStorage: { getItem: k => (k in ls ? ls[k] : null), setItem: (k, x) => { ls[k] = String(x); }, removeItem: k => { delete ls[k]; } } },
         document: { hidden: !!opt.hidden }, location: { reload: () => { env.reloads++; } }, Date, JSON, String, parseInt,
-        bsNoty: t => notes.push(t), bsPlayerOpen: () => !!opt.player, bsUpdatePending: null };
-    vm.createContext(ctx); vm.runInContext(fn + ';this.apply = bsApplyUpdate; this.hide = bsReloadForUpdate; this.fn = bsFnPending;', ctx);
+        bsNoty: t => notes.push(t), bsPlayerOpen: () => !!opt.player, bsUpdatePending: null,
+        setTimeout: f => f(), $: () => ({ length: opt.modal ? 1 : 0, hasClass: () => false }), Lampa: { Controller: { enabled: () => ({ name: 'content' }) } },
+        bsUpdateDialog: (v, info, lv, yes) => { env.dialogs = (env.dialogs || []).concat(v); env.yes = yes; } };
+    vm.createContext(ctx); vm.runInContext(fn + ';this.apply = bsApplyUpdate; this.hide = bsReloadForUpdate; this.fn = bsFnPending; this.offer = bsOfferUpdate; this.later = bsOfferLater;', ctx);
     return { ctx, env, notes, ls };
 }
 let ae = applyEnv({});
@@ -758,7 +820,23 @@ t('обновления: не чаще раза в 10 минут — без кр
 ae = applyEnv({ hidden: true, player: true }); ae.ctx.apply({ hash: 'h2' });
 t('обновления: видео открыто — не перезапускаем даже в фоне', ae.env.reloads === 0);
 ae = applyEnv({ hidden: true, store: { bs_upd: JSON.stringify({ v: '9.9.9', files: ['loader.js'], ok: 1 }) } });
-t('обновления: готовая версия функций ставится при уходе в фон', ae.ctx.hide() === true && ae.env.reloads === 1);
+t('обновления: версия функций без окна «что нового» молча не ставится', ae.ctx.hide() === false && ae.env.reloads === 0);
+ae = applyEnv({ hidden: true, store: { bs_upd: JSON.stringify({ v: '9.9.9', files: ['loader.js'], ok: 1 }), bs_upd_asked: '9.9.9' } });
+t('обновления: окно показали («Позже») — ставится при уходе в фон', ae.ctx.hide() === true && ae.env.reloads === 1);
+ae = applyEnv({});
+ae.ctx.offer('2.2.3', { notes: { title: 'x', items: [] }, apply() { ae.env.applied = 1; } });
+t('обновления: нашли новую — окно «что нового» с кнопкой, один раз', ae.env.dialogs.join() === '2.2.3' && ae.ls.bs_upd_asked === '2.2.3');
+ae.ctx.offer('2.2.3', null);
+t('обновления: второй раз то же окно не показываем', ae.env.dialogs.length === 1);
+ae.env.yes();
+t('обновления: «Обновить сейчас» — перезапуск с новой версией', ae.env.applied === 1 && ae.env.reloads === 1);
+ae = applyEnv({ player: true });
+ae.ctx.offer('2.2.3', null);
+t('обновления: во время видео окно не показываем', !ae.env.dialogs && !ae.ls.bs_upd_asked);
+ae.ctx.bsPlayerOpen = () => false; ae.ctx.later();
+t('обновления: …а после выхода из плеера — показываем', (ae.env.dialogs || []).join() === '2.2.3');
+ae = applyEnv({ modal: true }); ae.ctx.offer('2.2.3', null);
+t('обновления: поверх другого окна не показываем', !ae.env.dialogs);
 ae = applyEnv({ hidden: true, store: { bs_upd: JSON.stringify({ v: '9.9.9', files: ['loader.js'] }) } });
 t('обновления: непроверенная версия функций (без ok) — не перезапускаем', ae.ctx.hide() === false && ae.env.reloads === 0);
 
@@ -1720,7 +1798,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
         return appended;
     };
     const upd = JSON.stringify({ v: '9.9.9', files: ['loader.js', 'bstg.js'] });
-    t('загрузка: первый запуск новой версии — карточка «Обновляю Lampa»', run({ bs_upd: upd }) === 1);
+    t('загрузка: первый запуск новой версии — карточка «Обновляю Sunic Apps»', run({ bs_upd: upd }) === 1);
     t('загрузка: обычный запуск той же версии — без карточки', run({ bs_upd: upd, bs_upd_ran: '9.9.9' }) === 0);
     t('загрузка: запуск из пакета — без карточки', run({}) === 0);
     const L = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');

@@ -456,6 +456,19 @@ var BSFix = (function () {
         return false;
     }
 
+    /* Новый источник должен открыться на том же сезоне. У плагина для этого своя «память сезона»
+     * (seasonMemory — номер сезона, z01_season_last): при открытии любого источника он выбирает сезон с этим
+     * номером. Озвучку переносим, как сам плагин при смене источника (voice_name). */
+    function prepSwitch(c, season, next) {
+        try { if (season && typeof c.seasonMemory === 'function') c.seasonMemory(season); } catch (e) { log('season', e.message); }
+        try {
+            if (typeof c.getChoice === 'function' && typeof c.saveChoice === 'function') {
+                var from = c.getChoice(), to = c.getChoice(next);
+                if (from && from.voice_name && !to.voice_name) { to.voice_name = from.voice_name; c.saveChoice(to, next); }
+            }
+        } catch (e) { log('voice', e.message); }
+    }
+
     function switchTo(c, lp, next, why, title) {
         if (!auto || auto.comp !== c) return false;
         if (!next || auto.tried.indexOf(next) >= 0) return giveUpAuto();
@@ -464,21 +477,60 @@ var BSFix = (function () {
         auto.target = next;
         auto.waiting = Date.now();
         if (why) quiet('Переключаю на «' + (title || next) + '» — ' + why);
-        // Новый источник должен открыться на том же сезоне. У плагина для этого своя «память сезона»
-        // (seasonMemory — номер сезона, z01_season_last): при открытии любого источника он выбирает сезон с этим
-        // номером. Озвучку переносим, как сам плагин при смене источника (voice_name).
-        try { if (auto.season && typeof c.seasonMemory === 'function') c.seasonMemory(auto.season); } catch (e) { log('season', e.message); }
-        try {
-            if (typeof c.getChoice === 'function' && typeof c.saveChoice === 'function') {
-                var from = c.getChoice(), to = c.getChoice(next);
-                if (from && from.voice_name && !to.voice_name) { to.voice_name = from.voice_name; c.saveChoice(to, next); }
-            }
-        } catch (e) { log('voice', e.message); }
+        prepSwitch(c, auto.season, next);
         setTimeout(function () {
             if (!auto || auto.comp !== c || !onScreen(c)) return;   // человек ушёл с экрана — не переключаем
             try { c.switchSource(next); } catch (e) { auto = null; }
         }, 500);
         return true;
+    }
+
+    /* ---------- смена источника не выходя из плеера ----------
+     * Сторож плеера (playerguard.js): видео не пошло или встало насовсем — findInPlayer() в фоне ищет ту же серию у
+     * других источников (гонка bsprobe.js) и отдаёт ссылку на проверенный поток; сторож подменяет поток в открытом
+     * плеере (как смену качества) и пишет, на какой источник переключил. Список под плеером (плагин) переключаем на
+     * этот источник, когда человек выйдет из плеера: переключать его при открытом плеере нельзя — плагин перерисует
+     * экран и заберёт пульт у плеера. cb({name, title, url, verdict}) | cb(null) — рабочего нет. false — искать не
+     * можем (выключено, нет проверки источников, это не онлайн-источник): тогда по-старому, через закрытие плеера. */
+    var inPlayer = null;   // {comp, name, season}: на что переключить список после выхода из плеера
+    function findInPlayer(cb) {
+        if (lsGetFix('bs_auto_source') === 'false') return false;
+        var P = probe(), lp = current(), c = lp && lp.comp;
+        if (!P || !c || typeof c.requestParams !== 'function' || typeof c.switchSource !== 'function' || !onScreen(c)) return false;
+        if (!auto || auto.comp !== c || auto.season !== lp.season || auto.episode !== lp.episode)
+            auto = { comp: c, tried: [], switches: 0, season: lp.season, episode: lp.episode };
+        if (lp.balanser && auto.tried.indexOf(lp.balanser) < 0) auto.tried.push(lp.balanser);
+        try { P.remember(lp.balanser, 'failed'); } catch (e) {}
+        if (auto.switches >= AUTO_MAX) { auto = null; cb(null); return true; }
+        var voice = '', a = auto;
+        try { voice = (c.getChoice() || {}).voice_name || ''; } catch (e) {}
+        a.racing = true;
+        P.race(c, a.tried.slice(), { season: lp.season | 0, episode: lp.episode | 0, voice: voice }, function (win, results) {
+            a.racing = false;
+            if (auto !== a || !playerOpen()) return;                          // плеер закрыли, пока искали
+            results.forEach(function (r) { if (P.bad(r.verdict) && a.tried.indexOf(r.name) < 0) a.tried.push(r.name); });
+            if (!win || !win.url || a.tried.indexOf(win.name) >= 0) { auto = null; return cb(null); }
+            a.tried.push(win.name);
+            a.switches++;
+            // дальше «что играет» — новый источник: его и пометим упавшим, если и он не пойдёт
+            lp.balanser = win.name; lp.name = win.title || win.name; lp.time = Date.now(); lp.bound = true;
+            inPlayer = { comp: c, name: win.name, season: a.season };
+            log('в плеере', win.name + ' ' + win.verdict);
+            cb({ name: win.name, title: win.title || win.name, url: win.url, verdict: win.verdict });
+        });
+        return true;
+    }
+    /** Вышли из плеера после смены источника в нём — список под плеером тоже на рабочий источник (серию не включаем). */
+    function afterPlayer() {
+        var p = inPlayer;
+        inPlayer = null;
+        if (!p || !onScreen(p.comp)) return;
+        if (auto && auto.comp === p.comp) auto.waiting = 0;              // autoPick не должен снова включить серию
+        prepSwitch(p.comp, p.season, p.name);
+        setTimeout(function () {
+            try { if (onScreen(p.comp) && !playerOpen() && Lampa.Storage.get('online_balanser', '') !== p.name) p.comp.switchSource(p.name); }
+            catch (e) { log('после плеера', e.message); }
+        }, 600);
     }
 
     function autoPick(items, params, comp) {
@@ -543,6 +595,7 @@ var BSFix = (function () {
         try { hookLoading(); } catch (e) {}
         try { hookPlay(); } catch (e) {}
         try { Lampa.Player.listener.follow('start', onPlayerStart); } catch (e) {}
+        try { Lampa.Player.listener.follow('destroy', afterPlayer); } catch (e) {}
         try {
             var C = Lampa.Component, create = C.create;
             if (create.__bs) return;
@@ -553,5 +606,5 @@ var BSFix = (function () {
         try { patch(Lampa.Activity.active().activity.component); } catch (e) {}
     }
 
-    return { start: start, show: showDiag, note: linkAdd, _hookLoading: hookLoading, current: current, played: played, autoNext: autoNext, openSources: openSources, _autoPick: autoPick, playingBitrate: playingBitrate, _pickQuality: pickQuality, _hookPlay: hookPlay, _remember: remember, _state: function () { return { lastPlay: lastPlay, auto: auto }; }, _normQuality: normQuality, _patch: patch, _otherServer: otherServer, _fallbackUrl: fallbackUrl, _fallbacks: fallbacks, _mask: mask };
+    return { start: start, show: showDiag, note: linkAdd, _hookLoading: hookLoading, current: current, played: played, autoNext: autoNext, findInPlayer: findInPlayer, _afterPlayer: afterPlayer, openSources: openSources, _autoPick: autoPick, playingBitrate: playingBitrate, _pickQuality: pickQuality, _hookPlay: hookPlay, _remember: remember, _state: function () { return { lastPlay: lastPlay, auto: auto }; }, _normQuality: normQuality, _patch: patch, _otherServer: otherServer, _fallbackUrl: fallbackUrl, _fallbacks: fallbacks, _mask: mask };
 })();

@@ -135,7 +135,7 @@ try {
 /* ---------- строка статуса на экране загрузки ---------- */
 
 /* Обычный запуск — только оригинальный экран загрузки Lampa, своих надписей не добавляем. Наша карточка (update.js,
- * BSBoot) — только при обновлении («Обновляю Lampa до …») и при ошибке; при обновлении уходит, как только Lampa
+ * BSBoot) — только при обновлении («Обновляю Sunic Apps до …») и при ошибке; при обновлении уходит, как только Lampa
  * показала свой экран загрузки (.lp-step). */
 var bsLampaOwn = false;
 
@@ -461,7 +461,7 @@ function bsEsc(s) {
 function bsUpdateDialog(gh, info, lampaV, onYes) {
     var html = '<div style="line-height:1.5">';
     if (gh) {
-        html += '<p><b>Функции пакета: ' + bsEsc(BS_PACKAGE_VERSION) + ' → ' + bsEsc(gh) + '</b>' +
+        html += '<p><b>Sunic Apps: ' + bsEsc(window.BS_REMOTE_VERSION || BS_PACKAGE_VERSION) + ' → ' + bsEsc(gh) + '</b>' +
             (info && info.notes && info.notes.title ? ' — ' + bsEsc(info.notes.title) : '') + '</p>';
         if (info && info.notes && info.notes.items.length) {
             html += '<ul style="margin:.3em 0 .8em 1.2em;padding:0">' + info.notes.items.map(function (i) {
@@ -533,9 +533,35 @@ function bsFnPending() {
         return u && u.ok && bsVerNum(u.v) > bsVerNum(window.BS_REMOTE_VERSION || pkg) ? u.v : '';
     } catch (e) { return ''; }
 }
+/* Новая версия Sunic Apps — сначала окно «Вышло обновление»: коротко, что нового (из version.json), и «Обновить
+ * сейчас» / «Позже» («Позже» — встанет при следующем запуске). Окно — один раз на версию (bs_upd_asked); во время
+ * видео, в другом окне или когда Lampa скрыта — не показываем, ждём выхода из плеера или следующей проверки.
+ * Молча (уход Lampa в фон) версия функций ставится только после того, как окно было показано. */
+var bsOfferWaiting = null;
+function bsUpdateAsked(v) { try { return !!v && window.localStorage.getItem('bs_upd_asked') === v; } catch (e) { return false; } }
+function bsOfferUpdate(v, info) {
+    if (!v || bsUpdateAsked(v)) return;
+    var busy = document.hidden || bsPlayerOpen();
+    // открыто меню (Select — класс на body; сам .selectbox есть всегда) или окно (.modal есть, только пока открыто)
+    try { busy = busy || /^(modal|select)$/.test(Lampa.Controller.enabled().name) || $('body').hasClass('selectbox--open') || !!$('.modal').length; } catch (e) {}
+    if (busy) { bsOfferWaiting = { v: v, info: info }; return; }
+    bsOfferWaiting = null;
+    try { window.localStorage.setItem('bs_upd_asked', v); } catch (e) {}
+    bsUpdateDialog(v, info, '', function () {
+        if (info && info.apply) info.apply();
+        bsNoty('Обновляю — Lampa перезапустится', 3000);
+        setTimeout(function () { location.reload(); }, 2000);
+    });
+}
+function bsOfferLater() {
+    var w = bsOfferWaiting;
+    if (w) setTimeout(function () { bsOfferUpdate(w.v, w.info); }, 3000);
+}
+
 /** Lampa скрыта: применить всё готовое одним перезапуском. Не чаще раза в 10 минут — защита от кругов. */
 function bsReloadForUpdate() {
-    if (!(bsUpdatePending || bsFnPending()) || bsPlayerOpen()) return false;
+    var fn = bsFnPending();
+    if (!(bsUpdatePending || (fn && bsUpdateAsked(fn))) || bsPlayerOpen()) return false;
     var last = 0;
     try { last = parseInt(window.localStorage.getItem('bs_upd_reload_at') || '0', 10) || 0; } catch (e) {}
     if (Date.now() - last < 10 * 60 * 1000) return false;
@@ -546,8 +572,8 @@ function bsReloadForUpdate() {
 
 function bsUpdateCheck() {
     bsLastUpdateCheck = Date.now();
-    // функции пакета — своя настройка «Обновлять с GitHub» (внутри check); годная версия встанет при уходе в фон
-    try { if (window.BSUpdate && BSUpdate.check) BSUpdate.check(function () {}); } catch (e) {}
+    // функции пакета (Sunic Apps) — своя настройка «Обновлять с GitHub» (внутри check): есть готовая — окно «что нового»
+    try { bsGhCheck(function (v, info) { if (v) bsOfferUpdate(v, info); }); } catch (e) {}
     if (!bsAutoUpdateOn()) return;
     bsCheckNow(function (a) {
         if (!a) return;
@@ -568,8 +594,10 @@ function bsRecentlyFailed(hash) {
 function bsStartAutoUpdate() {
     bsRunningHash = bsSource === 'bundled' || bsSource === 'local' ? BS_BUNDLED_HASH : (bsRemote && bsRemote.hash) || null;
     setInterval(function () { if (!document.hidden) bsUpdateCheck(); }, BS_UPDATE_EVERY);
+    try { Lampa.Player.listener.follow('destroy', bsOfferLater); } catch (e) {}   // окно обновления — после видео
     document.addEventListener('visibilitychange', function () {
         if (document.hidden) { bsReloadForUpdate(); return; }               // ушли из Lampa — ставим готовое
+        bsOfferLater();
         if (Date.now() - bsLastUpdateCheck > BS_UPDATE_ON_RESUME) bsUpdateCheck();
     });
     window.addEventListener('online', function () { setTimeout(bsUpdateCheck, 3000); });
@@ -858,7 +886,7 @@ function bsAddSettings() {
         }
     });
 
-    title('bs_t_pkg', 'Функции пакета — бот, плеер, настройки');
+    title('bs_t_pkg', 'Sunic Apps — бот, плеер, настройки');
     Lampa.SettingsApi.addParam({
         component: C,
         param: { name: 'bs_info_pkg', type: 'static' },

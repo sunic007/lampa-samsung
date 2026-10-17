@@ -279,6 +279,7 @@ var BSGuard = (function () {
         if (!s) return;
         if (!playerOpen()) return stop();
         if (s.paused || document.hidden || s.closing) return;
+        if (s.searching) return;              // ищем другой источник (sourceInPlayer)
         if (inGrace(s, Date.now())) return;   // Lampa восстанавливает плеер после Smart Hub
         // Нет сети — ничего не переключаем, ждём её возвращения (см. 'online').
         if (navigator.onLine === false || s.offline) { s.lastProgressAt = Date.now(); return; }
@@ -330,8 +331,11 @@ var BSGuard = (function () {
         if (!s.everPlayed && s.avplay && s.hls && !/^не отвечает/.test(why) && work && work.url && fallbackInner(work)) return;
 
         // Видео ни разу не пошло, а это онлайн-источник с автоподбором — перебор качеств (по 25 с на каждое)
-        // только тянет время: сразу другой источник.
-        if (!s.everPlayed && autoAvailable()) return giveUp('Источник не работает — ищу другой', function () { try { BSFix.autoNext(); } catch (e) {} });
+        // только тянет время: сразу другой источник — прямо в плеере, а если так нельзя — через закрытие плеера.
+        if (!s.everPlayed && autoAvailable()) {
+            if (sourceInPlayer()) return;
+            return giveUp('Источник не работает — ищу другой', function () { try { BSFix.autoNext(); } catch (e) {} });
+        }
 
         // Шаг 0: видео шло и встало — сначала тот же поток с того же места.
         if (!s.restarted && s.played && s.lastTime > 5 && work && work.url) return restartSame(why === 'выдал ошибку' ? 'Ошибка потока' : 'Поток ' + why);
@@ -343,8 +347,9 @@ var BSGuard = (function () {
             switchTo(next);
             return;
         }
-        // онлайн-источник: после закрытия плеера автоподбор пробует следующий источник с той же серией (bsfix.js)
+        // онлайн-источник: другой источник с той же серией — в плеере; нельзя — после закрытия плеера (bsfix.js)
         var auto = autoAvailable();
+        if (auto && sourceInPlayer()) return;
         giveUp(auto ? 'Источник не отвечает — ищу другой' : 'Источник не отвечает — выберите другой',
             auto ? function () { try { BSFix.autoNext(); } catch (e) {} } : null);
     }
@@ -369,6 +374,45 @@ var BSGuard = (function () {
         s.played = false;
         try { Lampa.PlayerPanel.listener.send('quality', { name: q.name, url: q.url }); }
         catch (e) { log('смена качества не удалась', e.message); giveUp('Не удалось сменить качество'); }
+    }
+
+    /* Другой источник, не выходя из плеера: пока ищем (до ~15 с), сторож ждёт; нашли — подменяем поток (с того же
+     * места, если видео уже шло) и пишем, на какой источник; не нашли — закрываем плеер с подсказкой. */
+    var SEARCH_WAIT = 20000;
+    function sourceInPlayer() {
+        if (!window.BSFix || typeof BSFix.findInPlayer !== 'function') return false;
+        var sess = s, cur = null, from = '';
+        try { cur = BSFix.current(); from = cur && cur.name; } catch (e) {}
+        var started = false, answered = false;
+        try {
+            started = BSFix.findInPlayer(function (res) {
+                answered = true;
+                if (s !== sess || !s) return;                      // плеер закрыли или включили другое
+                s.searching = false;
+                s.graceUntil = 0;
+                if (!res) return giveUp('Рабочий источник не найден — выберите вручную');
+                var pos = s.everPlayed && s.lastTime > 5 ? s.lastTime : 0;
+                noty('Переключаю на «' + res.title + '»' + (res.verdict === 'ok' ? ' — поток проверен' : ''), 7000);
+                log('другой источник в плеере:', res.name, res.verdict);
+                // новый поток — как новый запуск: свои качества и счётчики
+                s.tried = [res.url]; s.steps = 0; s.restarted = false; s.everPlayed = false; s.startedAt = Date.now();
+                s.hls = isHls(res.url); s.avSignal = false; s.hinted = false; s.stalls = 0;
+                try { var w = Lampa.Player.playdata(); if (w) w.quality = null; } catch (e) {}
+                try { $('.player-panel__quality').addClass('hide'); } catch (e) {}   // качества были от прежнего источника
+                switchTo({ name: 'auto', url: res.url });
+                if (pos) s.resumeAt = pos;
+                quickCheck(res.url);
+            });
+        } catch (e) { log('поиск источника', e.message); }
+        if (!started) return false;
+        if (!answered && s === sess && s) {                       // ответ придёт позже — пока ищем, сторож не дёргается
+            s.searching = true;
+            s.graceUntil = Date.now() + SEARCH_WAIT;
+            noty((from ? '«' + from + '»' : 'Источник') + ' не работает — ищу другой, не выходя из плеера…', 8000);
+            // гонка не ответила вовсе — не ждать вечно
+            setTimeout(function () { if (s === sess && s && s.searching) { s.searching = false; giveUp('Рабочий источник не найден — выберите вручную'); } }, SEARCH_WAIT);
+        }
+        return true;
     }
 
     function autoAvailable() {

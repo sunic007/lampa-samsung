@@ -2,6 +2,9 @@ name: Telegram post
 
 # Новый релиз — пост в канал новостей (@sunicapps_uzb): название, раздел «что нового» на русском и ссылка.
 # Нужен секрет TELEGRAM_BOT_TOKEN — бот-публикатор, админ канала с правом «Публикация сообщений».
+# Релиз, созданный человеком (gh, сайт), сам запускает этот пост (событие release). Ручной запуск — для релизов от
+# GITHUB_TOKEN (lampa-watch: такие события release не дают); для релиза человека ручной запуск пропускается, иначе
+# пост выходит дважды (так было с 2.2.0–2.2.2). delete — убрать посты канала по номерам (t.me/sunicapps_uzb/<номер>).
 on:
   release:
     types: [published]
@@ -9,7 +12,10 @@ on:
     inputs:
       tag:
         description: 'Тег релиза (например v2.0.4)'
-        required: true
+        required: false
+      delete:
+        description: 'Удалить посты канала: номера через запятую (вместо поста)'
+        required: false
 
 permissions:
   contents: read
@@ -25,9 +31,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          DELETE: ${{ inputs.delete }}
+          EVENT: ${{ github.event_name }}
         run: |
           if [ -z "$TOKEN" ]; then echo "Нет секрета TELEGRAM_BOT_TOKEN — пропускаю"; exit 0; fi
-          gh release view "$TAG" -R "$REPO" --json name,body,url > rel.json
+          if [ -n "$DELETE" ]; then
+            for id in $(echo "$DELETE" | tr ',' ' '); do
+              case "$id" in ''|*[!0-9]*) echo "не номер: $id"; continue;; esac
+              curl -s "https://api.telegram.org/bot$TOKEN/deleteMessage" -d chat_id="$CHANNEL" -d message_id="$id" | grep -q '"ok":true' && echo "удалён $id" || echo "не удалён $id"
+            done
+            exit 0
+          fi
+          [ -n "$TAG" ] || { echo "нужен tag"; exit 1; }
+          gh release view "$TAG" -R "$REPO" --json name,body,url,author > rel.json
+          if [ "$EVENT" = "workflow_dispatch" ] && ! grep -q '"login":"github-actions\[bot\]"' rel.json; then
+            echo "Релиз создан человеком — пост уже вышел по событию release, повтор не нужен"; exit 0
+          fi
           python3 - <<'PY'
           import json, os, re, urllib.parse, urllib.request
           r = json.load(open('rel.json', encoding='utf-8'))
@@ -39,13 +58,13 @@ jobs:
           notes = re.sub(r'^\s*[-*]\s+', '• ', notes, flags=re.M)
           notes = re.sub(r'(?m)^Download .*\n?', '', notes).strip()   # строка про файлы для GitHub — в канале есть «Скачать»
           repo = os.environ['REPO']
-          app = 'TV Installer' if repo.endswith('tvinstaller') else 'Lampa для Samsung'
+          app = 'TV Installer' if repo.endswith('tvinstaller') else 'Sunic Apps для Lampa'   # обновляется плагин, а не сама Lampa
           dl = ('https://github.com/%s/releases/latest/download/SunicTvInstaller.apk' % repo) if repo.endswith('tvinstaller') \
                else ('https://github.com/%s/releases/latest/download/samsung.wgt' % repo)
           tail = '\n\n⬇️ Скачать: ' + dl + '\n📄 Подробнее: ' + r['url'] + '\n💬 Вопросы: @sunicapps'
           if not repo.endswith('tvinstaller'):
-              tail = '\n\nLampa на ТВ обновится сама.' + tail
-          name = re.sub(r'^' + re.escape(app) + r'\s*', '', r['name'])   # «TV Installer 2.3.5 — …» без повтора названия
+              tail = '\n\nНа включённых ТВ обновление встанет само.' + tail
+          name = re.sub(r'^(' + re.escape(app) + r'|Lampa для Samsung)\s*', '', r['name'])   # «TV Installer 2.3.5 — …» без повтора названия
           text = '🆕 ' + app + ' ' + name + '\n\n' + notes
           text = text[:4096 - len(tail)] + tail
           data = urllib.parse.urlencode({'chat_id': os.environ['CHANNEL'], 'text': text, 'disable_web_page_preview': 'true'}).encode()

@@ -107,7 +107,7 @@
         // «Обновляю» — только при первом запуске новой версии; дальше это обычный запуск
         if (get('bs_upd_ran') === upd.v) return;                        // обычный запуск — без карточки, только экран Lampa
         var sec = Math.round((Date.now() - statStart) / 1000);
-        window.BSBoot.set('Обновляю Lampa до ' + upd.v, 'загружено ' + statLoaded + ' из ' + files.length + ' · ' + sec + ' с', statLoaded / files.length);
+        window.BSBoot.set('Обновляю Sunic Apps до ' + upd.v, 'загружено ' + statLoaded + ' из ' + files.length + ' · ' + sec + ' с', statLoaded / files.length);
     }
     function statHide() { statOn = false; clearInterval(statTimer); }
     window.bsUpdLoaded = function () { statLoaded++; statDraw(); if (statLoaded >= files.length) statHide(); };
@@ -167,7 +167,7 @@
                     set('bs_upd_mirror', null);
                     if (was !== m.version) {
                         try { console.log('BS update', 'на GitHub ' + m.version + ' (зеркало ' + i + '), сейчас ' + now); } catch (e) {}
-                        try { Lampa.Noty.show('Обновление ' + m.version + ' готово — встанет при следующем запуске', { time: 5000 }); } catch (e) {}
+                        try { Lampa.Noty.show('Обновление Sunic Apps ' + m.version + ' готово — встанет при следующем запуске', { time: 5000 }); } catch (e) {}
                     }
                     fin(m.version, m);
                 });
