@@ -5,7 +5,9 @@
 //   POST /tg            — обновления Telegram (заголовок X-Telegram-Bot-Api-Secret-Token = WEBHOOK_SECRET)
 //   GET  /setup?key=…   — подключить webhook (key = WEBHOOK_SECRET)
 //   GET  /health        — жив ли (без секретов)
+//   POST /report        — отчёт о проблеме с ТВ (report.js); раз в 10 минут — отчёты, пришедшие через ntfy
 import { Bot } from './bot.js';
+import { handleReport, pollNtfy } from './report.js';
 
 const KB_URL = 'https://raw.githubusercontent.com/sunic007/lampa-samsung/main/.github/support/kb.txt';
 const KB_LIFE = 3600;
@@ -137,10 +139,33 @@ async function health(env) {
     return Response.json(out);
 }
 
+function kvStore(env) {
+    return { get: k => env.STATE.get(k), put: (k, v, ttl) => env.STATE.put(k, v, ttl ? { expirationTtl: Math.max(60, ttl) } : undefined) };
+}
+const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
+async function report(request, env) {
+    if (request.method === 'OPTIONS') return new Response(null, { headers: CORS });
+    const raw = await request.text();
+    if (raw.length > 60000) return Response.json({ ok: false, error: 'bad' }, { status: 413, headers: CORS });
+    const res = await handleReport(raw, { gh: github(env), store: kvStore(env), ip: request.headers.get('CF-Connecting-IP') || '', log });
+    const status = res.ok ? 200 : res.error === 'limit' ? 429 : res.error === 'bad' ? 400 : 502;
+    return Response.json(res, { status, headers: CORS });
+}
+async function fetchText(url) {
+    const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error('fetch ' + r.status);
+    return r.text();
+}
+
 export default {
+    async scheduled(event, env) {
+        try { const n = await pollNtfy({ gh: github(env), store: kvStore(env), log }, fetchText); if (n) log(`ntfy: отчётов ${n}`); }
+        catch (e) { log('ntfy poll: ' + e.message); }
+    },
     async fetch(request, env) {
         const path = new URL(request.url).pathname;
         if (request.method === 'POST' && path === '/tg') return handleTelegram(request, env);
+        if (path === '/report' && (request.method === 'POST' || request.method === 'OPTIONS')) return report(request, env).catch(e => Response.json({ ok: false, error: 'github' }, { status: 502, headers: CORS }));
         if (path === '/setup') return setup(request, env).catch(e => Response.json({ ok: false, error: redact(e.message, env) }, { status: 500 }));
         if (path === '/health') return health(env);
         return new Response('Sunic Apps support bot', { status: 404 });

@@ -924,7 +924,58 @@ var BSTelegram = (function () {
             for (var i = 0; i < r.length; i++) s += a.charAt(r[i] % a.length);
             return s;
         }
-        return { sha256: sha256, hmac: hmac, bytes: bytes, hex: hex, key: key, seal: seal, open: open, secret: secret, rnd: rnd, pbkdf: pbkdf };
+        /* X25519 (RFC 7748) на чистом JS — порт crypto_scalarmult из TweetNaCl (общественное достояние). Нужен для
+         * подключения второго ТВ по 6 цифрам: общий ключ двух ТВ, который не узнать, даже зная цифры. Та же копия —
+         * в service/service.js (Node на старых ТВ без X25519). sk, pk — 32 байта (массив или Uint8Array) -> 32 байта. */
+        function x25519(sk, pk) {
+            function gf(init) { var r = new Float64Array(16); if (init) for (var i = 0; i < init.length; i++) r[i] = init[i]; return r; }
+            function car(o) { var c = 1, v; for (var i = 0; i < 16; i++) { v = o[i] + c + 65535; c = Math.floor(v / 65536); o[i] = v - c * 65536; } o[0] += c - 1 + 37 * (c - 1); }
+            function sel(p, q, b) { var t, c = ~(b - 1); for (var i = 0; i < 16; i++) { t = c & (p[i] ^ q[i]); p[i] ^= t; q[i] ^= t; } }
+            function A(o, a, b) { for (var i = 0; i < 16; i++) o[i] = a[i] + b[i]; }
+            function Z(o, a, b) { for (var i = 0; i < 16; i++) o[i] = a[i] - b[i]; }
+            function M(o, a, b) {
+                var t = new Float64Array(31), i, j;
+                for (i = 0; i < 16; i++) for (j = 0; j < 16; j++) t[i + j] += a[i] * b[j];
+                for (i = 0; i < 15; i++) t[i] += 38 * t[i + 16];
+                for (i = 0; i < 16; i++) o[i] = t[i];
+                car(o); car(o);
+            }
+            function inv(o, x) { var c = gf(), a; for (a = 0; a < 16; a++) c[a] = x[a]; for (a = 253; a >= 0; a--) { M(c, c, c); if (a !== 2 && a !== 4) M(c, c, x); } for (a = 0; a < 16; a++) o[a] = c[a]; }
+            function pack(n) {
+                var m = gf(), t = gf(), i, j, b, out = [];
+                for (i = 0; i < 16; i++) t[i] = n[i];
+                car(t); car(t); car(t);
+                for (j = 0; j < 2; j++) {
+                    m[0] = t[0] - 0xffed;
+                    for (i = 1; i < 15; i++) { m[i] = t[i] - 0xffff - ((m[i - 1] >> 16) & 1); m[i - 1] &= 0xffff; }
+                    m[15] = t[15] - 0x7fff - ((m[14] >> 16) & 1);
+                    b = (m[15] >> 16) & 1;
+                    m[14] &= 0xffff;
+                    sel(t, m, 1 - b);
+                }
+                for (i = 0; i < 16; i++) { out.push(t[i] & 0xff); out.push((t[i] >> 8) & 0xff); }
+                return out;
+            }
+            var z = [], x = gf(), a = gf(), b = gf(), c = gf(), d = gf(), e = gf(), f = gf(), k121665 = gf([0xdb41, 1]), i, r;
+            for (i = 0; i < 32; i++) z.push(sk[i] & 255);
+            z[31] = (z[31] & 127) | 64; z[0] &= 248;
+            for (i = 0; i < 16; i++) x[i] = (pk[2 * i] & 255) + ((pk[2 * i + 1] & 255) << 8);
+            x[15] &= 0x7fff;
+            for (i = 0; i < 16; i++) b[i] = x[i];
+            a[0] = d[0] = 1;
+            for (i = 254; i >= 0; --i) {
+                r = (z[i >>> 3] >>> (i & 7)) & 1;
+                sel(a, b, r); sel(c, d, r);
+                A(e, a, c); Z(a, a, c); A(c, b, d); Z(b, b, d);
+                M(d, e, e); M(f, a, a); M(a, c, a); M(c, b, e);
+                A(e, a, c); Z(a, a, c); M(b, a, a); Z(c, d, f);
+                M(a, c, k121665); A(a, a, d); M(c, c, a); M(a, d, f); M(d, b, x); M(b, e, e);
+                sel(a, b, r); sel(c, d, r);
+            }
+            inv(c, c); M(a, a, c);
+            return pack(a);
+        }
+        return { sha256: sha256, hmac: hmac, bytes: bytes, hex: hex, key: key, seal: seal, open: open, secret: secret, rnd: rnd, pbkdf: pbkdf, x25519: x25519, b64: b64, unb64: unb64 };
     })();
 
     /* ---------- серверы ntfy: основной и запасные ----------
@@ -1154,7 +1205,7 @@ var BSTelegram = (function () {
     }
 
     /* ---------- ещё один ТВ: подключение по коду, без токена ----------
-     * Новый ТВ показывает код из 12 знаков (XXXX-XXXX-XXXX: цифры 2–9 и латинские буквы без похожих — I, L, O; ~59 бит)
+     * До 2.3.0 (v3, главный ТВ принимает и теперь; новый ТВ показывает 6 цифр — v4 ниже): код из 12 знаков (XXXX-XXXX-XXXX: цифры 2–9 и латинские буквы без похожих — I, L, O; ~59 бит)
      * и слушает тему ntfy, выведенную из него. Человек присылает код боту; ТВ, где бот уже работает, кладёт в эту тему
      * токен и чат, зашифрованные ключом из кода. Тема и ключ — из кода через PBKDF2 (JOIN_ITER шагов): по теме или
      * перехваченному сообщению код перебором не подобрать. Бот принимает сообщения только из своего чата, так что код
@@ -1185,37 +1236,91 @@ var BSTelegram = (function () {
         return joinKeysVal;
     }
     function joinTopic(code) { return joinKeys(code).topic; }
-    /** Код из сообщения: с дефисами или пробелами между группами и без них, любыми буквами — «abcd-2345-efgh». */
+    /** Код из сообщения: 6 цифр («481 527») или прежний из 12 знаков — с дефисами или пробелами и без них, любыми буквами. */
     function joinFrom(t) {
         t = String(t || '');
         if (t.length > 40) return '';
         var c = t.replace(/[\s-]+/g, '').toUpperCase();
+        if (/^\d{6}$/.test(c)) return c;
         return joinOk(c) ? c : '';
+    }
+
+    /* v4 (2.3.0): код — 6 цифр, как у CUB. Сам код ничего не шифрует: новый ТВ создаёт пару ключей X25519 и кладёт
+     * открытый ключ в тему ntfy из кода ({t:'hi4', pk}). Главный ТВ, получив цифры в боте, читает тему на всех серверах:
+     * ровно один ключ — шифрует токен и чат общим ключом X25519 (своя одноразовая пара, {t:'join4', epk, box}); прочитать
+     * это может только тот ТВ, даже зная цифры. Ключей два и больше (кто-то подсунул свой) — отказ, нужен новый код;
+     * ни одного — «ТВ с таким кодом нет». Старый код из 12 знаков (v3, ключ из кода) главный ТВ тоже принимает.
+     * Та же схема — в service.js (/join). */
+    var JOIN4_LEN = 6, JOIN4_SALT = 'lampa-join-v4', BASE9 = [9];
+    while (BASE9.length < 32) BASE9.push(0);
+    function join4Code() {
+        var c = '';
+        while (c.length < JOIN4_LEN) Crypt.rnd(12).forEach(function (b) { if (b < 250 && c.length < JOIN4_LEN) c += String(b % 10); });
+        return c;
+    }
+    function join4Show(c) { return c.slice(0, 3) + ' ' + c.slice(3); }
+    function join4Topic(code) { return 'lampa-join4-' + Crypt.hex(Crypt.sha256(Crypt.bytes(JOIN4_SALT + '|topic|' + code))).slice(0, 24); }
+    function join4Key(code, pk, epk, sh) { return Crypt.sha256(Crypt.bytes(JOIN4_SALT + '|' + code + '|').concat(pk, epk, sh)); }
+    function allZero(b) { var d = 0; for (var i = 0; i < b.length; i++) d |= b[i]; return d === 0; }
+    function pk32(s) { try { var b = Crypt.unb64(s); return b.length === 32 ? b : null; } catch (e) { return null; } }
+    /** Открытые ключи новых ТВ ({t:'hi4'}) из ответов ntfy — без повторов. */
+    function join4Hellos(texts) {
+        var seen = {}, out = [];
+        texts.forEach(function (text) {
+            String(text || '').split('\n').forEach(function (line) {
+                var ev = null, m = null;
+                try { ev = JSON.parse(line); m = JSON.parse(ev.message); } catch (e) { return; }
+                if (!ev || ev.event !== 'message' || !m || m.t !== 'hi4' || typeof m.pk !== 'string' || !pk32(m.pk) || seen[m.pk]) return;
+                seen[m.pk] = 1;
+                out.push(m.pk);
+            });
+        });
+        return out;
+    }
+    /** Главный ТВ: подключение для ТВ с ключом pk — {t:'join4', epk, box}; плохой ключ — null. */
+    function join4Box(code, pkB64, payload) {
+        var pk = pk32(pkB64), e = Crypt.rnd(32);
+        if (!pk) return null;
+        var epk = Crypt.x25519(e, BASE9), sh = Crypt.x25519(e, pk);
+        if (allZero(sh)) return null;
+        return { t: 'join4', epk: Crypt.b64(epk), box: Crypt.seal(join4Key(code, pk, epk, sh), payload) };
+    }
+    /** Новый ТВ: открыть join4 своим ключом — текст или null. */
+    function join4Open(p, m) {
+        var epk = pk32(m && m.epk);
+        if (!epk) return null;
+        var sh = Crypt.x25519(p.sk, epk);
+        if (allZero(sh)) return null;
+        return Crypt.open(join4Key(p.code, p.pk, epk, sh), m.box);
     }
 
     /** Сообщение с подключением из темы: {token, chat} или null. */
     function joinMsg(text, p) {
-        var found = null, k = p && p.code ? joinKeys(p.code).key : null;
+        var found = null, k = p && p.code && !p.sk ? joinKeys(p.code).key : null;
         String(text || '').split('\n').forEach(function (line) {
             var ev = null, m = null;
             try { ev = JSON.parse(line); } catch (e) { return; }
             if (!ev || ev.event !== 'message') return;
             if (p && ev.id) p.since = ev.id;                        // дальше — после этого сообщения (по id, не по часам ТВ)
             try { m = JSON.parse(ev.message); } catch (e) { return; }
-            if (k) { try { m = JSON.parse(Crypt.open(k, m) || 'null'); } catch (e) { return; } }   // зашифровано ключом из кода
+            if (p && p.sk) {                                        // v4: только join4, открывается своим ключом (без sk — v3, ключ из кода)
+                if (!m || m.t !== 'join4') return;
+                try { m = JSON.parse(join4Open(p, m) || 'null'); } catch (e) { return; }
+            } else if (k) { try { m = JSON.parse(Crypt.open(k, m) || 'null'); } catch (e) { return; } }   // зашифровано ключом из кода
             if (m && m.t === 'join' && TOKEN_RE.test(String(m.token || ''))) found = { token: String(m.token), chat: String(m.chat || '') };
         });
         return found;
     }
 
-    function pairJoin() {
+    /** long — прежний код из 12 знаков (v3): для главного ТВ, у которого служба ещё старая (пакет до 2.3.0). */
+    function pairJoin(long) {
         pairStop();
-        var code = joinCode();
+        var code = long ? joinCode() : join4Code(), sk = long ? null : Crypt.rnd(32), pk = long ? null : Crypt.x25519(sk, BASE9);
         var body = $('<div class="bs-tg-pair"><div class="bs-tg-pair__steps">' +
             '<p>Telegram уже подключён на другом ТВ? Токен вводить не нужно.</p>' +
             '<p>1. На том ТВ должна быть запущена Lampa.</p><p>2. Отправьте своему боту код:</p>' +
             '<div class="bs-tg-join__code"></div><div class="bs-tg-pair__status">Жду код в боте…</div></div></div>');
-        body.find('.bs-tg-join__code').text(joinShow(code));
+        body.find('.bs-tg-join__code').text(long ? joinShow(code) : join4Show(code));
         var status = function (t) { body.find('.bs-tg-pair__status').text(t); };
         var ctrl = 'settings_component';
         try { ctrl = Lampa.Controller.enabled().name; } catch (e) {}
@@ -1223,21 +1328,32 @@ var BSTelegram = (function () {
         var close = function () { pairStop(); modalClose(win, ctrl); };
         var mo = { title: 'Telegram — подключить через бота', html: body, size: 'medium', onBack: close };
         // служба с подключением по Wi-Fi есть — QR для телефона тоже под рукой (токен вставить там)
-        if (svc.up && (svc.v | 0) >= PAIR_LAN_V && svc.store === 'ok') mo.buttons = [{ name: 'Подключить с телефона по Wi-Fi', onSelect: function () { close(); pairPhone(); } }];
+        mo.buttons = [];
+        if (svc.up && (svc.v | 0) >= PAIR_LAN_V && svc.store === 'ok') mo.buttons.push({ name: 'Подключить с телефона по Wi-Fi', onSelect: function () { close(); pairPhone(); } });
+        if (!long) mo.buttons.push({ name: 'Длинный код (если бот просит)', onSelect: function () { close(); setTimeout(function () { pairJoin(true); }, 300); } });
+        if (!mo.buttons.length) delete mo.buttons;
         win = modalOpen(mo);
         // since — сначала «за 2 минуты» по часам ntfy: часы ТВ могут спешить, и ответ отсеялся бы
-        var p = pair = { topic: joinTopic(code), code: code, since: {}, ri: 0, until: Date.now() + PAIR_TIME, busy: false, start: Date.now() };
+        var p = pair = { topic: long ? joinTopic(code) : join4Topic(code), code: code, sk: sk, pk: pk, since: {}, ri: 0, until: Date.now() + PAIR_TIME, busy: false, start: Date.now(), helloAt: 0, helloOk: false };
+        // свой открытый ключ — в тему кода; не приняли (нет связи, 429) — ещё раз через 20 с
+        var hello = function () {
+            if (!p.sk) { p.helloOk = true; return; }                  // длинный код — ключ не нужен
+            p.helloAt = Date.now();
+            relayPost(p.topic, JSON.stringify({ t: 'hi4', pk: Crypt.b64(p.pk), ts: Date.now() }), 0, function (st) { if (st > 0 && st < 300) p.helloOk = true; });
+        };
+        hello();
         p.timer = setInterval(function () {
             if (pair !== p) return;
+            if (!p.helloOk && Date.now() - p.helloAt > 20000) hello();
             if (Date.now() > p.until) { status('Время вышло — откройте подключение ещё раз'); return pairStop(); }
             if (!p.hinted && Date.now() - p.start > 30000) {
                 p.hinted = true;                                     // код никто не принял — бот сейчас никто не ведёт
-                status('Ответа пока нет. Похоже, Lampa не запущена ни на одном подключённом ТВ — включите её там и отправьте код ещё раз. Или подключите этот ТВ с телефона: «Подключить с телефона».');
+                status('Ответа пока нет. Похоже, Lampa не запущена ни на одном подключённом ТВ — включите её там и отправьте код ещё раз (на том ТВ нужна Sunic Apps 2.3.0 или новее — она обновляется сама). Или подключите этот ТВ с телефона: «Подключить с телефона».');
             }
             if (p.busy) return;
             p.busy = true;
             // ответ главный ТВ кладёт в первый сервер, который его принял, — спрашиваем все по очереди
-            var x = new XMLHttpRequest(), ri = relayTurn(p), q = { code: p.code, since: p.since[ri] || '2m' };
+            var x = new XMLHttpRequest(), ri = relayTurn(p), q = { code: p.code, sk: p.sk, pk: p.pk, since: p.since[ri] || '2m' };
             try {
                 x.open('GET', RELAYS[ri] + p.topic + '/json?poll=1&since=' + encodeURIComponent(q.since), true);
                 x.timeout = TIMEOUT;
@@ -1268,10 +1384,22 @@ var BSTelegram = (function () {
      *  только код, который сейчас пришёл боту из этого чата, — страница сама токен не получит. */
     function joinSend(code) {
         var done = keep(function (st) {
+            if (st === 404) return reply(L('Не нашёл ТВ с кодом ' + join4Show(code) + '. Проверьте цифры на экране нового ТВ (код действует 15 минут).',
+                'No TV with code ' + join4Show(code) + '. Check the digits on the new TV (the code works for 15 minutes).',
+                join4Show(code) + " kodli televizor topilmadi. Yangi televizordagi raqamlarni tekshiring (kod 15 daqiqa amal qiladi)."));
+            if (st === 409) return reply(L('С этим кодом откликнулись два ТВ — так подключать небезопасно. На новом ТВ откройте подключение заново и пришлите новый код.',
+                'Two TVs answered this code — connecting is not safe. Reopen the connection on the new TV and send the new code.',
+                "Bu kodga ikkita televizor javob berdi — ulash xavfsiz emas. Yangi televizorda ulanishni qayta oching va yangi kodni yuboring."));
             if (!st) return reply(L('Нет связи — отправьте код ещё раз.', 'No connection — send the code again.', "Aloqa yo'q — kodni qayta yuboring."));
             reply(st < 300 ? L('⏳ Передаю подключение на новый ТВ…', '⏳ Passing the connection to the new TV…', "⏳ Ulanishni yangi televizorga uzatyapman…")
                 : L('Не получилось передать (' + st + ') — отправьте код ещё раз.', "Couldn't send it (" + st + ') — send the code again.', "Uzatib bo'lmadi (" + st + ") — kodni qayta yuboring."));
         });
+        // 6 цифр, токен у страницы — ключ нового ТВ из темы кода, шифруем сами (токен в службе — она, /join)
+        if (code.length === JOIN4_LEN && !svcTg()) return join4Send(code, done);
+        // служба из пакета до 2.3.0 (v3) 6 цифр не знает, а код службы меняется только с новым .wgt — просим длинный код
+        if (code.length === JOIN4_LEN && (svc.v | 0) < 4) return reply(L('Этот ТВ пока не умеет подключать по 6 цифрам — нужна новая установка Lampa через TV Installer. А сейчас: на новом ТВ нажмите «Длинный код» и пришлите его сюда.',
+            "This TV can't connect by 6 digits yet — reinstall Lampa with TV Installer. For now: on the new TV press “Длинный код” (long code) and send it here.",
+            "Bu televizor hozircha 6 raqam bilan ulay olmaydi — Lampa'ni TV Installer orqali qayta o'rnating. Hozir esa: yangi televizorda «Длинный код» ni bosing va uni shu yerga yuboring."));
         // токен у страницы — шифруем сами и кладём в первый сервер ntfy, который примет (новый ТВ слушает все)
         if (!svcTg()) return relayPost(joinTopic(code), JSON.stringify(Crypt.seal(joinKeys(code).key, JSON.stringify({ t: 'join', token: token(), chat: chat(), ts: Date.now() }))), 0,
             function (st) { done(st); });
@@ -1283,6 +1411,30 @@ var BSTelegram = (function () {
             x.onerror = x.ontimeout = function () { done(0); };
             x.send(JSON.stringify({ code: code, chat: chat(), ts: Date.now() }));
         } catch (e) { reply(L('Не получилось: ', "Didn't work: ", "Bo'lmadi: ") + e.message); }
+    }
+
+    /** v4 со страницы: тема кода на всех серверах сразу; ровно один ключ — подключение туда. done(статус). */
+    function join4Send(code, done) {
+        var topic = join4Topic(code), texts = [], answered = 0, left = RELAYS.length;
+        var go = function () {
+            if (!answered) return done(0);
+            var pks = join4Hellos(texts);
+            if (!pks.length) return done(404);
+            if (pks.length > 1) return done(409);
+            var box = join4Box(code, pks[0], JSON.stringify({ t: 'join', token: token(), chat: chat(), ts: Date.now() }));
+            if (!box) return done(409);
+            relayPost(topic, JSON.stringify(box), 0, function (st) { done(st); });
+        };
+        RELAYS.forEach(function (r) {
+            var x = new XMLHttpRequest(), ended = false, fin = function () { if (ended) return; ended = true; if (--left === 0) go(); };
+            try {
+                x.open('GET', r + topic + '/json?poll=1&since=15m', true);
+                x.timeout = TIMEOUT;
+                x.onload = function () { if (x.status === 200) { answered++; texts.push(x.responseText); } fin(); };
+                x.onerror = x.ontimeout = fin;
+                x.send();
+            } catch (e) { fin(); }
+        });
     }
 
     /* ---------- несколько людей: у каждого свои списки ----------
@@ -4326,7 +4478,7 @@ var BSTelegram = (function () {
         setInterval(function () { try { watchTick(); } catch (e) {} }, 15000);
     }
 
-    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _joinTopic: joinTopic, _joinShow: joinShow, _joinKeys: joinKeys, _aiForget: aiForget, _relaySet: relaySet, _svcSync: svcSync, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _lateCommand: lateCommand, _botDesc: function (l, s) { return [botDesc(l || 'ru', s), botShort(l || 'ru', s)]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow,
+    return { start: start, _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _join4: { code: join4Code, show: join4Show, topic: join4Topic, hellos: join4Hellos, box: join4Box, open: join4Open, send: join4Send, BASE9: BASE9 }, _joinTopic: joinTopic, _joinShow: joinShow, _joinKeys: joinKeys, _aiForget: aiForget, _relaySet: relaySet, _svcSync: svcSync, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _lateCommand: lateCommand, _botDesc: function (l, s) { return [botDesc(l || 'ru', s), botShort(l || 'ru', s)]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow,
         _call: call, _check: check, _remind: remind, _joinCode: joinCode, _randomTopic: randomTopic,
         _busTopic: busTopic, _svc: svc, _svcKey: function (k) { if (window.BS_TEST_HOOKS !== true) return undefined; if (typeof k === 'string') svcKey = k; return svcKey; },
         _svcStart: svcStart, _svcMove: svcMove, _svcCheck: svcCheck, _svcForget: svcForget, _tgOff: tgOff, _tgOffAsk: tgOffAsk, _svcSeen: svcSeen, _tvRules: tvRules, _addSettings: addSettings, _aiRun: aiRun, _aiSlot: aiSlot, _setAiKey: setAiKey,

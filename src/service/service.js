@@ -22,8 +22,9 @@
  *                               Папки данных нет — 507, файл не прочитался — 503: страница оставляет секрет у себя
  *  POST /forget                 удалить все секреты («Отключить бота»)
  *  POST /derive {salt}          то, что страница раньше выводила из токена: тема и ключ канала ТВ, код приглашения
- *  POST /join {code, chat, ts}  подключить ещё один ТВ: токен и чат — в тему ntfy нового ТВ, зашифровано кодом
- *                               (12 знаков XXXX-XXXX-XXXX, тема и ключ — через PBKDF2, как joinKeys в bstg.js).
+ *  POST /join {code, chat, ts}  подключить ещё один ТВ: токен и чат — в тему ntfy нового ТВ. Код из 6 цифр (v4) —
+ *                               ключ нового ТВ из темы кода, общий ключ X25519 (как join4 в bstg.js; 404 — такого ТВ
+ *                               нет, 409 — откликнулись два); прежний из 12 знаков — ключ из кода через PBKDF2.
  *                               Только код, который за последние 15 минут пришёл боту сообщением из этого чата.
  *  POST /tg/<метод>             -> https://api.telegram.org/bot<токен>/<метод>, тело формы как есть; ответ и Date — как есть.
  *                               Только методы, которые зовёт bstg.js (TG_METHODS); остальные (setWebhook, logOut…) — 403
@@ -47,7 +48,7 @@
 'use strict';
 var http = require('http'), https = require('https'), fs = require('fs'), urlm = require('url'), crypto = require('crypto'), os = require('os');
 
-var VERSION = 3, PORT = 8897, HOST = '127.0.0.1';
+var VERSION = 4, PORT = 8897, HOST = '127.0.0.1';
 var AI = ['groq', 'gemini', 'openrouter'];
 // адреса внешних служб; тесты подменяют их своими (cfg.up)
 var UP = {
@@ -280,6 +281,7 @@ function joinFrom(t) {
     t = String(t || '');
     if (t.length > 40) return '';
     var c = t.replace(/[\s-]+/g, '').toUpperCase();
+    if (/^\d{6}$/.test(c)) return c;
     return c.length === JOIN_LEN && /^[2-9A-HJKMNP-Z]+$/.test(c) && /\d/.test(c) && /[A-Z]/.test(c) ? c : '';
 }
 /** Тема и ключ из кода — как joinKeys в bstg.js: PBKDF2-HMAC-SHA256 (JOIN_ITER), из него HMAC 'topic' и 'key'. */
@@ -288,6 +290,87 @@ function joinKeys(code) {
     return { topic: 'lampa-join-' + hmac(dk, buf('topic', 'utf8')).toString('hex').slice(0, 24), key: hmac(dk, buf('key', 'utf8')) };
 }
 function joinTopic(code) { return joinKeys(code).topic; }
+
+/* X25519 (RFC 7748) на чистом JS — порт crypto_scalarmult из TweetNaCl (общественное достояние). Нужен для
+ * подключения второго ТВ по 6 цифрам: общий ключ двух ТВ, который не узнать, даже зная цифры. Та же копия —
+ * в bstg.js (Crypt.x25519); здесь — потому что Node на старых ТВ X25519 не умеет. sk, pk — 32 байта (массив или Uint8Array) -> 32 байта. */
+function x25519(sk, pk) {
+    function gf(init) { var r = new Float64Array(16); if (init) for (var i = 0; i < init.length; i++) r[i] = init[i]; return r; }
+    function car(o) { var c = 1, v; for (var i = 0; i < 16; i++) { v = o[i] + c + 65535; c = Math.floor(v / 65536); o[i] = v - c * 65536; } o[0] += c - 1 + 37 * (c - 1); }
+    function sel(p, q, b) { var t, c = ~(b - 1); for (var i = 0; i < 16; i++) { t = c & (p[i] ^ q[i]); p[i] ^= t; q[i] ^= t; } }
+    function A(o, a, b) { for (var i = 0; i < 16; i++) o[i] = a[i] + b[i]; }
+    function Z(o, a, b) { for (var i = 0; i < 16; i++) o[i] = a[i] - b[i]; }
+    function M(o, a, b) {
+        var t = new Float64Array(31), i, j;
+        for (i = 0; i < 16; i++) for (j = 0; j < 16; j++) t[i + j] += a[i] * b[j];
+        for (i = 0; i < 15; i++) t[i] += 38 * t[i + 16];
+        for (i = 0; i < 16; i++) o[i] = t[i];
+        car(o); car(o);
+    }
+    function inv(o, x) { var c = gf(), a; for (a = 0; a < 16; a++) c[a] = x[a]; for (a = 253; a >= 0; a--) { M(c, c, c); if (a !== 2 && a !== 4) M(c, c, x); } for (a = 0; a < 16; a++) o[a] = c[a]; }
+    function pack(n) {
+        var m = gf(), t = gf(), i, j, b, out = [];
+        for (i = 0; i < 16; i++) t[i] = n[i];
+        car(t); car(t); car(t);
+        for (j = 0; j < 2; j++) {
+            m[0] = t[0] - 0xffed;
+            for (i = 1; i < 15; i++) { m[i] = t[i] - 0xffff - ((m[i - 1] >> 16) & 1); m[i - 1] &= 0xffff; }
+            m[15] = t[15] - 0x7fff - ((m[14] >> 16) & 1);
+            b = (m[15] >> 16) & 1;
+            m[14] &= 0xffff;
+            sel(t, m, 1 - b);
+        }
+        for (i = 0; i < 16; i++) { out.push(t[i] & 0xff); out.push((t[i] >> 8) & 0xff); }
+        return out;
+    }
+    var z = [], x = gf(), a = gf(), b = gf(), c = gf(), d = gf(), e = gf(), f = gf(), k121665 = gf([0xdb41, 1]), i, r;
+    for (i = 0; i < 32; i++) z.push(sk[i] & 255);
+    z[31] = (z[31] & 127) | 64; z[0] &= 248;
+    for (i = 0; i < 16; i++) x[i] = (pk[2 * i] & 255) + ((pk[2 * i + 1] & 255) << 8);
+    x[15] &= 0x7fff;
+    for (i = 0; i < 16; i++) b[i] = x[i];
+    a[0] = d[0] = 1;
+    for (i = 254; i >= 0; --i) {
+        r = (z[i >>> 3] >>> (i & 7)) & 1;
+        sel(a, b, r); sel(c, d, r);
+        A(e, a, c); Z(a, a, c); A(c, b, d); Z(b, b, d);
+        M(d, e, e); M(f, a, a); M(a, c, a); M(c, b, e);
+        A(e, a, c); Z(a, a, c); M(b, a, a); Z(c, d, f);
+        M(a, c, k121665); A(a, a, d); M(c, c, a); M(a, d, f); M(d, b, x); M(b, e, e);
+        sel(a, b, r); sel(c, d, r);
+    }
+    inv(c, c); M(a, a, c);
+    return pack(a);
+}
+
+/* Подключение по 6 цифрам (v4) — как join4* в bstg.js: тема из кода, ключ нового ТВ в ней ({t:'hi4', pk}), общий
+ * ключ X25519 с одноразовой парой службы, {t:'join4', epk, box}. */
+var JOIN4_LEN = 6, JOIN4_SALT = 'lampa-join-v4', BASE9 = [9];
+while (BASE9.length < 32) BASE9.push(0);
+function join4Topic(code) { return 'lampa-join4-' + sha256(buf(JOIN4_SALT + '|topic|' + code, 'utf8')).toString('hex').slice(0, 24); }
+function pk32(s) { try { var b = buf(String(s), 'base64'); return b.length === 32 && /^[A-Za-z0-9+\/]+=*$/.test(String(s)) ? b : null; } catch (e) { return null; } }
+function join4Hellos(texts) {
+    var seen = {}, out = [];
+    texts.forEach(function (text) {
+        String(text || '').split('\n').forEach(function (line) {
+            var ev = null, m = null;
+            try { ev = JSON.parse(line); m = JSON.parse(ev.message); } catch (e) { return; }
+            if (!ev || ev.event !== 'message' || !m || m.t !== 'hi4' || typeof m.pk !== 'string' || !pk32(m.pk) || seen[m.pk]) return;
+            seen[m.pk] = 1;
+            out.push(m.pk);
+        });
+    });
+    return out;
+}
+function join4Box(code, pkB64, payload) {
+    var pk = pk32(pkB64);
+    if (!pk) return null;
+    var e = crypto.randomBytes(32), epk = buf(x25519(e, BASE9)), sh = buf(x25519(e, pk)), d = 0;
+    for (var i = 0; i < sh.length; i++) d |= sh[i];
+    if (!d) return null;
+    var k = sha256(Buffer.concat([buf(JOIN4_SALT + '|' + code + '|', 'utf8'), pk, epk, sh]));
+    return { t: 'join4', epk: epk.toString('base64'), box: seal(k, payload) };
+}
 
 /** Коды «ещё один ТВ», пришедшие боту сообщением, — из апдейтов, прошедших через службу (опрос страницы
  *  через /tg/getUpdates и свой). */
@@ -439,19 +522,48 @@ function join(req, res) {
         if (!t) return json(res, 503, { ok: false, error: 'no token' });
         if (!rec || mono() - rec.at > JOIN_TTL || rec.chat !== chat) return json(res, 403, { ok: false, error: 'code was not sent to the bot from this chat' });
         delete joinCodes[code];                                        // код — на одно подключение
-        var msg = JSON.stringify({ t: 'join', token: t, chat: chat, ts: +j.ts || Date.now() }), jk = joinKeys(code);
-        var body = buf(JSON.stringify(seal(jk.key, msg)), 'utf8'), list = relays(), i = 0;
-        // ntfy не принял (429 — суточный лимит на IP, 5xx, нет связи) — следующий сервер: новый ТВ слушает тему на всех
-        (function next() {
-            upstream('POST', list[i] + jk.topic, {}, body, NTFY_WAIT, function (e, x) {
-                if (e) { if (++i < list.length) return next(); return upFail(res, e); }
-                x.resume();
-                x.on('end', function () {
-                    if ((x.statusCode === 429 || x.statusCode >= 500) && i + 1 < list.length) { i++; return next(); }
-                    json(res, x.statusCode, { ok: x.statusCode < 300, status: x.statusCode, relay: i });
-                });
+        var msg = JSON.stringify({ t: 'join', token: t, chat: chat, ts: +j.ts || Date.now() });
+        if (code.length === JOIN4_LEN) return join4(res, code, msg);
+        var jk = joinKeys(code);
+        relayPost(res, jk.topic, buf(JSON.stringify(seal(jk.key, msg)), 'utf8'));
+    });
+}
+/** В тему на первый сервер, который примет: ntfy не принял (429 — суточный лимит на IP, 5xx, нет связи) — следующий;
+ *  новый ТВ слушает тему на всех. */
+function relayPost(res, topic, body) {
+    var list = relays(), i = 0;
+    (function next() {
+        upstream('POST', list[i] + topic, {}, body, NTFY_WAIT, function (e, x) {
+            if (e) { if (++i < list.length) return next(); return upFail(res, e); }
+            x.resume();
+            x.on('end', function () {
+                if ((x.statusCode === 429 || x.statusCode >= 500) && i + 1 < list.length) { i++; return next(); }
+                json(res, x.statusCode, { ok: x.statusCode < 300, status: x.statusCode, relay: i });
             });
-        })();
+        });
+    })();
+}
+/** v4: тема кода на всех серверах сразу; ровно один ключ нового ТВ — подключение туда. */
+function join4(res, code, msg) {
+    var topic = join4Topic(code), list = relays(), texts = [], answered = 0, left = list.length;
+    var go = function () {
+        if (!answered) return json(res, 502, { ok: false, error: 'no relay answered' });
+        var pks = join4Hellos(texts);
+        if (!pks.length) return json(res, 404, { ok: false, error: 'no tv with this code' });
+        if (pks.length > 1) return json(res, 409, { ok: false, error: 'several tvs answered this code' });
+        var box = join4Box(code, pks[0], msg);
+        if (!box) return json(res, 409, { ok: false, error: 'bad key' });
+        relayPost(res, topic, buf(JSON.stringify(box), 'utf8'));
+    };
+    list.forEach(function (r) {
+        var ended = false, fin = function () { if (ended) return; ended = true; if (--left === 0) go(); };
+        upstream('GET', r + topic + '/json?poll=1&since=15m', {}, null, NTFY_WAIT, function (e, x) {
+            if (e) return fin();
+            var parts = [];
+            x.on('data', function (d) { parts.push(d); });
+            x.on('end', function () { if (x.statusCode === 200) { answered++; texts.push(Buffer.concat(parts).toString('utf8')); } fin(); });
+            x.on('error', fin);
+        });
     });
 }
 
@@ -1332,5 +1444,5 @@ module.exports._test = {
     looksKey: looksKey, mono: mono,
     fnv: fnv, derive: derive, joinTopic: joinTopic, codes: function () { return joinCodes; }, PORT: PORT, VERSION: VERSION,
     pair: function () { return { open: !!(pairing && pairing.server), port: pairing ? pairing.port : 0, bad: pairing ? pairing.bad : 0, got: pairGot }; },
-    PAIR: PAIR, RELAYS: RELAYS, lanIp: lanIp, pairLang: pairLang, joinFrom: joinFrom, joinKeys: joinKeys, TG_METHODS: TG_METHODS, cut: cut, flush: botFlush
+    PAIR: PAIR, RELAYS: RELAYS, lanIp: lanIp, pairLang: pairLang, joinFrom: joinFrom, joinKeys: joinKeys, x25519: x25519, join4Topic: join4Topic, join4Hellos: join4Hellos, join4Box: join4Box, TG_METHODS: TG_METHODS, cut: cut, flush: botFlush
 };

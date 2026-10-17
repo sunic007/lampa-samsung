@@ -19,9 +19,9 @@ const REPORT = (() => { const i = process.argv.indexOf('--report'); return i > 0
 const OURS = /\/(bs\w*|playerguard|skazauto|loader|update|polyfills)\.js/;
 // функции плагина онлайн-источников Skaz, которые вызывают bsfix.js, bsprobe.js, bssources.js, bsrch.js
 const SKAZ_API = ['setDefaultQuality', 'find', 'getFileUrl', 'nextSource', 'switchSource', 'getChoice', 'saveChoice', 'requestParams',
-    'seasonMemory', 'uiDraw', 'uiSourceMenu', 'sourceState', 'sourceOrder', 'doesNotAnswer', 'destroy'];
+    'seasonMemory', 'seasonIndexByMemory', 'uiSwitch', 'uiDraw', 'uiSourceMenu', 'sourceState', 'sourceOrder', 'doesNotAnswer', 'destroy'];
 const MODULES = ['BSUpdate', 'BSSkaz', 'BSGuard', 'BSFeatures', 'BSPlayer', 'BSRch', 'BSProbe', 'BSFix', 'BSSources', 'BSMenu',
-    'BSContinue', 'BSWatch', 'BSHub', 'BSTelegram', 'BSVolume'];
+    'BSContinue', 'BSWatch', 'BSHub', 'BSTelegram', 'BSVolume', 'BSReport'];
 
 const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png',
     '.svg': 'image/svg+xml', '.woff': 'font/woff', '.woff2': 'font/woff2', '.lampa': 'application/json' };

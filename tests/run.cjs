@@ -2174,7 +2174,7 @@ async function serviceTests() {
         r.on('error', e => res({ st: 0, e })); r.end(b || undefined);
     });
     let r = await ask('GET', '/health');
-    t('служба /health: ok, версия, Node, секретов нет, файл секретов в порядке', r.st === 200 && r.j.ok && r.j.v === 3 && r.j.auth === true && r.j.store === 'ok' && /^v\d+/.test(r.j.node) && r.j.has.tg === false && r.j.has.ai.length === 0 && r.h['access-control-allow-origin'] === '*');
+    t('служба /health: ok, версия, Node, секретов нет, файл секретов в порядке', r.st === 200 && r.j.ok && r.j.v === 4 && r.j.auth === true && r.j.store === 'ok' && /^v\d+/.test(r.j.node) && r.j.has.tg === false && r.j.has.ai.length === 0 && r.h['access-control-allow-origin'] === '*');
     // ключ доступа: в svc.key папки данных (страница читает его как wgt-private/svc.key), без ключа — только /health
     const KEY = SV._test.key();
     t('ключ доступа: 32 байта hex, в svc.key папки данных', /^[0-9a-f]{64}$/.test(KEY) && fs.readFileSync(path.join(dir, 'svc.key'), 'utf8') === KEY);
@@ -2278,6 +2278,20 @@ async function serviceTests() {
     t('служба /join: в тему нового ТВ — токен и чат, зашифровано кодом (страница расшифровывает)', r.st === 200 && r.j.ok && ntfy.length === 1 && ntfy[0].u === '/ntfy/' + legacy._joinTopic('ABCD2345EFGH') &&
         jm && jm.token === TOKEN && jm.chat === '1' && ntfy[0].b.indexOf(TOKEN) < 0 && r.s.indexOf(TOKEN) < 0);
     t('служба /join: код — на одно подключение', (await ask('POST', '/join', { code: 'ABCD2345EFGH', chat: '1' })).st === 403);
+    {
+        // 6 цифр (v4): X25519 службы = страницы, подключение службы открывает новый ТВ (страница)
+        const sk = legacy._crypt.rnd(32), pk = legacy._crypt.x25519(sk, legacy._join4.BASE9), pkB = legacy._crypt.b64(pk);
+        t('служба: X25519 и тема 6 цифр — байт в байт как у страницы', hex(SV._test.x25519(Buffer.from(sk), legacy._join4.BASE9)) === hex(pk) && SV._test.join4Topic('481527') === legacy._join4.topic('481527') &&
+            SV._test.joinFrom('481 527') === '481527' && legacy._joinFrom('481-527') === '481527' && legacy._joinFrom('48152') === '' && legacy._joinFrom('4815270') === '');
+        const hl = [JSON.stringify({ event: 'message', id: 'a', message: JSON.stringify({ t: 'hi4', pk: pkB }) }), JSON.stringify({ event: 'message', id: 'b', message: JSON.stringify({ t: 'hi4', pk: 'bad' }) })].join('\n');
+        t('служба: ключи из темы — как у страницы (плохие мимо)', SV._test.join4Hellos([hl]).join() === pkB && legacy._join4.hellos([hl]).join() === pkB);
+        const bx = SV._test.join4Box('481527', pkB, JSON.stringify({ t: 'join', token: TOKEN, chat: '1' }));
+        t('служба: подключение по 6 цифрам открывает только новый ТВ', JSON.parse(legacy._join4.open({ code: '481527', sk, pk }, bx)).token === TOKEN && JSON.stringify(bx).indexOf(TOKEN) < 0);
+        SV._test.codes()['481527'] = { chat: '1', at: 9e15 };               // как будто цифры пришли боту из чата 1
+        const n0 = ntfy.length;
+        r = await ask('POST', '/join', { code: '481 527', chat: '1' });
+        t('служба /join: 6 цифр, а ТВ с таким кодом в теме нет — 404, ничего не опубликовано', r.st === 404 && ntfy.length === n0);
+    }
     // Node 4–6 (старые ТВ): url.URL нет — разбор через url.parse, всё то же
     const urlMod = require('url'), URLsaved = urlMod.URL;
     urlMod.URL = undefined; process.noDeprecation = true;           // url.parse в новом Node ругается — здесь так и надо
@@ -3210,7 +3224,7 @@ async function serviceTests() {
     });
     const SEC = 'abcdefghjkmnpqrstuvw23';
     t('по Wi-Fi: по умолчанию — 0.0.0.0, порты 8898..8901, 15 минут, 10 неверных', SV._test.PAIR.host === '0.0.0.0' && SV._test.PAIR.ports.join() === '8898,8899,8900,8901' && SV._test.PAIR.ttl === 15 * 60000 && SV._test.PAIR.tries === 10);
-    t('по Wi-Fi: /health — версия 3', (await ask('GET', '/health')).j.v === 3);
+    t('по Wi-Fi: /health — версия 4', (await ask('GET', '/health')).j.v === 4);
     t('по Wi-Fi: /pair/start без ключа — 401', (await ask('POST', '/pair/start', { secret: SEC }, { 'X-Lampa-Key': '' })).st === 401);
     t('по Wi-Fi: /pair/start — секрет короткий или не [a-z0-9] — 400', (await ask('POST', '/pair/start', { secret: 'abc' })).st === 400 && (await ask('POST', '/pair/start', { secret: 'ABCDEFGHIJKLMNOPQRS' })).st === 400);
     t('по Wi-Fi: до /pair/start сервера для телефона нет', (await lan('GET', '/p/' + SEC)).st === 0 && (await ask('GET', '/pair/status')).j.open === false);
@@ -3298,7 +3312,7 @@ async function serviceTests() {
     await ask('POST', '/forget', {});
     const xl = [], stP = { bs_tv_id: 'tvP', bs_tg_offset: '777' };
     const P1 = pageP(stP, xl);
-    P1._svcStart(); await until(() => P1._svc.up && P1._svc.v === 3);
+    P1._svcStart(); await until(() => P1._svc.up && P1._svc.v === 4);
     P1._pairPhone(); await until(() => modals.length === 4);
     const lanUrl = qrs[3], lanM = /^http:\/\/127\.0\.0\.1:(\d+)\/p\/([a-z0-9]{22})$/.exec(lanUrl || ''), dl = dollars[dollars.length - 1];
     t('страница: служба v3 — QR на http://<ip ТВ>:<порт>/p/<секрет>, под QR — «Телефон — в той же Wi-Fi, что и телевизор»', !!lanM && +lanM[1] === PP && /Телефон — в той же Wi-Fi, что и телевизор/.test(dl.html) && SV._test.pair().open);
@@ -3438,11 +3452,41 @@ async function serviceTests() {
     PJ._pairJoin();
     const jq = PJ._pairNow();
     stJ.bs_tg_offset = '777';                                         // номер от прежнего бота
-    relayPut(2, jq.topic, JSON.stringify(legacy._crypt.seal(legacy._joinKeys(jq.code).key, JSON.stringify({ t: 'join', token: TOKEN, chat: '1', ts: Date.now() }))));
+    await until(() => relay.posts.some(x => x.topic === jq.topic), 4000);
+    const hi = relay.posts.filter(x => x.topic === jq.topic).map(x => JSON.parse(x.b));
+    t('второй ТВ по коду: 6 цифр, в теме кода — только открытый ключ (hi4), без секретов', /^\d{6}$/.test(jq.code) && jq.topic === legacy._join4.topic(jq.code) &&
+        hi.length === 1 && hi[0].t === 'hi4' && legacy._crypt.unb64(hi[0].pk).length === 32 && Object.keys(hi[0]).sort().join() === 'pk,t,ts');
+    // старый ответ (ключ из кода, v3) новый ТВ не принимает — только join4 своим ключом
+    relayPut(1, jq.topic, JSON.stringify(legacy._crypt.seal(legacy._joinKeys(jq.code).key, JSON.stringify({ t: 'join', token: TOKEN, chat: '9', ts: Date.now() }))));
+    relayPut(2, jq.topic, JSON.stringify(legacy._join4.box(jq.code, hi[0].pk, JSON.stringify({ t: 'join', token: TOKEN, chat: '1', ts: Date.now() }))));
     await until(() => stJ.bs_tg_token === TOKEN, 6000);
     t('второй ТВ по коду: ответ лёг в запасной сервер — найден (опрос всех по очереди)', stJ.bs_tg_token === TOKEN && stJ.bs_tg_chat === '1' && !PJ._pairNow());
     t('второй ТВ по коду: новый токен — номер апдейта прежнего бота стёрт (опрос начнётся с offset=-1)', !('bs_tg_offset' in stJ));
-    t('второй ТВ по коду: тема на 12 знаков кода, код на экране XXXX-XXXX-XXXX', /^[2-9A-HJKMNP-Z]{12}$/.test(jq.code) && jq.topic === legacy._joinTopic(jq.code));
+    // главный ТВ (страница, токен у неё): цифры от человека — ключ нового ТВ на всех серверах, ровно один — подключение
+    {
+        const code = '481527', top = legacy._join4.topic(code), sk = legacy._crypt.rnd(32), pk = legacy._crypt.x25519(sk, legacy._join4.BASE9);
+        relayPut(3, top, JSON.stringify({ t: 'hi4', pk: legacy._crypt.b64(pk), ts: 1 }));
+        relayPut(0, top, JSON.stringify({ t: 'hi4', pk: legacy._crypt.b64(pk), ts: 2 }));        // тот же ТВ повторил — не второй
+        const PM = page({ bs_tg_token: TOKEN, bs_tg_chat: '1', bs_tv_id: 'tvM' }, mkXHR({ svcDown: true }), Object.assign({ Lampa: lampaP }, fastTimers)), gets0 = relay.gets.length;
+        let st = null;
+        PM._join4.send(code, x => { st = x; });
+        await until(() => st !== null, 4000);
+        const posted = relay.posts.filter(x => x.topic === top).map(x => JSON.parse(x.b));
+        const opened = posted[0] && legacy._join4.open({ code, sk, pk }, posted[0]);
+        t('главный ТВ: 6 цифр — подключение только для ключа из темы, токен зашифрован (X25519)', st === 200 && posted.length === 1 && posted[0].t === 'join4' &&
+            JSON.parse(opened).token === TOKEN && posted.every(x => JSON.stringify(x).indexOf(TOKEN) < 0) && [0, 1, 2, 3].every(i => relay.gets.slice(gets0).some(g => g.i === i && g.topic === top)));
+        t('главный ТВ: чужой ключ (не тот ТВ) подключение не откроет', legacy._join4.open({ code, sk: legacy._crypt.rnd(32), pk }, posted[0]) === null &&
+            legacy._join4.open({ code: '481528', sk, pk }, posted[0]) === null);
+        relayPut(2, top, JSON.stringify({ t: 'hi4', pk: legacy._crypt.b64(legacy._crypt.x25519(legacy._crypt.rnd(32), legacy._join4.BASE9)), ts: 3 }));
+        const np = relay.posts.filter(x => x.topic === top).length; st = null;
+        PM._join4.send(code, x => { st = x; });
+        await until(() => st !== null, 4000);
+        t('главный ТВ: в теме два разных ключа (кто-то подсунул свой) — 409, токен никуда не ушёл', st === 409 && relay.posts.filter(x => x.topic === top).length === np);
+        st = null;
+        PM._join4.send('111222', x => { st = x; });
+        await until(() => st !== null, 4000);
+        t('главный ТВ: ТВ с таким кодом нет — 404', st === 404);
+    }
     rsrv.close();
     try { fs.rmSync(dir3, { recursive: true, force: true }); } catch (e) {}
     }
@@ -3450,6 +3494,132 @@ async function serviceTests() {
     await new Promise(r2 => SV._test.stop(r2));
     up.close();
     try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {}
+}
+
+/* ---- bsreport.js: отчёт о проблеме с ТВ ---- */
+{
+    const R = load('bsreport.js', 'BSReport', { bs_tv_model: 'QE55Q60BAU', bs_tg_token: '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsawQ', bs_guard: 'true', bs_tg_chat: '555' });
+    const c = R.M._clean;
+    t('отчёт: токен бота и ключ ИИ убраны', !/AAHdqTcv/.test(c('tok 123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsawQ')) && /\[ключ\]/.test(c('k AIzaSyA1234567890abcdefghijklmnopqrstu')));
+    t('отчёт: параметры адресов убраны (ключ аккаунта Skaz)', c('GET http://online3.skaz.tv/lite/rezka?account_email=a%40b.c&uid=77&s=1') === 'GET http://online3.skaz.tv/lite/rezka?…');
+    t('отчёт: внешний IP — без последней цифры, домашний — как есть', c('95.214.10.5 192.168.1.7') === '95.214.10.x 192.168.1.7');
+    t('отчёт: почта и код подключения убраны', c('a.b@mail.ru 7AWN-CX5K-GTKY') === '[почта] [код]');
+    R.M._add('', ['BSGuard', 'зависание', { a: 1 }]); R.M._add('', ['BSGuard', 'зависание', { a: 1 }]); R.M._add('ERROR ', ['boom']);
+    t('отчёт: повторы строк сворачиваются', R.M._lines().length === 2 && R.M._lines()[0].n === 2);
+    const b = R.M._build('video', 'Видео не запускается');
+    t('отчёт: вид, модель ТВ, журнал', b.kind === 'video' && b.meta.tv === 'QE55Q60BAU' && /зависание/.test(b.log) && /×2/.test(b.log));
+    t('отчёт: в настройках нет токена и чата', !/tg_token|tg_chat|AAHd/.test(b.meta.settings) && !/AAHd/.test(JSON.stringify(b)));
+    t('отчёт: id устройства постоянный, не токен', /^[a-z0-9]{16}$/.test(b.device) && R.M._build('other', 'x').device === b.device);
+    for (let i = 0; i < 300; i++) R.M._add('', ['строка ' + i + ' ' + 'x'.repeat(400)]);
+    t('отчёт: журнал ограничен по строкам и длине', R.M._lines().length === 250 && R.M._lines()[249].text.length <= 301);
+}
+{
+    // отправка: Worker ответил — номер задачи; Worker недоступен — через ntfy; 429 — лимит, ntfy не трогаем
+    const mk = (statuses) => {
+        const R = load('bsreport.js', 'BSReport'), urls = [];
+        const ctxX = function () {};
+        ctxX.prototype = { open(m, u) { this.u = u; urls.push(u); }, setRequestHeader() {}, send() { const s = statuses[this.u.indexOf('workers.dev') > 0 ? 'w' : 'n']; this.status = s[0]; this.responseText = s[1]; if (s[0]) this.onload(); else this.onerror(); } };
+        return { R, urls, X: ctxX };
+    };
+    const run = (statuses) => {
+        const m = mk(statuses); let got = null;
+        const vm2 = require('vm'); const ctx = { window: { localStorage: { getItem: () => null, setItem() {} } }, XMLHttpRequest: m.X, JSON, Math, Date, String, Array, Object, navigator: { onLine: true } };
+        ctx.window.window = ctx.window; vm2.createContext(ctx);
+        vm2.runInContext(fs.readFileSync(path.join(SRC, 'bsreport.js'), 'utf8') + ';this.M=BSReport;', ctx);
+        ctx.M._send({ kind: 'video' }, r => { got = r; });
+        return { got, urls: m.urls };
+    };
+    let r = run({ w: [200, '{"ok":true,"number":12,"url":"https://github.com/sunic007/lampa-samsung/issues/12"}'], n: [200, ''] });
+    t('отчёт: Worker ответил — номер задачи', r.got.ok && r.got.number === 12 && r.urls.length === 1);
+    r = run({ w: [0, ''], n: [200, ''] });
+    t('отчёт: Worker недоступен — ушло через ntfy', r.got.ok && r.got.queued && /ntfy\.sh\/sunicapps-tv-report-v1$/.test(r.urls[1]));
+    r = run({ w: [429, '{"ok":false,"error":"limit"}'], n: [200, ''] });
+    t('отчёт: лимит — так и говорим, ntfy не трогаем', !r.got.ok && r.got.limit && r.urls.length === 1);
+}
+
+{
+    // проверка связи перед отчётом: какой сервер отвечает — задаёт тест (dead — адреса, которые «не пускают»)
+    const net = (dead, store) => {
+        const vm2 = require('vm'), urls = [];
+        const X = function () {};
+        X.prototype = { open(m, u) { this.u = u; urls.push(m + ' ' + u); }, send() { const d = dead.some(h => this.u.indexOf(h) >= 0); this.status = d ? 0 : 204; if (d) this.onerror(); else this.onload(); } };
+        const st = store || {};
+        const ctx = { window: { localStorage: { getItem: k => (k in st ? st[k] : null), setItem() {} } }, XMLHttpRequest: X, JSON, Math, Date, String, Array, Object, navigator: { onLine: true }, setTimeout: () => 0 };
+        ctx.window.window = ctx.window; vm2.createContext(ctx);
+        vm2.runInContext(fs.readFileSync(path.join(SRC, 'bsreport.js'), 'utf8') + ';this.M=BSReport;', ctx);
+        ctx.window.BSSources = { list: [{ id: 'z01', key: 'bs_src_z01', name: 'Z01', url: 'http://z01.online/live' }, { id: 'showy', key: 'bs_src_showy', name: 'Showy', url: 'http://showy.online/m.js' }] };
+        let got = null;
+        ctx.M._netCheck(r => { got = r; });
+        return { got, urls, hint: ctx.M._netHint(got) };
+    };
+    let n = net([]);
+    t('связь: всё открывается — подсказки нет', n.got.internet && !n.got.blocked.length && n.hint === '' && /Skaz ✓/.test(n.got.text));
+    n = net(['skaz.tv', 'imagetmdb.com', 'themoviedb.org']);
+    t('связь: интернет есть, Skaz и TMDB нет — подсказка про DNS', n.got.internet && n.got.blocked.join() === 'TMDB,Skaz' && /1\.1\.1\.1/.test(n.hint) && /Skaz ✗/.test(n.got.text));
+    t('связь: TMDB — запасной адрес пробуем, прежде чем считать закрытым', n.urls.filter(u => /themoviedb|imagetmdb/.test(u)).length === 2);
+    n = net(['gstatic.com', '1.1.1.1', 'themoviedb.org', 'imagetmdb.com', 'skaz.tv', 'byskaz.ru']);
+    t('связь: ничего не открывается — «нет интернета», а не DNS', n.got.offline && /Нет интернета/.test(n.hint));
+    n = net(['z01.online'], { bs_src_z01: 'true', bs_src_main: 'z01' });
+    t('связь: включённый другой источник (Z01) тоже проверяем', n.urls.some(u => /z01\.online/.test(u)) && !n.urls.some(u => /showy/.test(u)) && n.got.blocked.join() === 'Z01');
+}
+
+/* ---- следующий сезон (bswatch.js + bsfix.js nextSeason) ---- */
+{
+    const W = load('bswatch.js', 'BSWatch').M, NOW = Date.parse('2026-10-17T12:00:00Z');
+    const S = (n, cnt, air) => ({ season_number: n, episode_count: cnt, air_date: air });
+    const base = { status: 'Returning Series', seasons: [S(0, 3, '2019-01-01'), S(1, 8, '2020-01-01'), S(2, 10, '2022-01-01'), S(3, 10, '2026-09-01')], last_episode_to_air: { season_number: 3, episode_number: 10 } };
+    t('сезон: конец 2-го, 3-й вышел — включаем 3-й, серию 1', JSON.stringify(W._seasonAfter(base, 2, 10, NOW)) === '{"state":"next","season":3,"episode":1}');
+    t('сезон: в источнике 8 из 10 серий — не прыгаем в следующий сезон, говорим про серию 9', W._seasonAfter(base, 2, 8, NOW).state === 'more' && /Серия 9 уже вышла/.test(W._seasonText(W._seasonAfter(base, 2, 8, NOW))));
+    const airing = Object.assign({}, base, { last_episode_to_air: { season_number: 3, episode_number: 4 }, next_episode_to_air: { season_number: 3, episode_number: 5, air_date: '2026-10-24' } });
+    t('сезон: идёт сейчас, следующая серия ещё не вышла — с датой', W._seasonAfter(airing, 3, 4, NOW).state === 'wait-ep' && /выйдет 24 октября 2026/.test(W._seasonText(W._seasonAfter(airing, 3, 4, NOW))));
+    const soon = Object.assign({}, base, { seasons: base.seasons.concat([S(4, 0, '2027-03-12')]), next_episode_to_air: { season_number: 4, episode_number: 1, air_date: '2027-03-12' } });
+    t('сезон: следующий объявлен — «Сезон 4 выйдет 12 марта 2027»', W._seasonText(W._seasonAfter(soon, 3, 10, NOW)) === 'Сезон 4 выйдет 12 марта 2027');
+    t('сезон: сериал завершён', W._seasonAfter(Object.assign({}, base, { status: 'Ended' }), 3, 10, NOW).state === 'ended');
+    t('сезон: нового сезона нет и не объявлен', W._seasonAfter(base, 3, 10, NOW).state === 'none');
+    t('сезон: спецвыпуски (сезон 0) не считаем следующим сезоном', W._seasonAfter({ seasons: [S(0, 2, '2020-01-01'), S(1, 6, '2021-01-01')], last_episode_to_air: { season_number: 1, episode_number: 6 }, status: 'Ended' }, 1, 6, NOW).state === 'ended');
+    t('сезон: нет данных TMDB — ничего не делаем', W._seasonAfter(null, 2, 10, NOW) === null);
+}
+{
+    // nextSeason: сезон есть в том же источнике — переключаем сезон как пульт и просим плагин сразу включить серию 1
+    const A = fixCtx(), act = { activity: { component: null } };
+    A.ctx.Lampa.Activity.active = () => act;
+    A.ctx.Lampa.Player.opened = () => false;
+    const c = fakeComp(A, ['x']); act.activity.component = c;
+    let mem = 2; const seasons = [1, 2, 3], sw = [];
+    c.seasonMemory = n => (n === undefined ? mem : (mem = n));
+    c.seasonIndexByMemory = () => seasons.indexOf(mem);
+    c.uiSwitch = (type, i) => sw.push(type + ':' + i);
+    A.env.screen = c;
+    c.getFileUrl({ url: 'http://online3.skaz.tv/lite/rezka', season: 2, episode: 10 }, () => {});
+    let got = 0;
+    const ok = A.M.nextSeason(3, 2, r => { got = r; });
+    t('следующий сезон: есть в том же источнике — переключили сезон, серия 1 включится сама', ok === true && sw.join() === 'season:2' && act.lampac_continue_episode === 1 && got && got.same === true && mem === 3);
+    // нет в этом источнике — ищем в других; не нашли — память сезона назад
+    const B = fixCtx(), act2 = { activity: { component: null } };
+    B.ctx.Lampa.Activity.active = () => act2;
+    B.ctx.Lampa.Player.opened = () => false;
+    B.ctx.window.BSProbe = raceProbe(null, []);
+    const c2 = fakeComp(B, ['x']); act2.activity.component = c2; c2.requestParams = u => u; c2.getChoice = () => ({ voice_name: 'Дубляж' });
+    let mem2 = 2; c2.seasonMemory = n => (n === undefined ? mem2 : (mem2 = n)); c2.seasonIndexByMemory = () => [1, 2].indexOf(mem2); c2.uiSwitch = () => { throw new Error('не должен'); };
+    B.env.screen = c2;
+    c2.getFileUrl({ url: 'http://online3.skaz.tv/lite/rezka', season: 2, episode: 10 }, () => {});
+    let got2 = 0;
+    B.M.nextSeason(3, 2, r => { got2 = r; });
+    const call = B.ctx.window.BSProbe.calls[0];
+    t('следующий сезон: в источнике нет — гонка за серией 1 нового сезона в других, без текущего', call && call.want.season === 3 && call.want.episode === 1 && call.exclude.join() === 'rhsprem');
+    t('следующий сезон: нигде нет — null, память сезона вернули на прежний', got2 === null && mem2 === 2);
+    // нашёлся в другом — переключаем источник, серия 1 включится сама
+    const C2 = fixCtx(), act3 = { activity: { component: null } };
+    C2.ctx.Lampa.Activity.active = () => act3;
+    C2.ctx.Lampa.Player.opened = () => false;
+    C2.ctx.window.BSProbe = raceProbe({ name: 'collaps', title: 'Collaps', verdict: 'ok' }, []);
+    const c3 = fakeComp(C2, ['x']); act3.activity.component = c3; c3.requestParams = u => u; c3.getChoice = () => ({});
+    let mem3 = 2; c3.seasonMemory = n => (n === undefined ? mem3 : (mem3 = n)); c3.seasonIndexByMemory = () => -1;
+    C2.env.screen = c3;
+    c3.getFileUrl({ url: 'http://online3.skaz.tv/lite/rezka', season: 2, episode: 10 }, () => {});
+    let got3 = 0;
+    C2.M.nextSeason(3, 2, r => { got3 = r; });
+    t('следующий сезон: нашёлся в другом источнике — переключаем туда, сезон 3, серия 1', got3 && got3.title === 'Collaps' && got3.same === false && c3.switched[0] === 'collaps' && mem3 === 3 && act3.lampac_continue_episode === 1);
 }
 
 serviceTests().catch(e => { fail++; console.log('FAIL служба: исключение', e && e.stack); }).then(() => {

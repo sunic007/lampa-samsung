@@ -664,7 +664,7 @@ var BS_SECTIONS = [                                            // [раздел,
 ];
 var BS_SETTINGS_LAYOUT = [
     ['bs_player', ['#Надёжность воспроизведения', 'bs_player_auto', 'bs_guard', 'bs_bw_quality', 'bs_buffer',
-        '#Во время просмотра', 'bs_resume_ask', 'bs_noads', 'bs_segments', 'bs_track_memory', 'bs_next_countdown', 'bs_still', 'bs_sleep', 'bs_vol_memory', 'bs_vol_night']],
+        '#Во время просмотра', 'bs_resume_ask', 'bs_noads', 'bs_segments', 'bs_track_memory', 'bs_next_countdown', 'bs_next_season', 'bs_still', 'bs_sleep', 'bs_vol_memory', 'bs_vol_night']],
     ['bs_iface', ['bs_watch_btn', 'bs_online_resume', 'bs_ru_auto', 'bs_menu_turk', 'bs_menu_kids', 'bs_continue_row']],
     ['bs_telegram', ['#Подключение', 'bs_tg_phone', 'bs_tg_join', 'bs_tg_help', 'bs_tg_token', 'bs_tg_link', 'bs_tv_name', 'bs_tg_off',
         '#Бот', 'bs_tg_on', 'bs_tg_shots', 'bs_search_qr', 'bs_tg_check',
@@ -969,6 +969,14 @@ function bsAddSettings() {
             bsLatestVersion(function (v) { r.latest = v; got(); });
             setTimeout(finish, 20000);
         }
+    });
+
+    title('bs_t_help', 'Помощь');
+    Lampa.SettingsApi.addParam({
+        component: C,
+        param: { name: 'bs_report', type: 'button' },
+        field: { name: 'Сообщить о проблеме', description: 'Отчёт с журналом ошибок уйдёт разработчику одной кнопкой — фото экрана не нужно.' },
+        onChange: function () { try { BSReport.open(); } catch (e) { bsNoty('Напишите в группу t.me/sunicapps', 6000); } }
     });
 
     title('bs_t_support', 'Проект');

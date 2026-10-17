@@ -108,7 +108,8 @@ var BSFix = (function () {
         };
     })();
 
-    function showDiag() {
+    /** Журнал запросов к Skaz текстом — для окна ниже и для отчёта о проблеме (bsreport.js). */
+    function diagText() {
         var rch = window.BSRch ? BSRch.stats : null, bw = null;
         try { bw = JSON.parse(lsGetFix('bs_bw') || 'null'); } catch (e) {}
         var text = 'ССЫЛКИ НА ВИДЕО (новые сверху):\n' + (links.length ? links.slice().reverse().join('\n') : '— ещё не запрашивались') +
@@ -116,6 +117,10 @@ var BSFix = (function () {
             (rch ? '\n\nRCH: подключений ' + rch.connects + ', удачных ' + rch.ok + ', сбоев ' + rch.fails + (rch.last ? ' (' + rch.last + ')' : '') : '') +
             '\n\nВСЕ ЗАПРОСЫ К SKAZ (новые сверху):\n' +
             (diag.length ? diag.slice().reverse().map(function (d) { return d.text + (d.n > 1 ? '  ×' + d.n : ''); }).join('\n') : '— не было');
+        return text;
+    }
+    function showDiag() {
+        var text = diagText();
         var body = $('<div style="font-family:monospace;font-size:.7em;line-height:1.3;white-space:pre-wrap;word-break:break-all;padding:0 1em;max-width:100%;box-sizing:border-box"></div>').text(text);
         var ctrl = Lampa.Controller.enabled().name;
         Lampa.Modal.open({
@@ -499,6 +504,41 @@ var BSFix = (function () {
         return true;
     }
 
+    /* ---------- следующий сезон (bswatch.js, после последней серии сезона) ----------
+     * Плеер уже закрыт, на экране список серий плагина. Есть этот сезон в списке сезонов источника — переключаем сезон
+     * так же, как пульт (uiSwitch), и просим плагин сразу включить первую серию (lampac_continue_episode в объекте
+     * экрана — как «Продолжить» у плагина). Нет — гонка других источников за первой серией этого сезона (bsprobe.js),
+     * у победителя — тот же сезон и озвучка (prepSwitch). Не нашли — память сезона плагина возвращаем на прежний.
+     * cb({name, title, same}) | cb(null). false — сделать нельзя (нет экрана плагина или его функций). */
+    function nextSeason(season, from, cb) {
+        var lp = current(), c = lp && lp.comp, obj = null;
+        if (!c || !onScreen(c) || typeof c.seasonMemory !== 'function') return false;
+        try { obj = Lampa.Activity.active(); } catch (e) {}
+        c.seasonMemory(season);
+        var idx = typeof c.seasonIndexByMemory === 'function' ? c.seasonIndexByMemory() : -1;
+        if (idx >= 0 && typeof c.uiSwitch === 'function') {
+            if (obj) obj.lampac_continue_episode = 1;
+            log('сезон ' + season + ' — в том же источнике', lp.balanser);
+            try { c.uiSwitch('season', idx); } catch (e) { log('сезон', e.message); }
+            cb({ name: lp.balanser, title: lp.name || lp.balanser, same: true });
+            return true;
+        }
+        var P = probe();
+        if (!P || typeof c.requestParams !== 'function' || typeof c.switchSource !== 'function') { if (from) c.seasonMemory(from); return false; }
+        var voice = '';
+        try { voice = (c.getChoice() || {}).voice_name || ''; } catch (e) {}
+        quiet('В «' + (lp.name || lp.balanser) + '» сезона ' + season + ' нет — ищу в других источниках…');
+        P.race(c, [lp.balanser], { season: season, episode: 1, voice: voice }, function (win) {
+            if (!win || !onScreen(c) || playerOpen()) { if (from) c.seasonMemory(from); return cb(null); }
+            prepSwitch(c, season, win.name);
+            if (obj) obj.lampac_continue_episode = 1;
+            log('сезон ' + season + ' — в другом источнике', win.name);
+            setTimeout(function () { try { c.switchSource(win.name); } catch (e) { log('сезон', e.message); } }, 300);
+            cb({ name: win.name, title: win.title || win.name, same: false });
+        });
+        return true;
+    }
+
     /* ---------- смена источника не выходя из плеера ----------
      * Сторож плеера (playerguard.js): видео не пошло или встало насовсем — findInPlayer() в фоне ищет ту же серию у
      * других источников (гонка bsprobe.js) и отдаёт ссылку на проверенный поток; сторож подменяет поток в открытом
@@ -625,5 +665,5 @@ var BSFix = (function () {
         try { patch(Lampa.Activity.active().activity.component); } catch (e) {}
     }
 
-    return { start: start, show: showDiag, note: linkAdd, _hookLoading: hookLoading, current: current, played: played, autoNext: autoNext, findInPlayer: findInPlayer, _afterPlayer: afterPlayer, openSources: openSources, _autoPick: autoPick, playingBitrate: playingBitrate, _pickQuality: pickQuality, _hookPlay: hookPlay, _remember: remember, _state: function () { return { lastPlay: lastPlay, auto: auto }; }, _normQuality: normQuality, _patch: patch, _otherServer: otherServer, _fallbackUrl: fallbackUrl, _fallbacks: fallbacks, _mask: mask };
+    return { start: start, show: showDiag, diagText: diagText, nextSeason: nextSeason, note: linkAdd, _hookLoading: hookLoading, current: current, played: played, autoNext: autoNext, findInPlayer: findInPlayer, _afterPlayer: afterPlayer, openSources: openSources, _autoPick: autoPick, playingBitrate: playingBitrate, _pickQuality: pickQuality, _hookPlay: hookPlay, _remember: remember, _state: function () { return { lastPlay: lastPlay, auto: auto }; }, _normQuality: normQuality, _patch: patch, _otherServer: otherServer, _fallbackUrl: fallbackUrl, _fallbacks: fallbacks, _mask: mask };
 })();

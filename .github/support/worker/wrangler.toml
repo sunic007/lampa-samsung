@@ -15,3 +15,7 @@ enabled = true
 [[kv_namespaces]]
 binding = "STATE"
 id = "697a3624d06a44a7bba534888981d001"
+
+# отчёты о проблеме с ТВ, пришедшие через ntfy (report.js pollNtfy): раз в 10 минут
+[triggers]
+crons = ["*/10 * * * *"]

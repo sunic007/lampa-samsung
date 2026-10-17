@@ -22,7 +22,7 @@
     if (!(mirror >= 0 && mirror < MIRRORS.length)) mirror = 0;
     var CDN = MIRRORS[mirror] + REPO + '@v';
     // порядок важен: loader.js — последним (запускает остальное)
-    var LOCAL = ['skazauto.js', 'playerguard.js', 'bsfeatures.js', 'bsplayer.js', 'bsrch.js', 'bsprobe.js', 'bsfix.js', 'bssources.js', 'bsmenu.js',
+    var LOCAL = ['bsreport.js', 'skazauto.js', 'playerguard.js', 'bsfeatures.js', 'bsplayer.js', 'bsrch.js', 'bsprobe.js', 'bsfix.js', 'bssources.js', 'bsmenu.js',
         'bscontinue.js', 'bswatch.js', 'bshub.js', 'bstg.js', 'bsvolume.js', 'loader.js'];
 
     function get(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }

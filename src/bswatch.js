@@ -17,13 +17,19 @@
  *     Пока окно открыто, Lampa место не ставит (timeline.waiting_for_user), «сначала» — timeline.continued.
  *     Только при «Тайм-код: Продолжить» в Lampa (по умолчанию) и не для почти досмотренного (>90 %) и первой минуты.
  *
+ *  7. Следующий сезон (bs_next_season, вкл.): последняя серия в списке источника (дальше плейлисту некуда) — заранее,
+ *     за NS_ASK с до конца, спрашиваем TMDB, вышел ли следующий сезон (seasonAfter). Вышел — в последние COUNT секунд
+ *     «Сезон 3 через N» (ОК — сейчас, Назад — досмотреть титры), потом плеер закрывается и BSFix.nextSeason включает
+ *     его первую серию: в том же источнике, если там этот сезон есть, иначе ищет его в других (гонка bsprobe.js) и
+ *     говорит, где нашёл. Не вышел — говорим, что дальше: «сезон 3 выйдет 12 марта», «сериал завершён», «следующая серия
+ *     ещё не вышла» или «серия 9 уже вышла, но в этом источнике её нет». Только при автопереходе Lampa (playlist_next).
  *  6. Плашка серии: при запуске серии слева сверху на EP_SHOW — сериал, «Сезон 12 · Серия 15» и название серии
  *     (Lampa передаёт его в title), плавно появляется и исчезает; пульт не трогает.
  *
  *  Клавиши в окнах 1, 2 и 5 ловим на document в фазе захвата — раньше Lampa, как таймер сна в bsfeatures.js.
  */
 var BSWatch = (function () {
-    var COUNT = 15, RESUME_GAP = 12 * 3600 * 1000, EP_SHOW = 4500;
+    var COUNT = 15, RESUME_GAP = 12 * 3600 * 1000, EP_SHOW = 4500, NS_ASK = 120, NS_LIFE = 6 * 3600000;
     var BACK = { 8: 1, 27: 1, 461: 1, 10009: 1 };
 
     function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
@@ -72,6 +78,7 @@ var BSWatch = (function () {
     function onTime(e) {
         if (!e || !(e.duration > 0)) return;
         var left = e.duration - (e.current || 0);
+        if (seasonEnd(left, e.duration)) return;
         var want = wantCountdown(left, e.duration, {
             enabled: on('bs_next_countdown', true), autonext: playlistNext(), next: canNext(),
             cancelled: cancelled, endMark: endMark(), skip: skipShown()
@@ -98,6 +105,117 @@ var BSWatch = (function () {
         if (lsGet('bs_restore_next') !== '1') return;
         try { Lampa.Storage.set('playlist_next', 'true'); } catch (e) {}   // переключатели Lampa хранит строками
         lsSet('bs_restore_next', '0');
+    }
+
+    /* ---------- 7. следующий сезон ---------- */
+
+    var MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+    function dayText(iso) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+        return m ? (+m[3]) + ' ' + MONTHS[+m[2] - 1] + ' ' + m[1] : '';
+    }
+    function aired(iso, now) { var t = Date.parse(String(iso || '') + 'T00:00:00Z'); return t > 0 && t <= now; }
+    /**
+     * Что после серии e сезона s по данным TMDB (tv/{id}): {state, season, episode, date}
+     *  next     — вышел сезон s+1: включаем его первую серию;
+     *  more     — в сезоне s уже вышла серия e+1 (в источнике её нет);
+     *  wait-ep  — следующая серия сезона s ещё не вышла (date — когда, если известно);
+     *  soon     — сезон s+1 объявлен, но не вышел (date);
+     *  ended    — сериал завершён; none — нового сезона пока нет.
+     */
+    function seasonAfter(json, s, e, now) {
+        if (!json || !(s > 0)) return null;
+        now = now || Date.now();
+        var seasons = (json.seasons || []).filter(function (x) { return x && x.season_number > 0; });
+        var cur = seasons.filter(function (x) { return x.season_number === s; })[0];
+        var nxt = seasons.filter(function (x) { return x.season_number === s + 1; })[0];
+        var last = json.last_episode_to_air || null, next = json.next_episode_to_air || null;
+        // сколько серий сезона s уже вышло
+        var out = cur ? cur.episode_count | 0 : 0;
+        if (last && last.season_number === s) out = last.episode_number | 0;
+        if (last && last.season_number < s) out = 0;
+        if (e > 0 && out > e) return { state: 'more', season: s, episode: e + 1 };
+        if (next && next.season_number === s) return { state: 'wait-ep', season: s, episode: next.episode_number | 0, date: next.air_date || '' };
+        var nxtAired = nxt && (last && last.season_number > s || aired(nxt.air_date, now) && !(next && next.season_number === s + 1 && next.episode_number === 1));
+        if (nxtAired) return { state: 'next', season: s + 1, episode: 1 };
+        if (nxt || next && next.season_number === s + 1) return { state: 'soon', season: s + 1, episode: 1, date: next && next.season_number === s + 1 ? next.air_date || '' : (nxt && nxt.air_date) || '' };
+        if (/ended|canceled|cancelled/i.test(json.status || '')) return { state: 'ended', season: s };
+        return { state: 'none', season: s };
+    }
+    function seasonText(r) {
+        if (!r) return '';
+        if (r.state === 'more') return 'Серия ' + r.episode + ' уже вышла, но в этом источнике её нет — выберите другой источник';
+        if (r.state === 'wait-ep') return 'Это последняя вышедшая серия' + (r.date ? ' — следующая выйдет ' + dayText(r.date) : '');
+        if (r.state === 'soon') return 'Сезон ' + r.season + (r.date ? ' выйдет ' + dayText(r.date) : ' объявлен, но ещё не вышел');
+        if (r.state === 'ended') return 'Это была последняя серия — сериал завершён';
+        if (r.state === 'none') return 'Это последняя серия — нового сезона пока нет';
+        return '';
+    }
+
+    var ep = null;          // текущая серия: {card, s, e, info, asked, told, going}
+    var nsCache = {};       // card.id -> {at, json}
+    function cardOf(data) {
+        var card = data && (data.card || data.movie);
+        try { if (!card || !card.id) { var a = Lampa.Activity.active() || {}; card = a.movie || a.card || card; } } catch (x) {}
+        return card && card.id ? card : null;
+    }
+    function tvCard(card) { return !!card && !!(card.name || card.original_name || card.number_of_seasons || card.first_air_date); }
+    function nsAsk(cb) {
+        var id = ep.card.id, c = nsCache[id];
+        if (c && Date.now() - c.at < NS_LIFE) return cb(c.json);
+        if (!Lampa.TMDB || !Lampa.Reguest || (ep.card.source && ep.card.source !== 'tmdb' && ep.card.source !== 'cub')) return cb(null);
+        try {
+            new Lampa.Reguest().silent(Lampa.TMDB.api('tv/' + id + '?api_key=' + Lampa.TMDB.key() + '&language=ru'), function (json) {
+                nsCache[id] = { at: Date.now(), json: json };
+                cb(json);
+            }, function () { cb(null); });
+        } catch (e) { cb(null); }
+    }
+    /** Конец последней серии в списке источника. true — отсчёт серии не нужен (этот кадр — наш). */
+    function seasonEnd(left, dur) {
+        if (!ep || !on('bs_next_season', true) || !playlistNext() || canNext() || !(dur > 300) || cancelled) return false;
+        if (!ep.asked && left <= NS_ASK) {
+            ep.asked = true;
+            var mine = ep;
+            nsAsk(function (json) { if (ep === mine) mine.info = seasonAfter(json, mine.s, mine.e); log('после серии', mine.info && mine.info.state); });
+        }
+        var r = ep.info;
+        if (!r || left > COUNT || left <= 0) return false;
+        if (r.state !== 'next') {
+            if (!ep.told) { ep.told = true; noty(seasonText(r), 9000); }
+            return false;
+        }
+        if (ep.going) return true;
+        if (left <= 0.8) { goSeason(r.season); return true; }
+        var sec = Math.max(1, Math.ceil(left));
+        if (mode !== 'season') {
+            overlay('<div class="bs-overlay__title">Сезон ' + r.season + ' через <b class="bs-overlay__n">' + sec + '</b></div>' +
+                '<div class="bs-overlay__hint">ОК — сейчас · Назад — досмотреть титры</div>', function (code) {
+                if (code === 13) { goSeason(r.season); return true; }
+                if (BACK[code]) { hide(); cancelled = true; noty('Остаюсь в этом сезоне', 2500); return true; }
+                return false;
+            });
+            mode = 'season';
+        } else box.find('.bs-overlay__n').text(sec);
+        return true;
+    }
+    function goSeason(n) {
+        if (!ep || ep.going) return;
+        ep.going = true;
+        var from = ep.s;
+        hide();
+        noty('Новый сезон! Включаю сезон ' + n + ', серию 1', 5000);
+        try { Lampa.Player.close(); } catch (e) {}
+        setTimeout(function () {
+            var started = false;
+            try {
+                started = window.BSFix && BSFix.nextSeason && BSFix.nextSeason(n, from, function (res) {
+                    if (!res) return noty('Сезона ' + n + ' пока нет в источниках — он вышел недавно, попробуйте позже', 9000);
+                    if (!res.same) noty('Сезон ' + n + ' нашёлся в «' + res.title + '» — включаю серию 1', 6000);
+                });
+            } catch (e) { log('сезон', e.message); }
+            if (!started) noty('Откройте сезон ' + n + ' в списке серий', 6000);
+        }, 900);
     }
 
     /* ---------- 2. «Вы ещё смотрите?» ---------- */
@@ -259,6 +377,11 @@ var BSWatch = (function () {
             onChange: function (v) { lsSet('bs_next_countdown', String(v === true || v === 'true')); }
         });
         api.addParam({
+            component: C, param: { name: 'bs_next_season', type: 'trigger', 'default': true },
+            field: { name: 'Следующий сезон сам', description: 'После последней серии сезона — первая серия нового, если он вышел. Нет — скажет, когда выйдет.' },
+            onChange: function (v) { lsSet('bs_next_season', String(v === true || v === 'true')); }
+        });
+        api.addParam({
             component: C, param: { name: 'bs_still', type: 'select', values: { '0': 'Не спрашивать', '2': 'После 2 серий', '3': 'После 3 серий', '4': 'После 4 серий' }, 'default': lsGet('bs_still') || '3' },
             field: { name: '«Вы ещё смотрите?»', description: 'Пауза, если долго не нажимали пульт.' },
             onChange: function (v) { lsSet('bs_still', String(v)); }
@@ -279,6 +402,8 @@ var BSWatch = (function () {
         try {
             Lampa.Player.listener.follow('start', function (data) {
                 hide();
+                var card = cardOf(data);
+                ep = data && data.season > 0 && data.episode > 0 && tvCard(card) ? { card: card, s: data.season | 0, e: data.episode | 0 } : null;
                 setTimeout(function () { epBanner(data); }, 800);
                 clearInterval(resumeTimer); resumeTimer = null;
                 cancelled = false;
@@ -297,5 +422,5 @@ var BSWatch = (function () {
         } catch (e) { log('listen', e.message); }
     }
 
-    return { start: start, _wantCountdown: wantCountdown, _wantStill: wantStill, _wantResume: wantResume, _epLines: epLines, _kidsMigrate: kidsMigrate };
+    return { start: start, _seasonAfter: seasonAfter, _seasonText: seasonText, _seasonEnd: seasonEnd, _setEp: function (x) { ep = x; }, _wantCountdown: wantCountdown, _wantStill: wantStill, _wantResume: wantResume, _epLines: epLines, _kidsMigrate: kidsMigrate };
 })();

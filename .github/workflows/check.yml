@@ -39,4 +39,4 @@ jobs:
         run: python -m unittest discover -s .github/support -p "test_*.py"
 
       - name: Support bot (Cloudflare Worker) tests
-        run: node --test .github/support/worker/test/bot.test.mjs
+        run: node --test .github/support/worker/test/bot.test.mjs .github/support/worker/test/report.test.mjs
