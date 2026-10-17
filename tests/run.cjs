@@ -479,6 +479,28 @@ t('в плеере: автоподбор выключен — не ищем', A.
 A = fixCtx(); ac = fakeComp(A, ['x']); ac.requestParams = u => u; ac.getFileUrl({ url: 'http://x' }, () => {});
 t('в плеере: без проверки источников — по-старому (false)', A.M.findInPlayer(() => {}) === false);
 {
+    // автопереход на 3-ю серию: ссылка из плейлиста (плеер ТВ) просрочена через 2 ч — источник тот же, берём свежую у него
+    A = fixCtx(); A.ctx.Lampa.Player.opened = () => true;
+    A.ctx.window.BSProbe = raceProbe({ name: 'rezka', title: 'Rezka', verdict: 'ok', url: 'http://cdn/ep3-fresh.mp4' }, []);
+    ac = fakeComp(A, ['x']); ac.requestParams = u => u; ac.getChoice = () => ({});
+    A.env.bal = 'rezka';
+    ac.getFileUrl({ url: 'http://online3.skaz.tv/lite/rezka', season: 2, episode: 1 }, () => {});
+    A.ctx.Lampa.PlayerPlaylist = { listener: { send() {} } };
+    A.M._hookPlay();
+    const realNow = Date.now;
+    try {
+        Date.now = () => realNow() + 2 * 3600000;
+        A.ctx.Lampa.PlayerPlaylist.listener.send('select', { item: { url: 'http://cdn/ep3-old.mp4', season: 2, episode: 3 } });
+        const cur = A.M.current();
+        t('следующая серия из плейлиста: «что играет» — она же, тот же источник', !!cur && cur.episode === 3 && cur.balanser === 'rezka');
+        let got = null;
+        A.M.findInPlayer(r => { got = r; });
+        const c0 = A.ctx.window.BSProbe.calls[0];
+        t('просроченная ссылка из плейлиста: тот же источник не исключён и не помечен упавшим', c0.exclude.indexOf('rezka') < 0 && A.ctx.window.BSProbe.marks.indexOf('rezka=failed') < 0 && c0.want.episode === 3);
+        t('просроченная ссылка: свежая ссылка того же источника', got && got.url === 'http://cdn/ep3-fresh.mp4');
+    } finally { Date.now = realNow; }
+}
+{
     // сторож: источник не пошёл — ищет другой, не закрывая плеер, и подменяет поток
     const fx = { cb: null, current: () => ({ name: 'Rezka', time: 0 }), findInPlayer(cb) { this.cb = cb; return true; }, played() {} };
     const g = guardEnv({ tizen: true, bsfix: fx });

@@ -214,6 +214,7 @@ var BSFix = (function () {
                 var self = this, args = arguments;
                 if (type !== 'select' || !e || !e.item) return send.apply(self, args);
                 var item = e.item, getUrl = item.url;
+                try { nextInList(item); } catch (x) { log('next', x.message); }
                 if (typeof getUrl === 'function' && !getUrl.__bs) {
                     item.url = function (cb) {
                         var me = this;
@@ -403,6 +404,19 @@ var BSFix = (function () {
             time: Date.now(), bound: false };
     }
 
+    /* Следующая серия из плейлиста плеера (автопереход или кнопка «Следующая»). Источник тот же, что у прошлой серии, —
+     * «что играет» переносим на неё (иначе через 90 с после первой серии current() пуст: сторож не может сменить
+     * источник в плеере и пишет «выберите другой»). У плеера ТВ (не встроенного) плагин Skaz кладёт в плейлист ссылки
+     * всех серий сразу, при запуске первой, — к третьей-четвёртой серии ссылка бывает уже просрочена (fromList): тогда
+     * свежую ссылку можно взять и у того же источника (findInPlayer его не исключает). Ссылку-функцию плагин добудет
+     * сам через getFileUrl — там remember() перезапишет всё сам. */
+    function nextInList(item) {
+        if (!lastPlay || !item || (!item.season && !item.episode)) return;
+        lastPlay.season = item.season; lastPlay.episode = item.episode;
+        lastPlay.text = item.title || lastPlay.text;
+        lastPlay.time = Date.now(); lastPlay.bound = false;
+        lastPlay.fromList = typeof item.url === 'string';
+    }
     /* «Что играет» действительно только для видео, плеер которого стартовал сразу после выдачи ссылки
      * (bound при 'start' плеера; до него — 90 с свежести). Иначе чужое видео, не запустившееся через час,
      * переключило бы источник у прошлого сериала. После закрытия плеера остаётся до следующего старта. */
@@ -499,8 +513,13 @@ var BSFix = (function () {
         if (!P || !c || typeof c.requestParams !== 'function' || typeof c.switchSource !== 'function' || !onScreen(c)) return false;
         if (!auto || auto.comp !== c || auto.season !== lp.season || auto.episode !== lp.episode)
             auto = { comp: c, tried: [], switches: 0, season: lp.season, episode: lp.episode };
-        if (lp.balanser && auto.tried.indexOf(lp.balanser) < 0) auto.tried.push(lp.balanser);
-        try { P.remember(lp.balanser, 'failed'); } catch (e) {}
+        // ссылка из плейлиста (могла просрочиться) — сам источник не виноват: свежую ссылку можно взять и у него
+        var stale = !!lp.fromList;
+        lp.fromList = false;
+        if (!stale) {
+            if (lp.balanser && auto.tried.indexOf(lp.balanser) < 0) auto.tried.push(lp.balanser);
+            try { P.remember(lp.balanser, 'failed'); } catch (e) {}
+        }
         if (auto.switches >= AUTO_MAX) { auto = null; cb(null); return true; }
         var voice = '', a = auto;
         try { voice = (c.getChoice() || {}).voice_name || ''; } catch (e) {}

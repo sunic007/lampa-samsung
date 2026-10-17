@@ -381,8 +381,8 @@ var BSGuard = (function () {
     var SEARCH_WAIT = 20000;
     function sourceInPlayer() {
         if (!window.BSFix || typeof BSFix.findInPlayer !== 'function') return false;
-        var sess = s, cur = null, from = '';
-        try { cur = BSFix.current(); from = cur && cur.name; } catch (e) {}
+        var sess = s, cur = null, from = '', was = '';
+        try { cur = BSFix.current(); from = cur && cur.name; was = cur && cur.balanser; } catch (e) {}
         var started = false, answered = false;
         try {
             started = BSFix.findInPlayer(function (res) {
@@ -392,7 +392,7 @@ var BSGuard = (function () {
                 s.graceUntil = 0;
                 if (!res) return giveUp('Рабочий источник не найден — выберите вручную');
                 var pos = s.everPlayed && s.lastTime > 5 ? s.lastTime : 0;
-                noty('Переключаю на «' + res.title + '»' + (res.verdict === 'ok' ? ' — поток проверен' : ''), 7000);
+                noty((res.name === was ? 'Ссылка на серию устарела — взял новую у «' + res.title + '»' : 'Переключаю на «' + res.title + '»') + (res.verdict === 'ok' ? ' — поток проверен' : ''), 7000);
                 log('другой источник в плеере:', res.name, res.verdict);
                 // новый поток — как новый запуск: свои качества и счётчики
                 s.tried = [res.url]; s.steps = 0; s.restarted = false; s.everPlayed = false; s.startedAt = Date.now();
