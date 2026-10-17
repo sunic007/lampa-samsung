@@ -311,12 +311,12 @@ function loadFromLocal(){
 var timeLeft = 15;
 var timerId  = setInterval(countdown, 1000);
 
-function checkConnection(url, successCb, errorCb) {
+function checkConnection(url, successCb, errorCb, timeout) {
     var xhr = new XMLHttpRequest();
     var executed = false;
 
     xhr.open('GET', url, true);
-    xhr.timeout = 3000;
+    xhr.timeout = timeout || 3000;
     xhr.onload = function () {
         if (executed) {
             return;
@@ -485,6 +485,33 @@ function bsUpdateDialog(gh, info, lampaV, onYes) {
         ],
         onBack: close
     });
+}
+
+/** Последняя вышедшая версия Sunic Apps (version.json на GitHub, затем jsDelivr) — чтобы честно сказать «у вас
+ *  последняя» или «GitHub не ответил». BSUpdate.check (update.js в пакете) этого не различает: и нет связи, и нет
+ *  новой версии у него — пустой ответ. cb(версия | ''). */
+var BS_LATEST_URLS = ['https://raw.githubusercontent.com/sunic007/lampa-samsung/main/version.json',
+    'https://cdn.jsdelivr.net/gh/sunic007/lampa-samsung@main/version.json'];
+function bsLatestVersion(cb, urls) {
+    urls = (urls || BS_LATEST_URLS).slice();
+    var url = urls.shift();
+    if (!url) return cb('');
+    checkConnection(url + '?t=' + Date.now(), function (xhr) {
+        var v = '';
+        try { v = String(JSON.parse(xhr.responseText).version || ''); } catch (e) {}
+        if (/^\d+\.\d+\.\d+$/.test(v)) cb(v); else bsLatestVersion(cb, urls);
+    }, function () { bsLatestVersion(cb, urls); }, 8000);
+}
+function bsFnRunning() { return window.BS_REMOTE_VERSION || BS_PACKAGE_VERSION; }
+
+/** Итог «Проверить и обновить», когда обновлять нечего: что именно стоит и почему так считаем. */
+function bsNoUpdateText(latest, lampaOk, fnRunning, lampaRunning, ghOff) {
+    var fnBehind = latest && bsVerNum(latest) > bsVerNum(fnRunning);
+    if (!latest && !lampaOk) return 'Не удалось проверить: сервер обновлений не ответил — проверьте интернет';
+    if (fnBehind && ghOff) return 'Вышла Sunic Apps ' + latest + ' — включите «Обновлять с GitHub» здесь же, в разделе «Обновление»';
+    if (fnBehind) return 'Вышла Sunic Apps ' + latest + ' — файлы ещё выкладываются, обновление встанет само в течение часа';
+    if (!latest) return 'Lampa ' + lampaRunning + ' — последняя. Sunic Apps ' + fnRunning + ': GitHub не ответил, проверю позже';
+    return 'Обновлений нет — у вас последняя версия: Sunic Apps ' + fnRunning + ' · Lampa ' + lampaRunning;
 }
 
 function bsCheckNow(onResult) {
@@ -916,16 +943,18 @@ function bsAddSettings() {
         param: { name: 'bs_check_now', type: 'button' },
         field: { name: 'Проверить и обновить', description: 'Есть новая версия Lampa (сервер byskaz) или функций пакета (GitHub) — покажет, что нового, и обновит, если согласитесь; нет — просто скажет.' },
         onChange: function () {
-            bsNoty('Проверяю обновление…', 3000);
-            // сначала GitHub (функции пакета), потом сервер Lampa; перезагрузка — только когда оба ответили
-            bsGhCheck(function (gh, info) { bsCheckNow(function (a) {
-                var lampaNew = !!(a && bsHasUpdate(a));
-                if (!gh && !a) return bsNoty('Сервер обновлений недоступен');
+            // «Проверяю…» держится до ответа (GitHub с ТВ бывает отвечает 10–15 с — раньше надпись гасла через 3 с, и
+            // казалось, что проверка пропала). Три проверки сразу, итог — когда ответили все или через 20 с.
+            bsNoty('Проверяю обновление…', 25000);
+            var r = { left: 3 }, done = false;
+            var finish = function () {
+                if (done) return;
+                done = true;
+                var gh = r.gh || '', info = r.info, a = r.a, lampaNew = !!(a && bsHasUpdate(a));
                 // обновлять нечего — не перезагружаем (плагины Skaz и так обновляются сами при запуске)
-                if (!gh && !lampaNew) {
-                    return bsNoty('Обновлений нет · Lampa ' + bsRunningVersion() + ', функции ' + BS_PACKAGE_VERSION, 5000);
-                }
+                if (!gh && !lampaNew) return bsNoty(bsNoUpdateText(r.latest || '', !!a, bsFnRunning(), bsRunningVersion(), (function () { try { return window.localStorage.getItem('bs_gh_update') === 'false'; } catch (e) { return false; } })()), 8000);
                 // есть что обновить - сначала показываем, что именно, и спрашиваем
+                try { $('.noty').removeClass('noty--visible'); } catch (e) {}
                 bsUpdateDialog(gh, info, lampaNew ? (a.app_version || '') : '', function () {
                     if (info) info.apply();
                     // плагины byskaz/Skaz кэшируются на сутки — при обновлении берём и свежие плагины
@@ -933,7 +962,12 @@ function bsAddSettings() {
                     bsNoty('Обновляю — Lampa перезапустится', 3000);
                     setTimeout(function () { location.reload(); }, 2000);
                 });
-            }); });
+            };
+            var got = function () { if (--r.left <= 0) finish(); };
+            bsGhCheck(function (gh, info) { r.gh = gh; r.info = info; got(); });
+            bsCheckNow(function (a) { r.a = a; got(); });
+            bsLatestVersion(function (v) { r.latest = v; got(); });
+            setTimeout(finish, 20000);
         }
     });
 

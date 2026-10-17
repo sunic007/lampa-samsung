@@ -797,6 +797,18 @@ ghc = ghCheck('1.7.46', M46, { bs_upd_bad: '1.7.46|1', bs_upd_skip: '999' });
 ghc.info.apply();
 t('проверить и обновить: согласились — «плохой» версии даём ещё шанс', !ghc.ls.bs_upd_bad && !ghc.ls.bs_upd_skip);
 
+/* ---- loader.js: «Проверить и обновить» — честный ответ, когда обновлять нечего ---- */
+{
+    const src = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
+    const fn = src.slice(src.indexOf('function bsNoUpdateText('), src.indexOf('function bsCheckNow(')) + src.slice(src.indexOf('function bsVerNum('), src.indexOf('/** Новая версия функций уже проверена'));
+    const ctx = {}; vm.createContext(ctx); vm.runInContext(fn + ';this.f = bsNoUpdateText;', ctx);
+    t('проверка: последняя версия — так и говорим, с номерами', ctx.f('2.2.4', true, '2.2.4', '3.3.7') === 'Обновлений нет — у вас последняя версия: Sunic Apps 2.2.4 · Lampa 3.3.7');
+    t('проверка: GitHub не ответил — не «обновлений нет»', /GitHub не ответил/.test(ctx.f('', true, '2.2.4', '3.3.7')));
+    t('проверка: ничего не ответило — про интернет', /не ответил — проверьте интернет/.test(ctx.f('', false, '2.2.4', '3.3.7')));
+    t('проверка: вышла новее, файлы ещё не готовы — встанет сама', /Вышла Sunic Apps 2.2.5.*встанет само/.test(ctx.f('2.2.5', true, '2.2.4', '3.3.7')));
+    t('проверка: обновление с GitHub выключено — подсказываем, где включить', /включите «Обновлять с GitHub»/.test(ctx.f('2.2.5', true, '2.2.4', '3.3.7', true)));
+}
+
 /* ---- loader.js: обновления не ставятся на глазах — одним перезапуском, когда Lampa ушла в фон ---- */
 function applyEnv(opt) {
     const src = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
