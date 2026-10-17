@@ -10,3 +10,8 @@ SUPPORT_GROUP = "sunicapps"
 
 [observability]
 enabled = true
+
+# суточные счётчики, справочная база, повторы обновлений
+[[kv_namespaces]]
+binding = "STATE"
+id = "697a3624d06a44a7bba534888981d001"

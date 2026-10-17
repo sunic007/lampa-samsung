@@ -1,0 +1,28 @@
+name: Support bot worker
+
+# Проверка и подключение бота группы на Cloudflare Worker (sunicapps-support.sunic007.workers.dev) — с GitHub, потому
+# что не из каждой сети есть связь с *.workers.dev. health — видит ли Worker секреты (без значений); setup — подключить
+# webhook Telegram к Worker (ключ — секрет WORKER_SETUP_KEY = WEBHOOK_SECRET Worker'а).
+on:
+  workflow_dispatch:
+    inputs:
+      setup:
+        description: 'Подключить webhook Telegram к Worker'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Health
+        run: curl -s -m 20 https://sunicapps-support.sunic007.workers.dev/health; echo
+      - name: Setup webhook
+        if: inputs.setup
+        env:
+          KEY: ${{ secrets.WORKER_SETUP_KEY }}
+        run: curl -s -m 30 "https://sunicapps-support.sunic007.workers.dev/setup?key=$KEY"; echo
