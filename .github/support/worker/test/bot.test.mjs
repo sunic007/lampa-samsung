@@ -242,3 +242,21 @@ test('ответ ИИ: чужие ссылки и @каналы вырезаны
     await e.bot.handleMessage(msg('Где скачать новую версию?'));
     assert.ok(!e.msgs()[0].text.includes('evil.example'));
 });
+
+test('/test у администратора — показывает, что было бы, и права; ничего не удаляет', async () => {
+    const e = modEnv({ admin: true });
+    const r = await e.bot.handleMessage(msg('/test Новая версия тут https://example.com/app.apk', { entities: [{ type: 'bot_command', offset: 0, length: 5 }, { type: 'url', offset: 22, length: 27 }] }));
+    assert.equal(r.reason, 'link');
+    assert.equal(e.calls('deleteMessage').length, 0);
+    assert.match(e.calls('sendMessage')[0].text, /было бы удалено/);
+    const r2 = await e.bot.handleMessage(msg('', { text: undefined, caption: '/test', document: { file_name: 'TVInstaller-mod.apk' } }));
+    assert.equal(r2.reason, 'file');
+    const r3 = await e.bot.handleMessage(msg('/test Как установить Lampa?'));
+    assert.equal(r3.reason, '');
+    assert.match(e.calls('sendMessage')[2].text, /нарушений нет/);
+});
+test('/test у обычного участника — молчим', async () => {
+    const e = modEnv();
+    assert.equal(await e.bot.handleMessage(msg('/test https://example.com')), null);
+    assert.equal(e.calls('sendMessage').length, 0);
+});

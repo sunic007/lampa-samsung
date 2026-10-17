@@ -369,6 +369,30 @@ export class Bot {
         await this.punish(m, reason);
         return true;
     }
+    /* /test в группе — проверка защиты для администратора (его самого бот не трогает): что было бы с таким же
+     * сообщением от обычного участника и есть ли у бота права. Ничего не удаляет и никого не наказывает. */
+    async modTest(m) {
+        const from = m.from || {}, anon = from.id === TG_ANON_ADMIN || (m.sender_chat && m.sender_chat.id === m.chat.id);
+        if (!anon && !(await this.isAdmin(m.chat.id, from.id))) return null;     // не администратор — молча, как любая команда
+        const strip = x => String(x || '').replace(/^\/(test|тест|proverka)(@\w+)?\s*/i, '');
+        const shift = String(m.text || m.caption || '').length - strip(m.text || m.caption).length;
+        const ents = (m.entities || m.caption_entities || []).map(e => Object.assign({}, e, { offset: e.offset - shift })).filter(e => e.offset >= 0);
+        const probe = Object.assign({}, m, m.text !== undefined ? { text: strip(m.text), entities: ents } : { caption: strip(m.caption), caption_entities: ents });
+        const reason = violation(probe), lang = 'ru';
+        let rights = '';
+        try {
+            const me = await this.tg('getChatMember', { chat_id: m.chat.id, user_id: (this.me || {}).id });
+            rights = `Права бота: удаление ${me.can_delete_messages ? '✅' : '❌'}, блокировка ${me.can_restrict_members ? '✅' : '❌'}.`;
+        } catch (e) { rights = 'Права бота проверить не удалось.'; }
+        const verdict = reason
+            ? '🧪 Проверка защиты. От обычного участника это сообщение было бы удалено, бот написал бы:\n\n' +
+              t(lang, 'mod_removed', { name: 'Участник', why: t(lang, 'mod_' + reason) }) + '\n' + t(lang, 'mod_official') +
+              '\n\nПовтор за неделю — 7 дней без права писать, третий — бан.'
+            : '🧪 Проверка защиты: нарушений нет — такое сообщение бот не тронет.';
+        await this.send(m.chat.id, verdict + '\n\n' + rights + '\nВас бот не трогает: вы администратор.', m.message_id, null, m.is_topic_message ? m.message_thread_id : null);
+        this.log('modtest: ' + (reason || 'ok'));
+        return { kind: 'modtest', reason };
+    }
     async punish(m, reason) {
         const chat = m.chat.id, user = (m.from || {}).id || 0, lang = detectLang(m.text || m.caption || '') === 'uz' ? 'uz' : langOfUser(m.from) === 'en' ? 'en' : 'ru';
         let deleted = false, strikes = 1;
@@ -420,6 +444,7 @@ export class Bot {
             await this.send(chat.id, `Номер этого чата: <code>${chat.id}</code>`);
             return null;
         }
+        if (this.isGroup(chat) && /^\/(test|тест|proverka)(@\w+)?(\s|$)/i.test(String(m.text || m.caption || ''))) return this.modTest(m);
         if (await this.moderate(m)) return { kind: 'removed' };
         const f = this.filter(m);
         if (!f) return null;
