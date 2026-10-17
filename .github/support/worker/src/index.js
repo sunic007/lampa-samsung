@@ -125,6 +125,15 @@ async function health(env) {
         const m = await tg('getChatMember', { chat_id: chat.id, user_id: me.id });
         out.group = { status: m.status, can_delete: !!m.can_delete_messages, can_restrict: !!m.can_restrict_members };
     } catch (e) { out.group = { error: redact(e.message, env) }; }
+    // ключ GitHub правда открывает задачи (истёк или без доступа — видно сразу): 200 — да, 401 — ключ недействителен, 403/404 — нет прав
+    out.issues = {};
+    for (const repo of ['sunic007/lampa-samsung', 'sunic007/tvinstaller']) {
+        try {
+            const r = await fetch(`https://api.github.com/repos/${repo}/issues?per_page=1`, { signal: AbortSignal.timeout(10000),
+                headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'sunicapps-support-bot', Authorization: 'Bearer ' + env.SUPPORT_TOKEN } });
+            out.issues[repo.split('/')[1]] = r.status;
+        } catch (e) { out.issues[repo.split('/')[1]] = 'error'; }
+    }
     return Response.json(out);
 }
 
