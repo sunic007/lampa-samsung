@@ -1358,6 +1358,23 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('ещё смотрите: «через 2 часа» — серии по 30 мин на 5-й', askAt(30, 120) === 5);
     t('ещё смотрите: выключено', !W._wantStill(99999, 0));
     t('ещё смотрите: недосмотренная серия — только то, что шло', W._epSeconds(3600, 600) === 600 && W._epSeconds(3600, 1800) === 3600 && W._epSeconds(0, 0) === 0);
+    // целиком, как в плеере: тики timeupdate раз в секунду, автопереход за 90 с до конца
+    const sim = () => {
+        const S = load('bswatch.js', 'BSWatch').M;
+        return {
+            S, play(min, from) { const d = min * 60; for (let c = from || 0; c <= d - 90; c++) S._stillTick({ duration: d, current: c }); },
+            start() { return S._stillOnStart(Date.now()); }
+        };
+    };
+    { const s = sim(); const asks = []; for (let n = 1; n <= 4; n++) { asks.push(s.start()); s.play(30); }
+      t('ещё смотрите (плеер): серии по 30 мин — вопрос на 3-й, не раньше', asks.join() === 'false,false,true,true'); }
+    { const s = sim(); s.start(); s.play(62); t('ещё смотрите (плеер): серия 62 мин — вопрос уже на 2-й', s.start() === true); }
+    { const s = sim(); s.start(); s.play(30); s.start(); s.play(20); s.S.activity(); s.play(30, 1201);
+      t('ещё смотрите (плеер): нажали пульт в середине серии — считаем только время после нажатия', s.start() === false && s.S._idle() < 1000); }
+    { const s = sim(); s.start(); s.play(30); s.S._stillTick({ duration: 1800, current: 1700 }); s.S._stillTick({ duration: 1800, current: 100 });
+      t('ещё смотрите (плеер): перемотка вперёд и назад — не просмотр', s.S._idle() === 0 && s.start() === false); }
+    { const s = sim(); s.start(); s.play(62);
+      t('ещё смотрите (плеер): перерыв больше 30 мин (запуск из бота на другой день) — счёт заново', s.S._stillOnStart(Date.now() + 31 * 60000) === false && s.S._idle() === 0); }
 }
 {
     // свой детский режим убран: включённый переносим в родительский контроль Lampa с тем же ПИН

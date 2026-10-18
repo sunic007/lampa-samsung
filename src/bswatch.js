@@ -255,7 +255,8 @@ var BSWatch = (function () {
      * спрашивает по времени без нажатий, а не по числу серий). Серия, которую досмотрели хотя бы наполовину, идёт целиком
      * (титры и пропуск заставки не уменьшают счёт); STILL_SLACK — запас, чтобы серии по 28 мин тоже дали «на 3-й». */
     var STILL_SLACK = 300;
-    var idleSec = 0, watch = { dur: 0, played: 0, last: null };
+    var STILL_GAP = 30 * 60000;   // перерыв без видео дольше — новый сеанс, старый счёт не тянем (запуск из бота без пульта)
+    var idleSec = 0, watch = { dur: 0, played: 0, last: null }, lastTick = 0;
     /** Минуты без пульта до вопроса; 0 — не спрашивать. Старые значения «после N серий» → по времени (60 мин). */
     function stillMinutes() {
         var v = String(lsGet('bs_still') || 'auto');
@@ -272,6 +273,14 @@ var BSWatch = (function () {
         watch.dur = e.duration;
         if (watch.last !== null && c > watch.last && c - watch.last <= 5) watch.played += c - watch.last;   // перемотку не считаем
         watch.last = c;
+        lastTick = Date.now();
+    }
+    /** Старт серии: добавить прошлую серию к счёту (после долгого перерыва — счёт заново). true — пора спросить. */
+    function stillOnStart(now) {
+        if (lastTick && now - lastTick > STILL_GAP) idleSec = 0;
+        else idleSec += epSeconds(watch.dur, watch.played);
+        watch = { dur: 0, played: 0, last: null };
+        return wantStill(idleSec, stillMinutes());
     }
     function stillReset() { idleSec = 0; watch.played = 0; }
     function stillValue() { var v = String(lsGet('bs_still') || 'auto'); return v === '0' || v === '90' || v === '120' ? v : 'auto'; }
@@ -463,10 +472,10 @@ var BSWatch = (function () {
                 clearInterval(resumeTimer); resumeTimer = null;
                 cancelled = false;
                 restoreAutonext();
-                idleSec += epSeconds(watch.dur, watch.played);
-                watch = { dur: 0, played: 0, last: null };
+                var still = stillOnStart(Date.now());
                 setTimeout(addButton, 300);
-                if (wantStill(idleSec, stillMinutes())) setTimeout(function () { if (!mode) askStill(); }, 2500);
+                // за 2,5 с могли нажать пульт (счёт обнулился) — проверяем ещё раз перед вопросом
+                if (still) setTimeout(function () { if (!mode && wantStill(idleSec, stillMinutes())) askStill(); }, 2500);
 
             });
             // после 'start' Lampa (needToContinue) сама сбрасывает timeline.waiting_for_user — спрашиваем на 'ready',
@@ -479,5 +488,5 @@ var BSWatch = (function () {
         } catch (e) { log('listen', e.message); }
     }
 
-    return { start: start, activity: stillReset, _seasonAfter: seasonAfter, _seasonText: seasonText, _seasonEnd: seasonEnd, _setEp: function (x) { ep = x; }, _wantCountdown: wantCountdown, _wantStill: wantStill, _epSeconds: epSeconds, _stillMinutes: stillMinutes, _wantResume: wantResume, _epLines: epLines, _kidsMigrate: kidsMigrate };
+    return { start: start, activity: stillReset, _seasonAfter: seasonAfter, _seasonText: seasonText, _seasonEnd: seasonEnd, _setEp: function (x) { ep = x; }, _wantCountdown: wantCountdown, _wantStill: wantStill, _epSeconds: epSeconds, _stillMinutes: stillMinutes, _stillTick: stillTick, _stillOnStart: stillOnStart, _idle: function () { return idleSec; }, _wantResume: wantResume, _epLines: epLines, _kidsMigrate: kidsMigrate };
 })();
