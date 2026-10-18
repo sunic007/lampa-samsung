@@ -5,7 +5,8 @@
  *     метки титров Skaz (там Lampa показывает свою кнопку «Следующая серия»). ОК — сразу следующая, Назад — досмотреть
  *     титры без автоперехода. Переход по окончании делает сама Lampa (playlist_next), отсчёт только предупреждает;
  *     «Назад» на время этой серии выключает playlist_next и возвращает его на следующем старте.
- *  2. «Вы ещё смотрите?» (bs_still, 3 серии): столько серий подряд без единого нажатия на пульт — пауза и вопрос.
+ *  2. «Вы ещё смотрите?» (bs_still, час): столько времени без единого нажатия на пульт — на старте серии пауза и
+ *     вопрос (серии по 30 мин — на 3-й, от часа — на 2-й).
  *     ОК — смотреть дальше, Назад — закрыть плеер. Сериал не крутится всю ночь, трафик не тратится.
  *  3. Предыдущая и следующая серия — кнопки ⏮ ⏭ по бокам от пуска/паузы, как в YouTube («Что сказали?» убрано).
  *  4. Детский режим — свой убран (2.0.1): у Lampa лучше — родительский контроль с ПИН и детский профиль CUB (фильмы
@@ -250,17 +251,37 @@ var BSWatch = (function () {
 
     /* ---------- 2. «Вы ещё смотрите?» ---------- */
 
-    var idleEpisodes = 0;
-    function stillLimit() { var n = parseInt(lsGet('bs_still') || '3', 10); return n >= 0 ? n : 3; }
-    /** Спросить ли на старте серии: count — сколько серий подряд стартовало без нажатий (включая эту). */
-    function wantStill(count, limit) { return limit > 0 && count > limit; }
+    /* Считаем не серии, а время без пульта: серия по 30 мин — вопрос на 3-й, серия от часа — уже на 2-й (как Netflix:
+     * спрашивает по времени без нажатий, а не по числу серий). Серия, которую досмотрели хотя бы наполовину, идёт целиком
+     * (титры и пропуск заставки не уменьшают счёт); STILL_SLACK — запас, чтобы серии по 28 мин тоже дали «на 3-й». */
+    var STILL_SLACK = 300;
+    var idleSec = 0, watch = { dur: 0, played: 0, last: null };
+    /** Минуты без пульта до вопроса; 0 — не спрашивать. Старые значения «после N серий» → по времени (60 мин). */
+    function stillMinutes() {
+        var v = String(lsGet('bs_still') || 'auto');
+        if (v === '0') return 0;
+        return /^(90|120)$/.test(v) ? +v : 60;
+    }
+    /** Сколько секунд добавить за закончившуюся серию: досмотрели наполовину — вся длина, иначе — что реально шло. */
+    function epSeconds(dur, played) { return dur > 0 && played >= dur / 2 ? dur : played; }
+    /** Спросить ли на старте новой серии: idle — секунд просмотра без нажатий до неё. */
+    function wantStill(idle, minutes) { return minutes > 0 && idle >= minutes * 60 - STILL_SLACK; }
+    function stillTick(e) {
+        if (!e || !(e.duration > 0)) return;
+        var c = e.current || 0;
+        watch.dur = e.duration;
+        if (watch.last !== null && c > watch.last && c - watch.last <= 5) watch.played += c - watch.last;   // перемотку не считаем
+        watch.last = c;
+    }
+    function stillReset() { idleSec = 0; watch.played = 0; }
+    function stillValue() { var v = String(lsGet('bs_still') || 'auto'); return v === '0' || v === '90' || v === '120' ? v : 'auto'; }
 
     function askStill() {
         try { Lampa.PlayerVideo.pause(); } catch (e) {}
         overlay('<div class="bs-overlay__title">Вы ещё смотрите?</div>' +
             '<div class="bs-overlay__hint">ОК — продолжить · Назад — закрыть плеер</div>', function (code) {
-            if (code === 13) { hide(); idleEpisodes = 0; try { Lampa.PlayerVideo.play(); } catch (x) {} return true; }
-            if (BACK[code]) { hide(); idleEpisodes = 0; try { Lampa.Player.close(); } catch (x) {} return true; }
+            if (code === 13) { hide(); stillReset(); try { Lampa.PlayerVideo.play(); } catch (x) {} return true; }
+            if (BACK[code]) { hide(); stillReset(); try { Lampa.Player.close(); } catch (x) {} return true; }
             return true;                                         // остальное — мимо плеера, пока не ответили
         });
         mode = 'still';
@@ -412,8 +433,8 @@ var BSWatch = (function () {
             onChange: function (v) { lsSet('bs_next_season', String(v === true || v === 'true')); }
         });
         api.addParam({
-            component: C, param: { name: 'bs_still', type: 'select', values: { '0': 'Не спрашивать', '2': 'После 2 серий', '3': 'После 3 серий', '4': 'После 4 серий' }, 'default': lsGet('bs_still') || '3' },
-            field: { name: '«Вы ещё смотрите?»', description: 'Пауза, если долго не нажимали пульт.' },
+            component: C, param: { name: 'bs_still', type: 'select', values: { auto: 'Через час без пульта', '90': 'Через 1,5 часа', '120': 'Через 2 часа', '0': 'Не спрашивать' }, 'default': stillValue() },
+            field: { name: '«Вы ещё смотрите?»', description: 'Пауза, если долго не нажимали пульт: серии по 30 мин — на 3-й, от часа — на 2-й.' },
             onChange: function (v) { lsSet('bs_still', String(v)); }
         });
         api.addParam({
@@ -428,7 +449,11 @@ var BSWatch = (function () {
         try { addSettings(); } catch (e) {}
         try { kidsMigrate(); } catch (e) { log('kids', e.message); }
         // любое нажатие на пульт — человек у экрана
-        document.addEventListener('keydown', function () { idleEpisodes = 0; }, true);
+        // человек у экрана — всё, что делает он сам: кнопки пульта (пауза, перемотка, ОК, громкость, если она доходит до
+        // приложения), касание и мышь на Android, громкость ТВ на Samsung (bsvolume.js → BSWatch.activity). Перемотки,
+        // которые плеер делает сам (пропуск заставки, «продолжить с места»), — не нажатия и счёт не сбрасывают.
+        document.addEventListener('keydown', stillReset, true);
+        ['touchstart', 'mousedown', 'wheel'].forEach(function (ev) { try { document.addEventListener(ev, stillReset, true); } catch (e) {} });
         try {
             Lampa.Player.listener.follow('start', function (data) {
                 hide();
@@ -438,9 +463,10 @@ var BSWatch = (function () {
                 clearInterval(resumeTimer); resumeTimer = null;
                 cancelled = false;
                 restoreAutonext();
-                idleEpisodes++;
+                idleSec += epSeconds(watch.dur, watch.played);
+                watch = { dur: 0, played: 0, last: null };
                 setTimeout(addButton, 300);
-                if (wantStill(idleEpisodes, stillLimit())) setTimeout(function () { if (!mode) askStill(); }, 2500);
+                if (wantStill(idleSec, stillMinutes())) setTimeout(function () { if (!mode) askStill(); }, 2500);
 
             });
             // после 'start' Lampa (needToContinue) сама сбрасывает timeline.waiting_for_user — спрашиваем на 'ready',
@@ -448,9 +474,10 @@ var BSWatch = (function () {
             Lampa.Player.listener.follow('ready', function (data) { onResumeStart(data); });
             Lampa.Player.listener.follow('destroy', function () { clearTimeout(epTimer); $('.bs-ep-banner').remove(); clearInterval(resumeTimer); resumeTimer = null; hide(); restoreAutonext(); });
             Lampa.PlayerVideo.listener.follow('timeupdate', onTime);
+            Lampa.PlayerVideo.listener.follow('timeupdate', stillTick);
             Lampa.PlayerVideo.listener.follow('timeupdate', onResumeFrame);
         } catch (e) { log('listen', e.message); }
     }
 
-    return { start: start, _seasonAfter: seasonAfter, _seasonText: seasonText, _seasonEnd: seasonEnd, _setEp: function (x) { ep = x; }, _wantCountdown: wantCountdown, _wantStill: wantStill, _wantResume: wantResume, _epLines: epLines, _kidsMigrate: kidsMigrate };
+    return { start: start, activity: stillReset, _seasonAfter: seasonAfter, _seasonText: seasonText, _seasonEnd: seasonEnd, _setEp: function (x) { ep = x; }, _wantCountdown: wantCountdown, _wantStill: wantStill, _epSeconds: epSeconds, _stillMinutes: stillMinutes, _wantResume: wantResume, _epLines: epLines, _kidsMigrate: kidsMigrate };
 })();

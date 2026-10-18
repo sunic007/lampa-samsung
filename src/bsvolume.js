@@ -86,6 +86,7 @@ var BSVolume = (function () {
         if (!cur || !cur.key) return;
         if (v === ours && Date.now() - oursAt < 2000) return;
         if (Date.now() < holdUntil) return;
+        try { if (window.BSWatch && BSWatch.activity) BSWatch.activity(); } catch (e) {}   // громкость меняли сами — человек у экрана
         try { if (!Lampa.Player.opened()) return; } catch (e) { return; }
         cur.auto = false;                                          // человек выбрал сам — на выходе не возвращаем
         if (!on('bs_vol_memory', true)) return;
