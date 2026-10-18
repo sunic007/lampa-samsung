@@ -510,14 +510,16 @@ var BSFix = (function () {
      * экрана — как «Продолжить» у плагина). Нет — гонка других источников за первой серией этого сезона (bsprobe.js),
      * у победителя — тот же сезон и озвучка (prepSwitch). Не нашли — память сезона плагина возвращаем на прежний.
      * cb({name, title, same}) | cb(null). false — сделать нельзя (нет экрана плагина или его функций). */
-    function nextSeason(season, from, cb) {
+    function nextSeason(season, from, cb, episode) {
         var lp = current(), c = lp && lp.comp, obj = null;
+        episode = episode > 0 ? episode : 1;
         if (!c || !onScreen(c) || typeof c.seasonMemory !== 'function') return false;
         try { obj = Lampa.Activity.active(); } catch (e) {}
         c.seasonMemory(season);
-        var idx = typeof c.seasonIndexByMemory === 'function' ? c.seasonIndexByMemory() : -1;
+        // следующая серия того же сезона: в этом источнике её нет (иначе плеер включил бы её сам) — только другие
+        var idx = season === from ? -1 : typeof c.seasonIndexByMemory === 'function' ? c.seasonIndexByMemory() : -1;
         if (idx >= 0 && typeof c.uiSwitch === 'function') {
-            if (obj) obj.lampac_continue_episode = 1;
+            if (obj) obj.lampac_continue_episode = episode;
             log('сезон ' + season + ' — в том же источнике', lp.balanser);
             try { c.uiSwitch('season', idx); } catch (e) { log('сезон', e.message); }
             cb({ name: lp.balanser, title: lp.name || lp.balanser, same: true });
@@ -527,14 +529,29 @@ var BSFix = (function () {
         if (!P || typeof c.requestParams !== 'function' || typeof c.switchSource !== 'function') { if (from) c.seasonMemory(from); return false; }
         var voice = '';
         try { voice = (c.getChoice() || {}).voice_name || ''; } catch (e) {}
-        quiet('В «' + (lp.name || lp.balanser) + '» сезона ' + season + ' нет — ищу в других источниках…');
-        P.race(c, [lp.balanser], { season: season, episode: 1, voice: voice }, function (win) {
+        quiet('В «' + (lp.name || lp.balanser) + '» ' + (season === from ? 'серии ' + episode : 'сезона ' + season) + ' нет — ищу в других источниках…');
+        P.race(c, [lp.balanser], { season: season, episode: episode, voice: voice }, function (win) {
             if (!win || !onScreen(c) || playerOpen()) { if (from) c.seasonMemory(from); return cb(null); }
             prepSwitch(c, season, win.name);
-            if (obj) obj.lampac_continue_episode = 1;
+            if (obj) obj.lampac_continue_episode = episode;
             log('сезон ' + season + ' — в другом источнике', win.name);
             setTimeout(function () { try { c.switchSource(win.name); } catch (e) { log('сезон', e.message); } }, 300);
             cb({ name: win.name, title: win.title || win.name, same: false });
+        });
+        return true;
+    }
+
+    /* ---------- серия в других источниках (bswatch.js, пока идёт последняя серия списка) ----------
+     * TMDB говорит «ещё не вышла», а с озвучкой она уже есть: источники и есть правда о том, что вышло. Тихая гонка
+     * за серией (season, episode) без переключения: cb({name, title}) | cb(null). Тот же сезон — без текущего источника
+     * (в его списке её нет). false — проверить нельзя. */
+    function findEpisode(season, episode, cb) {
+        var lp = current(), c = lp && lp.comp, P = probe();
+        if (!c || !P || typeof c.requestParams !== 'function') return false;
+        var voice = '';
+        try { voice = (c.getChoice() || {}).voice_name || ''; } catch (e) {}
+        P.race(c, season === (lp.season | 0) ? [lp.balanser] : [], { season: season, episode: episode, voice: voice, peek: true }, function (win) {
+            cb(win ? { name: win.name, title: win.title || win.name } : null);
         });
         return true;
     }
@@ -599,6 +616,7 @@ var BSFix = (function () {
         try { if (auto.target && Lampa.Storage.get('online_balanser', '') !== auto.target) return; } catch (e) {}
         if (!params || typeof params.onEnter !== 'function' || !items || !items.length) return;
         var playable = items.filter(function (it) { return it && it.method !== 'link'; });
+        try { if (window.BSProbe && BSProbe.prefer2D) playable = BSProbe.prefer2D(playable); } catch (e) {}   // 3D — только вручную
         var hit = null;
         if (auto.episode) {
             hit = playable.filter(function (it) { return it.episode == auto.episode && (!auto.season || !it.season || it.season == auto.season); })[0];
@@ -665,5 +683,5 @@ var BSFix = (function () {
         try { patch(Lampa.Activity.active().activity.component); } catch (e) {}
     }
 
-    return { start: start, show: showDiag, diagText: diagText, nextSeason: nextSeason, note: linkAdd, _hookLoading: hookLoading, current: current, played: played, autoNext: autoNext, findInPlayer: findInPlayer, _afterPlayer: afterPlayer, openSources: openSources, _autoPick: autoPick, playingBitrate: playingBitrate, _pickQuality: pickQuality, _hookPlay: hookPlay, _remember: remember, _state: function () { return { lastPlay: lastPlay, auto: auto }; }, _normQuality: normQuality, _patch: patch, _otherServer: otherServer, _fallbackUrl: fallbackUrl, _fallbacks: fallbacks, _mask: mask };
+    return { start: start, show: showDiag, diagText: diagText, nextSeason: nextSeason, findEpisode: findEpisode, note: linkAdd, _hookLoading: hookLoading, current: current, played: played, autoNext: autoNext, findInPlayer: findInPlayer, _afterPlayer: afterPlayer, openSources: openSources, _autoPick: autoPick, playingBitrate: playingBitrate, _pickQuality: pickQuality, _hookPlay: hookPlay, _remember: remember, _state: function () { return { lastPlay: lastPlay, auto: auto }; }, _normQuality: normQuality, _patch: patch, _otherServer: otherServer, _fallbackUrl: fallbackUrl, _fallbacks: fallbacks, _mask: mask };
 })();

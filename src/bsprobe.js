@@ -79,6 +79,26 @@ var BSProbe = (function () {
         return x === y || (y.length > 3 && x.indexOf(y) === 0);
     }
 
+    /* 3D-раздачи (стерео: SBS, OU, «3D»): на обычном ТВ — двойная или сплюснутая картинка. Сами их не выбираем,
+     * пока есть обычная версия; человек может включить 3D вручную. Слово «ou» — только отдельным словом. */
+    var STEREO = /(^|[^0-9a-zа-я])(3d|sbs|h-?sbs|half[\s-]?sbs|h?ou|over[\s-]?under|стерео|anaglyph|анаглиф)([^0-9a-zа-я]|$)/i;
+    function is3D(it) {
+        if (!it) return false;
+        var t = typeof it === 'string' ? it : [it.title, it.text, it.translate, it.voice_name, it.details, it.info, it.quality_name]
+            .filter(function (x) { return typeof x === 'string'; }).join(' ');
+        if (STEREO.test(t)) return true;
+        if (it.quality && typeof it.quality === 'object') {
+            var keys = Object.keys(it.quality);
+            return keys.length > 0 && keys.every(function (k) { return STEREO.test(k); });
+        }
+        return false;
+    }
+    /** Тот же список без 3D, если в нём есть обычные варианты (иначе — как был). */
+    function prefer2D(list) {
+        var flat = (list || []).filter(function (it) { return !is3D(it); });
+        return flat.length ? flat : list || [];
+    }
+
     /**
      * Что делать с ответом источника. items/buttons — data-json элементов .videos__item/.videos__button (+text, season,
      * episode, active), want — {season, episode, voice}. Возвращает {go: url} — идти дальше, {item} — нашли, {missing}.
@@ -93,7 +113,7 @@ var BSProbe = (function () {
             if (!sb.active) return { go: sb.url };
         }
         if (items.length === 1 && items[0].method === 'link' && !items[0].similar) return { go: items[0].url };
-        var videos = items.filter(function (v) { return v.method === 'play' || v.method === 'call'; });
+        var videos = prefer2D(items.filter(function (v) { return v.method === 'play' || v.method === 'call'; }));
         if (videos.length) {
             if (want.voice && voices.length && !state.voiceTried) {
                 var vb = voices.filter(function (b) { return sameVoice(b.text, want.voice); })[0];
@@ -105,7 +125,7 @@ var BSProbe = (function () {
             }
             return { item: videos[0] };
         }
-        var links = items.filter(function (v) { return v.method === 'link' && !v.similar; });
+        var links = prefer2D(items.filter(function (v) { return v.method === 'link' && !v.similar; }));
         if (links.length) {
             if (!want.season) return { go: links[0].url };
             var sl = links.filter(function (l) { return seasonNumber(l.text) == want.season; })[0];
@@ -268,7 +288,8 @@ var BSProbe = (function () {
         names.forEach(function (name) {
             resolve(comp, byKey[name], want, deadline, nets, function (r) {
                 results.push(r);
-                remember(id, name, r.verdict);
+                // want.peek — разведка серии, которой может ещё не быть: «нет серии» не делает источник плохим
+                if (!(want.peek && r.verdict === 'missing')) remember(id, name, r.verdict);
                 if (ended) return;
                 if (r.verdict === 'ok') return end(r);
                 if (--left === 0) end(best());
@@ -279,7 +300,7 @@ var BSProbe = (function () {
 
     return {
         enabled: enabled, check: check, race: race, preferred: preferred, first: first, remember: function (name, v) { remember(movieId(), name, v); },
-        state: function (name) { return state(movieId(), name); }, bad: bad,
+        state: function (name) { return state(movieId(), name); }, bad: bad, is3D: is3D, prefer2D: prefer2D,
         _verdict: verdict, _decide: decide, _sameVoice: sameVoice, _isSeasonLabel: isSeasonLabel
     };
 })();

@@ -177,21 +177,28 @@ var BSWatch = (function () {
         if (!ep.asked && left <= NS_ASK) {
             ep.asked = true;
             var mine = ep;
-            nsAsk(function (json) { if (ep === mine) mine.info = seasonAfter(json, mine.s, mine.e); log('после серии', mine.info && mine.info.state); });
+            nsAsk(function (json) {
+                if (ep !== mine) return;
+                mine.info = seasonAfter(json, mine.s, mine.e);
+                log('после серии', mine.info && mine.info.state);
+                lookAhead(mine);
+            });
         }
         var r = ep.info;
         if (!r || left > COUNT || left <= 0) return false;
+        if (r.state !== 'next' && ep.found) r = ep.found;        // по TMDB ещё нет, а в источнике уже вышла
         if (r.state !== 'next') {
             if (!ep.told) { ep.told = true; noty(seasonText(r), 9000); }
             return false;
         }
         if (ep.going) return true;
-        if (left <= 0.8) { goSeason(r.season); return true; }
+        if (left <= 0.8) { goSeason(r.season, r.episode); return true; }
         var sec = Math.max(1, Math.ceil(left));
         if (mode !== 'season') {
-            overlay('<div class="bs-overlay__title">Сезон ' + r.season + ' через <b class="bs-overlay__n">' + sec + '</b></div>' +
-                '<div class="bs-overlay__hint">ОК — сейчас · Назад — досмотреть титры</div>', function (code) {
-                if (code === 13) { goSeason(r.season); return true; }
+            var what = r.season === ep.s ? 'Серия ' + r.episode : 'Сезон ' + r.season;
+            overlay('<div class="bs-overlay__title">' + what + ' через <b class="bs-overlay__n">' + sec + '</b></div>' +
+                '<div class="bs-overlay__hint">' + (r.where ? 'Есть в «' + esc(r.where) + '» · ' : '') + 'ОК — сейчас · Назад — досмотреть титры</div>', function (code) {
+                if (code === 13) { goSeason(r.season, r.episode); return true; }
                 if (BACK[code]) { hide(); cancelled = true; noty('Остаюсь в этом сезоне', 2500); return true; }
                 return false;
             });
@@ -199,22 +206,45 @@ var BSWatch = (function () {
         } else box.find('.bs-overlay__n').text(sec);
         return true;
     }
-    function goSeason(n) {
+    /* TMDB часто отстаёт от озвучки (и считает выход по показу в Турции): «ещё не вышла» — проверяем сами источники.
+     * Пока идёт последняя серия списка, тихо ищем следующую серию этого сезона, потом первую серию следующего
+     * (BSFix.findEpisode — гонка bsprobe.js). Нашли — ep.found, и в конце серии отсчёт, как у нового сезона. */
+    function lookAhead(mine) {
+        var r = mine.info;
+        if (!r || r.state === 'next' || r.state === 'ended' || !window.BSFix || !BSFix.findEpisode) return;
+        var tries = [{ season: mine.s, episode: mine.e + 1 }];
+        if (r.state !== 'more') tries.push({ season: mine.s + 1, episode: 1 });
+        (function one(i) {
+            if (i >= tries.length || ep !== mine) return;
+            var t = tries[i], ok = false;
+            try {
+                ok = BSFix.findEpisode(t.season, t.episode, function (win) {
+                    if (ep !== mine) return;
+                    if (!win) return one(i + 1);
+                    mine.found = { state: 'next', season: t.season, episode: t.episode, where: win.title, early: r.state !== 'more' };
+                    log('уже вышла в источнике', win.name + ' S' + t.season + 'E' + t.episode);
+                });
+            } catch (e) { log('поиск серии', e.message); }
+            if (!ok) one(i + 1);
+        })(0);
+    }
+    function goSeason(n, episode) {
         if (!ep || ep.going) return;
         ep.going = true;
-        var from = ep.s;
+        var from = ep.s, e = episode > 0 ? episode : 1, same = n === from;
+        var what = same ? 'серию ' + e : 'сезон ' + n + ', серию ' + e;
         hide();
-        noty('Новый сезон! Включаю сезон ' + n + ', серию 1', 5000);
-        try { Lampa.Player.close(); } catch (e) {}
+        noty((same ? 'Следующая серия! ' : 'Новый сезон! ') + 'Включаю ' + what, 5000);
+        try { Lampa.Player.close(); } catch (e2) {}
         setTimeout(function () {
             var started = false;
             try {
                 started = window.BSFix && BSFix.nextSeason && BSFix.nextSeason(n, from, function (res) {
-                    if (!res) return noty('Сезона ' + n + ' пока нет в источниках — он вышел недавно, попробуйте позже', 9000);
-                    if (!res.same) noty('Сезон ' + n + ' нашёлся в «' + res.title + '» — включаю серию 1', 6000);
-                });
-            } catch (e) { log('сезон', e.message); }
-            if (!started) noty('Откройте сезон ' + n + ' в списке серий', 6000);
+                    if (!res) return noty((same ? 'Серии ' + e : 'Сезона ' + n) + ' пока нет в источниках — вышла недавно, попробуйте позже', 9000);
+                    if (!res.same) noty((same ? 'Серия ' + e : 'Сезон ' + n) + ' нашлась в «' + res.title + '» — включаю', 6000);
+                }, e);
+            } catch (x) { log('сезон', x.message); }
+            if (!started) noty('Откройте ' + what + ' в списке серий', 6000);
         }, 900);
     }
 

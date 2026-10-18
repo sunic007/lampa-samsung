@@ -358,8 +358,10 @@ var BSContinue = (function () {
         if (!pending || pending.tv || Date.now() > pending.until) return;
         var card = activeCard();
         if (!card || card.id != pending.id || !params || typeof params.onEnter !== 'function') return;
-        var all = (items || []).filter(function (it) { return it; });
-        var playable = all.filter(function (it) { return it.method !== 'link'; });
+        // 3D (SBS/OU) сами не включаем, пока есть обычная версия (bsprobe.js prefer2D)
+        var flat = window.BSProbe && BSProbe.prefer2D ? BSProbe.prefer2D : function (l) { return l; };
+        var all = flat((items || []).filter(function (it) { return it; }));
+        var playable = flat(all.filter(function (it) { return it.method !== 'link'; }));
         var hit = null, enter = function (it) { setTimeout(function () { try { params.onEnter(it, $('<div></div>')); } catch (e) { log('onEnter', e.message); } }, 600); };
         if (pending.ru) {
             hit = pickRu(playable);

@@ -1456,6 +1456,14 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('фильм: только «похожие» — у источника его нет', B._decide([{ method: 'link', similar: true, url: 'x' }, { method: 'link', similar: true, url: 'y' }], [], {}).missing === true);
     t('озвучка: обрезанное имя с «...» совпадает', B._sameVoice('HDrezka Studio (Укр)', 'HDrezka Studio...') && !B._sameVoice('Дубляж', 'LostFilm'));
     t('сезон: распознаём подписи', B._isSeasonLabel('2 сезон') && B._isSeasonLabel('Season 3') && !B._isSeasonLabel('Дубляж'));
+    // 3D-раздачи (SBS/OU) сами не выбираем, пока есть обычная версия
+    t('3D: распознаём SBS, OU, «3D», стерео', B.is3D({ title: 'Холодное сердце 3D' }) && B.is3D({ text: 'Дубляж [H-SBS]' }) && B.is3D('1080p OU') && B.is3D({ title: 'Стерео' }));
+    t('3D: обычные названия — не 3D', !B.is3D({ title: 'Холодное сердце' }) && !B.is3D({ title: 'You' }) && !B.is3D({ title: 'Дубляж 1080p' }) && !B.is3D({ title: 'Toubab' }));
+    t('3D: качество только 3D-метками — 3D', B.is3D({ title: 'Дубляж', quality: { '1080p 3D': 'a' } }) && !B.is3D({ title: 'Дубляж', quality: { '1080p': 'a', '1080p 3D': 'b' } }));
+    t('фильм: 3D первым в списке — включаем обычный', B._decide([{ method: 'play', title: 'Дубляж 3D', url: '3d' }, { method: 'play', title: 'Дубляж', url: '2d' }], [], { season: 0, episode: 0 }).item.url === '2d');
+    t('фильм: есть только 3D — включаем его', B._decide([{ method: 'play', title: 'Дубляж SBS', url: '3d' }], [], { season: 0, episode: 0 }).item.url === '3d');
+    t('фильм: папки озвучек — мимо 3D', B._decide([{ method: 'link', text: 'Дубляж 3D', url: 'a' }, { method: 'link', text: 'Дубляж', url: 'b' }], [], {}).go === 'b');
+    t('prefer2D: список без 3D не меняется', B.prefer2D([{ title: 'a' }, { title: 'b' }]).length === 2 && B.prefer2D([]).length === 0);
 }
 
 {
@@ -1920,6 +1928,16 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('ошибки: обычное уведомление остаётся обычным', !ctx.txt('Переключаю качество на 720p').params.style && !ctx.txt('Lampa 3.3.6 запущена').params.style);
     t('ошибки: стиль, заданный плагином, не трогаем', ctx.txt('Ошибка сети', { style: 'glass' }).params.style === 'glass');
     t('совместимость: новая Lampa передаёт не объект — уведомление как есть', ctx.txt('Ошибка сети', 5000).params === 5000);
+    // сырые ошибки на весь экран — одной строкой
+    const crash = ctx.txt('Message: Cannot read properties of undefined (reading \'indexOf\')<br>In: http://lampa.byskaz.ru/online.js:812<br>Stack: TypeError: x<br>at a (online.js:1)<br>at b (online.js:2)');
+    t('ошибки: упавший скрипт («Message/In/Stack») — коротко и красной точкой', crash.text === 'Сбой в источнике — выберите другой источник' && crash.params.style === 'error');
+    const page = ctx.txt('Ошибка сети: <!DOCTYPE html><html><head><title>502 Bad Gateway</title></head><body><h1>502 Bad Gateway</h1><hr>nginx</body></html>');
+    t('ошибки: HTML-страница ответа — без страницы', page.text === 'Ошибка сети — источник не ответил' && page.params.style === 'error');
+    const longErr = ctx.txt('Ошибка: ' + 'x'.repeat(400));
+    t('ошибки: очень длинная ошибка — коротко', longErr.text.length < 80);
+    const longOk = 'Сезон 3 выйдет 5 ноября 2026. ' + 'Новые серии каждую неделю. '.repeat(10);
+    t('ошибки: длинный обычный текст не режем', ctx.txt(longOk).text === longOk);
+    t('ошибки: короткая ошибка сети — как есть', ctx.txt('Ошибка сети: 404').text === 'Ошибка сети: 404');
     // обёртка Lampa.Noty.show: наша ошибка не ломает уведомления, лишние аргументы новой Lampa доходят
     const pol = src.match(/function bsNotyPolish\([\s\S]*?\n\}/)[0];
     const got = [];
@@ -3620,8 +3638,35 @@ async function serviceTests() {
     let got3 = 0;
     C2.M.nextSeason(3, 2, r => { got3 = r; });
     t('следующий сезон: нашёлся в другом источнике — переключаем туда, сезон 3, серия 1', got3 && got3.title === 'Collaps' && got3.same === false && c3.switched[0] === 'collaps' && mem3 === 3 && act3.lampac_continue_episode === 1);
+    // следующая серия того же сезона (TMDB отстаёт от озвучки): в этом источнике её нет — сразу другие, серия 11
+    const D = fixCtx(), act4 = { activity: { component: null } };
+    D.ctx.Lampa.Activity.active = () => act4;
+    D.ctx.Lampa.Player.opened = () => false;
+    D.ctx.window.BSProbe = raceProbe({ name: 'collaps', title: 'Collaps', verdict: 'ok' }, []);
+    const c4 = fakeComp(D, ['x']); act4.activity.component = c4; c4.requestParams = u => u; c4.getChoice = () => ({});
+    let mem4 = 2; c4.seasonMemory = n => (n === undefined ? mem4 : (mem4 = n)); c4.seasonIndexByMemory = () => [1, 2].indexOf(mem4); c4.uiSwitch = () => { throw new Error('не должен'); };
+    D.env.screen = c4;
+    c4.getFileUrl({ url: 'http://online3.skaz.tv/lite/rezka', season: 2, episode: 10 }, () => {});
+    let got4 = 0;
+    D.M.nextSeason(2, 2, r => { got4 = r; }, 11);
+    const call4 = D.ctx.window.BSProbe.calls[0];
+    t('следующая серия: тот же сезон — не переключаем сезон в этом источнике, ищем серию 11 в других', call4 && call4.want.season === 2 && call4.want.episode === 11 && call4.exclude.join() === 'rhsprem');
+    t('следующая серия: нашлась в другом — переключаем, плагин включит серию 11', got4 && got4.title === 'Collaps' && c4.switched[0] === 'collaps' && act4.lampac_continue_episode === 11);
+    // findEpisode: тихая разведка без переключения; «нет серии» не портит источники (peek)
+    const E = fixCtx(), act5 = { activity: { component: null } };
+    E.ctx.Lampa.Activity.active = () => act5;
+    E.ctx.window.BSProbe = raceProbe({ name: 'alloha', title: 'Alloha', verdict: 'ok' }, []);
+    const c5 = fakeComp(E, ['x']); act5.activity.component = c5; c5.requestParams = u => u; c5.getChoice = () => ({ voice_name: 'TVShows' });
+    E.env.screen = c5;
+    c5.getFileUrl({ url: 'http://online3.skaz.tv/lite/rezka', season: 2, episode: 10 }, () => {});
+    let got5 = 0;
+    const ok5 = E.M.findEpisode(2, 11, r => { got5 = r; });
+    const call5 = E.ctx.window.BSProbe.calls[0];
+    t('поиск серии: гонка за S2E11 с той же озвучкой, без текущего источника, в режиме разведки', ok5 === true && call5.want.episode === 11 && call5.want.voice === 'TVShows' && call5.want.peek === true && call5.exclude.join() === 'rhsprem');
+    t('поиск серии: нашли — {name, title}, источник не переключали', got5 && got5.title === 'Alloha' && !(c5.switched || []).length);
+    E.M.findEpisode(3, 1, () => {});
+    t('поиск серии: новый сезон — текущий источник тоже проверяем', E.ctx.window.BSProbe.calls[1].exclude.length === 0);
 }
-
 serviceTests().catch(e => { fail++; console.log('FAIL служба: исключение', e && e.stack); }).then(() => {
     console.log(pass + ' passed, ' + fail + ' failed');
     process.exit(fail ? 1 : 0);
