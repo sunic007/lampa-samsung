@@ -261,6 +261,17 @@ var BSFix = (function () {
                 }
             };
         }
+        /* Skaz (onlines.js, uiOptionRow) отдаёт в проверку источников строки «Сезон/Озвучка» — объекты, а не имена
+         * источников: name.toLowerCase is not a function, ошибка со стеком на весь экран. В проверку — только имена. */
+        if (typeof c.probeSources === 'function') {
+            var probeSources = c.probeSources;
+            c.probeSources = function (names) {
+                var list = names && names.filter ? names.filter(function (n) { return typeof n === 'string'; }) : [];
+                if (!list.length) return;
+                try { return probeSources.apply(this, [list].concat([].slice.call(arguments, 1))); }
+                catch (e) { linkAdd('проверка источников упала: ' + (e && e.message)); }
+            };
+        }
         if (typeof c.destroy === 'function') {
             var destroy = c.destroy;
             c.destroy = function () {
@@ -667,7 +678,51 @@ var BSFix = (function () {
         });
     }
 
+    /* Сырые ошибки на весь экран — одной строкой (Samsung и Android). Lampa показывает упавший скрипт уведомлением
+     * «Message: … In: … Stack: …», ошибку сети — со всей HTML-страницей ответа (502/503 источника). Подробности —
+     * в журнал (console → «Сообщить о проблеме», bsreport.js). null — текст оставить как есть. */
+    var NOTY_MAX = 220, NOTY_ERR = /(ошибк|не удалось|не загрузил|недоступ|не отвечает|не работает|нет связи|error|failed)/i;
+    function shortError(t) {
+        t = String(t === undefined || t === null ? '' : t);
+        var plain = t.replace(/<br\s*\/?>/gi, '\n').replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]*>/g, ' ')
+            .replace(/&nbsp;/g, ' ').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').replace(/^\s+|\s+$/g, '');
+        if (/(^|\n)\s*Message:/.test(plain) && /(^|\n)\s*(Stack|In):/.test(plain)) {
+            linkAdd('ошибка скрипта: ' + plain.replace(/\n/g, ' | ').slice(0, 300));
+            try { console.warn('[bs] ошибка скрипта:', plain.replace(/\n/g, ' | ').slice(0, 1500)); } catch (e) {}
+            return 'Сбой в источнике — выберите другой источник';
+        }
+        var page = /<(html|!doctype|head|body)\b/i.test(t);
+        if (!page && !(plain.length > NOTY_MAX && NOTY_ERR.test(plain))) return null;   // обычные длинные тексты не режем
+        try { console.warn('[bs] длинное уведомление:', plain.replace(/\n/g, ' | ').slice(0, 1500)); } catch (e) {}
+        var head = /^([^:\n]{3,60}):/.exec(plain);                // «Ошибка сети: <страница>» → «Ошибка сети»
+        if (head) return head[1] + ' — источник не ответил';
+        var first = plain.split('\n')[0];
+        return first.length > NOTY_MAX ? first.slice(0, NOTY_MAX - 1) + '…' : first;
+    }
+    function hookNoty() {
+        var N = Lampa.Noty;
+        if (!N || typeof N.show !== 'function' || N.show.__bsShort) return;
+        var show = N.show;
+        N.show = function (text, params) {
+            var a = [].slice.call(arguments), s = null;
+            try { s = shortError(text); } catch (e) {}
+            if (s) {
+                a[0] = s;
+                if (params === undefined || params === null || typeof params === 'object') {
+                    var p = {};
+                    for (var q in params || {}) if (Object.prototype.hasOwnProperty.call(params, q)) p[q] = params[q];
+                    p.style = 'error';
+                    a[1] = p;
+                }
+            }
+            return show.apply(this, a);
+        };
+        for (var k in show) if (Object.prototype.hasOwnProperty.call(show, k)) N.show[k] = show[k];   // метки других обёрток (__bs)
+        N.show.__bsShort = true;
+    }
+
     function start() {
+        try { hookNoty(); } catch (e) {}
         try { addSettings(); } catch (e) {}
         try { hookLoading(); } catch (e) {}
         try { hookPlay(); } catch (e) {}
@@ -683,5 +738,5 @@ var BSFix = (function () {
         try { patch(Lampa.Activity.active().activity.component); } catch (e) {}
     }
 
-    return { start: start, show: showDiag, diagText: diagText, nextSeason: nextSeason, findEpisode: findEpisode, note: linkAdd, _hookLoading: hookLoading, current: current, played: played, autoNext: autoNext, findInPlayer: findInPlayer, _afterPlayer: afterPlayer, openSources: openSources, _autoPick: autoPick, playingBitrate: playingBitrate, _pickQuality: pickQuality, _hookPlay: hookPlay, _remember: remember, _state: function () { return { lastPlay: lastPlay, auto: auto }; }, _normQuality: normQuality, _patch: patch, _otherServer: otherServer, _fallbackUrl: fallbackUrl, _fallbacks: fallbacks, _mask: mask };
+    return { start: start, show: showDiag, diagText: diagText, nextSeason: nextSeason, findEpisode: findEpisode, note: linkAdd, _hookLoading: hookLoading, current: current, played: played, autoNext: autoNext, findInPlayer: findInPlayer, _afterPlayer: afterPlayer, openSources: openSources, _autoPick: autoPick, playingBitrate: playingBitrate, _pickQuality: pickQuality, _hookPlay: hookPlay, _remember: remember, _state: function () { return { lastPlay: lastPlay, auto: auto }; }, _normQuality: normQuality, _patch: patch, _otherServer: otherServer, _fallbackUrl: fallbackUrl, _fallbacks: fallbacks, _mask: mask, _shortError: shortError };
 })();

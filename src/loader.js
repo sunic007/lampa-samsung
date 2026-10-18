@@ -182,31 +182,10 @@ function bsPluginName(u) {
     var file = (m[2] || '').split('/').pop().replace(/\.js$/i, '');
     return file || m[1];
 }
-/* Сырые ошибки на весь экран — коротко. Lampa показывает упавший скрипт уведомлением «Message: … In: … Stack: …»,
- * а ошибку сети — вместе со всей HTML-страницей ответа (502/503 источника). Подробности остаются в журнале
- * (console → «Сообщить о проблеме», bsreport.js), на экране — одна понятная строка. */
-var BS_NOTY_MAX = 220;
-function bsShortError(t) {
-    var plain = t.replace(/<br\s*\/?>/gi, '\n').replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]*>/g, ' ')
-        .replace(/&nbsp;/g, ' ').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').replace(/^\s+|\s+$/g, '');
-    if (/(^|\n)\s*Message:/.test(plain) && /(^|\n)\s*(Stack|In):/.test(plain)) {
-        try { console.warn('[bs] ошибка скрипта:', plain.replace(/\n/g, ' | ').slice(0, 1500)); } catch (e) {}
-        return 'Сбой в источнике — выберите другой источник';
-    }
-    var page = /<(html|!doctype|head|body)\b/i.test(t);
-    if (!page && !(plain.length > BS_NOTY_MAX && BS_NOTY_ERROR.test(plain))) return null;   // обычные длинные тексты не режем
-    try { console.warn('[bs] длинное уведомление:', plain.replace(/\n/g, ' | ').slice(0, 1500)); } catch (e) {}
-    var head = /^([^:\n]{3,60}):/.exec(plain);                // «Ошибка сети: <страница>» → «Ошибка сети»
-    if (head) return head[1] + ' — источник не ответил';
-    var first = plain.split('\n')[0];
-    return first.length > BS_NOTY_MAX ? first.slice(0, BS_NOTY_MAX - 1) + '…' : first;
-}
 function bsNotyText(text, params) {
     if (params !== undefined && params !== null && typeof params !== 'object') return { text: text, params: params };  // новая Lampa поменяла вызов — не трогаем
     params = params || {};
     var t = String(text === undefined || text === null ? '' : text), m = BS_PLUGINS_FAIL.exec(t);
-    var short = m ? null : bsShortError(t);
-    if (short) { t = short; params.style = 'error'; }
     if (m) {
         t = 'Не загрузились плагины: ' + m[2].split(/,\s*/).map(bsPluginName).join(', ');
         params.style = 'error';

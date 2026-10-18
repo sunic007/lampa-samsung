@@ -1928,16 +1928,6 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('ошибки: обычное уведомление остаётся обычным', !ctx.txt('Переключаю качество на 720p').params.style && !ctx.txt('Lampa 3.3.6 запущена').params.style);
     t('ошибки: стиль, заданный плагином, не трогаем', ctx.txt('Ошибка сети', { style: 'glass' }).params.style === 'glass');
     t('совместимость: новая Lampa передаёт не объект — уведомление как есть', ctx.txt('Ошибка сети', 5000).params === 5000);
-    // сырые ошибки на весь экран — одной строкой
-    const crash = ctx.txt('Message: Cannot read properties of undefined (reading \'indexOf\')<br>In: http://lampa.byskaz.ru/online.js:812<br>Stack: TypeError: x<br>at a (online.js:1)<br>at b (online.js:2)');
-    t('ошибки: упавший скрипт («Message/In/Stack») — коротко и красной точкой', crash.text === 'Сбой в источнике — выберите другой источник' && crash.params.style === 'error');
-    const page = ctx.txt('Ошибка сети: <!DOCTYPE html><html><head><title>502 Bad Gateway</title></head><body><h1>502 Bad Gateway</h1><hr>nginx</body></html>');
-    t('ошибки: HTML-страница ответа — без страницы', page.text === 'Ошибка сети — источник не ответил' && page.params.style === 'error');
-    const longErr = ctx.txt('Ошибка: ' + 'x'.repeat(400));
-    t('ошибки: очень длинная ошибка — коротко', longErr.text.length < 80);
-    const longOk = 'Сезон 3 выйдет 5 ноября 2026. ' + 'Новые серии каждую неделю. '.repeat(10);
-    t('ошибки: длинный обычный текст не режем', ctx.txt(longOk).text === longOk);
-    t('ошибки: короткая ошибка сети — как есть', ctx.txt('Ошибка сети: 404').text === 'Ошибка сети: 404');
     // обёртка Lampa.Noty.show: наша ошибка не ломает уведомления, лишние аргументы новой Lampa доходят
     const pol = src.match(/function bsNotyPolish\([\s\S]*?\n\}/)[0];
     const got = [];
@@ -1946,6 +1936,30 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     vm.createContext(c2); vm.runInContext(pol + ';bsNotyPolish();', c2);
     c2.Lampa.Noty.show('Привет', { time: 1 }, 'extra');
     t('совместимость: сбой нашей правки — уведомление Lampa всё равно показано', got.length === 1 && got[0][0] === 'Привет' && got[0][2] === 'extra');
+}
+/* ---- bsfix.js: сырые ошибки на весь экран — одной строкой (Samsung и Android) ---- */
+{
+    const F = fixCtx(), S = F.M._shortError;
+    t('ошибки: упавший скрипт («Message/In/Stack») — коротко', S('Message: name.toLowerCase is not a function<br><br>In: http://skaz.tv/onlines.js?_=1<br><br>Stack: TypeError: x<br>at a (onlines.js:2274:18)') === 'Сбой в источнике — выберите другой источник');
+    t('ошибки: HTML-страница ответа — без страницы', S('Ошибка сети: <!DOCTYPE html><html><head><title>502 Bad Gateway</title></head><body><h1>502 Bad Gateway</h1><hr>nginx</body></html>') === 'Ошибка сети — источник не ответил');
+    t('ошибки: очень длинная ошибка — коротко', S('Ошибка: ' + 'x'.repeat(400)).length < 80);
+    t('ошибки: длинный обычный текст и короткая ошибка — как есть', S('Сезон 3 выйдет 5 ноября 2026. ' + 'Новые серии каждую неделю. '.repeat(10)) === null && S('Ошибка сети: 404') === null && S('') === null);
+    // обёртка Lampa.Noty.show: красная точка, свои параметры и лишние аргументы новой Lampa сохраняются
+    const got = [];
+    F.ctx.Lampa.Noty = { show: function () { got.push([].slice.call(arguments)); } };
+    F.ctx.Lampa.Noty.show.__bs = true;
+    F.M.start();
+    F.ctx.Lampa.Noty.show('Message: x<br>In: y<br>Stack: z', { time: 8000 }, 'extra');
+    F.ctx.Lampa.Noty.show('Привет', 5000);
+    t('ошибки: обёртка уведомлений — коротко, красной точкой, время и лишние аргументы на месте', got[0][0] === 'Сбой в источнике — выберите другой источник' && got[0][1].style === 'error' && got[0][1].time === 8000 && got[0][2] === 'extra');
+    t('ошибки: обычное уведомление и чужой формат параметров — как есть, метки других обёрток целы', got[1][0] === 'Привет' && got[1][1] === 5000 && F.ctx.Lampa.Noty.show.__bs === true);
+    // Skaz отдаёт в проверку источников объекты строк «Сезон» — пропускаем только имена
+    const seen = [];
+    const comp = { setDefaultQuality: () => {}, probeSources: function (names) { names.forEach(n => seen.push(n.toLowerCase())); } };
+    F.M._patch(comp);
+    comp.probeSources([{ index: 0, entry: { title: '2 сезон' } }, { index: 1 }]);
+    comp.probeSources(['RuDUB', { index: 2 }, 'Filmix']);
+    t('Skaz: строки «Сезон» (объекты) в проверку источников не попадают — без ошибки на экране', seen.join() === 'rudub,filmix');
 }
 /* ---- bstg.js: бот на трёх языках (ru / en / uz) ---- */
 {
