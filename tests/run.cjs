@@ -1348,8 +1348,33 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('отсчёт: видна кнопка Lampa «Следующая серия» — не мешаем', !W._wantCountdown(10, 2400, Object.assign({}, F, { skip: true })));
     t('отсчёт: автопереход Lampa выключен или отменён — молчим', !W._wantCountdown(10, 2400, Object.assign({}, F, { autonext: false })) && !W._wantCountdown(10, 2400, Object.assign({}, F, { cancelled: true })));
     t('отсчёт: короткие ролики — нет', !W._wantCountdown(10, 200, F));
-    t('ещё смотрите: 3 серии без нажатий — спросить на 4-й', !W._wantStill(3, 3) && W._wantStill(4, 3));
-    t('ещё смотрите: выключено', !W._wantStill(10, 0));
+    // время без пульта к старту серии: сумма прошлых серий (досмотренная наполовину — целиком)
+    const idleBefore = (lens, n) => lens.slice(0, n - 1).reduce((s, m) => s + W._epSeconds(m * 60, m * 60 - 90), 0);   // титры пропущены
+    const askAt = (m, lim) => { for (let n = 1; n <= 10; n++) if (W._wantStill(idleBefore(Array(10).fill(m), n), lim)) return n; return 0; };
+    t('ещё смотрите: серии по 30 мин — вопрос на 3-й', askAt(30, 60) === 3);
+    t('ещё смотрите: серии по 28 мин (титры короче) — тоже на 3-й', askAt(28, 60) === 3);
+    t('ещё смотрите: серии от часа — сразу на 2-й', askAt(60, 60) === 2 && askAt(75, 60) === 2);
+    t('ещё смотрите: серии по 45 мин — на 3-й, по 20 мин — на 4-й', askAt(45, 60) === 3 && askAt(20, 60) === 4);
+    t('ещё смотрите: «через 2 часа» — серии по 30 мин на 5-й', askAt(30, 120) === 5);
+    t('ещё смотрите: выключено', !W._wantStill(99999, 0));
+    t('ещё смотрите: недосмотренная серия — только то, что шло', W._epSeconds(3600, 600) === 600 && W._epSeconds(3600, 1800) === 3600 && W._epSeconds(0, 0) === 0);
+    // целиком, как в плеере: тики timeupdate раз в секунду, автопереход за 90 с до конца
+    const sim = () => {
+        const S = load('bswatch.js', 'BSWatch').M;
+        return {
+            S, play(min, from) { const d = min * 60; for (let c = from || 0; c <= d - 90; c++) S._stillTick({ duration: d, current: c }); },
+            start() { return S._stillOnStart(Date.now()); }
+        };
+    };
+    { const s = sim(); const asks = []; for (let n = 1; n <= 4; n++) { asks.push(s.start()); s.play(30); }
+      t('ещё смотрите (плеер): серии по 30 мин — вопрос на 3-й, не раньше', asks.join() === 'false,false,true,true'); }
+    { const s = sim(); s.start(); s.play(62); t('ещё смотрите (плеер): серия 62 мин — вопрос уже на 2-й', s.start() === true); }
+    { const s = sim(); s.start(); s.play(30); s.start(); s.play(20); s.S.activity(); s.play(30, 1201);
+      t('ещё смотрите (плеер): нажали пульт в середине серии — считаем только время после нажатия', s.start() === false && s.S._idle() < 1000); }
+    { const s = sim(); s.start(); s.play(30); s.S._stillTick({ duration: 1800, current: 1700 }); s.S._stillTick({ duration: 1800, current: 100 });
+      t('ещё смотрите (плеер): перемотка вперёд и назад — не просмотр', s.S._idle() === 0 && s.start() === false); }
+    { const s = sim(); s.start(); s.play(62);
+      t('ещё смотрите (плеер): перерыв больше 30 мин (запуск из бота на другой день) — счёт заново', s.S._stillOnStart(Date.now() + 31 * 60000) === false && s.S._idle() === 0); }
 }
 {
     // свой детский режим убран: включённый переносим в родительский контроль Lampa с тем же ПИН
