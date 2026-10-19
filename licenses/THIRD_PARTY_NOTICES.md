@@ -19,7 +19,7 @@ The `.wgt` package bundles the following third-party software. Each part keeps i
 
 The bundled Lampa build is version **3.3.7** (`src/app.js`, the version is in its `app_version`; the build served by
 lampa.byskaz.ru, i.e. Lampa with the byskaz server addresses). Its source code is
-[yumata/lampa-source, version 3.3.7](https://github.com/yumata/lampa-source/tree/85ea34321f39b6a2d15d2cd437ae2f07066a7c05)
+[yumata/lampa-source, version 3.3.7](https://github.com/yumata/lampa-source/tree/7a53473aa5d75793e5b80fb2edbb862c4440c79c)
 (GPL-2.0). `src/app.js` and Lampa's resources are included as served by lampa.byskaz.ru,
 without changes by this project; `src/index.html` is based on Lampa's page with the package's loader added. If a link
 stops working, ask in the [Telegram group](https://t.me/sunicapps) or open an issue — the matching source will be
