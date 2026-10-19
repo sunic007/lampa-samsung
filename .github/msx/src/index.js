@@ -27,7 +27,11 @@ async function page(ctx) {
         // файлы — с другого домена (jsDelivr): их ошибки браузер отдаёт без текста («Script error.»), Lampa показывает
         // это уведомлением, а понять по нему нечего. Глушим только такие, до обработчика Lampa.
         .replace('<head>', '<head>\n    <base href="' + CDN + v + '/src/">\n    <script>window.addEventListener("error", function (e) {' +
-            ' if (!e.lineno && /^Script error\\.?$/i.test(e.message || "")) { try { e.stopImmediatePropagation(); } catch (x) {} } }, true);</script>')
+            ' if (!e.lineno && /^Script error\\.?$/i.test(e.message || "")) { try { e.stopImmediatePropagation(); } catch (x) {} } }, true);' +
+            // в MSX нет API Samsung (window.tizen): плеер «Tizen» (AVPlay) не запустится — встроенный плеер Lampa
+            // (loader.js на первом запуске ставит «tizen», если bs_player_default нет — ставим его сами раньше)
+            ' (function () { if (window.tizen) return; try { localStorage.setItem("bs_player_default", "1"); ["player", "player_iptv"].forEach(function (k) {' +
+            ' var v = localStorage.getItem(k); if (!v || v === "tizen") localStorage.setItem(k, "inner"); }); } catch (x) {} })();</script>')
         // webapis.js есть только у установленного пакета (.wgt); в MSX — нет
         .replace(/<script src="\$WEBAPIS\/webapis\/webapis\.js"><\/script>/, '')
         .replace('<title>Lampa</title>', '<title>Lampa · Sunic Apps</title>');
