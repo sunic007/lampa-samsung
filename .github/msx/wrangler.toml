@@ -1,0 +1,5 @@
+﻿# Lampa «Sunic Apps» для Media Station X. Развернуть: npx wrangler deploy (из этой папки).
+name = "tv"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
