@@ -1,5 +1,5 @@
 {
- "version": "2.3.8",
+ "version": "2.3.9",
  "files": [
   "bsreport.js",
   "skazauto.js",
@@ -19,9 +19,9 @@
   "loader.js"
  ],
  "notes": {
-  "title": "обновления доходят и там, где GitHub закрыт",
+  "title": "Lampa в браузере по https",
   "items": [
-   "Проверка новой версии берёт version.json с GitHub, а если он в этой стране или сети закрыт — с jsDelivr (три сети). Так же в Android-плагине и в Media Station X (sunic.stream). Действует с этой установки .wgt; уже уст…"
+   "Браузеры сами открывают сайты по https — теперь Lampa работает и так (sunic.stream): источники, у которых есть https (Online Mod, Z01), подключаются по https, и «Смотреть» открывает их. Skaz по https невозможен — его…"
   ]
  }
 }

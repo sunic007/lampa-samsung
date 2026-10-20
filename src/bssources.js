@@ -31,10 +31,10 @@ var BSSources = (function () {
     /* Плагины на выбор. comp — компонент Lampa, который открывает плагин (по нему знаем, чей сейчас экран). group —
      * плагины с одинаковым компонентом и кнопкой: включить можно только один из группы. */
     var LIST = [
-        { id: 'z01', key: 'bs_src_z01', name: 'Z01', url: 'http://z01.online/live', comp: ['lampac_z'], on: true,
+        { id: 'z01', key: 'bs_src_z01', name: 'Z01', url: 'http://z01.online/live', comp: ['lampac_z'], on: true, https: true,
           note: 'Бесплатные источники и платный VIP. Есть реклама.',
           match: function (b) { return /^Z01\b/i.test(sub(b)); } },
-        { id: 'online_mod', key: 'bs_src_online_mod', name: 'Online Mod', url: 'http://nb557.github.io/plugins/online_mod.js', comp: ['online_mod'], group: 'online_mod', on: true,
+        { id: 'online_mod', key: 'bs_src_online_mod', name: 'Online Mod', url: 'http://nb557.github.io/plugins/online_mod.js', comp: ['online_mod'], group: 'online_mod', on: true, https: true,
           note: 'Открытый код (GitHub nb557).', match: hasCls('view--online_mod') },
         { id: 'vod_llpp', key: 'bs_src_vod_llpp', name: 'VOD (llpp.in)', url: 'http://llpp.in/v/vod.js', comp: ['online_mod'], group: 'online_mod',
           note: 'Вариант Online Mod — включается вместо него.', match: hasCls('view--online_mod') },
@@ -82,7 +82,12 @@ var BSSources = (function () {
             if (!loose && isMain(btns[i])) loose = btns[i];
         }
         if (loose) return loose;
-        if (!fallback || main === 'skaz') return null;
+        if (!fallback) return null;
+        // главный — Skaz, а его кнопки нет (страница по https: Skaz работает только по http) — первый другой источник
+        if (main === 'skaz') {
+            for (i = 0; i < btns.length; i++) { var w = owner(btns[i]); if (w && w !== 'skaz') return btns[i]; }
+            return null;
+        }
         for (i = 0; i < btns.length; i++) if (skazSure(btns[i])) return btns[i];
         for (i = 0; i < btns.length; i++) if (owner(btns[i]) === 'skaz') return btns[i];
         return null;
@@ -129,6 +134,12 @@ var BSSources = (function () {
         return false;
     }
     var done = {};
+    /** Страница открыта по https (браузер, sunic.stream): http-скрипт браузер заблокирует — у кого есть https, грузим по нему. */
+    function urlFor(s) {
+        var https = false;
+        try { https = window.location.protocol === 'https:'; } catch (e) {}
+        return https && s.https ? s.url.replace(/^http:\/\//, 'https://') : s.url;
+    }
     function load(url) {
         if (done[url] || loaded(url)) return;
         done[url] = true;
@@ -140,7 +151,7 @@ var BSSources = (function () {
             var s = LIST[i];
             if (!enabled(s) || (s.group && groups[s.group])) continue;   // из группы — только первый включённый
             if (s.group) groups[s.group] = true;
-            load(s.url);
+            load(urlFor(s));
         }
     }
 
@@ -170,7 +181,7 @@ var BSSources = (function () {
                             noty(o.name + ' выключен — включён ' + s.name);
                         }
                     });
-                    load(s.url);
+                    load(urlFor(s));
                 }
             });
         });
@@ -184,10 +195,11 @@ var BSSources = (function () {
         lsSet(s.key, 'true');
         lsSet('bs_src_main', id);
         try { Lampa.Storage.set(s.key, true); Lampa.Storage.set('bs_src_main', id); } catch (e) {}
-        if (done[s.url] || loaded(s.url)) { if (cb) cb(); return true; }
-        done[s.url] = true;
-        try { Lampa.Utils.putScriptAsync([s.url], function () { log('подключён', s.url); if (cb) cb(); }); }
-        catch (e) { log('не подключён', s.url + ' ' + e.message); }
+        var u = urlFor(s);
+        if (done[u] || loaded(u) || loaded(s.url)) { if (cb) cb(); return true; }
+        done[u] = true;
+        try { Lampa.Utils.putScriptAsync([u], function () { log('подключён', u); if (cb) cb(); }); }
+        catch (e) { log('не подключён', u + ' ' + e.message); }
         return true;
     }
 

@@ -1820,6 +1820,8 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('смотреть: главный Z01 — его кнопка', r.S.pick([skaz, z01], false) === z01);
     t('смотреть: Z01 ещё не добавил кнопку — ждём (не Skaz)', r.S.pick([skaz], false) === null);
     t('смотреть: Z01 так и не загрузился — последняя попытка берёт Skaz', r.S.pick([other, skaz], true) === skaz);
+    const om = btn('view--online view--online_mod', 'online_mod 18.10.2026', 'Онлайн');
+    t('смотреть: главный Skaz, а его кнопки нет (страница по https) — последняя попытка берёт другой источник', mk({}).S.pick([om], true) === om && mk({}).S.pick([om], false) === null);
     r = mk({ bs_src_online_mod: 'true', bs_src_vod_llpp: 'true', bs_src_showy: 'true' });
     r.S._loadAll();
     t('подключение: из группы Online Mod — только один плагин', r.loaded.filter(u => /online_mod\.js|llpp\.in/.test(u)).length === 1);
