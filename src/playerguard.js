@@ -11,7 +11,8 @@
  * Обрыв сети: пока сети нет, простой не считаем; вернулась — продолжаем с того же места.
  * Шаг 2: качеств больше нет — уведомление и закрытие плеера через CLOSE_DELAY; если видео
  *        за это время пошло, закрытие отменяется.
- * ТВ-каналы: одно переподключение к тому же адресу. Торренты не трогаем: им нужна раскачка.
+ * ТВ-каналы: переподключение к тому же адресу, затем другой адрес того же канала (BSIptv: тот же канал в наших
+ * списках играет по нескольким ссылкам) и только потом закрытие. Торренты не трогаем: им нужна раскачка.
  * Возврат из Smart Hub: Lampa 3.3.7 сама восстанавливает AVPlay (tizen_lifecycle: suspend() при уходе, restoreAsync()
  * при возврате и до 15 с ждёт PLAYING; пока идёт восстановление, вызовы AVPlay запрещены). Её флаги наружу не видны —
  * поэтому после возврата RESUME_GRACE (25 с, дольше её 15 с) сторож поток не перезапускает: иначе смена потока
@@ -189,6 +190,7 @@ var BSGuard = (function () {
         };
         timer = setInterval(tick, cfg.TICK);
         log('сеанс', s.iptv ? 'канал' : 'фильм', s.avplay ? 'плеер ТВ' : 'встроенный', s.hls ? 'HLS' : 'файл', String(data.url).slice(0, 80));
+        if (s.iptv) { try { if (window.BSIptv && window.BSIptv.warm) window.BSIptv.warm(); } catch (e) {} }   // индекс запасных адресов канала
         quickCheck(data.url);
     }
 
@@ -323,6 +325,17 @@ var BSGuard = (function () {
                 noty('Канал не отвечает — переподключаюсь');
                 switchTo({ name: work.quality_switched || 'auto', url: work.url });
                 return;
+            }
+            // Переподключение не помогло — пробуем другой адрес того же канала (индекс BSIptv из наших списков)
+            if (work && work.url && s.steps <= 3) {
+                var alt = null;
+                try { alt = window.BSIptv && window.BSIptv.alt ? window.BSIptv.alt(work.title, work.url, s.tried) : null; } catch (e) {}
+                if (alt) {
+                    noty('Канал не отвечает — пробую другой источник', 6000);
+                    log('канал: другой адрес', String(alt).slice(0, 80));
+                    switchTo({ name: work.quality_switched || 'auto', url: alt });
+                    return;
+                }
             }
             return giveUp('Канал не работает — выберите другой');
         }
@@ -504,6 +517,7 @@ var BSGuard = (function () {
                 if (!s || !e) return;          // смена качества пользователем — даём новому потоку время
                 if (s.tried.indexOf(e.url) < 0) s.tried.push(e.url);
                 s.lastProgressAt = Date.now(); s.lastTime = -1; s.played = false; s.errorAt = 0;
+                if (s.iptv) s.hinted = false;   // новый адрес канала — можно снова сказать «подключаюсь»
                 // ручная смена качества пользователем — шаг 0 снова доступен для нового потока
             });
         } catch (e) { log('не подключился', e.message); }

@@ -21,6 +21,8 @@ RedirectMatch 404 /\.(?!well-known/)
     RewriteRule ^sunic\.js$ plugin.php [L]
     # запасное зеркало обновлений (адреса как у jsDelivr), см. gh.php
     RewriteRule ^gh/sunic007/(lampa-samsung|lampa-android)@(v[0-9]+\.[0-9]+\.[0-9]+|main)/(.+)$ gh.php?repo=$1&ref=$2&path=$3 [L,QSA]
+    # зеркало IPTV-плейлистов (iptv-org, Free-TV) с диск-кешем, см. iptv.php
+    RewriteRule ^iptv/([a-z]+)\.m3u$ iptv.php?l=$1 [L]
 </IfModule>
 
 # только чтение: сайт ничего не принимает (кроме GET/HEAD/OPTIONS)
@@ -43,6 +45,10 @@ RedirectMatch 404 /\.(?!well-known/)
     <FilesMatch "\.(json|html|php)$">
         Header set Cache-Control "no-cache"
     </FilesMatch>
+    # зеркало IPTV-плейлистов (iptv.php) ставит кеш сам — no-cache выше его перебивает, возвращаем
+    <If "%{REQUEST_URI} =~ m#^/iptv/#">
+        Header set Cache-Control "public, max-age=3600"
+    </If>
 </IfModule>
 
 # главная: строгая политика — только свои файлы и три адреса, откуда берётся версия (Lampa в /lampa/ — без неё)

@@ -618,9 +618,8 @@ function guardEnv(opt) {
     const ls = {}, store = { player: 'tizen', player_hls_method: 'application' }, plays = [];
     const w = { localStorage: opt.tizen ? { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); }, removeItem: k => { delete ls[k]; } } : { getItem: () => null, setItem() {} },
         addEventListener() {}, webapis: { avplay: av } };
-    const Lampa = { Noty: { show: t => notes.push(t) }, Player: { listener: { follow: follow('player') }, opened: () => true, playdata: () => (opt.playdata ? opt.playdata() : { url: 'http://cdn/1080.m3u8', quality: { '1080p': 'http://cdn/1080.m3u8', '720p': 'http://cdn/720.m3u8' } }), close() { events.push('close'); } },
+    const Lampa = { Noty: { show: t => notes.push(t) }, Player: { listener: { follow: follow('player') }, opened: () => true, playdata: () => ({ url: 'http://cdn/1080.m3u8', quality: { '1080p': 'http://cdn/1080.m3u8', '720p': 'http://cdn/720.m3u8' } }), close() { events.push('close'); } },
         PlayerVideo: { listener: { follow: follow('video') }, video: () => ({}), to() {} }, PlayerPanel: { listener: { follow: follow('panel'), send: (ev, d) => { if (opt.tizen) events.push(ev + ' ' + d.url); else throw new Error('нет'); } } }, SettingsApi: null };
-    if (opt.bsiptv) w.BSIptv = opt.bsiptv;                            // окно BSIptv — как в приложении (window.*)
     if (opt.tizen) {
         Lampa.Platform = { is: n => n === 'tizen' };
         Lampa.Storage = { field: k => store[k], set: (k, v) => { store[k] = v; } };
@@ -637,7 +636,7 @@ function guardEnv(opt) {
     vm.runInContext(fs.readFileSync(path.join(SRC, 'playerguard.js'), 'utf8') + ';this.M=BSGuard;', ctx);
     ctx.M.start();
     const fire = (k, d) => (H[k] || []).forEach(f => f(d));
-    return { M: ctx.M, clock, fire, notes, events, av, store, plays, ls, doc };
+    return { M: ctx.M, clock, fire, notes, events, av, store, plays, ls, doc, w, ctx };
 }
 {
     // Lampa ставит свой слушатель AVPlay; его onerror до сторожа не доходит — сторож берёт ошибку у AVPlay сам
@@ -730,35 +729,49 @@ function guardEnv(opt) {
 {
     // Канал не отвечает: переподключение → другой адрес того же канала (BSIptv) → закрытие
     const pd = { title: 'Tashkent HD', url: 'http://ch/1.m3u8', tv: true, iptv: true, quality: { auto: 'http://ch/1.m3u8' } };
-    let warmed = 0; const seen = [];
-    const g = guardEnv({ tizen: true, playdata: () => pd, bsiptv: {
+    let warmed = 0; const seen = [], ev = [], nt = [];
+    const bsiptv = {
         warm() { warmed++; },
         alt(name, url, tried) { seen.push(name + '|' + url + '|' + tried.join(','));
-            return url === 'http://ch/1.m3u8' && tried.indexOf('http://ch/2.m3u8') < 0 ? 'http://ch/2.m3u8' : null; }
-    } });
+            if (name !== 'Tashkent HD' || url !== 'http://ch/1.m3u8') return null;
+            for (const u of ['http://ch/2.m3u8', 'http://ch/3.m3u8']) if (tried.indexOf(u) < 0) return u;
+            return null; }
+    };
+    const g = guardEnv({ tizen: true });
+    g.w.BSIptv = bsiptv;
+    g.ctx.Lampa.Noty = { show: t => nt.push(t) };
+    // как в Lampa: send('quality') доходит и до слушателя панели — по нему сторож помнит перебранные адреса
+    g.ctx.Lampa.PlayerPanel.listener.send = (e, d) => { ev.push(e + ' ' + d.url); if (e === 'quality') g.fire('panel:quality', d); };
+    g.ctx.Lampa.Player.playdata = () => pd;
     g.fire('player:start', { title: 'Tashkent HD', url: 'http://ch/1.m3u8', tv: true, iptv: true }); g.clock.run(500);
-    t('канал: при старте строится индекс запасных адресов (BSIptv.warm)', warmed === 1);
+    t('канал: при старте строится индекс запасных адресов (BSIptv.warm)', warmed >= 1);
     g.fire('video:error', { fatal: true }); g.clock.run(3500);
     t('канал: первая беда — переподключение к тому же адресу',
-        g.events.indexOf('quality http://ch/1.m3u8') >= 0 && g.notes.some(n => /переподключаюсь/.test(n)) && g.events.indexOf('close') < 0);
-    g.fire('video:error', { fatal: true }); g.clock.run(3500);
+        ev.indexOf('quality http://ch/1.m3u8') >= 0 && nt.some(n => /переподключаюсь/.test(n)) && g.events.indexOf('close') < 0);
+    g.fire('video:error', { fatal: true }); g.clock.run(7000);
     t('канал: не помогло — другой адрес того же канала (название канала дошло до поиска)',
-        g.events.indexOf('quality http://ch/2.m3u8') >= 0 && g.notes.some(n => /другой источник/.test(n)) &&
-        seen.length === 1 && seen[0].indexOf('Tashkent HD|http://ch/1.m3u8|') === 0 && g.events.indexOf('close') < 0);
-    g.fire('video:error', { fatal: true }); g.clock.run(3500); g.clock.run(5000);
-    t('канал: адреса кончились — плеер закрывается с подсказкой',
-        g.events.some(e => e === 'close') && g.notes.some(n => /Канал не работает/.test(n)));
+        ev.indexOf('quality http://ch/2.m3u8') >= 0 && nt.some(n => /другой источник/.test(n)) &&
+        seen.length === 1 && seen[0] === 'Tashkent HD|http://ch/1.m3u8|http://ch/1.m3u8' && g.events.indexOf('close') < 0);
+    g.fire('video:error', { fatal: true }); g.clock.run(7000);
+    t('канал: не помог и второй адрес — пробуем третий', ev.indexOf('quality http://ch/3.m3u8') >= 0 && g.events.indexOf('close') < 0);
+    g.fire('video:error', { fatal: true }); g.clock.run(7000);
+    t('канал: адреса кончились — закрываем плеер с подсказкой', g.events.indexOf('close') >= 0 && nt.some(n => /Канал не работает/.test(n)));
 }
 {
     // Запасных адресов нет — как раньше: одно переподключение и закрытие
     const pd = { title: 'Solo', url: 'http://ch/9.m3u8', tv: true, iptv: true };
-    const g = guardEnv({ tizen: true, playdata: () => pd, bsiptv: { warm() {}, alt: () => null } });
+    const ev = [], nt = [];
+    const g = guardEnv({ tizen: true });
+    g.w.BSIptv = { warm() {}, alt: () => null };
+    g.ctx.Lampa.Noty = { show: t => nt.push(t) };
+    g.ctx.Lampa.PlayerPanel.listener.send = (e, d) => { ev.push(e + ' ' + d.url); if (e === 'quality') g.fire('panel:quality', d); };
+    g.ctx.Lampa.Player.playdata = () => pd;
     g.fire('player:start', { title: 'Solo', url: 'http://ch/9.m3u8', tv: true, iptv: true }); g.clock.run(500);
-    g.fire('video:error', { fatal: true }); g.clock.run(3500);
+    g.fire('video:error', { fatal: true }); g.clock.run(7000);
     t('канал: без запасных адресов — только переподключение к тому же адресу',
-        g.events.indexOf('quality http://ch/9.m3u8') >= 0 && g.events.length === 1);
-    g.fire('video:error', { fatal: true }); g.clock.run(3500); g.clock.run(5000);
-    t('канал: без запасных адресов — дальше закрытие', g.events.filter(e => e === 'close').length === 1);
+        ev.indexOf('quality http://ch/9.m3u8') >= 0 && ev.length === 1);
+    g.clock.run(7000); g.clock.run(5000);
+    t('канал: без запасных адресов — дальше закрытие', g.events.filter(e => e === 'close').length === 1 && nt.some(n => /Канал не работает/.test(n)));
 }
 let G = guardEnv();
 G.fire('player:start', { url: 'http://cdn/1080.m3u8' }); G.clock.run(1000);
@@ -3936,23 +3949,75 @@ async function serviceTests() {
     ctx.BSTelegram.hasOwn = () => true;
     t('общий бот: на ТВ подключили свой бот — от общего отвязываемся (один ТВ — один бот)', B._ownFirst() === true && !('bs_sb_on' in store));
 }
-/* ---- bsfeatures.js: IPTV — открытые плейлисты в расширение IPTV ---- */
+/* ---- bsfeatures.js: IPTV — зеркало каталогов, подсадка списка, запасные адреса ---- */
 {
     let saved = [{ id: 'mine', custom: true, url: 'http://x/my.m3u', name: 'Мой' }];
-    const params = {}, plugins = [];
+    const params = {}, plugins = [], lsm = {};
     const ctx = { console: { log() {} }, JSON, Math, Date, String, Object, Array, setTimeout: () => 0, setInterval: () => 0, navigator: { userAgent: 'x' }, XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }), Node: Object.assign(function () {}, { prototype: { appendChild() {} } }),
         document: { querySelectorAll: () => [], documentElement: {}, addEventListener() {} },
         Lampa: { Storage: { get: (k, d) => (k === 'iptv_playlist_custom' ? JSON.parse(JSON.stringify(saved)) : k === 'plugins' ? plugins : JSON.parse(d || 'null')), set: (k, v) => { if (k === 'iptv_playlist_custom') saved = v; else params[k] = v; } }, Noty: { show() {} } } };
-    ctx.window = ctx; ctx.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+    ctx.window = ctx;
+    ctx.localStorage = { getItem: k => (k in lsm ? lsm[k] : null), setItem: (k, v) => { lsm[k] = String(v); }, removeItem: k => { delete lsm[k]; } };
     vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bsfeatures.js'), 'utf8') + ';this.M=BSFeatures;', ctx);
     const F = ctx.M;
-    t('IPTV: плейлисты — открытые каталоги по https (iptv-org, Free-TV)', F._iptvLists.length >= 10 && F._iptvLists.every(x => /^https:\/\/(iptv-org\.github\.io|raw\.githubusercontent\.com\/Free-TV)\//.test(x[2])));
-    t('IPTV: выбрали — добавлен в формате расширения IPTV, свой плейлист человека на месте', F._iptvToggle('uz') === true &&
-        saved.length === 2 && saved[0].id === 'mine' && saved[1].id === 'sunic-iptv-uz' && saved[1].custom === true && /countries\/uz\.m3u$/.test(saved[1].url) && saved[1].name === 'Узбекистан');
+    t('IPTV: плейлисты — наше зеркало sunic.stream, оригинал (iptv-org, Free-TV) — запасной адрес',
+        F._iptvLists.length >= 10 && F._iptvLists.every(x =>
+            /^[a-z]+$/.test(x[0]) && x[2] === 'https://sunic.stream/iptv/' + x[0] + '.m3u' &&
+            /^https:\/\/(iptv-org\.github\.io|raw\.githubusercontent\.com\/Free-TV)\//.test(x[4])));
+    t('IPTV: по умолчанию два списка (Узбекистан и русский) — остальное кнопкой в настройках',
+        JSON.stringify(F._iptvDefault) === '["uz","rus"]' && F._iptvDefault.every(k => F._iptvLists.some(x => x[0] === k)));
+    t('IPTV: выбрали — добавлен с зеркала, формат расширения на месте, свой плейлист человека сохранён', F._iptvToggle('uz') === true &&
+        saved.length === 2 && saved[0].id === 'mine' && saved[1].id === 'sunic-iptv-uz' && saved[1].custom === true &&
+        saved[1].url === 'https://sunic.stream/iptv/uz.m3u' && saved[1].name === 'Узбекистан');
     t('IPTV: добавленный обновляется каждый день (параметры расширения)', params['iptv_playlist_params_sunic-iptv-uz'] && params['iptv_playlist_params_sunic-iptv-uz'].update === 'day');
     t('IPTV: «каждый день» ставим один раз — выбор человека потом не перебиваем', F._iptvFix({ update: 'none', update_time: 5 }).update === 'day' && F._iptvFix({ update: 'week', sunic: 1 }) === null);
+    {   // время обновления: не ноль и не в будущем — иначе IPTV считает параметры просроченными и качает на глазах
+        const t0 = Date.now(), pf = F._iptvFix({ update: 'none' }), t1 = Date.now();
+        t('IPTV: время обновления — не нулевое и не из будущего', pf.update_time >= t0 && pf.update_time <= t1);
+    }
+    t('IPTV: зеркало молчит — только свои плейлисты переписываем на оригиналы',
+        F._iptvSource('orig') === undefined && saved[1].url === 'https://iptv-org.github.io/iptv/countries/uz.m3u' && saved[0].url === 'http://x/my.m3u' && lsm.bs_iptv_src === 'orig');
+    t('IPTV: решение на сессию — повторно не переписываем', (F._iptvSource('orig'), saved[1].url === 'https://iptv-org.github.io/iptv/countries/uz.m3u'));
+    t('IPTV: зеркало оживело — возвращаем свои плейлисты обратно',
+        F._iptvSource('mirror') === undefined && saved[1].url === 'https://sunic.stream/iptv/uz.m3u' && saved[0].url === 'http://x/my.m3u' && lsm.bs_iptv_src === 'mirror');
+    t('IPTV: при выбранном фолбэке новый плейлист тоже на оригинал', (F._iptvSource('orig'), F._iptvToggle('rus') === true) &&
+        saved[2].url === 'https://iptv-org.github.io/iptv/languages/rus.m3u');
+    F._iptvToggle('rus'); F._iptvSource('mirror');
     t('IPTV: разделы по-русски, сборные — через точку', F._iptvGroup('Kids') === 'Детские' && F._iptvGroup('Entertainment;Music') === 'Развлечения · Музыка' && F._iptvGroup('Undefined') === 'Разное' && F._iptvGroup('Мои') === 'Мои');
     t('IPTV: названия каналов без служебных пометок', F._iptvChannel('Biz Cinema (1080p) [Not 24/7]') === 'Biz Cinema' && F._iptvChannel('Russia 24 [Geo-blocked]') === 'Russia 24' && F._iptvChannel('Channel 5') === 'Channel 5');
+    /* Разбор m3u — как у Parser расширения: подсылаем готовый список в базу расширения (lampa_cub_iptv),
+     * чтобы открытие не качало и не разбирало 137–537 КБ на главном потоке ТВ. */
+    const m3u = [
+        '#EXTM3U x-tvg-url="http://epg.example/g.xml"',
+        '#EXTINF:-1 tvg-id="TAS.tv" tvg-logo="https://img.example/l.png" group-title="Uzbekistan",Tashkent HD (1080p) ⓢ',
+        'http://host/tash.m3u8?User-Agent=VLC|User-Agent=VLC',
+        '#EXTINF:-1 tvg-rec="5" group-title="News",Новости, мир',
+        '#EXTGRP:Новости',
+        'rtmp://wrong/stream',
+        'http://host/news.m3u8',
+        '#EXTINF:-1 group-title="Uzbekistan",Без ссылки'
+    ].join('\n');
+    const p = F._iptvParse(m3u);
+    t('IPTV: разбор — формат расширения (name, playlist.menu/channels, secuses)',
+        !!p && p.secuses === true && p.name === '' && p.playlist.menu[0].name === '' && p.playlist.menu[0].count === 3);
+    t('IPTV: разбор — имя после последней запятой, пометки вычищены, URL без |User-Agent, только http-логотипы',
+        p.playlist.channels[0].name === 'Tashkent HD (1080p)' &&
+        p.playlist.channels[0].url === 'http://host/tash.m3u8?User-Agent=VLC' &&
+        p.playlist.channels[0].logo === 'https://img.example/l.png' && p.playlist.channels[0].id === 'TAS.tv');
+    t('IPTV: разбор — tvg-rec стал catchup, #EXTGRP задал раздел, ртмп-строка в raw, а не в ссылку',
+        p.playlist.channels[1].catchup.type === 'default' && p.playlist.channels[1].catchup.days === '5' &&
+        p.playlist.channels[1].group === 'Новости' && p.playlist.channels[1].name === 'мир' &&
+        p.playlist.channels[1].url === 'http://host/news.m3u8');
+    t('IPTV: разбор — разделы по каналам, последний #EXTINF без ссылки тоже в списке',
+        p.playlist.channels.length === 3 && p.playlist.channels[2].url === undefined &&
+        p.playlist.menu.some(m => m.name === 'Uzbekistan' && m.count === 2) && p.playlist.menu.some(m => m.name === 'Новости' && m.count === 1));
+    t('IPTV: разбор — не m3u не подсылаем', F._iptvParse('мусор') === null && F._iptvParse('') === null);
+    /* Запасные адреса канала — для сторожа плеера (переподключение → другой адрес → закрытие). */
+    F._iptvAltIndex({ 'tashkent hd': ['http://a/1.m3u8', 'http://a/2.m3u8'], 'solo': ['http://b/1.m3u8'] });
+    t('IPTV: запасной адрес — другой адрес того же канала (название без учёта регистра и пробелов)',
+        F._iptvAlt('Tashkent HD', 'http://a/1.m3u8', []) === 'http://a/2.m3u8' && F._iptvAlt(' TASHKENT   hd ', 'http://a/1.m3u8', []) === 'http://a/2.m3u8');
+    t('IPTV: запасной адрес — уже перебранные не возвращаем, один адрес — нечего предлагать',
+        F._iptvAlt('Tashkent HD', 'http://a/1.m3u8', ['http://a/2.m3u8']) === null && F._iptvAlt('Solo', 'http://b/1.m3u8', []) === null);
     t('IPTV: расширение не установлено — так и говорим', F._iptvInstalled() === false);
     plugins.push({ url: 'https://cub.red/plugin/iptv', status: 1 });
     t('IPTV: расширение установлено — видим его', F._iptvInstalled() === true);
@@ -3967,9 +4032,10 @@ async function serviceTests() {
         c2.window = c2; c2.localStorage = { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); }, removeItem: k => { delete ls[k]; } };
         vm.createContext(c2); vm.runInContext(fs.readFileSync(path.join(SRC, 'bsfeatures.js'), 'utf8') + ';this.M=BSFeatures;', c2);
         c2.M._iptvAuto();
-        t('IPTV по умолчанию: расширение ставится, все открытые плейлисты уже внутри, свой на месте',
+        t('IPTV по умолчанию: расширение ставится, два списка уже внутри (с зеркала), свой на месте',
             added.length === 1 && added[0].url === 'https://cub.red/plugin/iptv' && added[0].status === 1 &&
-            list.length === 1 + c2.M._iptvLists.length && list[0].id === 'mine' && list[1].id === 'sunic-iptv-uz');
+            list.length === 1 + c2.M._iptvDefault.length && list[0].id === 'mine' && list[1].id === 'sunic-iptv-uz' &&
+            list[1].url === 'https://sunic.stream/iptv/uz.m3u' && list[2].id === 'sunic-iptv-rus');
         list = list.slice(0, 2); added.length = 0; c2.M._iptvAuto();
         t('IPTV по умолчанию: открывается сразу со списком «На русском»', JSON.stringify(book) === '{"playlist":"sunic-iptv-rus"}');
         t('IPTV по умолчанию: только один раз — убранное человеком не возвращаем', added.length === 0 && list.length === 2);

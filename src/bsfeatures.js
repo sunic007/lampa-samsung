@@ -276,25 +276,40 @@ var BSFeatures = (function () {
      * Расширение IPTV (cub.red/plugin/iptv) приходит без плейлистов. Свои оно хранит в iptv_playlist_custom —
      * {id, custom, url, name}, так же, как его кнопка «Добавить плейлист». Здесь — выбор из открытых каталогов
      * бесплатных каналов: iptv-org (страны, языки, темы) и Free-TV (только официальные бесплатные трансляции).
-     * Наши записи — с id «sunic-iptv-…»: повторное нажатие убирает только их, чужие плейлисты не трогаем. */
+     * Наши записи — с id «sunic-iptv-…»: повторное нажатие убирает только их, чужие плейлисты не трогаем.
+     *
+     * Адреса каталогов берём со своего зеркала (sunic.stream/iptv/<ключ>.m3u): сервер отдаёт их из кеша за один
+     * запрос, github.com из наших стран открывается медленно и иногда не открывается вовсе. Зеркало — не точка
+     * отказа: не ответило — качаем оригинал (правило «запас в обе стороны»).
+     *
+     * Качает и разбирает список расширение IPTV само. На телевизоре это заметно: скачать 137–537 КБ и разобрать
+     * их на главном потоке — несколько секунд тишины после нажатия. Поэтому наши списки мы разбираем сами (пока
+     * телевизор свободен) и кладём готовое в базу расширения — оно открывает плейлист мгновенно. */
     var IPTV_ORG = 'https://iptv-org.github.io/iptv/';
-    // [ключ, название, адрес, подпись на плитке]
+    var IPTV_MIRROR = 'https://sunic.stream/iptv/';
+    var IPTV_MIRRORS = ['cub.red', 'cub.best'];             // запасные домены, если основной не отвечает
+    // [ключ, название, зеркало, подпись на плитке, оригинал (запасной адрес)]
     var IPTV_LISTS = [
-        ['uz', 'Узбекистан', IPTV_ORG + 'countries/uz.m3u', 'Каналы страны'],
-        ['rus', 'На русском', IPTV_ORG + 'languages/rus.m3u', 'Все страны'],
-        ['ru', 'Россия', IPTV_ORG + 'countries/ru.m3u', 'Каналы страны'],
-        ['kz', 'Казахстан', IPTV_ORG + 'countries/kz.m3u', 'Каналы страны'],
-        ['tr', 'Турция', IPTV_ORG + 'countries/tr.m3u', 'Каналы страны'],
-        ['movies', 'Фильмы', IPTV_ORG + 'categories/movies.m3u', 'Весь мир'],
-        ['series', 'Сериалы', IPTV_ORG + 'categories/series.m3u', 'Весь мир'],
-        ['kids', 'Детские', IPTV_ORG + 'categories/kids.m3u', 'Весь мир'],
-        ['animation', 'Мультфильмы', IPTV_ORG + 'categories/animation.m3u', 'Весь мир'],
-        ['documentary', 'Документальные', IPTV_ORG + 'categories/documentary.m3u', 'Весь мир'],
-        ['sports', 'Спорт', IPTV_ORG + 'categories/sports.m3u', 'Весь мир'],
-        ['music', 'Музыка', IPTV_ORG + 'categories/music.m3u', 'Весь мир'],
-        ['news', 'Новости', IPTV_ORG + 'categories/news.m3u', 'Весь мир'],
-        ['freetv', 'Free-TV', 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8', 'Официальные бесплатные, весь мир']
+        ['uz', 'Узбекистан', IPTV_MIRROR + 'uz.m3u', 'Каналы страны', IPTV_ORG + 'countries/uz.m3u'],
+        ['rus', 'На русском', IPTV_MIRROR + 'rus.m3u', 'Все страны', IPTV_ORG + 'languages/rus.m3u'],
+        ['ru', 'Россия', IPTV_MIRROR + 'ru.m3u', 'Каналы страны', IPTV_ORG + 'countries/ru.m3u'],
+        ['kz', 'Казахстан', IPTV_MIRROR + 'kz.m3u', 'Каналы страны', IPTV_ORG + 'countries/kz.m3u'],
+        ['tr', 'Турция', IPTV_MIRROR + 'tr.m3u', 'Каналы страны', IPTV_ORG + 'countries/tr.m3u'],
+        ['movies', 'Фильмы', IPTV_MIRROR + 'movies.m3u', 'Весь мир', IPTV_ORG + 'categories/movies.m3u'],
+        ['series', 'Сериалы', IPTV_MIRROR + 'series.m3u', 'Весь мир', IPTV_ORG + 'categories/series.m3u'],
+        ['kids', 'Детские', IPTV_MIRROR + 'kids.m3u', 'Весь мир', IPTV_ORG + 'categories/kids.m3u'],
+        ['animation', 'Мультфильмы', IPTV_MIRROR + 'animation.m3u', 'Весь мир', IPTV_ORG + 'categories/animation.m3u'],
+        ['documentary', 'Документальные', IPTV_MIRROR + 'documentary.m3u', 'Весь мир', IPTV_ORG + 'categories/documentary.m3u'],
+        ['sports', 'Спорт', IPTV_MIRROR + 'sports.m3u', 'Весь мир', IPTV_ORG + 'categories/sports.m3u'],
+        ['music', 'Музыка', IPTV_MIRROR + 'music.m3u', 'Весь мир', IPTV_ORG + 'categories/music.m3u'],
+        ['news', 'Новости', IPTV_MIRROR + 'news.m3u', 'Весь мир', IPTV_ORG + 'categories/news.m3u'],
+        ['freetv', 'Free-TV', IPTV_MIRROR + 'freetv.m3u', 'Официальные бесплатные, весь мир', 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8']
     ];
+    /* По умолчанию кладём два списка: свой (Узбекистан) и русский — человек открывает IPTV и сразу видит каналы.
+     * Остальные 12 — кнопкой в настройках: лишнее не качает трафик и не засоряет список. */
+    var IPTV_DEFAULT = ['uz', 'rus'];
+    var IPTV_DAY = 24 * 3600 * 1000;
+    function iptvUrl(it, orig) { return orig ? it[4] : it[2]; }
     function iptvList() {
         var l = [];
         try { l = Lampa.Storage.get('iptv_playlist_custom', '[]'); } catch (e) {}
@@ -307,7 +322,7 @@ var BSFeatures = (function () {
         for (i = 0; i < IPTV_LISTS.length; i++) if (IPTV_LISTS[i][0] === key) it = IPTV_LISTS[i];
         if (!it) return false;
         var at = iptvHas(list, key), added = at < 0;
-        if (added) list.push({ id: 'sunic-iptv-' + key, custom: true, url: it[2], name: it[1] });
+        if (added) list.push({ id: 'sunic-iptv-' + key, custom: true, url: iptvUrl(it, lsGet('bs_iptv_src') === 'orig'), name: it[1] });
         else list.splice(at, 1);
         try { Lampa.Storage.set('iptv_playlist_custom', list); } catch (e) {}
         if (added) iptvFresh();
@@ -320,7 +335,7 @@ var BSFeatures = (function () {
         p = p && typeof p === 'object' ? p : {};
         if (p.sunic) return null;
         p.update = 'day'; p.sunic = 1;
-        if (!p.update_time) p.update_time = 0;                      // давно не обновлялся — скачает при открытии
+        if (!p.update_time) p.update_time = Date.now();             // не 0: расширение считает 0 просроченным и качает плейлист при каждом открытии
         return p;
     }
     function iptvFresh() {
@@ -330,6 +345,7 @@ var BSFeatures = (function () {
         for (i = 0; i < mine.length; i++) {
             try { var k = 'iptv_playlist_params_' + mine[i], p = iptvFix(Lampa.Storage.get(k, '{}')); if (p) Lampa.Storage.set(k, p); } catch (e) {}
         }
+        iptvSeed();
         try {
             var Base = window.indexedDB || window.webkitIndexedDB;
             if (!Base) return;
@@ -359,14 +375,279 @@ var BSFeatures = (function () {
         } catch (e) {}
         return false;
     }
-    /* По умолчанию (один раз, метка bs_iptv_auto): ставим расширение IPTV и кладём в него все открытые плейлисты —
-     * человек открывает IPTV и сразу выбирает. Убрал расширение или плейлист сам — больше не возвращаем. */
+
+    /* ---------- IPTV: зеркало каталогов ----------
+     * Решение — на сессию (ключ bs_iptv_src): «mirror» — качаем с нашего сервера, «orig» — с github. Переписываем
+     * адреса только у наших плейлистов (id sunic-iptv-…), чужие не трогаем. */
+
+    function iptvSourceSet(src) {
+        if (lsGet('bs_iptv_src') === src) return;                  // уже так — не дёргаем Storage зря
+        var list = iptvList(), i, at, it;
+        for (i = 0; i < list.length; i++) {
+            if (!list[i] || !/^sunic-iptv-/.test(String(list[i].id))) continue;
+            at = iptvByKey(String(list[i].id).replace(/^sunic-iptv-/, ''));
+            it = at >= 0 ? IPTV_LISTS[at] : null;
+            if (it) list[i].url = iptvUrl(it, src === 'orig');
+        }
+        try { Lampa.Storage.set('iptv_playlist_custom', list); } catch (e) {}
+        lsSet('bs_iptv_src', src);
+    }
+    /** Наш сервер отвечает? Нет — переходим на оригиналы (дальше за сессию не проверяем). */
+    function iptvProbe() {
+        if (lsGet('bs_iptv_probe')) return;
+        var req;
+        try { req = new Lampa.Reguest(); } catch (e) { return; }
+        var done = false;
+        var finish = function (ok) {
+            if (done) return;
+            done = true;
+            lsSet('bs_iptv_probe', '1');
+            if (!ok) iptvSourceSet('orig');
+        };
+        try {
+            req.timeout(8000);
+            req.silent(IPTV_MIRROR + 'uz.m3u', function () { finish(true); }, function () { finish(false); }, false, { dataType: 'text' });
+            setTimeout(function () { finish(false); }, 12000);     // запрос завис — не ждём вечно
+        } catch (e) { finish(false); }
+    }
+    /** Ссылка для скачивания: зеркало, а не ответило — оригинал (в том числе чужие зеркала cub.red/cub.best). */
+    function iptvFetchText(url, ok, fail) {
+        var req;
+        try {
+            req = new Lampa.Reguest();
+            req.timeout(25000);
+            req.silent(url, function (t) { ok(String(t == null ? '' : t)); }, function () { fail(); }, false, { dataType: 'text' });
+        } catch (e) { fail(); }
+    }
+
+    /* ---------- IPTV: разбор m3u и подсадка списка в базу расширения ----------
+     * Повторяем ровно то, что делает Parser расширения: имя — после последней запятой, tvg-rec → «догоняющее ТВ»,
+     * #EXTGRP задаёт раздел, хвост «|User-Agent=…» отрезаем, играем только http/https. Результат — объект записи
+     * расширения: {name:'', playlist:{menu, channels}, secuses:true}. */
+
+    function iptvValidUrl(u) { return /^https?:\/\/\S+$/i.test(String(u || '')); }
+    function iptvAttr(line, name) {
+        var m = new RegExp(name + '="(.*?)"', 'gi').exec(line);
+        return m && m[1] ? m[1] : '';
+    }
+    function iptvCatchup(line) {
+        var t = iptvAttr(line, 'catchup'), d = iptvAttr(line, 'catchup-days'), r;
+        if (!d) { r = /tvg-rec="(\d+)"/i.exec(line); if (r) d = r[1]; }
+        if (!t && d) t = 'default';
+        return { type: t, days: d, source: iptvAttr(line, 'catchup-source') };
+    }
+    function iptvParseInit(text) {
+        return { lines: String(text == null ? '' : text).split('\n'), i: 1, head: '', out: [], cur: null };
+    }
+    /** Одна строка для парсера. После каждой — st.i++; строки можно давать кусками (см. iptvParseRun). */
+    function iptvParseLine(st) {
+        var line = String(st.lines[st.i] || '').replace(/\r$/, '').replace(/^\s+|\s+$/g, '');
+        var u, g, name;
+        if (line.indexOf('#EXTINF:') === 0) {
+            name = (line.split(',').pop() || '').replace(/^\s+|\s+$/g, '');
+            st.cur = {
+                id: iptvAttr(line, 'tvg-id'),
+                name: name,
+                logo: iptvAttr(line, 'tvg-logo'),
+                group: iptvAttr(line, 'group-title'),
+                url: undefined,
+                raw: line,
+                catchup: iptvCatchup(line),
+                timeshift: iptvAttr(line, 'timeshift')
+            };
+        } else if (line.indexOf('#EXTGRP:') === 0) {
+            g = line.slice(8).replace(/"/g, '').replace(/^\s+|\s+$/g, '');
+            if (g && st.cur) { st.cur.group = g; st.cur.raw += '\n' + line; }
+        } else if (line.charAt(0) !== '#') {
+            u = line.split('|')[0];                                // хвост |User-Agent=… расширение отрезает
+            if (u && iptvValidUrl(u)) { if (st.cur) { st.cur.url = u; st.out.push(st.cur); } st.cur = null; }
+            else if (st.cur) st.cur.raw += '\n' + line;            // не ссылка — служебная строка внутри канала
+        } else if (st.cur) {
+            st.cur.raw += '\n' + line;
+        }
+        st.i++;
+    }
+    /** Итог разбора — ровно то, что кладём в базу: {name, playlist:{menu, channels}, secuses:true}. */
+    function iptvParseFinish(st) {
+        if (st.cur) st.out.push(st.cur);                           // последний #EXTINF без ссылки — у расширения он тоже в списке
+        if (!st.out.length) return null;
+        var channels = [], menu = [{ name: '', count: st.out.length }], i, j, ch, it, name, at;
+        for (i = 0; i < st.out.length; i++) {
+            it = st.out[i];
+            name = String(it.name || '').replace(/ \((\+\d+)\)/g, ' $1').replace(/\s+(\s|ⓢ|ⓖ|ⓥ|ⓞ|Ⓢ|Ⓖ|Ⓥ|Ⓞ)/g, ' ').replace(/^\s+|\s+$/g, '');
+            ch = { id: it.id || null, name: name, logo: /^http/i.test(it.logo || '') ? it.logo : '', group: it.group || '', url: it.url || undefined,
+                catchup: { type: it.catchup.type || '', days: it.catchup.days || '', source: it.catchup.source || '' }, timeshift: it.timeshift || '' };
+            channels.push(ch);
+            at = -1;
+            for (j = 0; j < menu.length; j++) if (menu[j].name === ch.group) { at = j; break; }
+            if (at >= 0) menu[at].count++; else menu.push({ name: ch.group, count: 1 });
+        }
+        return { name: '', playlist: { menu: menu, channels: channels }, secuses: true };
+    }
+    function iptvParse(text) {
+        var st = iptvParseInit(text);
+        if (!/^#EXTM3U/i.test(String(st.lines[0] || ''))) return null;      // не m3u — не подсылаем
+        var head = String(st.lines[0] || '');
+        if (head.indexOf('catchup') < 0) st.noCatchup = true;
+        while (st.i < st.lines.length) iptvParseLine(st);
+        return iptvParseFinish(st);
+    }
+    /** Разбор кусками: столько строк за такт, между тактами отдаём поток ТВ (setTimeout 0). */
+    function iptvParseRun(st, step, done) {
+        var end = st.i + (step || 4000);
+        while (st.i < st.lines.length && st.i < end) iptvParseLine(st);
+        if (st.i < st.lines.length) return setTimeout(function () { iptvParseRun(st, step, done); }, 0);
+        done(iptvParseFinish(st));
+    }
+
+    /* Подсадка: разбираем наш список и кладём готовое в базу расширения, чтобы открытие было мгновенным.
+     * Своё не трогаем: есть свежая запись (моложе 20,4 ч) — расширение её и возьмёт, ничего не делаем.
+     * Не получилось — молча уходим: расширение скачает и разберёт список само, как раньше. */
+
+    function iptvSeedOne(it, cb) {
+        if (!it || !it.length) return cb();
+        var key = it[0], id = 'sunic-iptv-' + key, url = iptvUrl(it, lsGet('bs_iptv_src') === 'orig');
+        var Base = window.indexedDB || window.webkitIndexedDB;
+        if (!Base) return cb();
+        var req;
+        try { req = Base.open('lampa_cub_iptv'); } catch (e) { return cb(); }
+        req.onerror = function () { cb(); };
+        req.onsuccess = function () {
+            var db = req.result;
+            try {
+                if (!db.objectStoreNames.contains('playlist') || !db.objectStoreNames.contains('params')) return cb(db.close());
+                var tx = db.transaction(['playlist', 'params'], 'readonly'), op = tx.objectStore('playlist').get(id), oq = tx.objectStore('params').get(id);
+                var fresh = false;
+                var check = function () {
+                    if (!(op.ready && oq.ready)) return;
+                    try {
+                        var rec = op.result, par = oq.result;
+                        fresh = !!(rec && rec.value && par && par.value && par.value.update_time &&
+                            Date.now() - par.value.update_time < IPTV_DAY * 0.85);   // расширение само переиспользует такую запись
+                    } catch (e) {}
+                    if (fresh) return cb(db.close());
+                    db.close();
+                    iptvFetchText(url, function (text) {
+                        var rec2 = iptvParse(text);
+                        if (!rec2) return cb();
+                        iptvSeedWrite(id, rec2, cb);
+                    }, function () { cb(); });
+                };
+                op.ready = oq.ready = false;
+                op.onsuccess = oq.onsuccess = function () { this.ready = true; check(); };
+                op.onerror = oq.onerror = function () { this.ready = true; check(); };
+            } catch (e) { cb(); try { db.close(); } catch (e2) {} }
+        };
+    }
+    function iptvSeedWrite(id, rec, cb) {
+        var Base = window.indexedDB || window.webkitIndexedDB;
+        if (!Base) return cb();
+        var req;
+        try { req = Base.open('lampa_cub_iptv'); } catch (e) { return cb(); }
+        req.onerror = function () { cb(); };
+        req.onsuccess = function () {
+            var db = req.result;
+            try {
+                if (!db.objectStoreNames.contains('playlist') || !db.objectStoreNames.contains('params')) return cb(db.close());
+                var tx = db.transaction(['playlist', 'params'], 'readwrite'), now = Date.now();
+                tx.objectStore('playlist').put({ key: id, value: rec, time: now });
+                tx.objectStore('params').put({ key: id, value: { update: 'day', update_time: now, sunic: 1 }, time: now });
+                tx.oncomplete = function () { try { db.close(); } catch (e) {} iptvAltOff(); cb(); };
+                tx.onerror = tx.onabort = function () { try { db.close(); } catch (e) {} cb(); };
+            } catch (e) { cb(); try { db.close(); } catch (e2) {} }
+        };
+    }
+    var iptvSeedQueue = null, iptvSeeded = false;
+    function iptvSeed() {
+        if (iptvSeeded) return;
+        var list = iptvList(), mine = [], i, at;
+        for (i = 0; i < list.length; i++) if (list[i] && /^sunic-iptv-/.test(String(list[i].id))) mine.push(list[i]);
+        if (!mine.length) return;
+        iptvSeeded = true;
+        iptvSeedQueue = mine;
+        iptvSeedNext();
+    }
+    /** По одному списку за раз и с паузой 3–12 с: сервер не заваливаем — обновление «каждый день» само докачает остальное. */
+    function iptvSeedNext() {
+        var it = iptvSeedQueue && iptvSeedQueue.shift();
+        if (!it) { iptvSeedQueue = null; return; }
+        iptvSeedOne(IPTV_LISTS[iptvByKey(String(it.id).replace(/^sunic-iptv-/, ''))], function () {
+            setTimeout(iptvSeedNext, 3000 + Math.round(Math.random() * 9000));
+        });
+    }
+
+    /* ---------- IPTV: запасные адреса канала ----------
+     * Один и тот же канал в разных списках играет по разным адресам: если поток не отвечает, сторож пробует
+     * другой адрес того же канала, прежде чем закрыть плеер. Индекс «название → адреса» собираем из записей
+     * расширения один раз за сессию (первый канал). */
+
+    var IPTV_ALT = null, iptvAltDone = false;
+    function iptvNormName(n) {
+        return String(n || '').toLowerCase().replace(/[\u00A9\u00AE\u2122]/g, '').replace(/^\s+|\s+$/g, '').replace(/\s+/g, ' ');
+    }
+    function iptvAltOff() { IPTV_ALT = null; iptvAltDone = false; }         // после перезаписи списков индекс пересоберём
+    function iptvAltWarm() {
+        if (iptvAltDone) return;
+        iptvAltDone = true;
+        var list = iptvList(), ids = [], i, map = {};
+        for (i = 0; i < list.length; i++) if (list[i] && /^sunic-iptv-/.test(String(list[i].id))) ids.push(list[i].id);
+        if (ids.length < 2) { IPTV_ALT = map; return; }                    // один список — запасных адресов нет
+        var Base = window.indexedDB || window.webkitIndexedDB;
+        if (!Base) { IPTV_ALT = map; return; }
+        var req;
+        try { req = Base.open('lampa_cub_iptv'); } catch (e) { IPTV_ALT = map; return; }
+        req.onerror = function () { IPTV_ALT = map; };
+        req.onsuccess = function () {
+            var db = req.result;
+            try {
+                if (!db.objectStoreNames.contains('playlist')) { db.close(); IPTV_ALT = map; return; }
+                var tx = db.transaction('playlist', 'readonly'), st = tx.objectStore('playlist'), left = ids.length;
+                var addAll = function () {
+                    if (--left > 0) return;
+                    IPTV_ALT = map;
+                    try { db.close(); } catch (e) {}
+                };
+                ids.forEach(function (id) {
+                    var g = st.get(id);
+                    g.onsuccess = function () {
+                        try {
+                            var rec = g.result && g.result.value, ch = rec && rec.playlist && rec.playlist.channels;
+                            if (ch) for (var j = 0; j < ch.length; j++) {
+                                var k = iptvNormName(ch[j].name), u = ch[j].url;
+                                if (!k || !u || !/^https?:\/\//i.test(u)) continue;
+                                if (!map[k]) map[k] = [];
+                                if (map[k].indexOf(u) < 0) map[k].push(u);
+                                if (map[k].length > 4) map[k].length = 4;          // хватит пары-трёх попыток
+                            }
+                        } catch (e) {}
+                        addAll();
+                    };
+                    g.onerror = addAll;
+                });
+            } catch (e) { try { db.close(); } catch (e2) {} IPTV_ALT = map; }
+        };
+    }
+    /** Другой адрес того же канала (по названию), кроме уже перебранных; такого нет — null. */
+    function iptvAlt(name, url, tried) {
+        if (!IPTV_ALT) return null;
+        var a = IPTV_ALT[iptvNormName(name)], i;
+        if (!a || a.length < 2) return null;
+        for (i = 0; i < a.length; i++) if (a[i] !== url && (!tried || tried.indexOf(a[i]) < 0)) return a[i];
+        return null;
+    }
+    function iptvAltIndex(map) { IPTV_ALT = map; iptvAltDone = true; }        // готовый индекс (в тестах)
+    /* По умолчанию (один раз, метка bs_iptv_auto): ставим расширение IPTV и кладём в него два списка — Узбекистан
+     * и русский (IPTV_DEFAULT): человек открывает IPTV и сразу видит каналы, без настроек. Остальные списки — кнопкой
+     * в настройках. Убрал расширение или плейлист сам — больше не возвращаем. */
     function iptvAuto() {
         if (lsGet('bs_iptv_auto')) return;
         var l = iptvList(), i, had = false;
         for (i = 0; i < l.length; i++) if (l[i] && /^sunic-iptv-/.test(l[i].id)) had = true;
         if (!had) {
-            for (i = 0; i < IPTV_LISTS.length; i++) l.push({ id: 'sunic-iptv-' + IPTV_LISTS[i][0], custom: true, url: IPTV_LISTS[i][2], name: IPTV_LISTS[i][1] });
+            for (i = 0; i < IPTV_DEFAULT.length; i++) {
+                var at = iptvByKey(IPTV_DEFAULT[i]);
+                if (at >= 0) l.push({ id: 'sunic-iptv-' + IPTV_DEFAULT[i], custom: true, url: iptvUrl(IPTV_LISTS[at], lsGet('bs_iptv_src') === 'orig'), name: IPTV_LISTS[at][1] });
+            }
             try { Lampa.Storage.set('iptv_playlist_custom', l); } catch (e) {}
         }
         // как в привычных IPTV-плеерах: открыл — сразу каналы (на русском), сменить список — «Назад» в IPTV
@@ -406,7 +687,7 @@ var BSFeatures = (function () {
         return String(t || '').replace(/\s*\[(Not 24\/7|Geo-blocked)\]/gi, '').replace(/\s*\((\d{3,4}[pi]|\d+K)\)/gi, '').replace(/^\s+|\s+$/g, '') || t;
     }
     function iptvByUrl(url) {
-        for (var i = 0; i < IPTV_LISTS.length; i++) if (IPTV_LISTS[i][2] === url) return i;
+        for (var i = 0; i < IPTV_LISTS.length; i++) if (IPTV_LISTS[i][2] === url || IPTV_LISTS[i][4] === url) return i;
         return -1;
     }
     function iptvByKey(key) {
@@ -658,7 +939,7 @@ var BSFeatures = (function () {
         try { installFastStart(); } catch (e) { console.log('BS fast start', e.message); }
         try { addSettings(); } catch (e) { console.log('BS features settings', e.message); }
         iptvLook();
-        setTimeout(function () { try { iptvAuto(); iptvFresh(); } catch (e) {} }, 8000);   // IPTV по умолчанию; плейлисты 2.3.24 — тоже «каждый день»
+        setTimeout(function () { try { iptvAuto(); iptvFresh(); iptvProbe(); iptvSeed(); } catch (e) {} }, 8000);   // IPTV по умолчанию: два списка, зеркало, подсадка
         registerColorKeys();
         document.addEventListener('keydown', onColorKey, true);
         try {
@@ -674,5 +955,7 @@ var BSFeatures = (function () {
     }
 
     return {
-        _iptvToggle: iptvToggle, _iptvLists: IPTV_LISTS, _iptvFix: iptvFix, _iptvInstalled: iptvInstalled, _iptvAuto: iptvAuto, _iptvGroup: iptvGroup, _iptvChannel: iptvChannel, _iptvLook: iptvLook, start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
+        _iptvToggle: iptvToggle, _iptvLists: IPTV_LISTS, _iptvFix: iptvFix, _iptvInstalled: iptvInstalled, _iptvAuto: iptvAuto, _iptvGroup: iptvGroup, _iptvChannel: iptvChannel, _iptvLook: iptvLook,
+        _iptvSource: iptvSourceSet, _iptvDefault: IPTV_DEFAULT, _iptvUrl: iptvUrl, _iptvParse: iptvParse, _iptvParseRun: iptvParseRun, _iptvAlt: iptvAlt, _iptvAltIndex: iptvAltIndex, _iptvNormName: iptvNormName,
+        start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
 })();
