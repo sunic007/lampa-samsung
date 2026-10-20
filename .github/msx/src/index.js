@@ -40,7 +40,8 @@ async function page(ctx) {
 
 export default {
     async fetch(request, env, ctx) {
-        const url = new URL(request.url), origin = 'http://' + url.host;
+        // старые ТВ с адресом *.workers.dev переходят на sunic.stream (хостинг в Узбекистане, не Cloudflare)
+        const url = new URL(request.url), origin = 'http://sunic.stream';
         if (url.pathname === '/msx/start.json') {
             return Response.json({
                 name: 'Lampa · Sunic Apps',
