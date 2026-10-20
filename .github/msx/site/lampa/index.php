@@ -49,6 +49,8 @@ if (!$html) {
 // первом запуске ставит «tizen», если bs_player_default нет — ставим раньше). Ошибки файлов с jsDelivr браузер отдаёт без
 // текста («Script error.») — Lampa показывала бы их уведомлением, понять по нему нечего: глушим только такие.
 $head = '<base href="' . CDN . $v . '/src/">' . "\n    <script>"
+    // страница и так всегда последнего выпуска — своё обновление модулей (update.js: окно «Вышло обновление») не нужно
+    . '(function () { try { localStorage.setItem("bs_gh_update", "false"); } catch (x) {} })();'
     . '(function () { if (window.tizen) return; try { localStorage.setItem("bs_player_default", "1");'
     . ' ["player", "player_iptv"].forEach(function (k) { var p = localStorage.getItem(k); if (!p || p === "tizen") localStorage.setItem(k, "inner"); });'
     . ' } catch (x) {} })();'
