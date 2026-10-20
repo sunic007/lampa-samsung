@@ -1,0 +1,27 @@
+name: sunic.stream watch
+
+# Сторож сайта sunic.stream (Media Station X, хостинг webname.uz): на сайте — только наши файлы, без чужих скриптов.
+# Подменили страницу — проверка падает, и GitHub присылает письмо владельцу. Подробности — .github/msx/watch.py.
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: msx-watch
+  cancel-in-progress: true
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check sunic.stream
+        env:
+          PYTHONUTF8: '1'
+        run: python3 .github/msx/watch.py
