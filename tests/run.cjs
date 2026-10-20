@@ -3858,15 +3858,21 @@ async function serviceTests() {
 /* ---- bsfeatures.js: IPTV — открытые плейлисты в расширение IPTV ---- */
 {
     let saved = [{ id: 'mine', custom: true, url: 'http://x/my.m3u', name: 'Мой' }];
+    const params = {}, plugins = [];
     const ctx = { console: { log() {} }, JSON, Math, Date, String, Object, Array, setTimeout: () => 0, setInterval: () => 0, navigator: { userAgent: 'x' }, XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }), Node: Object.assign(function () {}, { prototype: { appendChild() {} } }),
         document: { querySelectorAll: () => [], documentElement: {}, addEventListener() {} },
-        Lampa: { Storage: { get: (k, d) => (k === 'iptv_playlist_custom' ? JSON.parse(JSON.stringify(saved)) : JSON.parse(d || 'null')), set: (k, v) => { if (k === 'iptv_playlist_custom') saved = v; } }, Noty: { show() {} } } };
+        Lampa: { Storage: { get: (k, d) => (k === 'iptv_playlist_custom' ? JSON.parse(JSON.stringify(saved)) : k === 'plugins' ? plugins : JSON.parse(d || 'null')), set: (k, v) => { if (k === 'iptv_playlist_custom') saved = v; else params[k] = v; } }, Noty: { show() {} } } };
     ctx.window = ctx; ctx.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
     vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bsfeatures.js'), 'utf8') + ';this.M=BSFeatures;', ctx);
     const F = ctx.M;
     t('IPTV: плейлисты — открытые каталоги по https (iptv-org, Free-TV)', F._iptvLists.length >= 10 && F._iptvLists.every(x => /^https:\/\/(iptv-org\.github\.io|raw\.githubusercontent\.com\/Free-TV)\//.test(x[2])));
     t('IPTV: выбрали — добавлен в формате расширения IPTV, свой плейлист человека на месте', F._iptvToggle('uz') === true &&
         saved.length === 2 && saved[0].id === 'mine' && saved[1].id === 'sunic-iptv-uz' && saved[1].custom === true && /countries\/uz\.m3u$/.test(saved[1].url) && saved[1].name === 'Узбекистан');
+    t('IPTV: добавленный обновляется каждый день (параметры расширения)', params['iptv_playlist_params_sunic-iptv-uz'] && params['iptv_playlist_params_sunic-iptv-uz'].update === 'day');
+    t('IPTV: «каждый день» ставим один раз — выбор человека потом не перебиваем', F._iptvFix({ update: 'none', update_time: 5 }).update === 'day' && F._iptvFix({ update: 'week', sunic: 1 }) === null);
+    t('IPTV: расширение не установлено — так и говорим', F._iptvInstalled() === false);
+    plugins.push({ url: 'https://cub.red/plugin/iptv', status: 1 });
+    t('IPTV: расширение установлено — видим его', F._iptvInstalled() === true);
     t('IPTV: выбрали ещё раз — убран только наш', F._iptvToggle('uz') === false && saved.length === 1 && saved[0].id === 'mine');
     t('IPTV: неизвестный — ничего не меняет', F._iptvToggle('xx') === false && saved.length === 1);
 }

@@ -309,12 +309,52 @@ var BSFeatures = (function () {
         if (added) list.push({ id: 'sunic-iptv-' + key, custom: true, url: it[2], name: it[1] });
         else list.splice(at, 1);
         try { Lampa.Storage.set('iptv_playlist_custom', list); } catch (e) {}
+        if (added) iptvFresh();
         return added;
+    }
+    /* Расширение IPTV качает плейлист один раз и хранит его («Обновление: никогда» по умолчанию) — а открытые списки
+     * меняются каждый день. Нашим плейлистам ставим «каждый день» в его параметрах (база cub_iptv или Storage).
+     * Один раз (метка sunic): если человек потом сам выберет другое в IPTV — не перебиваем. */
+    function iptvFix(p) {
+        p = p && typeof p === 'object' ? p : {};
+        if (p.sunic) return null;
+        p.update = 'day'; p.sunic = 1;
+        if (!p.update_time) p.update_time = 0;                      // давно не обновлялся — скачает при открытии
+        return p;
+    }
+    function iptvFresh() {
+        var mine = [], l = iptvList(), i;
+        for (i = 0; i < l.length; i++) if (l[i] && /^sunic-iptv-/.test(l[i].id)) mine.push(l[i].id);
+        if (!mine.length) return;
+        for (i = 0; i < mine.length; i++) {
+            try { var k = 'iptv_playlist_params_' + mine[i], p = iptvFix(Lampa.Storage.get(k, '{}')); if (p) Lampa.Storage.set(k, p); } catch (e) {}
+        }
+        try {
+            var Base = window.indexedDB || window.webkitIndexedDB;
+            if (!Base) return;
+            // без номера версии: открываем базу расширения как есть и сразу закрываем — не мешаем ему обновлять её схему
+            var req = Base.open('lampa_cub_iptv');
+            req.onsuccess = function () {
+                var db = req.result;
+                try {
+                    if (!db.objectStoreNames.contains('params')) return db.close();
+                    var tx = db.transaction(['params'], 'readwrite'), st = tx.objectStore('params');
+                    mine.forEach(function (id) {
+                        var g = st.get(id);
+                        g.onsuccess = function () {
+                            var p = iptvFix(g.result && g.result.value);
+                            if (p) st.put({ key: id, value: p, time: Date.now() });
+                        };
+                    });
+                    tx.oncomplete = tx.onerror = tx.onabort = function () { db.close(); };
+                } catch (e) { try { db.close(); } catch (e2) {} }
+            };
+        } catch (e) {}
     }
     function iptvInstalled() {
         try {
             var p = Lampa.Storage.get('plugins', '[]');
-            for (var i = 0; i < p.length; i++) if (/\/plugin\/iptv/.test(String((p[i] && (p[i].url || p[i].link)) || p[i]))) return true;
+            for (var i = 0; i < p.length; i++) if (/\/plugin\/iptv\b/.test(String((p[i] && (p[i].url || p[i].link)) || p[i]))) return true;
         } catch (e) {}
         return false;
     }
@@ -425,6 +465,7 @@ var BSFeatures = (function () {
         try { lazyYouTube(); } catch (e) {}
         try { installFastStart(); } catch (e) { console.log('BS fast start', e.message); }
         try { addSettings(); } catch (e) { console.log('BS features settings', e.message); }
+        setTimeout(iptvFresh, 8000);                                     // плейлисты, добавленные в 2.3.24, — тоже «каждый день»
         registerColorKeys();
         document.addEventListener('keydown', onColorKey, true);
         try {
@@ -440,5 +481,5 @@ var BSFeatures = (function () {
     }
 
     return {
-        _iptvToggle: iptvToggle, _iptvLists: IPTV_LISTS, start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
+        _iptvToggle: iptvToggle, _iptvLists: IPTV_LISTS, _iptvFix: iptvFix, _iptvInstalled: iptvInstalled, start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
 })();
