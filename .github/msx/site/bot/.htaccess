@@ -1,0 +1,9 @@
+# общий бот: lib.php — только для своих скриптов; hook.php принимает POST от Telegram (сайт в целом — только чтение)
+<Files "lib.php">
+    Require all denied
+</Files>
+<Files "hook.php">
+    <Limit POST>
+        Require all granted
+    </Limit>
+</Files>
