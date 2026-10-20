@@ -11,7 +11,7 @@
 const REPO = 'sunic007/lampa-samsung';
 const GH = 'https://raw.githubusercontent.com/' . REPO . '/main/version.json';
 const CDN = 'https://cdn.jsdelivr.net/gh/' . REPO . '@v';
-const PIN = '2.3.19';   // если GitHub не ответил и ничего не запомнено
+const PIN = '2.3.20';   // если GitHub не ответил и ничего не запомнено
 const LIFE = 600;       // версию проверяем раз в 10 минут
 const KEEP = 2;         // версий на хостинге
 
@@ -156,7 +156,11 @@ if (!$html) {
 // первом запуске ставит «tizen», если bs_player_default нет — ставим раньше). Файлы с jsDelivr (первый запуск): их ошибки
 // браузер отдаёт без текста («Script error.») — Lampa показывала бы их уведомлением, понять по нему нечего: глушим такие.
 // referrer — в самой странице: хостинг дописывает свой, слабее нашего из .htaccess, и браузер берёт последний заголовок
-$head = '<meta name="referrer" content="no-referrer">' . "\n    " . '<base href="' . $base . '">' . "\n    <script>"
+// «На экран «Домой»» (iPhone, Android): открывается как приложение, без панелей браузера — так на iPhone и весь экран
+$app = '<link rel="manifest" href="/lampa/manifest.json"><meta name="apple-mobile-web-app-capable" content="yes">'
+    . '<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black">'
+    . '<meta name="apple-mobile-web-app-title" content="Lampa"><link rel="apple-touch-icon" href="/media/logo-180.png">';
+$head = '<meta name="referrer" content="no-referrer">' . $app . "\n    " . '<base href="' . $base . '">' . "\n    <script>"
     // страница и так всегда последнего выпуска — своё обновление модулей (update.js: окно «Вышло обновление») не нужно
     . '(function () { try { localStorage.setItem("bs_gh_update", "false"); } catch (x) {} })();'
     // версия Sunic Apps этой страницы — для «Обновление» (на сайте нет пакета .wgt, откуда её берёт ТВ)

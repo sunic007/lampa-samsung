@@ -233,6 +233,10 @@ var BSPlayer = (function () {
         } catch (e) {}
     }
 
+    function iosVideoOnly() {
+        try { var el = document.documentElement; return /iPhone|iPod/.test(navigator.userAgent || '') && !(el.requestFullscreen || el.webkitRequestFullScreen); } catch (e) { return false; }
+    }
+
     function nightNext() {
         var lv = NIGHT[(NIGHT.indexOf(nightLevel()) + 1) % NIGHT.length];
         lsSet('bs_picture', lv ? 'n' + lv : 'off');
@@ -324,6 +328,11 @@ var BSPlayer = (function () {
         removePanelButton('chapters');
         addPanelButton('night', 'Ночь', nightNext);
         addPanelButton('day', 'День', dayNext);
+        // iPhone: страницу Safari во весь экран не пускает — разворачиваем само видео (свой плеер iPhone)
+        removePanelButton('ios_full');
+        if (iosVideoOnly()) addPanelButton('ios_full', 'Во весь экран', function () {
+            try { var v = Lampa.PlayerVideo.render().find('video')[0]; if (v && v.webkitEnterFullscreen) v.webkitEnterFullscreen(); } catch (e) {}
+        });
         // Значок источника (рядом с «Ночь»): с какого источника Skaz идёт видео; нажатие — закрыть плеер и выбрать
         // другой источник. Имя из страницы плагина — чужой текст, экранируем. С 1.7.9 по умолчанию скрыт: рабочий
         // источник подбирается сам (автоподбор, проверка источников), другой вручную — красная кнопка пульта.
