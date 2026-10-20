@@ -308,6 +308,11 @@ function loadFromLocal(){
     })
 }
 
+// Страница по https (браузер, sunic.stream), а сервер byskaz — только http: браузер не пустит запрос к нему, ждать 15 с
+// и писать «Нет связи с сервером» незачем — сразу запускаем копию из пакета.
+var BS_HTTPS_PAGE = false;
+try { BS_HTTPS_PAGE = window.location.protocol === 'https:' && BS_SERVER.indexOf('http:') === 0; } catch (e) {}
+
 var timeLeft = 15;
 var timerId  = setInterval(countdown, 1000);
 
@@ -353,6 +358,19 @@ function parseAssembly(xhr) {
 var checking = false;
 
 function countdown() {
+    if (BS_HTTPS_PAGE) {
+        clearInterval(timerId);
+        timeLeft = -1;
+        if (!bsStarted) {
+            bsStarted = true;
+            bsSource = 'local';
+            createScript('app.js', function () {
+                console.log('Load local error');
+                bsStatus('Не удалось запустить Lampa', 'Проверьте интернет и перезапустите приложение.', false);
+            });
+        }
+        return;
+    }
     if (checking && timeLeft > 0) { timeLeft--; return; }
 
     if (timeLeft <= 0) {
@@ -601,7 +619,7 @@ function bsUpdateCheck() {
     bsLastUpdateCheck = Date.now();
     // функции пакета (Sunic Apps) — своя настройка «Обновлять с GitHub» (внутри check): есть готовая — окно «что нового»
     try { bsGhCheck(function (v, info) { if (v) bsOfferUpdate(v, info); }); } catch (e) {}
-    if (!bsAutoUpdateOn()) return;
+    if (!bsAutoUpdateOn() || BS_HTTPS_PAGE) return;
     bsCheckNow(function (a) {
         if (!a) return;
         if (!bsRunningHash) { bsRunningHash = a.hash; return; }   // запущены без данных о сборке — запоминаем текущую
@@ -884,6 +902,7 @@ function bsAddSettings() {
         field: { name: 'Lampa ' + bsRunningVersion(), description: 'Проверяю сервер…' },
         onRender: function (item) {
             var descr = item.find('.settings-param__descr');
+            if (BS_HTTPS_PAGE) return descr.text('Сейчас: из пакета Sunic Apps (страница по https — сервер byskaz не нужен).');
             var from = bsSource === 'bundled' ? 'встроенная копия — сервер byskaz был недоступен при запуске'
                 : bsSource === 'local' ? 'из пакета — та же версия, что на сервере byskaz (без скачивания)'
                     : 'с сервера byskaz (lampa.byskaz.ru)';
