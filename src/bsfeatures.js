@@ -491,6 +491,9 @@ var BSFeatures = (function () {
             })(q[i]), 4000);
         }
     }
+    function iptvTilesOn() {
+        try { return Lampa.Activity.active().component === 'iptv' && !!document.querySelector('.activity--active .iptv-list__items'); } catch (e) { return false; }
+    }
     function iptvWords() {
         try {
             Lampa.Lang.add({
@@ -613,6 +616,15 @@ var BSFeatures = (function () {
                 };
                 obj.left = function () { jump('left', left, this, arguments); };
                 obj.right = function () { jump('right', right, this, arguments); };
+            }
+            // плитки списков IPTV: расширение знает только «вверх/вниз» (у него был столбец) — даём «влево/вправо»
+            if (name === 'content' && obj && !obj.right && iptvTilesOn()) {
+                var back = obj.left;
+                obj.right = function () { try { if (Navigator.canmove('right')) Navigator.move('right'); } catch (e) {} };
+                obj.left = function () {
+                    try { if (Navigator.canmove('left')) return Navigator.move('left'); } catch (e) {}
+                    if (back) back.apply(this, arguments);
+                };
             }
             return add.apply(this, arguments);
         };
