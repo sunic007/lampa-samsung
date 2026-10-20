@@ -1,0 +1,9 @@
+# Media Station X читает msx/start.json из своего приложения — нужен CORS; страницы — без кеша (загрузчик сам берёт выпуск)
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    <FilesMatch "\.(json|html)$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+</IfModule>
+AddType application/json .json
+AddDefaultCharset utf-8

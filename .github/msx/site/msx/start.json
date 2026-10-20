@@ -1,0 +1,6 @@
+{
+  "name": "Lampa · Sunic Apps",
+  "version": "1.0.0",
+  "parameter": "content:http://sunic.stream/msx/start.json",
+  "action": "link:http://sunic.stream/lampa/"
+}
