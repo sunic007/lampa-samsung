@@ -2414,6 +2414,15 @@ var BSTelegram = (function () {
         if (polling || pair || !hasToken() || !chat()) return;
         if (Date.now() < conflictUntil || held()) return;
         if (svc.away) return;                                    // Lampa скрыта — бота ведёт служба, не мешаем ей
+        // Lampa запустилась уже скрытой (ТВ в ждущем режиме: автообновление, установка) — visibilitychange не было.
+        // Такой ТВ не должен вести бота: сеть у него придержана (TMDB «не отвечает»), фильм на экране не откроешь.
+        // Уходим, как при выключении: бота берёт ТВ на экране, а если других нет — своя служба.
+        if (!onScreen() && svcBot() && !svc.woken) {              // открыла служба («Смотреть») — бот у нас, даже если экран не включился
+            var was = isLeader; isLeader = false; if (was) leader = { id: '', at: 0 };
+            if (othersKnown() > 0) busSend({ t: 'bye', lead: was });
+            try { svcAway(was); } catch (e) {}
+            return;
+        }
         if (newerOnline()) { if (isLeader) { isLeader = false; log('бота ведёт ТВ с новой Lampa', ''); } return; }
         // служба на связи: сначала «я здесь» с правилами, и если, пока нас не было, она копила апдейты, — их первыми
         if (svcBot() && (svc.pend > 0 || Date.now() - svc.aliveAt >= SVC_ALIVE)) {
@@ -2647,7 +2656,7 @@ var BSTelegram = (function () {
         if (!svc.away) return;
         if (onScreen()) { svcBack(); return poll(); }
         svcAsk('GET', '/health', undefined, function (st, j) {
-            if (st === 200 && j && j.launched > svc.awayAt && svc.away) { log('Lampa открыла служба — бот снова здесь', ''); svcBack(); poll(); }
+            if (st === 200 && j && j.launched > svc.awayAt && svc.away) { log('Lampa открыла служба — бот снова здесь', ''); svcBack(); svc.woken = true; poll(); }
         }, 3000);
     }
     /** Lampa снова на экране: 409 на брошенный при уходе опрос — от своей же службы, не от другого ТВ. */
