@@ -234,7 +234,45 @@ var BSFix = (function () {
         }
     }
 
+    /* Online Mod и другие плагины со своими балансерами (не Lampac): открывается последний балансер; пусто — «Видео не
+     * найдено», и дальше сам не ищет. Пусто — сами пробуем следующий балансер (сначала те, что чаще находят), пусто во
+     * всех — следующий источник (поиск по всем источникам, bssources.js). Недоступный в этой сборке балансер бросает
+     * ошибку сразу — пропускаем. Автосмена выключена (bs_auto_source) — не трогаем. */
+    var BAL_ORDER = ['collaps', 'filmix', 'kodik', 'cdnvideohub', 'lumex', 'lumex2', 'rezka2', 'kinobase', 'cdnmovies', 'zetflix', 'fancdn',
+        'fancdn2', 'fanserials', 'videoseed', 'vibix', 'redheadsound', 'alloha', 'kinopub', 'animelib', 'anilibria', 'anilibria2'];
+    function patchBalancers(c) {
+        if (!c || c.__bsBal || typeof c.changeBalanser !== 'function' || typeof c.empty !== 'function' || typeof c.setDefaultQuality === 'function') return c;
+        c.__bsBal = true;
+        var tried = {}, cur = '', change = c.changeBalanser, gaveUp = false;
+        c.changeBalanser = function (name) { cur = name; tried[name] = true; return change.apply(this, arguments); };
+        var nextBal = function (self) {
+            if (!onScreen(self) || playerOpen() || lsGetFix('bs_auto_source') === 'false') return;
+            if (!cur) { try { cur = String(Lampa.Storage.get('online_mod_balanser', '') || ''); } catch (e) {} tried[cur] = true; }
+            for (var i = 0; i < BAL_ORDER.length; i++) {
+                var b = BAL_ORDER[i];
+                if (tried[b]) continue;
+                tried[b] = true;
+                try { self.changeBalanser(b); quiet('В «' + (cur || 'этом') + '» нет видео — пробую «' + b + '»'); return; }
+                catch (e) {}                                     // этого балансера в сборке нет
+            }
+            if (gaveUp) return;
+            gaveUp = true;
+            try { if (window.BSSources && window.BSSources.giveUp) window.BSSources.giveUp(Lampa.Activity.active().component, 'empty'); } catch (e) {}
+        };
+        ['empty', 'emptyForQuery'].forEach(function (m) {
+            var orig = c[m];
+            if (typeof orig !== 'function') return;
+            c[m] = function () {
+                var r = orig.apply(this, arguments), self = this;
+                setTimeout(function () { nextBal(self); }, 1200);
+                return r;
+            };
+        });
+        return c;
+    }
+
     function patch(c) {
+        if (c && !c.__bsFix && typeof c.setDefaultQuality !== 'function') return patchBalancers(c);
         if (!c || c.__bsFix || typeof c.setDefaultQuality !== 'function') return c;
         c.__bsFix = true;
         var sdq = c.setDefaultQuality;

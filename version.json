@@ -1,5 +1,5 @@
 {
- "version": "2.3.9",
+ "version": "2.3.10",
  "files": [
   "bsreport.js",
   "skazauto.js",
@@ -19,9 +19,9 @@
   "loader.js"
  ],
  "notes": {
-  "title": "Lampa в браузере по https",
+  "title": "Online Mod сам ищет в других балансерах",
   "items": [
-   "Браузеры сами открывают сайты по https — теперь Lampa работает и так (sunic.stream): источники, у которых есть https (Online Mod, Z01), подключаются по https, и «Смотреть» открывает их. Skaz по https невозможен — его…"
+   "В Online Mod «Видео не найдено» в одном балансере — больше не тупик: Sunic Apps сам пробует следующий (сначала те, что чаще находят: Collaps, Filmix, Kodik, CDNVideoHub…), пусто во всех — переходит к следующему источн…"
   ]
  }
 }

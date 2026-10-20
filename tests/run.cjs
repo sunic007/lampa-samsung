@@ -2032,6 +2032,23 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     c2.Lampa.Noty.show('Привет', { time: 1 }, 'extra');
     t('совместимость: сбой нашей правки — уведомление Lampa всё равно показано', got.length === 1 && got[0][0] === 'Привет' && got[0][2] === 'extra');
 }
+/* ---- bsfix.js: Online Mod — пустой балансер, сами пробуем следующий ---- */
+{
+    const F = fixCtx(), calls = [], gave = [];
+    const om = { changeBalanser(n) { calls.push(n); if (n === 'filmix') throw new Error('extendChoice'); }, empty() {} };
+    F.ctx.window.BSSources = { giveUp: (c, w) => gave.push(w) };
+    F.M._patch(om); F.env.screen = om;
+    om.changeBalanser('zetflix');
+    om.empty();
+    t('Online Mod: в балансере пусто — сам пробует первый из частых (collaps)', calls.join() === 'zetflix,collaps');
+    om.empty();
+    t('Online Mod: недоступный в сборке (filmix) пропускает — дальше kodik', calls.slice(-2).join() === 'filmix,kodik');
+    for (let i = 0; i < 30; i++) om.empty();
+    t('Online Mod: пусто во всех балансерах — следующий источник', gave.join() === 'empty' && new Set(calls).size === calls.length);
+    const lam = { setDefaultQuality() {}, changeBalanser() { throw new Error('не должен'); }, empty() {} };
+    F.M._patch(lam);
+    t('Online Mod: Lampac-плагины (Skaz, Z01) не трогаем — у них свой перебор', lam.__bsBal === undefined);
+}
 /* ---- bsfix.js: сырые ошибки на весь экран — одной строкой (Samsung и Android) ---- */
 {
     const F = fixCtx(), S = F.M._shortError;
