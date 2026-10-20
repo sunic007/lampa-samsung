@@ -34,6 +34,11 @@ RedirectMatch 404 /\.
     Header always set Referrer-Policy "no-referrer"
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always unset X-Powered-By
+    # Хостинг сам шлёт HSTS на год: браузер, раз открывший https, больше не пускает на http — Lampa по http (Skaz, кнопка
+    # «Открыть по http») уходит в петлю. max-age=0 ещё и стирает запомненное. Главная и так переводится на https (выше).
+    Header always set Strict-Transport-Security "max-age=0"
+    # и его Permissions-Policy разрешает полный экран только https-адресам — на http (MSX, Skaz) кнопка не работала бы
+    Header always unset Permissions-Policy
     <FilesMatch "\.(json|html|php)$">
         Header set Cache-Control "no-cache"
     </FilesMatch>
