@@ -194,6 +194,7 @@ jobs:
           HASH: ${{ steps.cmp.outputs.hash }}
           HAVE: ${{ steps.cmp.outputs.have }}
           TESTS: ${{ steps.upd.outputs.tests }}
+          TESTS_OK: ${{ steps.upd.outputs.ok }}
         run: |
           n=$(gh pr list --head "lampa-$HASH" --state open --json number -q 'length')
           [ "$n" = "0" ] || { echo "pull request уже открыт"; exit 0; }
@@ -206,12 +207,14 @@ jobs:
           {
             echo "На сервере Skaz вышла **Lampa $VERSION** (сборка \`$HASH\`). В пакете была $HAVE."
             echo
-            echo "Автотесты: ${TESTS:-?} — автоматический выпуск остановлен, посмотрите лог в Actions."
+            if [ -n "$TESTS_OK" ]; then echo "Автотесты: ${TESTS:-?} — прошли; выпуск отложен вручную (release=false)."; else echo "Автотесты: ${TESTS:-?} — автоматический выпуск остановлен, посмотрите лог в Actions."; fi
             echo
             echo "Изменения у yumata (lampa-source, последние 10 дней):"
             cat changes.md
           } > body.md
-          gh pr create --title "Lampa $VERSION — проверить: автотесты не прошли" --body-file body.md --head "lampa-$HASH" --base main
+          # тесты прошли, но выпуск отложили вручную (release=false) — так и пишем, а не «не прошли»
+          if [ -n "$TESTS_OK" ]; then T="Lampa $VERSION — тесты прошли, выпустить вручную"; else T="Lampa $VERSION — проверить: автотесты не прошли"; fi
+          gh pr create --title "$T" --body-file body.md --head "lampa-$HASH" --base main
       - name: Tell the owner — update stopped
         if: steps.cmp.outputs.new && !steps.upd.outputs.ok
         env:
