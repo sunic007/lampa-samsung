@@ -32,11 +32,25 @@ def main():
             bad.append('msx/start.json отличается от репозитория')
     except Exception as e:
         bad.append('msx/start.json: %s' % e)
+    for path, name in (('/', 'index.html'), ('/site.js', 'site.js'), ('/site.css', 'site.css'), ('/.well-known/security.txt', '.well-known/security.txt')):
+        try:
+            if get(path).strip() != open(os.path.join(HERE, 'site', name), encoding='utf-8').read().strip():
+                bad.append('%s отличается от репозитория' % name)
+        except Exception as e:
+            bad.append('%s: %s' % (name, e))
     try:
-        if get('/').strip() != open(os.path.join(HERE, 'site', 'index.html'), encoding='utf-8').read().strip():
-            bad.append('главная (index.html) отличается от репозитория')
+        # сертификат https: меньше 14 дней — хостинг его не продлил; security.txt — поле Expires (RFC 9116) не просрочено
+        import socket, ssl, datetime
+        with socket.create_connection(('sunic.stream', 443), timeout=30) as raw:
+            with ssl.create_default_context().wrap_socket(raw, server_hostname='sunic.stream') as tls:
+                left = ssl.cert_time_to_seconds(tls.getpeercert()['notAfter']) - time.time()
+        if left < 14 * 86400:
+            bad.append('сертификат https кончается через %d дн.' % (left // 86400))
+        exp = re.search(r'^Expires: (\d{4}-\d\d-\d\d)', open(os.path.join(HERE, 'site', '.well-known', 'security.txt'), encoding='utf-8').read(), re.M)
+        if not exp or datetime.date.fromisoformat(exp.group(1)) - datetime.date.today() < datetime.timedelta(days=30):
+            bad.append('security.txt: обновите Expires (меньше 30 дней)')
     except Exception as e:
-        bad.append('главная: %s' % e)
+        bad.append('сертификат: %s' % e)
     try:
         # Android-плагин по короткому адресу — копия с GitHub Pages (plugin.php обновляет её раз в 10 минут)
         for attempt in (1, 2):
