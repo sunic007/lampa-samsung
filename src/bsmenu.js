@@ -18,6 +18,9 @@
  *  (рейтинги США и России, жанр «Детский», советские), без повторов, без непереведённого и без обложки.
  *  Всегда без ужасов, криминала, триллеров и войны (у сериалов ещё без драм, реалити, ток-шоу и новостей).
  *  Пункт по умолчанию выключен — «Настройки → Sunic Apps → Интерфейс»; стоит после «Турецких сериалов».
+ *
+ *  «Смотреть» без входа в CUB (источники Skaz тогда пишут «Нет доступа»): один раз — выбор «Войти в CUB» / «Смотреть
+ *  без входа — Z01» / «Всё равно Skaz» (cubChoice).
  */
 var BSMenu = (function () {
     var TURK = {
@@ -391,6 +394,42 @@ var BSMenu = (function () {
         // Shots тоже ставит класс view--online — узнаём Skaz по его классу и подписи «by Skaz»
         return btn.hasClass('lampac--button') || /skaz/i.test(sub) || /^(Онлайн|Online)$/i.test(text);
     }
+    /* Skaz без входа в CUB показывает «Нет доступа» — человек не понимает, нужно ли ему это. Первое «Смотреть» без CUB
+     * (главный источник — Skaz): выбор — войти в CUB, смотреть без входа через Z01 (бесплатный, с рекламой) или всё
+     * равно открыть Skaz. Спрашиваем один раз (bs_cub_choice); поменять потом — «Онлайн-источники». */
+    function cubLogged() {
+        try { var P = Lampa.Account && Lampa.Account.Permit; if (P && 'access' in P) return !!P.access; } catch (e) {}
+        try { return !!Lampa.Storage.get('account_email', ''); } catch (e) { return true; }
+    }
+    function needCubChoice() {
+        return lsGet('bs_cub_choice') !== 'done' && !cubLogged() && (!window.BSSources || BSSources.mainId() === 'skaz');
+    }
+    function cubChoice(open) {
+        var ctrl = '';
+        try { ctrl = Lampa.Controller.enabled().name; } catch (e) {}
+        var back = function () { try { if (ctrl) Lampa.Controller.toggle(ctrl); } catch (e) {} };
+        var items = [{ title: 'Войти в CUB', subtitle: 'Бесплатно: код на cub.red — и источники Skaz заработают', id: 'login' }];
+        if (window.BSSources && BSSources.useMain) items.push({ title: 'Смотреть без входа — источник Z01', subtitle: 'Бесплатные источники, есть реклама. Поменять: Sunic Apps → Онлайн-источники', id: 'z01' });
+        items.push({ title: 'Всё равно открыть Skaz', id: 'skaz' });
+        Lampa.Select.show({
+            title: 'Источникам Skaz нужен вход в CUB',
+            items: items,
+            onSelect: function (a) {
+                lsSet('bs_cub_choice', 'done');
+                back();
+                if (a.id === 'login') {
+                    try { Lampa.Settings.create('account'); } catch (e) { Lampa.Noty.show('Вход в CUB: Настройки → Аккаунт', { time: 6000 }); }
+                } else if (a.id === 'z01') {
+                    Lampa.Noty.show('Подключаю Z01…', { time: 3000 });
+                    BSSources.useMain('z01', function () {
+                        // карточку — заново: кнопка Z01 появится, «Смотреть» откроет его
+                        setTimeout(function () { try { Lampa.Activity.replace(); } catch (e) {} }, 300);
+                    });
+                } else open();
+            },
+            onBack: back
+        });
+    }
     function addWatchButton(e, tries) {
         try {
             var body = e.body, cont = body.find('.full-start-new__buttons');
@@ -412,7 +451,10 @@ var BSMenu = (function () {
             var playLabel = play.find('span').first();
             if (playLabel.length) playLabel.text('Источники');
             play.removeClass('hide');
-            clon.on('hover:enter', function () { src.trigger('hover:enter'); })
+            clon.on('hover:enter', function () {
+                if (needCubChoice()) return cubChoice(function () { src.trigger('hover:enter'); });
+                src.trigger('hover:enter');
+            })
                 .on('hover:focus', function () { try { e.link.items[0].last = clon[0]; } catch (err) {} });
             cont.prepend(clon);
             // Фокус на новую кнопку, если он стоял на «Смотреть» (карточка только открылась)
@@ -470,5 +512,6 @@ var BSMenu = (function () {
 
     return { start: start, open: openTurk, search: search, TURK: TURK, KIDS: KIDS, openKids: openKids,
         _isTurkish: isTurkish, _esc: esc, _kidsEnabled: kidsEnabled, _isKids: isKids, _kidsBand: kidsBand, _kidsType: kidsType,
-        _kidsQueries: kidsQueries, _kidsMerge: kidsMerge, _kidsJunk: kidsJunk, _menuSortPlace: menuSortPlace };
+        _kidsQueries: kidsQueries, _kidsMerge: kidsMerge, _kidsJunk: kidsJunk, _menuSortPlace: menuSortPlace,
+        _needCubChoice: needCubChoice, _cubChoice: cubChoice };
 })();

@@ -303,6 +303,34 @@ t('поиск: падение плагина не выходит наружу', 
 
 /* ---- bsmenu.js: турецкие сериалы ---- */
 const MN = load('bsmenu.js', 'BSMenu').M;
+/* ---- bsmenu.js: «Смотреть» без входа в CUB — один раз выбор ---- */
+{
+    const withLampa = (store, access, main) => {
+        store = store || {};
+        const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+        const shown = [], used = [];
+        const Lampa = { Account: { Permit: { access } }, Storage: { get: () => '', set() {} }, Controller: { enabled: () => ({ name: 'full_start' }), toggle() {} },
+            Select: { show: o => shown.push(o) }, Noty: { show() {} }, Settings: { create: n => used.push('settings:' + n) }, Activity: { replace: () => used.push('replace') } };
+        const BSSources = { mainId: () => main || 'skaz', useMain: (id, cb) => { used.push('use:' + id); cb(); } };
+        const w = { localStorage: ls, Lampa, BSSources };
+        const ctx = { window: w, Lampa, BSSources, $: () => ({}), document: { addEventListener() {} }, setTimeout: f => f(), console, JSON, Math, Date, String, Array, Object, Number, parseInt };
+        w.window = w; vm.createContext(ctx);
+        vm.runInContext(fs.readFileSync(path.join(SRC, 'bsmenu.js'), 'utf8') + ';this.M=BSMenu;', ctx);
+        return { M: ctx.M, store, shown, used };
+    };
+    t('CUB: не вошёл, главный Skaz — спросить', withLampa({}, false).M._needCubChoice() === true);
+    t('CUB: вошёл / главный не Skaz / уже выбирал — не спрашивать', !withLampa({}, true).M._needCubChoice() && !withLampa({}, false, 'z01').M._needCubChoice()
+        && !withLampa({ bs_cub_choice: 'done' }, false).M._needCubChoice());
+    const a = withLampa({}, false); let opened = 0;
+    a.M._cubChoice(() => opened++);
+    t('CUB: три варианта — вход, Z01 без входа, всё равно Skaz', a.shown.length === 1 && a.shown[0].items.map(i => i.id).join() === 'login,z01,skaz');
+    a.shown[0].onSelect(a.shown[0].items[1]);
+    t('CUB: «без входа» — Z01 главным и карточка заново, больше не спрашиваем', a.used.join() === 'use:z01,replace' && a.store.bs_cub_choice === 'done' && opened === 0);
+    const b = withLampa({}, false); b.M._cubChoice(() => {}); b.shown[0].onSelect(b.shown[0].items[0]);
+    t('CUB: «войти» — экран аккаунта Lampa', b.used.join() === 'settings:account');
+    const c = withLampa({}, false); let op = 0; c.M._cubChoice(() => op++); c.shown[0].onSelect(c.shown[0].items[2]);
+    t('CUB: «всё равно Skaz» — открываем Skaz', op === 1);
+}
 t('турецкие: по языку или стране', MN._isTurkish({ original_language: 'tr' }) && MN._isTurkish({ original_language: 'en', origin_country: ['TR'] }) && !MN._isTurkish({ original_language: 'ru', origin_country: ['RU'] }));
 t('турецкие: название из TMDB экранируется', MN._esc('<b>"x"&') === '&lt;b&gt;&quot;x&quot;&amp;');
 t('мультики: пункт меню выключен, пока его не включат', !MN._kidsEnabled() && load('bsmenu.js', 'BSMenu', { bs_menu_kids: 'true' }).M._kidsEnabled());

@@ -175,12 +175,27 @@ var BSSources = (function () {
         });
     }
 
+    /** Включить плагин из списка и сделать его главным для «Смотреть» (bsmenu.js: выбор без входа в CUB).
+     *  cb() — когда плагин загружен (или уже был). */
+    function useMain(id, cb) {
+        var s = byId(id);
+        if (!s) return false;
+        lsSet(s.key, 'true');
+        lsSet('bs_src_main', id);
+        try { Lampa.Storage.set(s.key, true); Lampa.Storage.set('bs_src_main', id); } catch (e) {}
+        if (done[s.url] || loaded(s.url)) { if (cb) cb(); return true; }
+        done[s.url] = true;
+        try { Lampa.Utils.putScriptAsync([s.url], function () { log('подключён', s.url); if (cb) cb(); }); }
+        catch (e) { log('не подключён', s.url + ' ' + e.message); }
+        return true;
+    }
+
     function start() {
         try { addSettings(); } catch (e) { log('настройки', e.message); }
         try { Lampa.Listener.follow('activity', onActivity); } catch (e) {}
         try { loadAll(); } catch (e) { log('подключение', e.message); }
     }
 
-    return { start: start, owner: owner, mainId: mainId, isMain: isMain, pick: pick, list: LIST,
+    return { start: start, owner: owner, mainId: mainId, isMain: isMain, pick: pick, list: LIST, useMain: useMain,
         _swapTo: swapTo, _compOwner: compOwner, _onActivity: onActivity, _loadAll: loadAll };
 })();
