@@ -10,6 +10,9 @@ RedirectMatch 404 /\.
 # главная — по https (замок в браузере); Lampa и msx/start.json — как есть (MSX и источники Skaz работают по http)
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    # один адрес: www.sunic.stream → sunic.stream (http остаётся http — для MSX и Skaz; настройки Lampa не делятся на два адреса)
+    RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+    RewriteRule ^(.*)$ %{REQUEST_SCHEME}://%1/$1 [R=301,L]
     RewriteCond %{HTTPS} !=on
     RewriteCond %{HTTP:X-Forwarded-Proto} !=https
     RewriteRule ^(index\.html)?$ https://%{HTTP_HOST}/ [R=301,L]
