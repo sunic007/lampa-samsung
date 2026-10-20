@@ -55,16 +55,22 @@ if (!ok_ver($v)) $v = PIN;
 function ready($store, $ver) { return ok_ver($ver) && is_file("$store/$ver/.complete"); }
 /** Список файлов src выпуска: GitHub API, иначе jsDelivr. [путь => размер] */
 function release_files($ver) {
+    // список файлов выпуска не меняется — запоминаем: иначе каждый запрос спрашивал бы GitHub (лимит 60 в час с адреса
+    // хостинга), а долгий ответ съедал бы 30 с, что хостинг даёт PHP, — и до скачивания дело не доходило
+    $memo = __DIR__ . '/.cache/files-' . $ver . '.json';
+    $m = is_file($memo) ? json_decode((string) file_get_contents($memo), true) : null;
+    if (is_array($m) && count($m) >= 20) return $m;
     $out = [];
-    $t = json_decode((string) fetch_url('https://api.github.com/repos/' . REPO . '/git/trees/v' . $ver . '?recursive=1', 20), true);
+    $t = json_decode((string) fetch_url('https://api.github.com/repos/' . REPO . '/git/trees/v' . $ver . '?recursive=1', 8), true);
     if (is_array($t) && !empty($t['tree'])) {
         foreach ($t['tree'] as $f) if (($f['type'] ?? '') === 'blob' && strpos($f['path'], 'src/') === 0) $out[substr($f['path'], 4)] = (int) ($f['size'] ?? 0);
     } else {
-        $d = json_decode((string) fetch_url('https://data.jsdelivr.com/v1/packages/gh/' . REPO . '@v' . $ver . '?structure=flat', 20), true);
+        $d = json_decode((string) fetch_url('https://data.jsdelivr.com/v1/packages/gh/' . REPO . '@v' . $ver . '?structure=flat', 8), true);
         foreach (($d['files'] ?? []) as $f) if (strpos($f['name'], '/src/') === 0) $out[substr($f['name'], 5)] = (int) ($f['size'] ?? 0);
     }
     // служба Tizen, проект Tizen Studio и config.xml странице не нужны
     foreach (array_keys($out) as $p) if (preg_match('#^(service/|\.tproject|config\.xml$)#', $p)) unset($out[$p]);
+    if (count($out) >= 20) @file_put_contents($memo, json_encode($out));
     return $out;
 }
 /** Скачать выпуск в v/<версия>/ (сначала во временную папку). true — готово. */
@@ -75,15 +81,37 @@ function sync_release($store, $cache, $ver) {
     if (count($files) < 20 || !isset($files['index.html'], $files['app.js'], $files['loader.js'])) return false;
     $tmp = "$store/.tmp-$ver";
     @mkdir($tmp, 0755, true);
+    /* Хостинг обрывает PHP через 30 с (и после ответа тоже) — качаем пачками по 12 файлов параллельно и следим за
+     * временем: не успели — остальное докачает следующий запрос (готовые файлы не перекачиваются). */
+    $t0 = microtime(true);
+    $todo = [];
     foreach ($files as $p => $size) {
         if (!preg_match('#^[A-Za-z0-9_./ -]+$#', $p) || strpos($p, '..') !== false) continue;   // только обычные пути
         if (is_file("$tmp/$p") && filesize("$tmp/$p") === $size) continue;                   // уже скачан
-        $b = fetch_url(CDN . $ver . '/src/' . str_replace('%2F', '/', rawurlencode($p)), 60);
-        if ($b === false) $b = fetch_url('https://raw.githubusercontent.com/' . REPO . '/v' . $ver . '/src/' . str_replace('%2F', '/', rawurlencode($p)), 60);
-        if ($b === false || ($size && strlen($b) !== $size)) return false;                      // в следующий раз докачаем
-        @mkdir(dirname("$tmp/$p"), 0755, true);
-        file_put_contents("$tmp/$p", $b);
+        $todo[$p] = $size;
     }
+    $url = function ($base, $p) { return $base . str_replace('%2F', '/', rawurlencode($p)); };
+    foreach (array_chunk($todo, 12, true) as $chunk) {
+        if (microtime(true) - $t0 > 20) return false;                                        // время на исходе — в следующий раз
+        $mh = curl_multi_init(); $hs = [];
+        foreach ($chunk as $p => $size) {
+            // сначала GitHub: jsDelivr свежий тег отдаёт минутами (503, пока не прогреет кеш); он — запасной
+            $h = curl_init($url('https://raw.githubusercontent.com/' . REPO . '/v' . $ver . '/src/', $p));
+            curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_TIMEOUT => 15, CURLOPT_USERAGENT => 'sunic.stream']);
+            curl_multi_add_handle($mh, $h); $hs[$p] = $h;
+        }
+        do { $st = curl_multi_exec($mh, $run); if ($run) curl_multi_select($mh, 1); } while ($run && $st === CURLM_OK);
+        foreach ($hs as $p => $h) {
+            $b = curl_getinfo($h, CURLINFO_HTTP_CODE) === 200 ? curl_multi_getcontent($h) : false;
+            curl_multi_remove_handle($mh, $h); curl_close($h);
+            if ($b === false || ($chunk[$p] && strlen($b) !== $chunk[$p])) $b = microtime(true) - $t0 < 20 ? fetch_url($url(CDN . $ver . '/src/', $p), 8) : false;
+            if ($b === false || ($chunk[$p] && strlen($b) !== $chunk[$p])) continue;           // в следующий раз докачаем
+            @mkdir(dirname("$tmp/$p"), 0755, true);
+            file_put_contents("$tmp/$p", $b);
+        }
+        curl_multi_close($mh);
+    }
+    foreach ($todo as $p => $size) if (!is_file("$tmp/$p") || filesize("$tmp/$p") !== $size) return false;   // не всё — докачаем
     // в папке выпусков PHP не выполняется — только файлы Lampa
     file_put_contents("$tmp/.htaccess", "RemoveHandler .php .phtml\nRemoveType .php .phtml\n<FilesMatch \"\\.(php|phtml|phar)$\">\n    Require all denied\n</FilesMatch>\n# файлы выпуска не меняются — кеш браузера надолго\n<IfModule mod_headers.c>\n    Header set Cache-Control \"public, max-age=31536000, immutable\"\n</IfModule>\n");
     file_put_contents("$tmp/.complete", date('c'));
