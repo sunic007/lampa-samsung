@@ -6,6 +6,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.request
 
 SITE = 'http://sunic.stream'
@@ -36,6 +37,20 @@ def main():
             bad.append('главная (index.html) отличается от репозитория')
     except Exception as e:
         bad.append('главная: %s' % e)
+    try:
+        # Android-плагин по короткому адресу — копия с GitHub Pages (plugin.php обновляет её раз в 10 минут)
+        for attempt in (1, 2):
+            mine = get('/sunic.js')
+            with urllib.request.urlopen('https://sunic007.github.io/lampa-android/sunic.js', timeout=60) as r:
+                orig = r.read().decode('utf-8', 'replace')
+            if mine == orig:
+                break
+            if attempt == 1:
+                time.sleep(660)          # только что вышла новая версия — копия обновится в течение 10 минут
+        else:
+            bad.append('/sunic.js отличается от плагина на GitHub')
+    except Exception as e:
+        bad.append('/sunic.js: %s' % e)
     try:
         page = get('/lampa/')
         base = re.search(r'<base href="([^"]+)"', page)

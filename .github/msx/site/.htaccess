@@ -13,6 +13,8 @@ RedirectMatch 404 /\.
     RewriteCond %{HTTPS} !=on
     RewriteCond %{HTTP:X-Forwarded-Proto} !=https
     RewriteRule ^(index\.html)?$ https://%{HTTP_HOST}/ [R=301,L]
+    # Android-плагин по короткому адресу (копия с GitHub, см. plugin.php)
+    RewriteRule ^sunic\.js$ plugin.php [L]
 </IfModule>
 
 # только чтение: сайт ничего не принимает (кроме GET/HEAD/OPTIONS)
