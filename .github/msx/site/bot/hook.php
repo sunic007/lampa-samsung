@@ -28,6 +28,8 @@ const T = [
         'pay_title' => 'Sunic Apps Plus — 30 дней', 'pay_desc' => 'Общий бот Sunic Apps без токена: поиск с телефона, «Смотреть на ТВ», уведомления о новых сериях.',
         'paid' => "Спасибо! Sunic Apps Plus продлён до %s.", 'expired' => "Чтобы включать на ТВ, продлите Sunic Apps Plus — /plus",
         'old' => 'Поиск устарел — напишите название ещё раз.',
+        'slow' => 'Слишком часто — подождите минуту и напишите ещё раз.',
+        'refunded' => 'Оплата Sunic Apps Plus возвращена — подписка отменена.',
         'tv_off' => 'Телевизор не на связи — откройте на нём Lampa, и кнопка заработает.',
         'which' => 'На каком ТВ включить?',
         'menu_off' => "Меню, закладки и подписки работают, когда на телевизоре открыта Lampa.
@@ -48,6 +50,8 @@ const T = [
         'pay_title' => 'Sunic Apps Plus — 30 days', 'pay_desc' => 'Sunic Apps shared bot without a token: search from your phone, «Watch on TV», new-episode alerts.',
         'paid' => "Thank you! Sunic Apps Plus is renewed until %s.", 'expired' => "To play on the TV, renew Sunic Apps Plus — /plus",
         'old' => 'This search is outdated — send the title again.',
+        'slow' => 'Too many requests — wait a minute and try again.',
+        'refunded' => 'The Sunic Apps Plus payment was refunded — the subscription is cancelled.',
         'tv_off' => 'The TV is offline — open Lampa on it and the button will work.',
         'which' => 'Which TV should it play on?',
         'menu_off' => "The menu, bookmarks and subscriptions work while Lampa is open on the TV.
@@ -68,6 +72,8 @@ The TV is offline now. Send a movie title — I'll find it and it will start whe
         'pay_title' => 'Sunic Apps Plus — 30 kun', 'pay_desc' => "Tokensiz Sunic Apps umumiy boti: telefondan qidirish, «Televizorda ko'rish», yangi qismlar haqida xabarlar.",
         'paid' => "Rahmat! Sunic Apps Plus %s gacha uzaytirildi.", 'expired' => "Televizorda yoqish uchun Sunic Apps Plus ni uzaytiring — /plus",
         'old' => "Qidiruv eskirgan — nomini qayta yozing.",
+        'slow' => "Juda tez-tez — bir daqiqa kuting va qayta yozing.",
+        'refunded' => "Sunic Apps Plus to'lovi qaytarildi — obuna bekor qilindi.",
         'tv_off' => "Televizor aloqada emas — unda Lampa ni oching, tugma ishlaydi.",
         'which' => "Qaysi televizorda yoqay?",
         'menu_off' => "Menyu, xatcho'plar va obunalar televizorda Lampa ochiq bo'lganda ishlaydi.
@@ -82,9 +88,7 @@ function t($l, $k) { return T[$l][$k] ?? T['ru'][$k]; }
 function day($ts) { return date('d.m.Y', $ts); }
 function say($chat, $text, $kb = null) { tg('sendMessage', ['chat_id' => $chat, 'text' => $text] + ($kb ? ['reply_markup' => ['inline_keyboard' => $kb]] : [])); }
 
-db()->exec('CREATE TABLE IF NOT EXISTS searches (id INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER, items TEXT, at INTEGER)');
-db()->exec('CREATE TABLE IF NOT EXISTS updates (id INTEGER PRIMARY KEY AUTOINCREMENT, tv_id TEXT NOT NULL, uid INTEGER NOT NULL, body TEXT NOT NULL, at INTEGER NOT NULL)');
-try { db()->exec('ALTER TABLE tvs ADD COLUMN relay_seen INTEGER'); } catch (Exception $e) {}
+housekeeping();
 
 /* ---------- полный бот на ТВ ----------
  * ТВ этого чата на связи (опрашивал api.php?m=getUpdates последние 20 с) и Plus действует — апдейт ему: отвечает
@@ -139,7 +143,6 @@ function search($chat, $l, $text) {
         if (count($items) >= 8) break;
     }
     if (!$items) return say($chat, t($l, 'none'));
-    q('DELETE FROM searches WHERE at < ?', [time() - 7 * 86400]);
     q('INSERT INTO searches (chat_id, items, at) VALUES (?, ?, ?)', [$chat, json_encode($items, JSON_UNESCAPED_UNICODE), time()]);
     $sid = (int) db()->lastInsertId();
     list($cap, $kb, $poster) = card_msg($l, $sid, $items, 0);
@@ -222,6 +225,10 @@ if (!$msg || ($msg['chat']['type'] ?? '') !== 'private') exit;
 $chat = (int) $msg['chat']['id'];
 $l = lang_of($msg['from'] ?? []);
 
+if (isset($msg['refunded_payment'])) {                  // Stars вернули — оплаченный срок снимаем (пробный месяц остаётся)
+    if (($msg['refunded_payment']['invoice_payload'] ?? '') === 'plus30') { q('UPDATE users SET paid_until = 0 WHERE chat_id = ?', [$chat]); say($chat, t($l, 'refunded')); }
+    exit;
+}
 if (isset($msg['successful_payment'])) {
     $p = $msg['successful_payment'];
     if (($p['invoice_payload'] ?? '') === 'plus30' && ($p['currency'] ?? '') === 'XTR') {
@@ -247,4 +254,5 @@ if ($text === '/tv') {
 if ($text[0] === '/') { say($chat, t($l, 'hello')); exit; }
 // кнопки бота на ТВ («📋 Меню», «⭐ Закладки»…: начинаются со значка), а ТВ не на связи — не искать фильм с таким названием
 if (preg_match('/^\p{So}/u', $text) && q('SELECT 1 FROM tvs WHERE chat_id = ?', [$chat])->fetch()) { say($chat, t($l, 'menu_off')); exit; }
+if (!rate_ok('search:' . $chat, 20, 60)) { say($chat, t($l, 'slow')); exit; }   // поиск: не чаще 20 в минуту на чат
 search($chat, $l, mb_substr($text, 0, 100));

@@ -36,6 +36,14 @@ function db() {
     $db->exec('CREATE INDEX IF NOT EXISTS cmds_tv ON cmds (tv_id)');
     $db->exec('CREATE INDEX IF NOT EXISTS tvs_pair ON tvs (pair_code)');
     $db->exec('CREATE INDEX IF NOT EXISTS tvs_chat ON tvs (chat_id)');
+    $db->exec('CREATE TABLE IF NOT EXISTS updates (id INTEGER PRIMARY KEY AUTOINCREMENT, tv_id TEXT NOT NULL, uid INTEGER NOT NULL, body TEXT NOT NULL, at INTEGER NOT NULL)');
+    $db->exec('CREATE INDEX IF NOT EXISTS updates_tv ON updates (tv_id, uid)');
+    $db->exec('CREATE TABLE IF NOT EXISTS searches (id INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER, items TEXT, at INTEGER)');
+    $db->exec('CREATE TABLE IF NOT EXISTS rate (k TEXT PRIMARY KEY, n INTEGER NOT NULL, until INTEGER NOT NULL)');
+    // столбцы, добавленные позже: есть ли — по PRAGMA, без исключений на каждом запросе
+    $cols = array_column($db->query('PRAGMA table_info(tvs)')->fetchAll(), 'name');
+    if (!in_array('relay_seen', $cols, true)) $db->exec('ALTER TABLE tvs ADD COLUMN relay_seen INTEGER');
+    if (!in_array('ip', $cols, true)) $db->exec('ALTER TABLE tvs ADD COLUMN ip TEXT');
     return $db;
 }
 
@@ -56,7 +64,37 @@ function http_json($url, $post = null, $timeout = 10) {
 /** Запрос к Telegram: связь хостинга с ним иногда подвисает — до 7 с и один повтор. */
 function tg($method, $params = []) {
     $u = 'https://api.telegram.org/bot' . bot_token() . '/' . $method;
-    return http_json($u, $params, 7) ?: http_json($u, $params, 7);
+    $j = http_json($u, $params, 7) ?: http_json($u, $params, 7);
+    if (!$j || empty($j['ok'])) bot_log($method . ': ' . ($j['description'] ?? 'no answer'));
+    return $j;
+}
+
+/** Короткая строка в private/bot.log (без токена и содержимого сообщений); больше 1 МБ — начинаем заново. */
+function bot_log($line) {
+    $f = PRIVATE_DIR . '/bot.log';
+    if (is_file($f) && filesize($f) > 1048576) @unlink($f);
+    @file_put_contents($f, date('c') . ' ' . substr(preg_replace('/\s+/', ' ', $line), 0, 300) . PHP_EOL, FILE_APPEND);
+}
+
+/** Не чаще $max раз за $sec секунд по ключу (чат, хеш адреса…). true — можно. */
+function rate_ok($k, $max, $sec) {
+    $now = time();
+    $r = q('SELECT n, until FROM rate WHERE k = ?', [$k])->fetch();
+    if (!$r || (int) $r['until'] < $now) { q('INSERT OR REPLACE INTO rate (k, n, until) VALUES (?, 1, ?)', [$k, $now + $sec]); return true; }
+    if ((int) $r['n'] >= $max) return false;
+    q('UPDATE rate SET n = n + 1 WHERE k = ?', [$k]);
+    return true;
+}
+
+/** Уборка раз в ~500 запросов: брошенные непривязанные ТВ (30 дней), старые апдейты, команды, поиски и счётчики. */
+function housekeeping() {
+    if (mt_rand(1, 500) !== 1) return;
+    $now = time();
+    q('DELETE FROM tvs WHERE chat_id IS NULL AND seen < ?', [$now - 30 * 86400]);
+    q('DELETE FROM updates WHERE at < ?', [$now - 86400]);
+    q('DELETE FROM cmds WHERE at < ?', [$now - CMD_LIFE]);
+    q('DELETE FROM searches WHERE at < ?', [$now - 7 * 86400]);
+    q('DELETE FROM rate WHERE until < ?', [$now]);
 }
 
 /** Ключ TMDB — тот же открытый, что в самой Lampa (её app.js у нас на хостинге); свой можно положить в private/tmdb-key.txt. */
@@ -71,6 +109,7 @@ function tmdb_key() {
         foreach ($vers as $f) {
             if (preg_match("/function key\(\)\s*\{\s*return\s*'([0-9a-f]{32})'/", (string) file_get_contents($f), $m)) { $k = $m[1]; break; }
         }
+        if ($k) @file_put_contents(PRIVATE_DIR . '/tmdb-key.txt', $k);   // дальше — из файла, без разбора app.js (2 МБ) на каждый поиск
     }
     return $k;
 }

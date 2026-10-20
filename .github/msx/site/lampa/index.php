@@ -11,7 +11,7 @@
 const REPO = 'sunic007/lampa-samsung';
 const GH = 'https://raw.githubusercontent.com/' . REPO . '/main/version.json';
 const CDN = 'https://cdn.jsdelivr.net/gh/' . REPO . '@v';
-const PIN = '2.3.21';   // если GitHub не ответил и ничего не запомнено
+const PIN = '2.3.22';   // если GitHub не ответил и ничего не запомнено
 const LIFE = 600;       // версию проверяем раз в 10 минут
 const KEEP = 2;         // версий на хостинге
 
@@ -63,7 +63,12 @@ function release_files($ver) {
     $out = [];
     $t = json_decode((string) fetch_url('https://api.github.com/repos/' . REPO . '/git/trees/v' . $ver . '?recursive=1', 8), true);
     if (is_array($t) && !empty($t['tree'])) {
-        foreach ($t['tree'] as $f) if (($f['type'] ?? '') === 'blob' && strpos($f['path'], 'src/') === 0) $out[substr($f['path'], 4)] = (int) ($f['size'] ?? 0);
+        $sha = [];
+        foreach ($t['tree'] as $f) if (($f['type'] ?? '') === 'blob' && strpos($f['path'], 'src/') === 0) {
+            $out[substr($f['path'], 4)] = (int) ($f['size'] ?? 0);
+            $sha[substr($f['path'], 4)] = (string) ($f['sha'] ?? '');
+        }
+        @file_put_contents(__DIR__ . '/.cache/sha-' . $ver . '.json', json_encode($sha));   // git blob sha — сверка содержимого
     } else {
         $d = json_decode((string) fetch_url('https://data.jsdelivr.com/v1/packages/gh/' . REPO . '@v' . $ver . '?structure=flat', 8), true);
         foreach (($d['files'] ?? []) as $f) if (strpos($f['name'], '/src/') === 0) $out[substr($f['name'], 5)] = (int) ($f['size'] ?? 0);
@@ -84,6 +89,7 @@ function sync_release($store, $cache, $ver) {
     /* Хостинг обрывает PHP через 30 с (и после ответа тоже) — качаем пачками по 12 файлов параллельно и следим за
      * временем: не успели — остальное докачает следующий запрос (готовые файлы не перекачиваются). */
     $t0 = microtime(true);
+    $sha = json_decode((string) @file_get_contents(__DIR__ . '/.cache/sha-' . $ver . '.json'), true) ?: [];
     $todo = [];
     foreach ($files as $p => $size) {
         if (!preg_match('#^[A-Za-z0-9_./ -]+$#', $p) || strpos($p, '..') !== false) continue;   // только обычные пути
@@ -106,6 +112,8 @@ function sync_release($store, $cache, $ver) {
             curl_multi_remove_handle($mh, $h); curl_close($h);
             if ($b === false || ($chunk[$p] && strlen($b) !== $chunk[$p])) $b = microtime(true) - $t0 < 20 ? fetch_url($url(CDN . $ver . '/src/', $p), 8) : false;
             if ($b === false || ($chunk[$p] && strlen($b) !== $chunk[$p])) continue;           // в следующий раз докачаем
+            // содержимое — как в выпуске на GitHub (git blob sha), а не только размер: подмену по дороге не принимаем
+            if (!empty($sha[$p]) && sha1('blob ' . strlen($b) . "\0" . $b) !== $sha[$p]) continue;
             @mkdir(dirname("$tmp/$p"), 0755, true);
             file_put_contents("$tmp/$p", $b);
         }

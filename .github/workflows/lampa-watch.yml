@@ -16,6 +16,10 @@ on:
         description: 'Выпускать сразу (иначе только pull request)'
         type: boolean
         default: true
+      notify_test:
+        description: 'Только проверить личное уведомление владельцу в Telegram'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -157,6 +161,31 @@ jobs:
           # релиз от GITHUB_TOKEN не запускает другие workflow по событию release — пост в канал запускаем сами
           gh workflow run telegram-post.yml -R "$REPO" -f tag="v$V" || true
           if [ -n "$PREV" ] && [ "$PREV" != "v$V" ]; then gh release delete "$PREV" -R "$REPO" --yes || true; fi
+      - name: Tell the owner — Lampa updated itself
+        # владельцу лично (vars.OWNER_TG_CHAT, бот @sunicapps_news_bot): что обновилось и что нового
+        if: steps.cmp.outputs.new && steps.upd.outputs.ok && !steps.thr.outputs.skip && (github.event_name == 'schedule' || inputs.release)
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ vars.OWNER_TG_CHAT }}
+          VERSION: ${{ steps.cmp.outputs.version }}
+        run: |
+          [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || { echo "нет TELEGRAM_BOT_TOKEN или vars.OWNER_TG_CHAT — пропускаю"; exit 0; }
+          V=$(python3 -c "import json;print(json.load(open('version.json',encoding='utf-8'))['version'])")
+          python3 - "$V" <<'PY'
+          import os, sys, urllib.parse, urllib.request
+          v = sys.argv[1]
+          ch = open('changes.md', encoding='utf-8').read().strip() if os.path.exists('changes.md') else ''
+          lines = [l for l in ch.splitlines() if l.strip()][:8]
+          nl = chr(10)
+          text = ('🔄 Lampa обновилась сама — Sunic Apps %s' % v + nl + nl +
+                  'Внутри — свежая Lampa %s (как на сервере Skaz). Автотесты и проверка в браузере прошли, ' % os.environ['VERSION'] +
+                  'ТВ, Android и sunic.stream обновятся сами.' + nl)
+          if lines: text += nl + 'Что нового у Lampa (lampa-source):' + nl + nl.join(lines) + nl
+          text += nl + 'sunic.stream'
+          d = urllib.parse.urlencode({'chat_id': os.environ['TG_CHAT'], 'text': text[:4000], 'disable_web_page_preview': 'true'}).encode()
+          try: print('telegram', urllib.request.urlopen('https://api.telegram.org/bot%s/sendMessage' % os.environ['TG_TOKEN'], d, timeout=20).status)
+          except Exception as e: print('telegram:', e)
+          PY
       - name: Tests failed — pull request for a human
         if: steps.cmp.outputs.new && (!steps.upd.outputs.ok || (github.event_name == 'workflow_dispatch' && !inputs.release))
         env:
@@ -183,3 +212,33 @@ jobs:
             cat changes.md
           } > body.md
           gh pr create --title "Lampa $VERSION — проверить: автотесты не прошли" --body-file body.md --head "lampa-$HASH" --base main
+      - name: Tell the owner — update stopped
+        if: steps.cmp.outputs.new && !steps.upd.outputs.ok
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ vars.OWNER_TG_CHAT }}
+          VERSION: ${{ steps.cmp.outputs.version }}
+          TESTS: ${{ steps.upd.outputs.tests }}
+        run: |
+          [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || exit 0
+          python3 - <<'PY'
+          import os, urllib.parse, urllib.request
+          text = ('⚠️ Вышла Lampa %s, но автотесты не прошли (%s) — сама она не обновилась. '
+                  'Нужна проверка: pull request в sunic007/lampa-samsung.' % (os.environ['VERSION'], os.environ.get('TESTS') or '?'))
+          d = urllib.parse.urlencode({'chat_id': os.environ['TG_CHAT'], 'text': text}).encode()
+          try: urllib.request.urlopen('https://api.telegram.org/bot%s/sendMessage' % os.environ['TG_TOKEN'], d, timeout=20)
+          except Exception as e: print('telegram:', e)
+          PY
+      - name: Owner notification test
+        if: github.event_name == 'workflow_dispatch' && inputs.notify_test
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ vars.OWNER_TG_CHAT }}
+        run: |
+          [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || { echo "нет TELEGRAM_BOT_TOKEN или vars.OWNER_TG_CHAT"; exit 1; }
+          python3 - <<'PY'
+          import json, os, urllib.parse, urllib.request
+          d = urllib.parse.urlencode({'chat_id': os.environ['TG_CHAT'], 'text': '✅ Проверка: сюда будут приходить сообщения, когда Lampa обновится сама.'}).encode()
+          try: print('telegram ok:', json.load(urllib.request.urlopen('https://api.telegram.org/bot%s/sendMessage' % os.environ['TG_TOKEN'], d, timeout=20)).get('ok'))
+          except Exception as e: print('telegram:', e); raise SystemExit(1)
+          PY

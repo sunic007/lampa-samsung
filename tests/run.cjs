@@ -3850,6 +3850,10 @@ async function serviceTests() {
     B._run({ t: 'open', kind: 't', id: 311455, play: true });
     B._run({ t: 'open', kind: 'x', id: 1 }); B._run({ t: 'rm', kind: 'm', id: 2 }); B._run({ t: 'open', kind: 'm', id: -5 }); B._run(null);
     t('общий бот: «Смотреть» с сервера открывает фильм; чужие и битые команды — нет', opened.length === 1 && opened[0][0] === 't' && opened[0][1] === 311455 && opened[0][2] === true);
+    store.bs_sb_on = '1'; ctx.BSTelegram.hasOwn = () => false; ctx.Lampa = { Noty: { show() {} } };
+    t('общий бот: своего бота нет — общий остаётся', B._ownFirst() === false && store.bs_sb_on === '1');
+    ctx.BSTelegram.hasOwn = () => true;
+    t('общий бот: на ТВ подключили свой бот — от общего отвязываемся (один ТВ — один бот)', B._ownFirst() === true && !('bs_sb_on' in store));
 }
 serviceTests().catch(e => { fail++; console.log('FAIL служба: исключение', e && e.stack); }).then(() => {
     console.log(pass + ' passed, ' + fail + ' failed');

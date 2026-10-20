@@ -63,6 +63,7 @@ var BSBot = (function () {
     function tick() {
         timer = null;
         if (lsGet('bs_sb_on') !== '1') return;
+        if (ownFirst()) return;
         if (document.hidden) return schedule(POLL_IDLE);
         api('poll', function (j) {
             if (j && j.ok && j.linked === false) { off(true); return log('отвязан в боте'); }
@@ -132,6 +133,17 @@ var BSBot = (function () {
     }
 
     function shared() { return lsGet('bs_sb_on') === '1'; }
+    /** Один ТВ — один бот: на этом ТВ подключили свой бот (токен) — от общего отвязываемся, иначе общий бот считал бы ТВ
+     *  своим и предлагал включать на нём. true — отвязали (или своего нет — false). */
+    function ownFirst() {
+        var own = false;
+        try { own = !!BSTelegram.hasOwn && BSTelegram.hasOwn(); } catch (e) {}
+        if (!own || !shared()) return false;
+        api('unlink', function () {});
+        lsSet('bs_sb_on', null);
+        noty('Общий бот отключён: на этом ТВ подключён свой бот', 6000);
+        return true;
+    }
     function ownBot() { try { return BSTelegram.state() === 'own'; } catch (e) { return false; } }
     function addSettings() {
         var api2 = Lampa.SettingsApi, W = window.BS_SETTINGS_WHEN = window.BS_SETTINGS_WHEN || {};
@@ -153,9 +165,9 @@ var BSBot = (function () {
     function start() {
         try { addSettings(); } catch (e) { log('settings', e.message); }
         // подключён раньше (2.3.16: без номера чата) — спросить сервер; он же скажет, если в боте отвязали
-        if (lsGet('bs_sb_on') === '1') api('hello', function (j) { if (j && j.ok && j.linked) linked(j); else if (j && j.ok) off(true); else schedule(8000); });
+        if (lsGet('bs_sb_on') === '1' && !ownFirst()) api('hello', function (j) { if (j && j.ok && j.linked) linked(j); else if (j && j.ok) off(true); else schedule(8000); });
         try { document.addEventListener('visibilitychange', function () { if (!document.hidden && lsGet('bs_sb_on') === '1') { clearTimeout(timer); timer = null; schedule(1000); } }); } catch (e) {}
     }
 
-    return { start: start, connect: connect, ident: ident, _api: api, _ident: ident, _run: run };
+    return { start: start, connect: connect, ident: ident, _api: api, _ident: ident, _run: run, _ownFirst: ownFirst };
 })();

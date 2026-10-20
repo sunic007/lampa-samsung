@@ -2747,11 +2747,13 @@ var BSTelegram = (function () {
         return btoa(s);
     }
 
-    function httpGetBin(url, ok, fail) {
+    /** hdr — заголовки запроса ({имя: значение}): общий бот передаёт ключ ТВ заголовком, не в адресе. */
+    function httpGetBin(url, ok, fail, hdr) {
         ok = keep(ok); fail = keep(fail);
-        var x = new XMLHttpRequest();
+        var x = new XMLHttpRequest(), k;
         try {
             if (url.indexOf(SVC) === 0) svcOpen(x, 'GET', url); else x.open('GET', url, true);
+            if (hdr) for (k in hdr) if (hdr.hasOwnProperty(k)) x.setRequestHeader(k, hdr[k]);
             x.responseType = 'arraybuffer';
             x.timeout = 30000;
             x.onload = keep(function () { if (x.status === 200 && x.response) ok(x.response); else fail(L('ответ ', 'response ', 'javob ') + x.status); });
@@ -3257,7 +3259,7 @@ var BSTelegram = (function () {
         call('getFile', { file_id: file.file_id }, function (f) {
             if (!f || !f.file_path) return fail(L('Telegram не отдал картинку', "Telegram didn't send the picture", 'Telegram rasmni bermadi'));
             var sbf = relay() ? BSBot.ident() : null;   // общий бот: картинку отдаёт сервер (токен на ТВ не уходит)
-            httpGetBin(svcTg() ? SVC + '/tgfile/' + f.file_path : sbf ? SB_API + '?m=file&tv=' + sbf.id + '&k=' + sbf.key + '&path=' + encodeURIComponent(f.file_path)
+            httpGetBin(svcTg() ? SVC + '/tgfile/' + f.file_path : sbf ? SB_API + '?m=file&tv=' + sbf.id + '&path=' + encodeURIComponent(f.file_path)
                 : 'https://api.telegram.org/file/bot' + token() + '/' + f.file_path, function (buf) {
                 geminiAsk(bytesB64(buf), mime, String(msg.caption || '').slice(0, 200), function (j, model) {
                     var r = fromGemini(j);
@@ -3267,7 +3269,7 @@ var BSTelegram = (function () {
                     log('картинка', r.query);
                     botSearch(r.query);
                 }, fail);
-            }, function (e) { fail(L('не скачалась из Telegram (', "couldn't download from Telegram (", "Telegram'dan yuklab bo'lmadi (") + e + ')'); });
+            }, function (e) { fail(L('не скачалась из Telegram (', "couldn't download from Telegram (", "Telegram'dan yuklab bo'lmadi (") + e + ')'); }, sbf ? { 'X-Sunic-Key': sbf.key } : null);
         }, function (e) { fail(e); });
     }
 
@@ -4501,6 +4503,8 @@ var BSTelegram = (function () {
     return { start: start,
         /** 'shared' — общий бот, 'own' — свой бот подключён, 'none' — не подключено. */
         state: state, refresh: function () { try { refreshSettings(); } catch (e) {} },
+        /** Свой бот подключён (токен у страницы или в службе) — тогда общий бот этому ТВ не нужен. */
+        hasOwn: function () { return !!token() || lsGet('bs_tg_svc') === '1'; },
         /** Общий бот (bsbot.js): открыть фильм и нажать «Смотреть» — как своя команда «▶️ Смотреть». */
         open: function (kind, id, play) { openHere(kind, id, null, play !== false, false); },
         tvName: tvName,

@@ -23,9 +23,13 @@ $kh = hash('sha256', $key);
 
 $row = q('SELECT * FROM tvs WHERE id = ?', [$tv])->fetch();
 if ($row && !hash_equals($row['key_hash'], $kh)) json_out(['ok' => false, 'why' => 'wrong key'], 403);
+housekeeping();
 if (!$row) {
     if ($a !== 'hello') json_out(['ok' => false, 'why' => 'unknown tv'], 404);
-    q('INSERT INTO tvs (id, key_hash, name, seen) VALUES (?, ?, ?, ?)', [$tv, $kh, $name, $now]);
+    // новых ТВ — не больше 20 в час с одного адреса (иначе скриптом можно забить базу); адрес — только хешем
+    $ip = substr(hash('sha256', 'sunic-ip:' . ($_SERVER['REMOTE_ADDR'] ?? '') . bot_token()), 0, 16);
+    if (!rate_ok('newtv:' . $ip, 20, 3600)) json_out(['ok' => false, 'why' => 'too many'], 429);
+    q('INSERT INTO tvs (id, key_hash, name, seen, ip) VALUES (?, ?, ?, ?, ?)', [$tv, $kh, $name, $now, $ip]);
     $row = q('SELECT * FROM tvs WHERE id = ?', [$tv])->fetch();
 }
 q('UPDATE tvs SET seen = ?' . ($name !== '' ? ', name = ?' : '') . ' WHERE id = ?', $name !== '' ? [$now, $name, $tv] : [$now, $tv]);
