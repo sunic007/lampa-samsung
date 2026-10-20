@@ -2159,7 +2159,7 @@ var BSTelegram = (function () {
             return whenVideoEnds(function () { openHere(kind, id, ref, play, false); });
         }
         tmdbGet((kind === 't' ? 'tv/' : 'movie/') + id, function (j) {
-            if (j === BLOCKED) return ack(false, 'заблокирован по просьбе правообладателя');
+            if (j === BLOCKED || (j && j.bs_blocked)) return ack(false, 'заблокирован по просьбе правообладателя');
             if (!j || !j.id) return ack(false, 'TMDB не ответил');
             try {
                 pushCard(toCard(j, kind), kind, play);
@@ -3686,30 +3686,90 @@ var BSTelegram = (function () {
 
     /* TMDB без таймаута: если сервер не отвечает, поиск висел бы до минут. Через TMDB_TIMEOUT отвечаем «не ответил». */
     var TMDB_TIMEOUT = 10000, TMDB_FIRST = 6000, TMDB_DIRECT = 'https://api.themoviedb.org/3/', BLOCKED = { blocked: true };
+    /* {"blocked":true} прокси CUB отвечает и по-настоящему (фильм закрыт по требованию правообладателя), и когда сам
+     * отдаёт ерунду — тогда карточка «заблокирована», хотя на ТВ всё играет. Сверяемся с открытым списком CUB
+     * (tmdb.<домен>/blocked — тот же, что тянет ядро Lampa): фильм в списке — правда закрыт, в обход не ходим (BLOCKED);
+     * проверить не удалось — тоже не ходим. Нет в списке — сбой прокси, метаданные берём напрямую из официального
+     * TMDB (те же открытые данные, что и в Lampa без прокси; сам фильм это не открывает). */
+    var BLOCK_LIFE = 12 * 3600000, BLOCK_RETRY = 300000;
+    var blockIds = null, blockAt = 0;
+    /** id TMDB из списка CUB; часть записей хранит только imdb/kpid — их как tmdb id не проверить. */
+    function blockParse(j) {
+        if (Object.prototype.toString.call(j) !== '[object Array]') return null;
+        var set = {}, i, e, n = 0;
+        for (i = 0; i < j.length; i++) {
+            e = j[i] || {};
+            if (e.id > 0) { set['' + e.id] = 1; n++; }
+        }
+        log('список закрытых фильмов CUB', n);
+        return n ? set : null;
+    }
+    /** Список с кэшем на сутки; null — проверить не удалось (повтор не чаще BLOCK_RETRY, старый кэш лучше нуля). */
+    function blockCheck(cb) {
+        var now = Date.now(), saved = lsJson('bs_tg_block', null);
+        if (blockIds && now - blockAt < BLOCK_LIFE) return cb(blockIds);
+        if (blockAt && now - blockAt < BLOCK_RETRY) return cb(blockIds);
+        blockAt = now;
+        if (saved && saved.ids && saved.at && now - saved.at < BLOCK_LIFE) { blockIds = saved.ids; return cb(blockIds); }
+        var domain = '';
+        try { domain = Lampa.Manifest.cub_domain || ''; } catch (e) {}
+        if (!domain) return cb(blockIds);
+        var req = new Lampa.Reguest();
+        try { req.timeout(TMDB_TIMEOUT); } catch (e) {}
+        req.silent('https://tmdb.' + domain + '/blocked', function (j) {
+            var set = blockParse(j);
+            if (set) {
+                blockIds = set;
+                lsSet('bs_tg_block', JSON.stringify({ at: now, ids: set }));
+            }
+            cb(blockIds);
+        }, function () {
+            log('список закрытых фильмов CUB не ответил', domain);
+            if (!blockIds && saved && saved.ids) blockIds = saved.ids;  // устаревший список лучше пустого
+            cb(blockIds);
+        });
+    }
     /** Язык TMDB для того, кому отвечаем: английский — en-US; узбекских данных у TMDB почти нет — русский. */
     function tmdbLang() { return lang() === 'en' ? 'en-US' : 'ru'; }
-    function tmdbGet(path, cb, retried) {
+    function tmdbGet(path, cb, retried, mark) {
         cb = keep(cb);
         var q = path + (path.indexOf('?') < 0 ? '?' : '&') + 'api_key=' + Lampa.TMDB.key() + '&language=' + tmdbLang();
         // сначала как Lampa (её прокси TMDB), не ответил — сам TMDB напрямую: у каждого адреса есть запасной
         var url = retried ? TMDB_DIRECT + q : Lampa.TMDB.api(q), wait = retried ? TMDB_TIMEOUT : TMDB_FIRST;
         var done = false, finish = function (j) {
             if (done) return; done = true;
-            // {"blocked":true}: CUB закрыл фильм по просьбе правообладателя — в Lampa он не откроется. Это ответ, а не сбой:
-            // в обход не ходим, говорим как есть (BLOCKED)
-            if (j && typeof j === 'object' && j.blocked && !j.id) return cb(BLOCKED);
-            if (!j && !retried) return tmdbGet(path, cb, true);
+            // {"blocked":true} — сверяемся со списком CUB: сбой прокси (фильма в списке нет) обходим официальным TMDB,
+            // а настоящую блокировку не обходим — но карточку в боте всё равно показываем (bs_blocked), на ТВ не отправляем
+            if (j && typeof j === 'object' && j.blocked && !j.id) {
+                var m = /^(movie|tv)\/(\d+)/.exec(path || ''), id = m ? parseInt(m[2], 10) : 0;
+                if (!id) return cb(BLOCKED);
+                return blockCheck(function (set) {
+                    if (!set) return cb(BLOCKED);                          // список CUB не ответил — проверить нечем, в обход не ходим
+                    if (!set['' + id]) {                                   // в списке нет — прокси соврал «заблокирован»
+                        log('CUB ответил blocked, но фильма нет в его списке — TMDB напрямую', path.split('?')[0]);
+                        if (!retried) return tmdbGet(path, cb, true, false);
+                        return cb(null);
+                    }
+                    // правда закрыт: человек читает бот, а не смотрит через него — карточку берём из открытого TMDB
+                    // и помечаем (bs_blocked), сам фильм это не открывает
+                    if (!retried) return tmdbGet(path, cb, true, true);
+                    cb(j && j.id ? j : BLOCKED);
+                });
+            }
+            if (j && mark && j.id) j.bs_blocked = 1;
+            if (!j && !retried) return tmdbGet(path, cb, true, mark);
             if (!j) log('TMDB не ответил', path.split('?')[0]);
-            cb(j || null);
+            cb(j || (mark ? BLOCKED : null));
         };
         var req = new Lampa.Reguest();
         try { req.timeout(wait); } catch (e) {}
         req.silent(url, function (j) { finish(j); }, function () { finish(null); });
         setTimeout(function () { finish(null); }, wait + 1000);
     }
+    /** Ответ, когда на ТВ не откроется: в боте карточка есть, фильм остаётся закрытым по требованию правообладателя. */
     function blockedText() {
-        return L('🚫 Заблокирован по просьбе правообладателя — в Lampa не откроется', '🚫 Blocked at the copyright holder’s request — Lampa can’t open it',
-            "🚫 Mualliflik huquqi egasining talabi bilan bloklangan — Lampa'da ochilmaydi");
+        return L('🚫 На ТВ не откроется — закрыт по просьбе правообладателя', '🚫 Won’t open on the TV — blocked at the copyright holder’s request',
+            "🚫 Televizorida ochilmaydi — mualliflik huquqi egasining talabi bilan bloklangan");
     }
     /** Карточка Lampa из ответа TMDB (подробности фильма/сериала). */
     function toCard(j, kind) {
@@ -4072,7 +4132,7 @@ var BSTelegram = (function () {
                 return whenVideoEnds(function () { openHereLocal(true); });
             }
             tmdbGet((kind === 't' ? 'tv/' : 'movie/') + id, function (j) {
-                if (j === BLOCKED) return deferred ? null : answer(blockedText());
+                if (j === BLOCKED || (j && j.bs_blocked)) return deferred ? null : answer(blockedText());
                 if (!j || !j.id) return deferred ? null : answer(whyText('TMDB не ответил'));
                 try {
                     pushCard(toCard(j, kind), kind, play);
@@ -4175,6 +4235,8 @@ var BSTelegram = (function () {
         var answer = function (t) { call('answerCallbackQuery', { callback_query_id: q.id, text: t }, null, null); };
         tmdbGet((kind === 't' ? 'tv/' : 'movie/') + id, function (j) {
             if (j === BLOCKED) return answer(blockedText());
+            // закрытый фильм в боте карточку показывает (подписаться, «хочу посмотреть» — можно), на ТВ не открываем
+            if (j && j.bs_blocked && (act === 'o' || act === 'v')) return answer(blockedText());
             if (!j || !j.id) return answer(L('TMDB не ответил, попробуйте ещё раз', "TMDB didn't answer, try again", "TMDB javob bermadi, qayta urinib ko'ring") + ' (' + tvName() + ')');
             var card = toCard(j, kind), name = card.title || card.name || '';
             var already = function () { return answer(L('Вы уже подписаны', "You're already subscribed", "Siz allaqachon obuna bo'lgansiz")); };
@@ -4535,7 +4597,7 @@ var BSTelegram = (function () {
         /** Общий бот (bsbot.js): открыть фильм и нажать «Смотреть» — как своя команда «▶️ Смотреть». */
         open: function (kind, id, play) { openHere(kind, id, null, play !== false, false); },
         tvName: tvName,
-        _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _join4: { code: join4Code, show: join4Show, topic: join4Topic, hellos: join4Hellos, box: join4Box, open: join4Open, send: join4Send, BASE9: BASE9 }, _joinTopic: joinTopic, _joinShow: joinShow, _joinKeys: joinKeys, _aiForget: aiForget, _relaySet: relaySet, _svcSync: svcSync, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _lateCommand: lateCommand, _botDesc: function (l, s) { return [botDesc(l || 'ru', s), botShort(l || 'ru', s)]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow,
+        _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _join4: { code: join4Code, show: join4Show, topic: join4Topic, hellos: join4Hellos, box: join4Box, open: join4Open, send: join4Send, BASE9: BASE9 }, _joinTopic: joinTopic, _joinShow: joinShow, _joinKeys: joinKeys, _aiForget: aiForget, _relaySet: relaySet, _svcSync: svcSync, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _lateCommand: lateCommand, _botDesc: function (l, s) { return [botDesc(l || 'ru', s), botShort(l || 'ru', s)]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _tmdbGet: tmdbGet, _blockParse: blockParse, _blockReset: function () { blockIds = null; blockAt = 0; }, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow,
         _call: call, _check: check, _remind: remind, _joinCode: joinCode, _randomTopic: randomTopic,
         _busTopic: busTopic, _svc: svc, _svcKey: function (k) { if (window.BS_TEST_HOOKS !== true) return undefined; if (typeof k === 'string') svcKey = k; return svcKey; },
         _svcStart: svcStart, _svcMove: svcMove, _svcCheck: svcCheck, _svcForget: svcForget, _tgOff: tgOff, _tgOffAsk: tgOffAsk, _svcSeen: svcSeen, _tvRules: tvRules, _addSettings: addSettings, _aiRun: aiRun, _aiSlot: aiSlot, _setAiKey: setAiKey,

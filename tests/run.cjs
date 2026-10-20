@@ -618,8 +618,9 @@ function guardEnv(opt) {
     const ls = {}, store = { player: 'tizen', player_hls_method: 'application' }, plays = [];
     const w = { localStorage: opt.tizen ? { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); }, removeItem: k => { delete ls[k]; } } : { getItem: () => null, setItem() {} },
         addEventListener() {}, webapis: { avplay: av } };
-    const Lampa = { Noty: { show: t => notes.push(t) }, Player: { listener: { follow: follow('player') }, opened: () => true, playdata: () => ({ url: 'http://cdn/1080.m3u8', quality: { '1080p': 'http://cdn/1080.m3u8', '720p': 'http://cdn/720.m3u8' } }), close() { events.push('close'); } },
+    const Lampa = { Noty: { show: t => notes.push(t) }, Player: { listener: { follow: follow('player') }, opened: () => true, playdata: () => (opt.playdata ? opt.playdata() : { url: 'http://cdn/1080.m3u8', quality: { '1080p': 'http://cdn/1080.m3u8', '720p': 'http://cdn/720.m3u8' } }), close() { events.push('close'); } },
         PlayerVideo: { listener: { follow: follow('video') }, video: () => ({}), to() {} }, PlayerPanel: { listener: { follow: follow('panel'), send: (ev, d) => { if (opt.tizen) events.push(ev + ' ' + d.url); else throw new Error('нет'); } } }, SettingsApi: null };
+    if (opt.bsiptv) w.BSIptv = opt.bsiptv;                            // окно BSIptv — как в приложении (window.*)
     if (opt.tizen) {
         Lampa.Platform = { is: n => n === 'tizen' };
         Lampa.Storage = { field: k => store[k], set: (k, v) => { store[k] = v; } };
@@ -725,6 +726,39 @@ function guardEnv(opt) {
     t('HLS: mp4 через 15 с не трогаем (ждём обычные 25 с)', g2.store.player === 'tizen' && g2.events.length === 0);
     t('HLS: распознаём поток и сервер', g2.M._hls.isHls('https://a.b/hls/x') && g2.M._hls.isHls('https://a.b/x.m3u8?t=1') && !g2.M._hls.isHls('https://a.b/x.mp4') &&
         g2.M._hls.hostKey('https://4c-2f-63-r505.vkvideo.cloud/0/x.m3u8') === 'vkvideo.cloud');
+}
+{
+    // Канал не отвечает: переподключение → другой адрес того же канала (BSIptv) → закрытие
+    const pd = { title: 'Tashkent HD', url: 'http://ch/1.m3u8', tv: true, iptv: true, quality: { auto: 'http://ch/1.m3u8' } };
+    let warmed = 0; const seen = [];
+    const g = guardEnv({ tizen: true, playdata: () => pd, bsiptv: {
+        warm() { warmed++; },
+        alt(name, url, tried) { seen.push(name + '|' + url + '|' + tried.join(','));
+            return url === 'http://ch/1.m3u8' && tried.indexOf('http://ch/2.m3u8') < 0 ? 'http://ch/2.m3u8' : null; }
+    } });
+    g.fire('player:start', { title: 'Tashkent HD', url: 'http://ch/1.m3u8', tv: true, iptv: true }); g.clock.run(500);
+    t('канал: при старте строится индекс запасных адресов (BSIptv.warm)', warmed === 1);
+    g.fire('video:error', { fatal: true }); g.clock.run(3500);
+    t('канал: первая беда — переподключение к тому же адресу',
+        g.events.indexOf('quality http://ch/1.m3u8') >= 0 && g.notes.some(n => /переподключаюсь/.test(n)) && g.events.indexOf('close') < 0);
+    g.fire('video:error', { fatal: true }); g.clock.run(3500);
+    t('канал: не помогло — другой адрес того же канала (название канала дошло до поиска)',
+        g.events.indexOf('quality http://ch/2.m3u8') >= 0 && g.notes.some(n => /другой источник/.test(n)) &&
+        seen.length === 1 && seen[0].indexOf('Tashkent HD|http://ch/1.m3u8|') === 0 && g.events.indexOf('close') < 0);
+    g.fire('video:error', { fatal: true }); g.clock.run(3500); g.clock.run(5000);
+    t('канал: адреса кончились — плеер закрывается с подсказкой',
+        g.events.some(e => e === 'close') && g.notes.some(n => /Канал не работает/.test(n)));
+}
+{
+    // Запасных адресов нет — как раньше: одно переподключение и закрытие
+    const pd = { title: 'Solo', url: 'http://ch/9.m3u8', tv: true, iptv: true };
+    const g = guardEnv({ tizen: true, playdata: () => pd, bsiptv: { warm() {}, alt: () => null } });
+    g.fire('player:start', { title: 'Solo', url: 'http://ch/9.m3u8', tv: true, iptv: true }); g.clock.run(500);
+    g.fire('video:error', { fatal: true }); g.clock.run(3500);
+    t('канал: без запасных адресов — только переподключение к тому же адресу',
+        g.events.indexOf('quality http://ch/9.m3u8') >= 0 && g.events.length === 1);
+    g.fire('video:error', { fatal: true }); g.clock.run(3500); g.clock.run(5000);
+    t('канал: без запасных адресов — дальше закрытие', g.events.filter(e => e === 'close').length === 1);
 }
 let G = guardEnv();
 G.fire('player:start', { url: 'http://cdn/1080.m3u8' }); G.clock.run(1000);
@@ -1919,6 +1953,53 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('качество: список ожидания владельца — общий для всех ТВ', JSON.parse(store.bs_tg_qwait)[0].id === 5);
     const d = T._botDesc();
     t('бот: описание «отвечает, пока Lampa открыта на ТВ» — в пределах Telegram (512 / 120)', d[0].length <= 512 && d[1].length <= 120 && /пока Lampa открыта/.test(d[0]) && /пока Lampa открыта/.test(d[1]));
+}
+/* ---- bstg.js: «заблокирован по просьбе правообладателя» — сверяем ответ прокси CUB с его же открытым списком ---- */
+{
+    // blocked:true приходит и от настоящей блокировки, и от сбойного прокси — тогда бот врёт «заблокирован», а ТВ сериал ищет и играет
+    const mk = (list, o) => {
+        const store = { bs_tv_id: 'ZZZZZZZZ', bs_tg_chat: '1', bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw' };
+        const urls = [], opt = o || {};
+        const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0,
+            XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }),
+            Uint8Array, btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'), unescape, escape,
+            encodeURIComponent, decodeURIComponent,
+            Lampa: { Noty: { show() {} }, Manifest: { cub_domain: 'cub.example' },
+                TMDB: { key: () => 'k', api: q => 'https://apitmdb.cub.example/3/' + q },
+                Reguest: function () { this.timeout = function () {}; this.silent = function (url, ok, err) {
+                    urls.push(url);
+                    if (url.indexOf('/blocked') >= 0) { if (opt.listDown) err(); else ok(list); return; }
+                    if (url.indexOf('apitmdb') >= 0) return ok(opt.proxyBlocked ? { blocked: true } : { id: 550, title: 'Фильм' });
+                    if (opt.directDown) return err();
+                    ok({ id: 550, title: 'Фильм' });
+                }; } } };
+        ctx.window = ctx; ctx.crypto = require('crypto').webcrypto;
+        ctx.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+        vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
+        return { T: ctx.M, urls, store };
+    };
+    const ask = (env, p) => { let out = 'нет ответа'; env.T._tmdbGet(p, j => { out = j; }); return out; };
+
+    let env = mk([], { listDown: true, proxyBlocked: true }), r = ask(env, 'movie/123');
+    t('блок: список CUB не ответил — в обход не уходим, отвечаем «заблокирован»', r && r.blocked === true && env.urls.join().indexOf('themoviedb') < 0);
+
+    env = mk([{ id: 123, kpid: 7 }], { proxyBlocked: true });
+    r = ask(env, 'movie/123');
+    t('блок: фильм в списке CUB — карточку в боте показываем, но помечаем закрытой (на ТВ не откроется)', r && r.id === 550 && r.bs_blocked === 1);
+    ask(env, 'movie/123');
+    t('блок: список CUB берём один раз, повторно не спрашиваем', env.urls.filter(u => u.indexOf('/blocked') >= 0).length === 1);
+
+    env = mk([{ id: 123 }], { proxyBlocked: true, directDown: true });
+    t('блок: закрытый фильм, а официальный TMDB молчит — отвечаем «заблокирован», а не пустоту', ask(env, 'movie/123').blocked === true);
+
+    env = mk([{ id: 550 }], { proxyBlocked: true });
+    r = ask(env, 'movie/123');
+    t('блок: прокси соврал «заблокирован», в списке фильма нет — карточка из официального TMDB без пометки', r && r.id === 550 && !r.bs_blocked && env.urls.join().indexOf('https://api.themoviedb.org/3/movie/123') >= 0);
+    const envTv = mk([{ id: 123 }], { proxyBlocked: true });
+    t('блок: сериал (tv/…) тоже сверяется со списком', ask(envTv, 'tv/123').bs_blocked === 1);
+
+    t('блок: разбор списка — только записи с tmdb id (imdb/kpid так не проверить)', JSON.stringify(env.T._blockParse([{ id: 5, imdb: 'tt1' }, { imdb: 'tt2' }, { kpid: 3 }, { id: 6 }])) === '{"5":1,"6":1}');
+    t('блок: не список — проверять нечем', env.T._blockParse({ blocked: true }) === null && env.T._blockParse([]) === null);
 }
 /* ---- update.js: карточка загрузки — только при обновлении, обычный запуск — только экран Lampa ---- */
 {
