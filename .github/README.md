@@ -1,6 +1,6 @@
 <picture><img src="../docs/logo.png" width="210" align="left" alt="Lampa"></picture>
 
-<p align="center">The open-source <b>Lampa</b> media center for <b>Samsung Smart TV</b>.<br>Updates itself, keeps the player from freezing and adds a Telegram bot.</p>
+<p align="center">The open-source <b>Lampa</b> media center — on any Smart TV, Android and in the browser; the most complete version is for <b>Samsung Smart TV</b>.<br>Updates itself, keeps the player from freezing and adds a Telegram bot.</p>
 
 <p align="center">
 <a href="https://github.com/sunic007/lampa-samsung/releases/latest"><img src="https://img.shields.io/github/v/release/sunic007/lampa-samsung?style=flat-square&label=release&color=2f81f7" alt="release"></a>
@@ -12,11 +12,24 @@
 
 <p align="center"><a href="https://github.com/sunic007/lampa-samsung/releases/latest/download/samsung.wgt"><img src="../docs/badges/download-en.svg" height="40" align="middle" alt="Download samsung.wgt"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<picture><img src="https://flagcdn.com/h60/gb.png" height="30" align="middle" alt=""></picture> <b>English</b>&nbsp;&nbsp;&nbsp;<a href="README.ru.md"><img src="https://flagcdn.com/h60/ru.png" height="30" align="middle" alt=""> Русский</a>&nbsp;&nbsp;&nbsp;<a href="README.uz.md"><img src="https://flagcdn.com/h60/uz.png" height="30" align="middle" alt=""> O'zbekcha</a></p>
 
-<p align="center"><sub>Free · Tizen 2.3+ · <a href="CHANGELOG.md">What's new</a> (RU) · <a href="../docs/DEVELOPMENT.md">For developers</a> (RU)</sub></p>
+<p align="center"><sub>Free · <a href="https://sunic.stream">sunic.stream</a> · Tizen 2.3+ · <a href="CHANGELOG.md">What's new</a> (RU) · <a href="../docs/DEVELOPMENT.md">For developers</a> (RU)</sub></p>
 
 <br clear="left">
 
-## How it works
+## Where it works
+
+<div align="justify">
+
+Lampa with Sunic Apps works on any platform. More — <a href="https://sunic.stream">sunic.stream</a>.
+
+- <b>Samsung Smart TV</b> — the <code>samsung.wgt</code> app (installed with TV Installer or Tizen, see below). The most complete version: TV volume memory, the Smart Hub panel, sleep that closes the app, the TV player (AVPlay).
+- <b>Any Smart TV</b> — Samsung, LG, Android TV and others — through the <b>Media Station X</b> app: <b>Settings → Start Parameter → Setup</b> → <code>sunic.stream</code>. No developer mode.
+- <b>Android</b> — TV, boxes, phones: the plugin <code>https://sunic.stream/sunic.js</code> in Lampa (for example, Lampa BS) — see <a href="https://github.com/sunic007/lampa-android">lampa-android</a>.
+- <b>Browser</b> — <a href="https://sunic.stream/lampa/">sunic.stream/lampa</a>. Skaz sources don't open in a browser (Skaz servers are http only, the page is https); Online Mod and Z01 work.
+
+</div>
+
+## How it works on Samsung
 
 <div align="justify">
 

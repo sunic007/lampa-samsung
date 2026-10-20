@@ -1,6 +1,6 @@
 <picture><img src="../docs/logo.png" width="210" align="left" alt="Lampa"></picture>
 
-<p align="center"><b>Samsung Smart TV</b> uchun ochiq kodli <b>Lampa</b> media markazi.<br>O'zi yangilanadi, pleyer qotib qolmaydi va Telegram-bot qo'shiladi.</p>
+<p align="center">Ochiq kodli <b>Lampa</b> media markazi — istalgan Smart TV, Android va brauzerda; eng to'liq versiyasi — <b>Samsung Smart TV</b> uchun.<br>O'zi yangilanadi, pleyer qotib qolmaydi va Telegram-bot qo'shiladi.</p>
 
 <p align="center">
 <a href="https://github.com/sunic007/lampa-samsung/releases/latest"><img src="https://img.shields.io/github/v/release/sunic007/lampa-samsung?style=flat-square&label=release&color=2f81f7" alt="release"></a>
@@ -12,11 +12,24 @@
 
 <p align="center"><a href="https://github.com/sunic007/lampa-samsung/releases/latest/download/samsung.wgt"><img src="../docs/badges/download-uz.svg" height="40" align="middle" alt="samsung.wgt'ni yuklab olish"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="README.md"><img src="https://flagcdn.com/h60/gb.png" height="30" align="middle" alt=""> English</a>&nbsp;&nbsp;&nbsp;<a href="README.ru.md"><img src="https://flagcdn.com/h60/ru.png" height="30" align="middle" alt=""> Русский</a>&nbsp;&nbsp;&nbsp;<picture><img src="https://flagcdn.com/h60/uz.png" height="30" align="middle" alt=""></picture> <b>O'zbekcha</b></p>
 
-<p align="center"><sub>Bepul · Tizen 2.3+ · <a href="CHANGELOG.md">Yangiliklar</a> (RU) · <a href="../docs/DEVELOPMENT.md">Dasturchilar uchun</a> (RU)</sub></p>
+<p align="center"><sub>Bepul · <a href="https://sunic.stream">sunic.stream</a> · Tizen 2.3+ · <a href="CHANGELOG.md">Yangiliklar</a> (RU) · <a href="../docs/DEVELOPMENT.md">Dasturchilar uchun</a> (RU)</sub></p>
 
 <br clear="left">
 
-## Qanday ishlaydi
+## Qayerda ishlaydi
+
+<div align="justify">
+
+Sunic Apps bilan Lampa istalgan platformada ishlaydi. Batafsil — <a href="https://sunic.stream">sunic.stream</a>.
+
+- <b>Samsung Smart TV</b> — <code>samsung.wgt</code> ilovasi (TV Installer yoki Tizen orqali o'rnatiladi, pastga qarang). Eng to'liq versiya: televizor ovoz balandligini eslab qolish, Smart Hub paneli, ilovani yopadigan uyqu taymeri, televizor pleyeri (AVPlay).
+- <b>Istalgan Smart TV</b> — Samsung, LG, Android TV va boshqalar — <b>Media Station X</b> ilovasi orqali: <b>Settings → Start Parameter → Setup</b> → <code>sunic.stream</code>. Dasturchi rejimi kerak emas.
+- <b>Android</b> — televizor, pristavka, telefon: Lampa'da (masalan, Lampa BS) <code>https://sunic.stream/sunic.js</code> plagini — <a href="https://github.com/sunic007/lampa-android">lampa-android</a>'ga qarang.
+- <b>Brauzer</b> — <a href="https://sunic.stream/lampa/">sunic.stream/lampa</a>. Brauzerda Skaz manbalari ochilmaydi (Skaz serverlari faqat http'da, sahifa esa https'da); Online Mod va Z01 ishlaydi.
+
+</div>
+
+## Samsung'da qanday ishlaydi
 
 <div align="justify">
 
