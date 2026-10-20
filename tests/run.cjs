@@ -792,11 +792,12 @@ t('Smart Hub: в config.xml нет службы превью — только La
 
 
 /* ---- update.js: новая версия годится, только когда все её файлы уже на CDN ---- */
-function updCheck(manifest, head, store) {
+function updCheck(manifest, head, store, blocked) {
     const ls = Object.assign({}, store || {}), got = [];
     function X() {
         this.open = (m, u) => { this.m = m; this.u = u; };
         this.send = () => {
+            if (blocked && blocked(this.u)) return this.onerror();
             if (/version\.json/.test(this.u)) { this.status = manifest ? 200 : 500; this.responseText = manifest ? JSON.stringify(manifest) : 'oops'; }
             else this.status = head(this.u);
             this.onload();
@@ -823,6 +824,10 @@ uc = updCheck(M46, () => 200, { bs_upd: JSON.stringify({ v: '1.7.46', files: ['l
 t('обновление: та же версия уже работает — нового нет', uc.v === '');
 uc = updCheck(M46, () => 200, { bs_upd_bad: '1.7.46|' + Date.now() });
 t('обновление: версия, на которой Lampa не поднялась, — не берём', uc.v === '' && !uc.ls.bs_upd);
+uc = updCheck(M46, () => 200, {}, u => /raw\.githubusercontent/.test(u));
+t('обновление: GitHub в этой стране закрыт — version.json с jsDelivr, обновление находится', uc.v === '1.7.46');
+uc = updCheck(M46, () => 200, {}, u => /version\.json/.test(u));
+t('обновление: version.json нигде не отдаётся — тихо ничего', uc.v === '');
 uc = updCheck(null, () => 200);
 t('обновление: GitHub не ответил — без версии', uc.v === '');
 uc = updCheck(M46, () => 200, { bs_upd: JSON.stringify({ v: '1.7.45', files: ['loader.js'], m: 1, ok: 1 }) });

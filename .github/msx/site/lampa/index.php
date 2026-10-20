@@ -27,6 +27,8 @@ $vf = $cache . '/version';
 $v = is_file($vf) ? trim(file_get_contents($vf)) : '';
 if (!$v || time() - filemtime($vf) > LIFE) {
     $j = json_decode(fetch_url(GH . '?t=' . time()), true);
+    // GitHub не ответил — тот же version.json с jsDelivr (ветка main)
+    if (!is_array($j)) $j = json_decode(fetch_url('https://cdn.jsdelivr.net/gh/sunic007/lampa-samsung@main/version.json'), true);
     if (is_array($j) && preg_match('/^\d+\.\d+\.\d+$/', $j['version'] ?? '')) { $v = $j['version']; @file_put_contents($vf, $v); }
     elseif ($v) @touch($vf);            // GitHub не ответил — прежняя версия ещё на 10 минут
 }

@@ -145,17 +145,33 @@
      * Есть ли новая версия функций. Готова (все файлы на CDN) — запоминается в bs_upd и встанет при следующем
      * запуске или когда Lampa уйдёт в фон (loader.js). cb(версия | '', manifest) — версия, только если готова.
      */
+    /* version.json: GitHub, а если он в этой стране или сети закрыт — с jsDelivr (те же три сети, ветка main).
+     * cb(manifest | null). */
+    var MANIFESTS = [MANIFEST].concat(MIRRORS.map(function (m) { return m + REPO + '@main/version.json'; }));
+    function manifest(cb) {
+        (function next(i) {
+            if (i >= MANIFESTS.length) return cb(null);
+            var x = new XMLHttpRequest(), done = false;
+            var fin = function (m) { if (done) return; done = true; if (m) cb(m); else next(i + 1); };
+            try {
+                x.open('GET', MANIFESTS[i] + '?t=' + Date.now(), true);
+                x.timeout = 15000;
+                x.onload = function () {
+                    var m = null;
+                    try { m = JSON.parse(x.responseText); } catch (e) {}
+                    fin(x.status === 200 && m && /^\d+\.\d+\.\d+$/.test(String(m.version)) && m.files && m.files.length && m.files.every(okName) ? m : null);
+                };
+                x.onerror = x.ontimeout = function () { fin(null); };
+                x.send();
+            } catch (e) { fin(null); }
+        })(0);
+    }
     function check(cb) {
         var fin = function (v, m) { if (!cb) return; var c = cb; cb = null; c(v || '', m || null); };
         if (get('bs_gh_update') === 'false') return fin('');
-        var x = new XMLHttpRequest();
         try {
-            x.open('GET', MANIFEST + '?t=' + Date.now(), true);
-            x.timeout = 15000;
-            x.onload = function () {
-                var m = null;
-                try { m = JSON.parse(x.responseText); } catch (e) {}
-                if (x.status !== 200 || !m || !/^\d+\.\d+\.\d+$/.test(String(m.version)) || !m.files || !m.files.length || !m.files.every(okName)) return fin('');
+            manifest(function (m) {
+                if (!m) return fin('');
                 var now = window.BS_REMOTE_VERSION || pkg;
                 if (num(m.version) <= num(now) || m.version === bad) return fin('');
                 if (upd && upd.v === m.version && upd.ok) return fin(m.version, m);       // уже проверена
@@ -171,9 +187,7 @@
                     }
                     fin(m.version, m);
                 });
-            };
-            x.onerror = x.ontimeout = function () { fin(''); };
-            x.send();
+            });
         } catch (e) { fin(''); }
     }
     var waits = 0, t = setInterval(function () {
@@ -183,5 +197,5 @@
         }
         else if (++waits > 90) clearInterval(t);                // 3 минуты не поднялась — try остаётся, в следующий раз — пакет
     }, 2000);
-    window.BSUpdate = { local: LOCAL, check: check, _num: num, _base: base, _mirror: mirror, _verify: verify };
+    window.BSUpdate = { local: LOCAL, check: check, _num: num, _base: base, _mirror: mirror, _verify: verify, _manifest: manifest };
 })();
