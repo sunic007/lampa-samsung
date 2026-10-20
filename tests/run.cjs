@@ -860,8 +860,8 @@ t('проверить и обновить: согласились — «плох
     t('проверка: последняя версия — так и говорим, с номерами', ctx.f('2.2.4', true, '2.2.4', '3.3.7') === 'Обновлений нет — у вас последняя версия: Sunic Apps 2.2.4 · Lampa 3.3.7');
     t('проверка: GitHub не ответил — не «обновлений нет»', /GitHub не ответил/.test(ctx.f('', true, '2.2.4', '3.3.7')));
     t('проверка: ничего не ответило — про интернет', /не ответил — проверьте интернет/.test(ctx.f('', false, '2.2.4', '3.3.7')));
-    t('проверка: вышла новее, файлы ещё не готовы — встанет сама', /Вышла Sunic Apps 2.2.5.*встанет само/.test(ctx.f('2.2.5', true, '2.2.4', '3.3.7')));
-    t('проверка: обновление с GitHub выключено — подсказываем, где включить', /включите «Обновлять Sunic Apps сама»/.test(ctx.f('2.2.5', true, '2.2.4', '3.3.7', true)));
+    t('проверка: вышла новее, файлы ещё не готовы — встанет сама', /Вышла новая версия Sunic Apps 2.2.5.*установится сама/.test(ctx.f('2.2.5', true, '2.2.4', '3.3.7')));
+    t('проверка: обновление с GitHub выключено — подсказываем, где включить', /включите «Автообновление Sunic Apps»/.test(ctx.f('2.2.5', true, '2.2.4', '3.3.7', true)));
 }
 
 /* ---- loader.js: обновления не ставятся на глазах — одним перезапуском, когда Lampa ушла в фон ---- */
@@ -2739,29 +2739,29 @@ async function serviceTests() {
     await until(() => !st9.bs_tg_forget);
     r = await ask('GET', '/health');
     t('служба снова ответила — стёрто и в ней (проверка на Tizen и без меток)', !st9.bs_tg_forget && !r.j.has.tg);
-    // настройки: кнопка и пустое поле токена — то же «Отключить» с вопросом; передумали — токен на месте
+    // настройки: поле токена — только для ввода (токен в скрытом bs_tg_secret, на экране не показываем); отключить — кнопкой
     const params = [], lampa10 = Object.assign({}, lampa8, { SettingsApi: { addParam: o => params.push(o) } });
-    const st10 = { bs_tg_token: TOKEN, bs_tg_chat: '1' };
+    const st10 = { bs_tg_secret: TOKEN, bs_tg_chat: '1' };
     sel.length = 0;
     const P10 = page(st10, mkXHR({ svcDown: true }), Object.assign({}, tz, { Lampa: lampa10 }));
     P10._addSettings();
     const tokP = params.find(x => x.param.name === 'bs_tg_token'), offP = params.find(x => x.param.name === 'bs_tg_off');
     t('настройки: «Отключить Telegram» — в разделе Telegram-бот (раскладка Sunic Apps)', !!offP && offP.field.name === 'Отключить Telegram' && /'bs_tg_off'/.test(fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8')));
-    if (tokP.onRender) tokP.onRender({ find: () => ({ text() {} }) });
+    let shown = '';
+    if (tokP.onRender) tokP.onRender({ find: () => ({ text(x) { shown = x; } }) });
+    t('настройки: сохранённый токен не показываем — «Сохранён»', /Сохранён/.test(shown) && shown.indexOf(TOKEN) < 0 && !('bs_tg_token' in st10));
     st10.bs_tg_token = ''; tokP.onChange('');
-    t('настройки: поле токена очистили — вопрос «Отключить Telegram?»', sel.length === 1 && sel[0].items[0].title === 'Отключить');
-    sel[0].onBack();
-    t('настройки: передумали — токен вернулся, чат на месте', st10.bs_tg_token === TOKEN && st10.bs_tg_chat === '1');
-    st10.bs_tg_token = ''; tokP.onChange(''); sel[1].onSelect(sel[1].items[0]);
-    await until(() => !('bs_tg_chat' in st10));
-    t('настройки: подтвердили — отключено (службы нет — стёрто у страницы)', !('bs_tg_token' in st10) && !('bs_tg_chat' in st10) && !st10.bs_tg_forget);
+    t('настройки: пустое поле — токен и чат на месте, без вопросов', sel.length === 0 && st10.bs_tg_secret === TOKEN && st10.bs_tg_chat === '1');
     st10.bs_tg_offset = '777'; st10.bs_tg_token = '987654321:' + 'B'.repeat(35); tokP.onChange(st10.bs_tg_token);
-    t('настройки: вписали другой токен — номер апдейта прежнего бота стёрт (опрос с offset=-1)', !('bs_tg_offset' in st10));
-    st10.bs_tg_offset = '5'; tokP.onChange(st10.bs_tg_token);
+    t('настройки: вписали другой токен — в скрытый ключ, поле пустое, номер апдейта прежнего бота стёрт', st10.bs_tg_secret === '987654321:' + 'B'.repeat(35) && !st10.bs_tg_token && !('bs_tg_offset' in st10));
+    st10.bs_tg_offset = '5'; st10.bs_tg_token = '987654321:' + 'B'.repeat(35); tokP.onChange(st10.bs_tg_token);
     t('настройки: тот же токен ещё раз — номер апдейта на месте', st10.bs_tg_offset === '5');
-    delete st10.bs_tg_token; delete st10.bs_tg_offset; delete st10.bs_tg_chat;
+    st10.bs_tg_chat = '1'; offP.onChange(); sel[0].onSelect(sel[0].items[0]);
+    await until(() => !('bs_tg_chat' in st10));
+    t('настройки: «Отключить Telegram» — стёрты токен (и скрытый), чат', !('bs_tg_secret' in st10) && !('bs_tg_token' in st10) && !('bs_tg_chat' in st10) && !st10.bs_tg_forget);
+    delete st10.bs_tg_offset;
     offP.onChange();
-    t('настройки: кнопка «Отключить Telegram», когда не подключено, — без вопроса', sel.length === 2);
+    t('настройки: кнопка «Отключить Telegram», когда не подключено, — без вопроса', sel.length === 1);
     // 409 у страницы: один быстрый повтор (своя служба уступает на первом 409), потом долгая пауза
     const gu = [], delays = [];
     function X409() {
@@ -3580,8 +3580,8 @@ async function serviceTests() {
     ph.b.onclick.call(ph.b);
     await until(() => /ok|err/.test(ph.s.className), 3000);
     t('pair.html: ntfy.sh — 429 — молча в запасной; человеку — только «Отправлено»', ph.s.className === 'm ok' && /Отправлено/.test(ph.s.textContent) && relay.posts.map(x => x.i).join() === '0,1' && relay.posts[1].b.indexOf(TOKEN) < 0);
-    await until(() => stR.bs_tg_token === TOKEN, 6000);
-    t('QR через ntfy: ТВ нашёл токен на запасном сервере (опрос всех по очереди)', stR.bs_tg_token === TOKEN && [0, 1, 2, 3].every(i => relay.gets.some(g => g.i === i && g.topic === rq.topic)));
+    await until(() => stR.bs_tg_secret === TOKEN, 6000);
+    t('QR через ntfy: ТВ нашёл токен на запасном сервере (опрос всех по очереди)', stR.bs_tg_secret === TOKEN && !stR.bs_tg_token && [0, 1, 2, 3].every(i => relay.gets.some(g => g.i === i && g.topic === rq.topic)));
     const g4 = relay.gets.filter(g => g.topic === rq.topic).slice(0, 4).map(g => g.i).join();
     t('QR через ntfy: по одному серверу в такт — 0, 1, 2, 3', g4 === '0,1,2,3');
     PR2._pairStop();
@@ -3604,8 +3604,8 @@ async function serviceTests() {
     // старый ответ (ключ из кода, v3) новый ТВ не принимает — только join4 своим ключом
     relayPut(1, jq.topic, JSON.stringify(legacy._crypt.seal(legacy._joinKeys(jq.code).key, JSON.stringify({ t: 'join', token: TOKEN, chat: '9', ts: Date.now() }))));
     relayPut(2, jq.topic, JSON.stringify(legacy._join4.box(jq.code, hi[0].pk, JSON.stringify({ t: 'join', token: TOKEN, chat: '1', ts: Date.now() }))));
-    await until(() => stJ.bs_tg_token === TOKEN, 6000);
-    t('второй ТВ по коду: ответ лёг в запасной сервер — найден (опрос всех по очереди)', stJ.bs_tg_token === TOKEN && stJ.bs_tg_chat === '1' && !PJ._pairNow());
+    await until(() => stJ.bs_tg_secret === TOKEN, 6000);
+    t('второй ТВ по коду: ответ лёг в запасной сервер — найден (опрос всех по очереди)', stJ.bs_tg_secret === TOKEN && !stJ.bs_tg_token && stJ.bs_tg_chat === '1' && !PJ._pairNow());
     t('второй ТВ по коду: новый токен — номер апдейта прежнего бота стёрт (опрос начнётся с offset=-1)', !('bs_tg_offset' in stJ));
     // главный ТВ (страница, токен у неё): цифры от человека — ключ нового ТВ на всех серверах, ровно один — подключение
     {

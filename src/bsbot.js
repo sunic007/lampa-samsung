@@ -65,7 +65,7 @@ var BSBot = (function () {
         if (lsGet('bs_sb_on') !== '1') return;
         if (document.hidden) return schedule(POLL_IDLE);
         api('poll', function (j) {
-            if (j && j.ok && j.linked === false) { lsSet('bs_sb_on', null); return log('отвязан в боте'); }
+            if (j && j.ok && j.linked === false) { off(true); return log('отвязан в боте'); }
             if (j && j.ok) for (var i = 0; i < (j.cmds || []).length; i++) run(j.cmds[i]);
             schedule(j ? POLL : POLL_IDLE);
         });
@@ -80,7 +80,7 @@ var BSBot = (function () {
         noty('Подключаю…', 2000);
         api('hello', function (j) {
             if (!j || !j.ok) return noty('Сервер Sunic Apps не ответил — попробуйте позже или подключите свой бот ниже', 6000);
-            if (j.linked) { lsSet('bs_sb_on', '1'); schedule(500); return noty('Общий бот уже подключён — пишите @' + j.bot + ' название фильма', 6000); }
+            if (j.linked) { linked(j); return noty('Общий бот уже подключён. Пишите @' + j.bot + ' название фильма', 6000); }
             show(j.link, j.bot, ctrl);
         });
     }
@@ -105,33 +105,57 @@ var BSBot = (function () {
             if (Date.now() > until) { body.find('.bs-tg-pair__status').text('Время вышло — откройте подключение ещё раз'); return clearInterval(wait); }
             api('hello', function (j) {
                 if (closed || !j || !j.ok || !j.linked) return;
-                lsSet('bs_sb_on', '1');
+                linked(j);
                 close();
-                noty('Telegram подключён ✓ Пишите @' + bot + ' название фильма', 6000);
-                schedule(500);
+                noty('Готово, Telegram подключён. Пишите @' + bot + ' название фильма', 6000);
             });
         }, 3000);
     }
 
-    function off() {
+    /** Привязали в боте: бот на ТВ (bstg.js) работает через сервер — ему номер чата и имя бота, опрос — с нуля. */
+    function linked(j) {
+        lsSet('bs_sb_on', '1');
+        if (j.chat) lsSet('bs_tg_chat', String(j.chat));
+        if (j.bot) lsSet('bs_tg_bot', j.bot);
+        lsSet('bs_tg_offset', null);
+        try { BSTelegram.refresh(); } catch (e) {}
+        schedule(500);
+    }
+    /** Отключить общий бот. silent — отвязали в самом боте (/tv): без уведомления, просто перестаём опрашивать. */
+    function off(silent) {
+        var shared = lsGet('bs_sb_on') === '1';
         api('unlink', function () {});
         lsSet('bs_sb_on', null);
-        noty('Общий бот отключён', 3000);
+        if (shared && !lsGet('bs_tg_secret') && lsGet('bs_tg_svc') !== '1') { lsSet('bs_tg_chat', null); lsSet('bs_tg_offset', null); }
+        try { BSTelegram.refresh(); } catch (e) {}
+        if (silent !== true) noty('Общий бот отключён', 3000);
     }
 
+    function shared() { return lsGet('bs_sb_on') === '1'; }
+    function ownBot() { try { return BSTelegram.state() === 'own'; } catch (e) { return false; } }
     function addSettings() {
-        var api2 = Lampa.SettingsApi;
+        var api2 = Lampa.SettingsApi, W = window.BS_SETTINGS_WHEN = window.BS_SETTINGS_WHEN || {};
+        W['#Общий бот — без токена'] = function () { return !ownBot(); };
+        W.bs_sb_link = function () { return !ownBot(); };
+        W.bs_sb_off = shared;
         api2.addParam({ component: C, param: { name: 'bs_sb_link', type: 'button' },
-            field: { name: 'Общий бот Sunic Apps', description: 'Без токена: QR-код — и готово' }, onChange: connect });
+            field: { name: 'Общий бот Sunic Apps', description: 'Без токена: QR-код — и готово' },
+            onRender: function (item) {
+                if (!shared()) return;
+                item.find('.settings-param__name').text('Общий бот подключён');
+                item.find('.settings-param__descr').text('Пишите @' + (lsGet('bs_tg_bot') || 'SunicStreamBot') + ' название фильма');
+            },
+            onChange: function () { if (shared()) noty('Уже подключён. Пишите @' + (lsGet('bs_tg_bot') || 'SunicStreamBot') + ' название фильма', 5000); else connect(); } });
         api2.addParam({ component: C, param: { name: 'bs_sb_off', type: 'button' },
-            field: { name: 'Отключить общий бот', description: 'Этот ТВ перестанет получать команды' }, onChange: off });
+            field: { name: 'Отключить общий бот', description: 'Этот ТВ перестанет получать команды' }, onChange: function () { off(); } });
     }
 
     function start() {
         try { addSettings(); } catch (e) { log('settings', e.message); }
-        if (lsGet('bs_sb_on') === '1') schedule(8000);
+        // подключён раньше (2.3.16: без номера чата) — спросить сервер; он же скажет, если в боте отвязали
+        if (lsGet('bs_sb_on') === '1') api('hello', function (j) { if (j && j.ok && j.linked) linked(j); else if (j && j.ok) off(true); else schedule(8000); });
         try { document.addEventListener('visibilitychange', function () { if (!document.hidden && lsGet('bs_sb_on') === '1') { clearTimeout(timer); timer = null; schedule(1000); } }); } catch (e) {}
     }
 
-    return { start: start, connect: connect, _api: api, _ident: ident, _run: run };
+    return { start: start, connect: connect, ident: ident, _api: api, _ident: ident, _run: run };
 })();

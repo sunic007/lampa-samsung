@@ -55,11 +55,22 @@ var BSTelegram = (function () {
     function log(a, b) { try { console.log('BS telegram', a, b === undefined ? '' : b); } catch (e) {} }
 
     /** Токен в localStorage (без службы или ещё не перенесён в неё); в службе — '' (см. svcTg, hasToken). */
-    function token() { return String(lsGet('bs_tg_token') || '').replace(/\s+/g, ''); }
+    /* Токен — в скрытом ключе bs_tg_secret, не в поле настройки bs_tg_token: поле Lampa показывает своё значение целиком
+     * (на экране и при правке), токен там видел бы любой с пультом. Поле — только для ввода: сохранили — оно пустеет. */
+    function token() { return String(lsGet('bs_tg_secret') || lsGet('bs_tg_token') || '').replace(/\s+/g, ''); }
+    function setToken(t) { lsSet('bs_tg_secret', t); fieldClear(); }
+    function fieldClear() { lsDel('bs_tg_token'); try { Lampa.Storage.set('bs_tg_token', '', true); } catch (e) {} }
+    function tokenDel() { lsDel('bs_tg_secret'); fieldClear(); }
+    /** Токен от прежних версий — в поле настройки: в скрытый ключ. */
+    function tokenMigrate() { var t = String(lsGet('bs_tg_token') || '').replace(/\s+/g, ''); if (t) setToken(t); }
     /** Токен лежит в службе Tizen: в localStorage его нет, есть метка bs_tg_svc. */
     function svcTg() { return !token() && lsGet('bs_tg_svc') === '1'; }
-    /** Бот подключён (токен есть — у нас или в службе). */
-    function hasToken() { return !!token() || lsGet('bs_tg_svc') === '1'; }
+    /** Общий бот Sunic Apps (bsbot.js): своего токена нет — запросы к Telegram идут через сервер sunic.stream/bot/api.php. */
+    var SB_API = 'https://sunic.stream/bot/api.php';
+    function relay() { return !token() && lsGet('bs_tg_svc') !== '1' && lsGet('bs_sb_on') === '1' && !!window.BSBot; }
+    /** Бот подключён (токен есть — у нас или в службе — или общий бот). */
+    function hasToken() { return !!token() || lsGet('bs_tg_svc') === '1' || relay(); }
+    function state() { return relay() ? 'shared' : hasToken() && chat() ? 'own' : 'none'; }
     function chat() { return lsGet('bs_tg_chat') || ''; }
     /** Токен сменился (подключение с телефона, по коду, вручную): номер апдейта bs_tg_offset — от прежнего бота, с ним
      *  новый бот молчал бы (его номера могут быть меньше). Без номера опрос начинается заново (offset=-1). */
@@ -185,8 +196,12 @@ var BSTelegram = (function () {
             var end = function (f, v) { if (!done) { done = true; if (f) f(v); } };
             try {
                 // токен в службе — через неё (тело и ответ те же, Date — от Telegram); нет — напрямую, как раньше
-                if (viaSvc) svcOpen(x, 'POST', SVC + '/tg/' + method); else x.open('POST', API + token() + '/' + method, true);
+                var sb = !viaSvc && relay() ? BSBot.ident() : null;
+                if (viaSvc) svcOpen(x, 'POST', SVC + '/tg/' + method);
+                else if (sb) x.open('POST', SB_API + '?m=' + method + '&tv=' + sb.id, true);
+                else x.open('POST', API + token() + '/' + method, true);
                 x.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                if (sb) x.setRequestHeader('X-Sunic-Key', sb.key);
                 x.timeout = wait || TIMEOUT;
                 x.onload = function () {
                     var j = null;
@@ -472,8 +487,7 @@ var BSTelegram = (function () {
                     lsSet('bs_tg_svc', '1');
                     if (lsGet('bs_tg_svc') !== '1') { logOnce('full', 'localStorage полон: метка не записалась — секрет остаётся у страницы', ''); return next(); }
                     // Lampa.Storage держит прочитанное в памяти (readed): без этого токен остался бы виден плагинам
-                    try { Lampa.Storage.set('bs_tg_token', '', true); } catch (e) {}
-                    lsDel('bs_tg_token');
+                    tokenDel();
                     log('токен бота — в службе', '');
                     busStart();
                 } else if (token() !== t) svc.again = true;
@@ -1148,8 +1162,7 @@ var BSTelegram = (function () {
         };
         /* По Wi-Fi: токен уже в службе (проверен и сохранён ею) — у страницы только метка, как после переноса. */
         var lanGot = function () {
-            try { Lampa.Storage.set('bs_tg_token', '', true); } catch (e) {}
-            lsDel('bs_tg_token');
+            tokenDel();
             offsetReset();
             lsSet('bs_tg_chat', '');
             lsSet('bs_tg_svc', '1');
@@ -1174,9 +1187,8 @@ var BSTelegram = (function () {
                     if (time) p.since[i] = time;                        // это сообщение больше не перечитываем (id)
                     if (!tok) { p.busy = false; return; }
                     offsetReset();
-                    lsSet('bs_tg_token', tok);
+                    setToken(tok);
                     lsSet('bs_tg_chat', '');
-                    try { Lampa.Storage.set('bs_tg_token', tok, true); } catch (e) {}
                     call('getMe', {}, tokenOk, function (e) { p.busy = false; status('Токен не подошёл (' + e + '). Отправьте токен ещё раз'); });
                 });
             } else {
@@ -1363,8 +1375,7 @@ var BSTelegram = (function () {
                     p.since[ri] = q.since;
                     if (!m || pair !== p) return;
                     offsetReset();
-                    lsSet('bs_tg_token', m.token);
-                    try { Lampa.Storage.set('bs_tg_token', m.token, true); } catch (e) {}
+                    setToken(m.token);
                     lsSet('bs_tg_chat', m.chat);
                     svcMove();
                     pairStop();
@@ -2430,7 +2441,8 @@ var BSTelegram = (function () {
             }
             var staleTold = {};
             (updates || []).forEach(function (u) { takeUpdate(u, staleTold); });
-            setTimeout(poll, 200);                                   // сразу следующий
+            // общий бот: сервер сам ждёт апдейт до 3 с — сразу следующий вопрос, как с Telegram
+            setTimeout(poll, 200);
         }, function (e) {
             polling = false;
             if (!/conflict/i.test(String(e))) return;
@@ -3244,7 +3256,9 @@ var BSTelegram = (function () {
         var fail = function (why) { log('картинка', why); status(/^[^\wА-Яа-яЁё]/.test(why) ? why : L('😔 Не получилось узнать: ', "😔 Couldn't recognize it: ", "😔 Aniqlab bo'lmadi: ") + whyText(why) + '.'); };
         call('getFile', { file_id: file.file_id }, function (f) {
             if (!f || !f.file_path) return fail(L('Telegram не отдал картинку', "Telegram didn't send the picture", 'Telegram rasmni bermadi'));
-            httpGetBin(svcTg() ? SVC + '/tgfile/' + f.file_path : 'https://api.telegram.org/file/bot' + token() + '/' + f.file_path, function (buf) {
+            var sbf = relay() ? BSBot.ident() : null;   // общий бот: картинку отдаёт сервер (токен на ТВ не уходит)
+            httpGetBin(svcTg() ? SVC + '/tgfile/' + f.file_path : sbf ? SB_API + '?m=file&tv=' + sbf.id + '&k=' + sbf.key + '&path=' + encodeURIComponent(f.file_path)
+                : 'https://api.telegram.org/file/bot' + token() + '/' + f.file_path, function (buf) {
                 geminiAsk(bytesB64(buf), mime, String(msg.caption || '').slice(0, 200), function (j, model) {
                     var r = fromGemini(j);
                     if (!r) return status(L('🤔 Не удалось узнать фильм (' + model + '). Напишите название — найду.', "🤔 Couldn't tell which movie this is (" + model + "). Type the name and I'll find it.",
@@ -4041,9 +4055,9 @@ var BSTelegram = (function () {
             });
         }
     }
-    /** «▶️ Включаю на «Зал»» / «📺 Открыто на «Зал»». */
+    /** «▶️ Включаю на ТВ «Зал»» / «📺 Открыто на ТВ «Зал»» (после «на» имя в кавычках не склоняется — с «ТВ» читается правильно). */
     function openedOn(play, name) {
-        return play ? L('▶️ Включаю на «' + name + '»', '▶️ Playing on “' + name + '”', "▶️ «" + name + "»da yoqyapman") : L('📺 Открыто на «' + name + '»', '📺 Opened on “' + name + '”', "📺 «" + name + "»da ochildi");
+        return play ? L('▶️ Включаю на ТВ «' + name + '»', '▶️ Playing on the TV “' + name + '”', "▶️ «" + name + "» televizorida yoqyapman") : L('📺 Открыто на ТВ «' + name + '»', '📺 Opened on the TV “' + name + '”', "📺 «" + name + "» televizorida ochildi");
     }
     function noAnswer(name) {
         return L('📺 «' + name + '» не ответил — возможно, выключен или Lampa закрыта.', "📺 “" + name + "” didn't answer — maybe it's off or Lampa is closed.", "📺 «" + name + "» javob bermadi — ehtimol, o'chiq yoki Lampa yopiq.");
@@ -4256,8 +4270,8 @@ var BSTelegram = (function () {
     function tgOff(done) {
         var fin = function (ok) {
             if (!ok && (hasSvcMarks() || svc.up)) lsSet('bs_tg_forget', '1');
-            try { Lampa.Storage.set('bs_tg_token', '', true); } catch (e) {}
-            ['bs_tg_token', 'bs_tg_chat', 'bs_tg_svc', 'bs_ai_svc', 'bs_ai_forget', 'bs_tg_offset', 'bs_tg_tvs'].forEach(lsDel);
+            tokenDel();
+            ['bs_tg_token', 'bs_tg_secret', 'bs_tg_chat', 'bs_tg_svc', 'bs_ai_svc', 'bs_ai_forget', 'bs_tg_offset', 'bs_tg_tvs'].forEach(lsDel);
             AI_LIST.forEach(function (p) { lsDel(lsKeyName(p)); lsDel(lsMapName(p)); });
             svc.d = null; svc.pend = 0; busStop();
             if (isLeader) { isLeader = false; leader = { id: '', at: 0 }; }
@@ -4308,23 +4322,27 @@ var BSTelegram = (function () {
             component: C, param: { name: 'bs_tg_help', type: 'static' },
             field: { name: 'Или вручную', description: 'Токен от @BotFather — ниже, затем «Подключить»' }
         });
-        var tokWas = token();                                        // токен до правки поля: «Отмена» — вернуть
+        // раздел — по состоянию: не подключено — только способы подключения; подключено — «Отключить» и настройки бота
+        var W = window.BS_SETTINGS_WHEN = window.BS_SETTINGS_WHEN || {};
+        var linked = function () { return state() !== 'none'; }, none = function () { return state() === 'none'; };
+        W['#Свой бот (бесплатно)'] = function () { return state() !== 'shared'; };
+        W.bs_tg_phone = W.bs_tg_join = W.bs_tg_help = W.bs_tg_token = none;
+        W.bs_tg_link = function () { return state() === 'own' || (none() && hasToken()); };
+        W.bs_tg_off = function () { return state() === 'own'; };
+        W.bs_tv_name = linked;
+        W['#Бот'] = W['#Люди и доступ'] = linked;
+        W.bs_tg_on = W.bs_tg_shots = W.bs_search_qr = W.bs_tg_check = W.bs_tg_approve = W.bs_tg_guest_play = W.bs_tg_invite_reset = linked;
+        // поле только для ввода: сохранённый токен не показываем (ни на экране, ни при правке) — «Сохранён»
         api.addParam({
             component: C, param: { name: 'bs_tg_token', type: 'input', values: '', placeholder: '123456789:AA…', 'default': '' },
             field: { name: 'Токен бота', description: 'Хранится только на этом ТВ' },
-            onRender: function () { tokWas = token(); },
+            onRender: function (item) { if (hasToken() && !relay()) item.find('.settings-param__descr').text('Сохранён — показать его нельзя. Новый токен заменит старый'); },
             onChange: function () {
-                // поле очистили, а бот подключён — это «Отключить Telegram» (спросить); передумали — токен как был
-                if (!token()) {
-                    var was = tokWas;
-                    if (!was && !svcTg() && !chat()) return;
-                    return tgOffAsk(function () {
-                        if (was) { lsSet('bs_tg_token', was); try { Lampa.Storage.set('bs_tg_token', was, true); } catch (e) {} }
-                        refreshSettings();
-                    });
-                }
-                if (token() !== tokWas) offsetReset();                // другой бот — номер апдейта с нуля
-                tokWas = token();
+                var t = String(lsGet('bs_tg_token') || '').replace(/\s+/g, '');
+                if (!t) return;                                       // пустое поле — токен как был («Отключить Telegram» — ниже)
+                var was = token();
+                setToken(t);
+                if (t !== was) offsetReset();                        // другой бот — номер апдейта с нуля
                 lsSet('bs_tg_chat', ''); refreshSettings(); busStart(); svcMove();
             }
         });
@@ -4382,6 +4400,7 @@ var BSTelegram = (function () {
     }
 
     function start() {
+        try { tokenMigrate(); } catch (e) {}
         try { svcStart(); } catch (e) { log('служба', e.message); }
         // служба может стартовать позже 6 проб (медленный ТВ после включения): первые 10 минут — раз в минуту, потом раз в 5
         var svcT0 = Date.now();
@@ -4480,6 +4499,8 @@ var BSTelegram = (function () {
     }
 
     return { start: start,
+        /** 'shared' — общий бот, 'own' — свой бот подключён, 'none' — не подключено. */
+        state: state, refresh: function () { try { refreshSettings(); } catch (e) {} },
         /** Общий бот (bsbot.js): открыть фильм и нажать «Смотреть» — как своя команда «▶️ Смотреть». */
         open: function (kind, id, play) { openHere(kind, id, null, play !== false, false); },
         tvName: tvName,

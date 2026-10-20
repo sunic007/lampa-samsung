@@ -515,8 +515,10 @@ function bsFnRunning() { return window.BS_REMOTE_VERSION || window.BS_SITE_VERSI
 function bsNoUpdateText(latest, lampaOk, fnRunning, lampaRunning, ghOff) {
     var fnBehind = latest && bsVerNum(latest) > bsVerNum(fnRunning);
     if (!latest && !lampaOk) return 'Не удалось проверить: сервер обновлений не ответил — проверьте интернет';
-    if (fnBehind && ghOff) return 'Вышла Sunic Apps ' + latest + ' — включите «Обновлять Sunic Apps сама» здесь же, в разделе «Обновление»';
-    if (fnBehind) return 'Вышла Sunic Apps ' + latest + ' — файлы ещё выкладываются, обновление встанет само в течение часа';
+    // сайт sunic.stream (браузер, MSX) обновляется сам — переключателя там нет, просить его включить нельзя
+    if (fnBehind && typeof window !== 'undefined' && window.BS_SITE_VERSION) return 'Вышла новая версия Sunic Apps ' + latest + ' — сайт обновится сам в течение нескольких минут';
+    if (fnBehind && ghOff) return 'Вышла новая версия Sunic Apps ' + latest + ' — включите «Автообновление Sunic Apps» в разделе «Обновление» → «Дополнительно»';
+    if (fnBehind) return 'Вышла новая версия Sunic Apps ' + latest + ' — файлы ещё выкладываются, она установится сама в течение часа';
     if (!latest) return 'Lampa ' + lampaRunning + ' — последняя. Sunic Apps ' + fnRunning + ': GitHub не ответил, проверю позже';
     return 'Обновлений нет — у вас последняя версия: Sunic Apps ' + fnRunning + ' · Lampa ' + lampaRunning;
 }
@@ -846,6 +848,20 @@ function bsSectionBack(e) {
     }
 }
 
+/* Пункт или заголовок группы показывается, только когда подходит к состоянию (window.BS_SETTINGS_WHEN[имя или '#заголовок']
+ * — функция модуля → true/false): например, «Отключить» — только когда подключено. Проверяется при каждом открытии раздела. */
+function bsWhen(key) {
+    var f = window.BS_SETTINGS_WHEN && window.BS_SETTINGS_WHEN[key];
+    if (typeof f !== 'function') return null;
+    return function (item) { var show = true; try { show = !!f(); } catch (e) {} try { item.toggleClass('hide', !show); } catch (e) {} };
+}
+function bsWhenWrap(data, when) {
+    var o = {}, k, was = data.onRender;
+    for (k in data) if (data.hasOwnProperty(k)) o[k] = data[k];
+    o.onRender = function (item) { if (was) was.apply(this, arguments); when(item); };
+    return o;
+}
+
 /** После запуска модулей: пункты — по разделам в порядке раскладки, с заголовками групп. */
 function bsFlushSettings() {
     var api = Lampa.SettingsApi, add = api.addParam && api.addParam.__bsOrig;
@@ -859,9 +875,10 @@ function bsFlushSettings() {
             var data = bsSettingsPending[name];
             if (!data) continue;
             if (title) {                                       // заголовок — только если в группе есть пункты
-                add.call(api, { component: to, param: { name: 'bs_hdr_' + to + '_' + j, type: 'title' }, field: { name: title } });
+                add.call(api, { component: to, param: { name: 'bs_hdr_' + to + '_' + j, type: 'title' }, field: { name: title }, onRender: bsWhen('#' + title) });
                 title = '';
             }
+            if (bsWhen(name)) data = bsWhenWrap(data, bsWhen(name));
             bsSettingsAdd(add, api, data, to);
             delete bsSettingsPending[name];
         }
@@ -944,13 +961,13 @@ function bsAddSettings() {
         Lampa.SettingsApi.addParam({
             component: C,
             param: { name: 'bs_autoupdate', type: 'trigger', 'default': true },
-            field: { name: 'Обновлять Lampa сама' },
+            field: { name: 'Автообновление Lampa' },
             onChange: function (v) { try { window.localStorage.setItem('bs_autoupdate', String(v === true || v === 'true')); } catch (e) {} }
         });
         Lampa.SettingsApi.addParam({
             component: C,
             param: { name: 'bs_gh_update', type: 'trigger', 'default': true },
-            field: { name: 'Обновлять Sunic Apps сама' },
+            field: { name: 'Автообновление Sunic Apps' },
             onChange: function (v) { try { window.localStorage.setItem('bs_gh_update', String(v === true || v === 'true')); } catch (e) {} }
         });
     }

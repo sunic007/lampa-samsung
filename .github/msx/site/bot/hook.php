@@ -20,7 +20,7 @@ const T = [
         'none' => 'Ничего не нашёл. Попробуйте другое название.',
         'watch' => '▶ Смотреть на ТВ',
         'film' => 'Фильм', 'series' => 'Сериал',
-        'sent' => 'Включаю на «%s»',
+        'sent' => 'Включаю на ТВ «%s»',
         'no_tv' => "Телевизор не подключён.\nLampa → Настройки → Sunic Apps → Telegram → «Общий бот Sunic Apps» — и наведите камеру на QR.",
         'tvs' => "Ваши телевизоры:\n%s\n\nОтвязать — кнопкой ниже.", 'unlink' => '✖ Отвязать «%s»', 'unlinked' => 'Телевизор отвязан.',
         'plus_on' => "Sunic Apps Plus действует до %s.\nОбщий бот без токена, ответы, когда ТВ выключен, уведомления о новых сериях.",
@@ -28,6 +28,8 @@ const T = [
         'pay_title' => 'Sunic Apps Plus — 30 дней', 'pay_desc' => 'Общий бот Sunic Apps без токена: поиск с телефона, «Смотреть на ТВ», уведомления о новых сериях.',
         'paid' => "Спасибо! Sunic Apps Plus продлён до %s.", 'expired' => "Чтобы включать на ТВ, продлите Sunic Apps Plus — /plus",
         'old' => 'Поиск устарел — напишите название ещё раз.',
+        'tv_off' => 'Телевизор не на связи — откройте на нём Lampa, и кнопка заработает.',
+        'which' => 'На каком ТВ включить?',
     ],
     'en' => [
         'hello' => "Hi! I find movies and series and play them on your TV.\n\nSend a title — for example, «Sintel».\n\nTo let me play on the TV: Lampa → Settings → Sunic Apps → Telegram → «Sunic Apps shared bot» — and point your phone camera at the QR.",
@@ -36,7 +38,7 @@ const T = [
         'none' => 'Nothing found. Try another title.',
         'watch' => '▶ Watch on TV',
         'film' => 'Movie', 'series' => 'Series',
-        'sent' => 'Playing on «%s»',
+        'sent' => 'Playing on the TV «%s»',
         'no_tv' => "No TV connected.\nLampa → Settings → Sunic Apps → Telegram → «Sunic Apps shared bot» — and point the camera at the QR.",
         'tvs' => "Your TVs:\n%s\n\nUnlink with the button below.", 'unlink' => '✖ Unlink «%s»', 'unlinked' => 'TV unlinked.',
         'plus_on' => "Sunic Apps Plus is active until %s.\nShared bot without a token, answers when the TV is off, new-episode alerts.",
@@ -44,6 +46,8 @@ const T = [
         'pay_title' => 'Sunic Apps Plus — 30 days', 'pay_desc' => 'Sunic Apps shared bot without a token: search from your phone, «Watch on TV», new-episode alerts.',
         'paid' => "Thank you! Sunic Apps Plus is renewed until %s.", 'expired' => "To play on the TV, renew Sunic Apps Plus — /plus",
         'old' => 'This search is outdated — send the title again.',
+        'tv_off' => 'The TV is offline — open Lampa on it and the button will work.',
+        'which' => 'Which TV should it play on?',
     ],
     'uz' => [
         'hello' => "Salom! Men film va seriallarni topaman va ularni televizoringizda yoqaman.\n\nNomini yozing — masalan, «Sintel».\n\nTelevizorda yoqishim uchun: Lampa → Sozlamalar → Sunic Apps → Telegram → «Sunic Apps umumiy boti» — va telefon kamerasini QR-kodga qarating.",
@@ -52,7 +56,7 @@ const T = [
         'none' => "Hech narsa topilmadi. Boshqa nom bilan urinib ko'ring.",
         'watch' => "▶ Televizorda ko'rish",
         'film' => 'Film', 'series' => 'Serial',
-        'sent' => "«%s» da yoqyapman",
+        'sent' => "«%s» televizorida yoqyapman",
         'no_tv' => "Televizor ulanmagan.\nLampa → Sozlamalar → Sunic Apps → Telegram → «Sunic Apps umumiy boti» — va kamerani QR-kodga qarating.",
         'tvs' => "Televizorlaringiz:\n%s\n\nUzish — quyidagi tugma bilan.", 'unlink' => "✖ «%s» ni uzish", 'unlinked' => 'Televizor uzildi.',
         'plus_on' => "Sunic Apps Plus %s gacha amal qiladi.\nTokensiz umumiy bot, televizor o'chiq bo'lsa ham javoblar, yangi qismlar haqida xabarlar.",
@@ -60,6 +64,8 @@ const T = [
         'pay_title' => 'Sunic Apps Plus — 30 kun', 'pay_desc' => "Tokensiz Sunic Apps umumiy boti: telefondan qidirish, «Televizorda ko'rish», yangi qismlar haqida xabarlar.",
         'paid' => "Rahmat! Sunic Apps Plus %s gacha uzaytirildi.", 'expired' => "Televizorda yoqish uchun Sunic Apps Plus ni uzaytiring — /plus",
         'old' => "Qidiruv eskirgan — nomini qayta yozing.",
+        'tv_off' => "Televizor aloqada emas — unda Lampa ni oching, tugma ishlaydi.",
+        'which' => "Qaysi televizorda yoqay?",
     ],
 ];
 function lang_of($from) {
@@ -71,6 +77,33 @@ function day($ts) { return date('d.m.Y', $ts); }
 function say($chat, $text, $kb = null) { tg('sendMessage', ['chat_id' => $chat, 'text' => $text] + ($kb ? ['reply_markup' => ['inline_keyboard' => $kb]] : [])); }
 
 db()->exec('CREATE TABLE IF NOT EXISTS searches (id INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER, items TEXT, at INTEGER)');
+db()->exec('CREATE TABLE IF NOT EXISTS updates (id INTEGER PRIMARY KEY AUTOINCREMENT, tv_id TEXT NOT NULL, uid INTEGER NOT NULL, body TEXT NOT NULL, at INTEGER NOT NULL)');
+try { db()->exec('ALTER TABLE tvs ADD COLUMN relay_seen INTEGER'); } catch (Exception $e) {}
+
+/* ---------- полный бот на ТВ ----------
+ * ТВ этого чата на связи (опрашивал api.php?m=getUpdates последние 20 с) и Plus действует — апдейт ему: отвечает
+ * тот же бот, что со своим токеном (меню, закладки, подписки…). Своё сервер оставляет себе: привязка по QR, /plus,
+ * /tv, оплата, кнопки своих карточек (s:, w:, u:). ТВ выключен — отвечает сервер (поиск и «Смотреть на ТВ»). */
+function relay_tv($chat) {
+    if (!$chat || plus_until($chat) < time()) return null;
+    $tv = q('SELECT id FROM tvs WHERE chat_id = ? AND relay_seen >= ? ORDER BY relay_seen DESC LIMIT 1', [$chat, time() - 20])->fetch();
+    return $tv ? $tv['id'] : null;
+}
+function server_own($u) {
+    if (isset($u['pre_checkout_query'])) return true;
+    if (isset($u['callback_query'])) return (bool) preg_match('/^([swtu]:|noop$)/', (string) ($u['callback_query']['data'] ?? ''));
+    $m = $u['message'] ?? null;
+    if (!$m || isset($m['successful_payment'])) return true;
+    return (bool) preg_match('/^\/(start\s+tv[A-Z0-9]{10}|plus|tv)\b/', trim((string) ($m['text'] ?? '')));
+}
+if (!server_own($u) && isset($u['update_id'])) {
+    $c = (int) ($u['callback_query']['message']['chat']['id'] ?? ($u['message']['chat']['id'] ?? 0));
+    $to = relay_tv($c);
+    if ($to) {
+        q('INSERT INTO updates (tv_id, uid, body, at) VALUES (?, ?, ?, ?)', [$to, (int) $u['update_id'], json_encode($u, JSON_UNESCAPED_UNICODE), time()]);
+        exit;
+    }
+}
 
 /* ---------- карточка результата поиска ---------- */
 function card_msg($l, $sid, $items, $i) {
@@ -138,7 +171,7 @@ if (isset($u['callback_query'])) {
     $l = lang_of($c['from'] ?? []);
     $data = (string) ($c['data'] ?? '');
     $answer = ['callback_query_id' => $c['id']];
-    if (preg_match('/^([sw]):(\d+):(\d+)$/', $data, $m)) {
+    if (preg_match('/^([swt]):(\d+):(\d+)(?::([A-Za-z0-9]{12,40}))?$/', $data, $m)) {
         $row = q('SELECT items FROM searches WHERE id = ? AND chat_id = ?', [(int) $m[2], $chat])->fetch();
         $items = $row ? json_decode($row['items'], true) : null;
         $i = (int) $m[3];
@@ -149,17 +182,29 @@ if (isset($u['callback_query'])) {
             if ($poster) tg('editMessageMedia', ['chat_id' => $chat, 'message_id' => $mid, 'media' => ['type' => 'photo', 'media' => $poster, 'caption' => $cap], 'reply_markup' => ['inline_keyboard' => $kb]]);
             else tg('editMessageCaption', ['chat_id' => $chat, 'message_id' => $mid, 'caption' => $cap, 'reply_markup' => ['inline_keyboard' => $kb]]);
         } else {
-            $tv = q('SELECT id, name FROM tvs WHERE chat_id = ? ORDER BY seen DESC LIMIT 1', [$chat])->fetch();
-            if (!$tv) { $answer['text'] = t($l, 'no_tv'); $answer['show_alert'] = true; }
+            // ТВ этого чата: несколько — спросить, на каком (кнопки под карточкой); выбрали (t:) или один — включаем
+            $tvs = q('SELECT id, name FROM tvs WHERE chat_id = ? ORDER BY seen DESC', [$chat])->fetchAll();
+            $tv = null;
+            if ($m[1] === 't') { foreach ($tvs as $x) if ($x['id'] === ($m[4] ?? '')) $tv = $x; }
+            elseif (count($tvs) === 1) $tv = $tvs[0];
+            if (!$tvs) { $answer['text'] = t($l, 'no_tv'); $answer['show_alert'] = true; }
             elseif (plus_until($chat) < time()) { $answer['text'] = t($l, 'expired'); $answer['show_alert'] = true; }
-            else {
+            elseif (!$tv) {
+                $kb = array_map(function ($x) use ($m, $i) { return [['text' => '📺 ' . ($x['name'] ?: 'TV'), 'callback_data' => 't:' . $m[2] . ':' . $i . ':' . $x['id']]]; }, array_slice($tvs, 0, 6));
+                tg('editMessageReplyMarkup', ['chat_id' => $chat, 'message_id' => $c['message']['message_id'], 'reply_markup' => ['inline_keyboard' => $kb]]);
+                $answer['text'] = t($l, 'which');
+            } else {
                 q('INSERT INTO cmds (tv_id, body, at) VALUES (?, ?, ?)', [$tv['id'], json_encode(['t' => 'open', 'kind' => $items[$i]['kind'], 'id' => $items[$i]['id'], 'play' => true]), time()]);
                 $answer['text'] = sprintf(t($l, 'sent'), $tv['name'] ?: 'TV');
+                if ($m[1] === 't') { list(, $kb) = card_msg($l, (int) $m[2], $items, $i); tg('editMessageReplyMarkup', ['chat_id' => $chat, 'message_id' => $c['message']['message_id'], 'reply_markup' => ['inline_keyboard' => $kb]]); }
             }
         }
     } elseif (preg_match('/^u:([A-Za-z0-9]{12,40})$/', $data, $m)) {
         q('UPDATE tvs SET chat_id = NULL WHERE id = ? AND chat_id = ?', [$m[1], $chat]);
         $answer['text'] = t($l, 'unlinked');
+    } elseif ($data !== 'noop') {
+        // кнопка из сообщения бота на ТВ (меню, закладки…), а ТВ сейчас не опрашивает сервер — сказать, а не молчать
+        $answer['text'] = t($l, 'tv_off'); $answer['show_alert'] = true;
     }
     tg('answerCallbackQuery', $answer);
     exit;

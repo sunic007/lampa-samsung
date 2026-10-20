@@ -43,6 +43,7 @@ if ($a === 'hello') {
         $out['link'] = 'https://t.me/' . BOT_NAME . '?start=tv' . $code;
     } else {
         $out['plus_until'] = plus_until((int) $row['chat_id']);
+        $out['chat'] = (int) $row['chat_id'];              // боту на ТВ (bstg.js) — с кем говорить через api.php
     }
     json_out($out);
 }

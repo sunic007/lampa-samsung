@@ -43,7 +43,8 @@ function q($sql, $args = []) { $s = db()->prepare($sql); $s->execute($args); ret
 
 function http_json($url, $post = null, $timeout = 10) {
     $h = curl_init($url);
-    $o = [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => $timeout, CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_USERAGENT => 'sunic.stream bot'];
+    // только IPv4: хостинг сперва пробует IPv6 до Telegram и теряет на этом 1–2,5 с (замер 2026-10-20: v4 — 0,3 с)
+    $o = [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => $timeout, CURLOPT_CONNECTTIMEOUT => 3, CURLOPT_USERAGENT => 'sunic.stream bot', CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4];
     if ($post !== null) { $o[CURLOPT_POST] = true; $o[CURLOPT_POSTFIELDS] = json_encode($post, JSON_UNESCAPED_UNICODE); $o[CURLOPT_HTTPHEADER] = ['Content-Type: application/json']; }
     curl_setopt_array($h, $o);
     $b = curl_exec($h);
@@ -52,7 +53,11 @@ function http_json($url, $post = null, $timeout = 10) {
     return is_array($j) ? $j : null;
 }
 
-function tg($method, $params = []) { return http_json('https://api.telegram.org/bot' . bot_token() . '/' . $method, $params, 15); }
+/** Запрос к Telegram: связь хостинга с ним иногда подвисает — до 7 с и один повтор. */
+function tg($method, $params = []) {
+    $u = 'https://api.telegram.org/bot' . bot_token() . '/' . $method;
+    return http_json($u, $params, 7) ?: http_json($u, $params, 7);
+}
 
 /** Ключ TMDB — тот же открытый, что в самой Lampa (её app.js у нас на хостинге); свой можно положить в private/tmdb-key.txt. */
 function tmdb_key() {
