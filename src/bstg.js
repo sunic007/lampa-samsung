@@ -2159,6 +2159,7 @@ var BSTelegram = (function () {
             return whenVideoEnds(function () { openHere(kind, id, ref, play, false); });
         }
         tmdbGet((kind === 't' ? 'tv/' : 'movie/') + id, function (j) {
+            if (j === BLOCKED) return ack(false, 'заблокирован по просьбе правообладателя');
             if (!j || !j.id) return ack(false, 'TMDB не ответил');
             try {
                 pushCard(toCard(j, kind), kind, play);
@@ -3684,7 +3685,7 @@ var BSTelegram = (function () {
     /* ---------- поиск в боте ---------- */
 
     /* TMDB без таймаута: если сервер не отвечает, поиск висел бы до минут. Через TMDB_TIMEOUT отвечаем «не ответил». */
-    var TMDB_TIMEOUT = 10000, TMDB_FIRST = 6000, TMDB_DIRECT = 'https://api.themoviedb.org/3/';
+    var TMDB_TIMEOUT = 10000, TMDB_FIRST = 6000, TMDB_DIRECT = 'https://api.themoviedb.org/3/', BLOCKED = { blocked: true };
     /** Язык TMDB для того, кому отвечаем: английский — en-US; узбекских данных у TMDB почти нет — русский. */
     function tmdbLang() { return lang() === 'en' ? 'en-US' : 'ru'; }
     function tmdbGet(path, cb, retried) {
@@ -3694,6 +3695,9 @@ var BSTelegram = (function () {
         var url = retried ? TMDB_DIRECT + q : Lampa.TMDB.api(q), wait = retried ? TMDB_TIMEOUT : TMDB_FIRST;
         var done = false, finish = function (j) {
             if (done) return; done = true;
+            // {"blocked":true}: CUB закрыл фильм по просьбе правообладателя — в Lampa он не откроется. Это ответ, а не сбой:
+            // в обход не ходим, говорим как есть (BLOCKED)
+            if (j && typeof j === 'object' && j.blocked && !j.id) return cb(BLOCKED);
             if (!j && !retried) return tmdbGet(path, cb, true);
             if (!j) log('TMDB не ответил', path.split('?')[0]);
             cb(j || null);
@@ -3702,6 +3706,10 @@ var BSTelegram = (function () {
         try { req.timeout(wait); } catch (e) {}
         req.silent(url, function (j) { finish(j); }, function () { finish(null); });
         setTimeout(function () { finish(null); }, wait + 1000);
+    }
+    function blockedText() {
+        return L('🚫 Заблокирован по просьбе правообладателя — в Lampa не откроется', '🚫 Blocked at the copyright holder’s request — Lampa can’t open it',
+            "🚫 Mualliflik huquqi egasining talabi bilan bloklangan — Lampa'da ochilmaydi");
     }
     /** Карточка Lampa из ответа TMDB (подробности фильма/сериала). */
     function toCard(j, kind) {
@@ -4064,6 +4072,7 @@ var BSTelegram = (function () {
                 return whenVideoEnds(function () { openHereLocal(true); });
             }
             tmdbGet((kind === 't' ? 'tv/' : 'movie/') + id, function (j) {
+                if (j === BLOCKED) return deferred ? null : answer(blockedText());
                 if (!j || !j.id) return deferred ? null : answer(whyText('TMDB не ответил'));
                 try {
                     pushCard(toCard(j, kind), kind, play);
@@ -4094,6 +4103,7 @@ var BSTelegram = (function () {
         'откроется, когда закончится видео': ['will open when the video ends', 'video tugagach ochiladi'],
         'ждёт, пока закончится видео': ['waiting for the video to end', 'video tugashini kutyapti'],
         'TMDB не ответил': ["TMDB didn't answer", 'TMDB javob bermadi'],
+        'заблокирован по просьбе правообладателя': ['blocked at the copyright holder’s request', 'mualliflik huquqi egasining talabi bilan bloklangan'],
         'идёт видео — не прерываю': ["a video is playing — I won't interrupt it", "video ko'rilmoqda — to'xtatmayman"],
         'пустой текст': ['empty text', "bo'sh matn"],
         'не получилось': ["didn't work", "bo'lmadi"],
@@ -4164,6 +4174,7 @@ var BSTelegram = (function () {
     function searchAction(q, act, kind, id) {
         var answer = function (t) { call('answerCallbackQuery', { callback_query_id: q.id, text: t }, null, null); };
         tmdbGet((kind === 't' ? 'tv/' : 'movie/') + id, function (j) {
+            if (j === BLOCKED) return answer(blockedText());
             if (!j || !j.id) return answer(L('TMDB не ответил, попробуйте ещё раз', "TMDB didn't answer, try again", "TMDB javob bermadi, qayta urinib ko'ring") + ' (' + tvName() + ')');
             var card = toCard(j, kind), name = card.title || card.name || '';
             var already = function () { return answer(L('Вы уже подписаны', "You're already subscribed", "Siz allaqachon obuna bo'lgansiz")); };
