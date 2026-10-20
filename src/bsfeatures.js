@@ -246,7 +246,7 @@ var BSFeatures = (function () {
         api.addParam({
             component: C,
             param: { name: 'bs_noads', type: 'trigger', 'default': false },
-            field: { name: 'Пропускать рекламу перед фильмом', description: 'Без рекламы перед фильмом. Lampa перезапустится.' },
+            field: { name: 'Без рекламы перед фильмом', description: 'Lampa перезапустится' },
             onChange: function (v) {
                 lsSet('bs_noads', String(v === true || v === 'true'));
                 noty('Перезапускаю Lampa…', 2000);

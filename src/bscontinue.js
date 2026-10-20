@@ -463,19 +463,19 @@ var BSContinue = (function () {
         Lampa.SettingsApi.addParam({
             component: 'bs_update',
             param: { name: 'bs_continue_row', type: 'trigger', 'default': true },
-            field: { name: 'Новые серии', description: 'Уведомление при запуске, когда у начатого сериала вышла новая серия.' },
+            field: { name: 'Новые серии при запуске', description: 'Скажет, если у начатого сериала вышла серия' },
             onChange: function (v) { lsSet('bs_continue_row', String(v === true || v === 'true')); }
         });
         Lampa.SettingsApi.addParam({
             component: 'bs_update',
             param: { name: 'bs_ru_auto', type: 'trigger', 'default': true },
-            field: { name: 'Фильм — сразу по-русски', description: '«Смотреть» включает фильм в русской озвучке, без выбора.' },
+            field: { name: 'Фильм — сразу по-русски', description: 'В русской озвучке, без выбора' },
             onChange: function (v) { lsSet('bs_ru_auto', String(v === true || v === 'true')); }
         });
         Lampa.SettingsApi.addParam({
             component: 'bs_update',
             param: { name: 'bs_online_resume', type: 'trigger', 'default': true },
-            field: { name: '«Смотреть» — сразу с места', description: 'Начатый сериал или фильм включается там, где остановились.' },
+            field: { name: '«Смотреть» — сразу с места', description: 'С того места, где остановились' },
             onChange: function (v) { lsSet('bs_online_resume', String(v === true || v === 'true')); }
         });
     }

@@ -478,13 +478,13 @@ var BSMenu = (function () {
         Lampa.SettingsApi.addParam({
             component: 'bs_update',
             param: { name: 'bs_watch_btn', type: 'trigger', 'default': true },
-            field: { name: 'Кнопка «Смотреть» на карточке', description: 'Источники открываются одним нажатием.' },
+            field: { name: 'Кнопка «Смотреть» на карточке', description: 'Источники — одним нажатием' },
             onChange: function (v) { lsSet('bs_watch_btn', String(v === true || v === 'true')); }
         });
         Lampa.SettingsApi.addParam({
             component: 'bs_update',
             param: { name: 'bs_menu_turk', type: 'trigger', 'default': true },
-            field: { name: 'Кнопка «Турецкие сериалы» в меню', description: 'Пункт в левом меню.' },
+            field: { name: 'Кнопка «Турецкие сериалы» в меню', description: 'В левом меню' },
             onChange: function (v) {
                 var on = v === true || v === 'true';
                 lsSet('bs_menu_turk', String(on));
@@ -494,7 +494,7 @@ var BSMenu = (function () {
         Lampa.SettingsApi.addParam({
             component: 'bs_update',
             param: { name: 'bs_menu_kids', type: 'trigger', 'default': false },
-            field: { name: 'Кнопка «Мультики» в меню', description: 'Мультфильмы и мультсериалы: возраст, темы (обучающие, животные, машинки…), годы, советские и российские, поиск.' },
+            field: { name: 'Кнопка «Мультики» в меню', description: 'В левом меню' },
             onChange: function (v) {
                 var on = v === true || v === 'true';
                 lsSet('bs_menu_kids', String(on));

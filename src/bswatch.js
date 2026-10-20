@@ -436,22 +436,22 @@ var BSWatch = (function () {
         var C = 'bs_update', api = Lampa.SettingsApi;
         api.addParam({
             component: C, param: { name: 'bs_next_countdown', type: 'trigger', 'default': true },
-            field: { name: 'Отсчёт до следующей серии', description: 'ОК — сразу следующая, Назад — досмотреть титры.' },
+            field: { name: 'Отсчёт до следующей серии', description: 'ОК — сразу, Назад — досмотреть титры' },
             onChange: function (v) { lsSet('bs_next_countdown', String(v === true || v === 'true')); }
         });
         api.addParam({
             component: C, param: { name: 'bs_next_season', type: 'trigger', 'default': true },
-            field: { name: 'Следующий сезон сам', description: 'После последней серии сезона — первая серия нового, если он вышел. Нет — скажет, когда выйдет.' },
+            field: { name: 'Следующий сезон сам', description: 'После последней серии — первая серия нового' },
             onChange: function (v) { lsSet('bs_next_season', String(v === true || v === 'true')); }
         });
         api.addParam({
             component: C, param: { name: 'bs_still', type: 'select', values: { auto: 'Через час без ' + (dev('tv') ? 'пульта' : 'нажатий'), '90': 'Через 1,5 часа', '120': 'Через 2 часа', '0': 'Не спрашивать' }, 'default': stillValue() },
-            field: { name: '«Вы ещё смотрите?»', description: 'Пауза, если долго ' + (dev('tv') ? 'не нажимали пульт' : 'ничего не нажимали') + ': серии по 30 мин — на 3-й, от часа — на 2-й.' },
+            field: { name: '«Вы ещё смотрите?»', description: 'Пауза, если долго ' + (dev('tv') ? 'не нажимали пульт' : 'ничего не нажимали') },
             onChange: function (v) { lsSet('bs_still', String(v)); }
         });
         api.addParam({
             component: C, param: { name: 'bs_resume_ask', type: 'select', values: { old: 'Если смотрели давно', always: 'Всегда спрашивать', off: 'Не спрашивать' }, 'default': lsGet('bs_resume_ask') || 'old' },
-            field: { name: 'Продолжить или сначала', description: 'Не досмотрели и включили снова — спросит, откуда смотреть.' },
+            field: { name: 'Продолжить или сначала', description: 'Спросит, с места или сначала' },
             onChange: function (v) { lsSet('bs_resume_ask', String(v)); }
         });
     }

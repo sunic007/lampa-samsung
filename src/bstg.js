@@ -4296,22 +4296,22 @@ var BSTelegram = (function () {
         var C = 'bs_update', api = Lampa.SettingsApi;
         api.addParam({
             component: C, param: { name: 'bs_tg_phone', type: 'button' },
-            field: { name: 'Подключить с телефона', description: 'QR-код: токен бота вставляется на телефоне, пультом вводить не нужно.' },
+            field: { name: 'Подключить с телефона', description: 'QR-код — токен вводится на телефоне' },
             onChange: pairPhone
         });
         api.addParam({
             component: C, param: { name: 'bs_tg_join', type: 'button' },
-            field: { name: 'Подключить через бота', description: 'Бот уже работает на другом ТВ? Код с экрана — боту, токен не нужен.' },
+            field: { name: 'Подключить через бота', description: 'Бот уже есть на другом ТВ — без токена' },
             onChange: pairJoin
         });
         api.addParam({
             component: C, param: { name: 'bs_tg_help', type: 'static' },
-            field: { name: 'Или вручную', description: 'Токен от @BotFather — в поле ниже, напишите своему боту и нажмите «Подключить».' }
+            field: { name: 'Или вручную', description: 'Токен от @BotFather — ниже, затем «Подключить»' }
         });
         var tokWas = token();                                        // токен до правки поля: «Отмена» — вернуть
         api.addParam({
             component: C, param: { name: 'bs_tg_token', type: 'input', values: '', placeholder: '123456789:AA…', 'default': '' },
-            field: { name: 'Токен бота', description: 'Хранится только на этом ТВ.' },
+            field: { name: 'Токен бота', description: 'Хранится только на этом ТВ' },
             onRender: function () { tokWas = token(); },
             onChange: function () {
                 // поле очистили, а бот подключён — это «Отключить Telegram» (спросить); передумали — токен как был
@@ -4336,47 +4336,47 @@ var BSTelegram = (function () {
         });
         api.addParam({
             component: C, param: { name: 'bs_tv_name', type: 'input', values: '', placeholder: 'Гостиная', 'default': '' },
-            field: { name: 'Название этого ТВ', description: 'Пусто — имя телевизора из его настроек. Можно сменить и в боте.' },
+            field: { name: 'Название этого ТВ', description: 'Пусто — имя из настроек ТВ' },
             onChange: function (v) { lsSet('bs_tv_name', String(v || '')); busHello(false); }
         });
         api.addParam({
             component: C, param: { name: 'bs_tg_shots', type: 'trigger', 'default': true },
-            field: { name: 'Записи Shots — в Telegram', description: 'Записали момент кнопкой «Записать» в плеере — видео придёт в бот.' },
+            field: { name: 'Записи Shots — в Telegram', description: 'Видео с кнопки «Записать» придёт в бот' },
             onChange: function (v) { lsSet('bs_tg_shots', String(v === true || v === 'true')); }
         });
         api.addParam({
             component: C, param: { name: 'bs_tg_approve', type: 'trigger', 'default': true },
-            field: { name: 'Новые люди — с разрешения', description: 'Подключился по QR — бот сначала спросит вас. Выключено — подключается сразу.' },
+            field: { name: 'Новые люди — с разрешения', description: 'Бот сначала спросит вас' },
             onChange: function (v) { lsSet('bs_tg_approve', String(v === true || v === 'true')); cfgSend(); }
         });
         api.addParam({
             component: C, param: { name: 'bs_tg_guest_play', type: 'trigger', 'default': true },
-            field: { name: 'Гости включают видео на ТВ', description: 'Выключено — гости могут искать, подписываться и вести свои списки, но не включать фильмы на ТВ.' },
+            field: { name: 'Гости включают видео на ТВ', description: 'Выключено — гости только ищут и подписываются' },
             onChange: function (v) { lsSet('bs_tg_guest_play', String(v === true || v === 'true')); cfgSend(); }
         });
         api.addParam({
             component: C, param: { name: 'bs_tg_invite_reset', type: 'button' },
-            field: { name: 'Сменить приглашение', description: 'Старый QR в поиске и пересланные ссылки перестанут подключать. Уже подключённые остаются.' },
+            field: { name: 'Сменить приглашение', description: 'Старый QR и ссылки перестанут работать' },
             onChange: function () { inviteReset(); noty('Приглашение сменено — новый QR в поиске', 4000); }
         });
         api.addParam({
             component: C, param: { name: 'bs_search_qr', type: 'trigger', 'default': true },
-            field: { name: 'QR бота в поиске', description: 'Под клавиатурой поиска — искать с телефона и открывать на ТВ.' },
+            field: { name: 'QR бота в поиске', description: 'Искать с телефона, смотреть на ТВ' },
             onChange: function (v) { lsSet('bs_search_qr', String(v === true || v === 'true')); }
         });
         api.addParam({
             component: C, param: { name: 'bs_tg_on', type: 'trigger', 'default': true },
-            field: { name: 'Новые серии в Telegram', description: 'Подписки из плеера, закладки и сериалы, которые смотрите.' },
+            field: { name: 'Новые серии в Telegram', description: 'Подписки, закладки и начатые сериалы' },
             onChange: function (v) { lsSet('bs_tg_on', String(v === true || v === 'true')); }
         });
         api.addParam({
             component: C, param: { name: 'bs_tg_check', type: 'button' },
-            field: { name: 'Проверить сейчас', description: 'Обычно — сама, при запуске и раз в 6 часов.' },
+            field: { name: 'Проверить новые серии сейчас', description: 'Обычно сама, раз в 6 часов' },
             onChange: function () { if (!chat()) return noty('Сначала подключите бота', 3000); check(true, true); }
         });
         api.addParam({
             component: C, param: { name: 'bs_tg_off', type: 'button' },
-            field: { name: 'Отключить Telegram', description: 'Стереть с этого ТВ токен бота, чат и ключи ИИ. Подключить снова — как в первый раз.' },
+            field: { name: 'Отключить Telegram', description: 'Стереть токен, чат и ключи ИИ с этого ТВ' },
             onChange: function () { if (!hasToken() && !chat() && !hasSvcMarks()) return noty('Telegram не подключён', 3000); tgOffAsk(); }
         });
     }

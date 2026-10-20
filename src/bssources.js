@@ -32,16 +32,16 @@ var BSSources = (function () {
      * плагины с одинаковым компонентом и кнопкой: включить можно только один из группы. */
     var LIST = [
         { id: 'z01', key: 'bs_src_z01', name: 'Z01', url: 'http://z01.online/live', comp: ['lampac_z'], on: true, https: true,
-          note: 'Бесплатные источники и платный VIP. Есть реклама.',
+          note: 'Есть реклама',
           match: function (b) { return /^Z01\b/i.test(sub(b)); } },
         { id: 'online_mod', key: 'bs_src_online_mod', name: 'Online Mod', url: 'http://nb557.github.io/plugins/online_mod.js', comp: ['online_mod'], group: 'online_mod', on: true, https: true,
-          note: 'Открытый код (GitHub nb557).', match: hasCls('view--online_mod') },
+          note: 'Без рекламы', match: hasCls('view--online_mod') },
         { id: 'vod_llpp', key: 'bs_src_vod_llpp', name: 'VOD (llpp.in)', url: 'http://llpp.in/v/vod.js', comp: ['online_mod'], group: 'online_mod',
-          note: 'Вариант Online Mod — включается вместо него.', match: hasCls('view--online_mod') },
+          note: 'Вместо Online Mod', match: hasCls('view--online_mod') },
         { id: 'showy', key: 'bs_src_showy', name: 'Showy', url: 'http://showy.online/m.js', comp: ['showy_free', 'showy'],
-          note: 'Filmix, Rezka, Kodik. Есть реклама.', match: hasCls('showy--button') },
+          note: 'Filmix, Rezka, Kodik · есть реклама', match: hasCls('showy--button') },
         { id: 'arkmv', key: 'bs_src_arkmv', name: 'Vod (arkmv)', url: 'http://arkmv.ru/vod', comp: ['vod'],
-          note: 'Есть реклама.', match: function (b) { return b.hasClass('lampac--button') && /^Vod\b/i.test(sub(b)); } }
+          note: 'Есть реклама', match: function (b) { return b.hasClass('lampac--button') && /^Vod\b/i.test(sub(b)); } }
     ];
     var SKAZ_COMP = ['lampacskaz'];
 
@@ -163,13 +163,13 @@ var BSSources = (function () {
         for (i = 0; i < LIST.length; i++) names[LIST[i].id] = LIST[i].name;
         api.addParam({
             component: C, param: { name: 'bs_src_main', type: 'select', values: names, 'default': 'skaz' },
-            field: { name: 'Главный источник для «Смотреть»', description: 'Первая кнопка на карточке. Если выбранный источник выключен — Skaz.' },
+            field: { name: 'Главный источник для «Смотреть»', description: 'Первая кнопка на карточке' },
             onChange: function (v) { lsSet('bs_src_main', String(v || 'skaz')); }
         });
         LIST.forEach(function (s) {
             api.addParam({
                 component: C, param: { name: s.key, type: 'trigger', 'default': !!s.on },
-                field: { name: 'Источник ' + s.name, description: s.note + ' Выключение — после перезапуска Lampa.' },
+                field: { name: 'Источник ' + s.name, description: s.note },   // «выключится после перезапуска» — в уведомлении при выключении
                 onChange: function (v) {
                     var want = v === true || v === 'true';
                     lsSet(s.key, String(want));

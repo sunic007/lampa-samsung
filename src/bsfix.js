@@ -725,19 +725,19 @@ var BSFix = (function () {
         Lampa.SettingsApi.addParam({
             component: 'bs_update',
             param: { name: 'bs_bw_quality', type: 'trigger', 'default': true },
-            field: { name: 'Качество под скорость интернета', description: 'Интернет не тянет 4K — старт в качестве пониже.' },
+            field: { name: 'Качество под скорость интернета', description: 'Медленный интернет — качество пониже' },
             onChange: function (v) { try { window.localStorage.setItem('bs_bw_quality', String(v === true || v === 'true')); } catch (e) {} }
         });
         Lampa.SettingsApi.addParam({
             component: 'bs_update',
             param: { name: 'bs_auto_source', type: 'trigger', 'default': true },
-            field: { name: 'Автоподбор источника', description: 'Не запустилось — сам пробует другой источник.' },
+            field: { name: 'Автоподбор источника', description: 'Не запустилось — попробует другой' },
             onChange: function (v) { try { window.localStorage.setItem('bs_auto_source', String(v === true || v === 'true')); } catch (e) {} }
         });
         Lampa.SettingsApi.addParam({
             component: 'bs_update',
             param: { name: 'bs_race', type: 'trigger', 'default': true },
-            field: { name: 'Проверять источники заранее', description: 'Находит рабочий источник быстрее.' },
+            field: { name: 'Проверять источники заранее', description: 'Рабочий источник находится быстрее' },
             onChange: function (v) { try { window.localStorage.setItem('bs_race', String(v === true || v === 'true')); } catch (e) {} }
         });
     }

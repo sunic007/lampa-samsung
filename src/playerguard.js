@@ -435,12 +435,14 @@ var BSGuard = (function () {
 
     function addSettings() {
         if (!Lampa.SettingsApi) return;
-        Lampa.SettingsApi.addParam({
+        var samsungApp = false;                                   // плеер ТВ (AVPlay) есть только в приложении Samsung
+        try { samsungApp = !!window.BSDevice && BSDevice.samsungApp(); } catch (e) {}
+        if (samsungApp) Lampa.SettingsApi.addParam({
             component: 'bs_update',
             param: { name: 'bs_player_auto', type: 'trigger', 'default': true },
             field: {
                 name: 'Автовыбор плеера',
-                description: 'Плеер ТВ, а если он не тянет поток — плеер Lampa.'
+                description: 'Если плеер ТВ не тянет видео — плеер Lampa'
             },
             onChange: function (v) { lsSet('bs_player_auto', String(v === true || v === 'true')); }
         });
@@ -449,7 +451,7 @@ var BSGuard = (function () {
             param: { name: 'bs_guard', type: 'trigger', 'default': true },
             field: {
                 name: 'Сторож плеера',
-                description: 'Видео зависло — перезапуск, другое качество или источник.'
+                description: 'Видео зависло — перезапустит или сменит источник'
             },
             onChange: function (v) { lsSet('bs_guard', String(v === true || v === 'true')); if (!(v === true || v === 'true')) stop(); }
         });

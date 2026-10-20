@@ -124,13 +124,13 @@ var BSVolume = (function () {
         api.addParam({
             component: 'bs_update',
             param: { name: 'bs_vol_memory', type: 'trigger', 'default': true },
-            field: { name: 'Своя громкость для каждого фильма', description: 'Запоминает громкость, которую вы ставили, и в следующий раз ставит её сама.' },
+            field: { name: 'Своя громкость для каждого фильма', description: 'Как в прошлый раз' },
             onChange: function (v) { lsSet('bs_vol_memory', String(v === true || v === 'true')); }
         });
         api.addParam({
             component: 'bs_update',
             param: { name: 'bs_vol_night', type: 'select', values: { '0': 'Выключено', '10': '10', '15': '15', '20': '20', '25': '25' }, 'default': '0' },
-            field: { name: 'Ночью не громче', description: 'С 23:00 до 7:00 плеер не начинает громче.' },
+            field: { name: 'Ночью не громче', description: 'С 23:00 до 7:00' },
             onChange: function (v) { lsSet('bs_vol_night', String(v)); }
         });
     }

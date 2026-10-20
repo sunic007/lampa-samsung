@@ -313,7 +313,7 @@ var BSSkaz = (function () {
     function addSettings() {
         if (!Lampa.SettingsApi) return;
         var C = 'bs_update';
-        Lampa.SettingsApi.addParam({ component: C, param: { name: 'bs_srv_title', type: 'title' }, field: { name: 'Серверы источников Skaz' } });
+        Lampa.SettingsApi.addParam({ component: C, param: { name: 'bs_srv_title', type: 'title' }, field: { name: 'Серверы Skaz' } });
         Lampa.SettingsApi.addParam({
             component: C,
             param: { name: 'bs_srv_now', type: 'static' },
@@ -326,13 +326,13 @@ var BSSkaz = (function () {
         Lampa.SettingsApi.addParam({
             component: C,
             param: { name: 'bs_srv_auto', type: 'trigger', 'default': true },
-            field: { name: 'Автовыбор серверов источников', description: 'Сам меняет зависшие серверы фильмов и сериалов. Сервер ТВ by Skaz не трогает.' },
+            field: { name: 'Автовыбор серверов источников', description: 'Сам меняет зависшие серверы' },
             onChange: function (v) { lsSet('bs_srv_auto', String(v === true || v === 'true')); }
         });
         Lampa.SettingsApi.addParam({
             component: C,
             param: { name: 'bs_srv_pick', type: 'button' },
-            field: { name: 'Проверить и выбрать сервер источников', description: 'Пинг серверов фильмов и сериалов.' },
+            field: { name: 'Выбрать сервер вручную', description: 'Покажет скорость серверов' },
             onChange: showPicker
         });
     }

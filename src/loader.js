@@ -236,11 +236,6 @@ function bsNoty(text, time) {
     try { Lampa.Noty.show(text, { time: time || 6000 }); } catch (e) { console.log('BS', text); }
 }
 
-function bsFormatDate(ms) {
-    var d = new Date(ms);
-    function p(n) { return (n < 10 ? '0' : '') + n; }
-    return p(d.getDate()) + '.' + p(d.getMonth() + 1) + '.' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
-}
 
 /* ---------- загрузка ---------- */
 
@@ -514,13 +509,13 @@ function bsLatestVersion(cb, urls) {
         if (/^\d+\.\d+\.\d+$/.test(v)) cb(v); else bsLatestVersion(cb, urls);
     }, function () { bsLatestVersion(cb, urls); }, 8000);
 }
-function bsFnRunning() { return window.BS_REMOTE_VERSION || BS_PACKAGE_VERSION; }
+function bsFnRunning() { return window.BS_REMOTE_VERSION || window.BS_SITE_VERSION || BS_PACKAGE_VERSION; }
 
 /** Итог «Проверить и обновить», когда обновлять нечего: что именно стоит и почему так считаем. */
 function bsNoUpdateText(latest, lampaOk, fnRunning, lampaRunning, ghOff) {
     var fnBehind = latest && bsVerNum(latest) > bsVerNum(fnRunning);
     if (!latest && !lampaOk) return 'Не удалось проверить: сервер обновлений не ответил — проверьте интернет';
-    if (fnBehind && ghOff) return 'Вышла Sunic Apps ' + latest + ' — включите «Обновлять с GitHub» здесь же, в разделе «Обновление»';
+    if (fnBehind && ghOff) return 'Вышла Sunic Apps ' + latest + ' — включите «Обновлять Sunic Apps сама» здесь же, в разделе «Обновление»';
     if (fnBehind) return 'Вышла Sunic Apps ' + latest + ' — файлы ещё выкладываются, обновление встанет само в течение часа';
     if (!latest) return 'Lampa ' + lampaRunning + ' — последняя. Sunic Apps ' + fnRunning + ': GitHub не ответил, проверю позже';
     return 'Обновлений нет — у вас последняя версия: Sunic Apps ' + fnRunning + ' · Lampa ' + lampaRunning;
@@ -682,11 +677,12 @@ var BS_SETTINGS_LAYOUT = [
         '#Бот', 'bs_tg_on', 'bs_tg_shots', 'bs_search_qr', 'bs_tg_check',
         '#Люди и доступ', 'bs_tg_approve', 'bs_tg_guest_play', 'bs_tg_invite_reset']],
     ['bs_online', ['#Источники', 'bs_auto_source', 'bs_race', 'bs_torrents', 'bs_srv_title', 'bs_srv_now', 'bs_srv_auto', 'bs_srv_pick',
-        '#Другие источники (на выбор)', 'bs_src_main', 'bs_src_z01', 'bs_src_online_mod', 'bs_src_vod_llpp', 'bs_src_showy', 'bs_src_arkmv']]
+        '#Источники на выбор', 'bs_src_main', 'bs_src_z01', 'bs_src_online_mod', 'bs_src_vod_llpp', 'bs_src_showy', 'bs_src_arkmv']]
 ];
 // заголовки старой общей вкладки; подсказка про цветные кнопки (на Smart Remote их нет); «Быстрый старт» (техническое,
 // всегда вкл.); журнал запросов (отладка — есть журнал на компьютере); «Название источника» (выкл., просили скрыть)
-var BS_SETTINGS_HIDDEN = ['bs_feat_title', 'bs_cont_title', 'bs_keys_info', 'bs_fast_start', 'bs_diag', 'bs_src_badge'];
+// «Таймер сна» — то же, что кнопка «Сон» в плеере; «Сейчас» у серверов Skaz — технический список
+var BS_SETTINGS_HIDDEN = ['bs_feat_title', 'bs_cont_title', 'bs_keys_info', 'bs_fast_start', 'bs_diag', 'bs_src_badge', 'bs_sleep', 'bs_srv_now'];
 var BS_SETTINGS_NEEDS = {
     bs_player_auto: { on: 'bs_guard' },                      // запасной плеер включает сторож
     bs_race: { on: 'bs_auto_source' },
@@ -879,82 +875,26 @@ function bsAddSettings() {
     Lampa.SettingsApi.addParam({
         component: C,
         param: { name: 'bs_torrents', type: 'trigger', 'default': false },
-        field: { name: 'Торренты', description: 'Показать настройки «Парсер» и «TorrServer».' },
+        field: { name: 'Торренты', description: 'Показать «Парсер» и «TorrServer»' },
         onChange: function (v) { try { window.localStorage.setItem('bs_torrents', String(v === true || v === 'true')); } catch (e) {} }
     });
 
-    /* Раздел «Обновление» — три части, у каждой сказано, откуда она обновляется:
-     *  Lampa (сервер byskaz) · плагины Skaz (их серверы, каждый запуск) · функции пакета (GitHub). */
+    /* Раздел «Обновление» — коротко, для обычного человека: какая версия, «Проверить и обновить», помощь.
+     * Откуда что обновляется (сервер byskaz, плагины Skaz, GitHub) — в README, не на экране. */
     var pkgVer = '';
     try { pkgVer = tizen.application.getCurrentApplication().appInfo.version; } catch (e) {}
+    var fnVer = window.BS_REMOTE_VERSION || pkgVer || window.BS_SITE_VERSION || BS_PACKAGE_VERSION;
     var title = function (name, text) { Lampa.SettingsApi.addParam({ component: C, param: { name: name, type: 'title' }, field: { name: text } }); };
 
-    title('bs_t_lampa', 'Lampa');
     Lampa.SettingsApi.addParam({
         component: C,
         param: { name: 'bs_info_version', type: 'static' },
-        field: { name: 'Lampa ' + bsRunningVersion(), description: 'Проверяю сервер…' },
-        onRender: function (item) {
-            var descr = item.find('.settings-param__descr');
-            if (BS_HTTPS_PAGE) return descr.text('Сейчас: из пакета Sunic Apps (страница по https — сервер byskaz не нужен).');
-            var from = bsSource === 'bundled' ? 'встроенная копия — сервер byskaz был недоступен при запуске'
-                : bsSource === 'local' ? 'из пакета — та же версия, что на сервере byskaz (без скачивания)'
-                    : 'с сервера byskaz (lampa.byskaz.ru)';
-            descr.text('Сейчас: ' + from + '.');
-            bsCheckNow(function (a) {
-                if (!a) return descr.text('Сейчас: ' + from + '. Сервер обновлений недоступен.');
-                descr.text('Сейчас: ' + from + '. На сервере ' + (a.app_version || '?') +
-                    (bsHasUpdate(a) ? ' — есть новее, нажмите «Проверить и обновить».' : ' — у вас последняя.'));
-            });
-        }
-    });
-    Lampa.SettingsApi.addParam({
-        component: C,
-        param: { name: 'bs_autoupdate', type: 'trigger', 'default': true },
-        field: { name: 'Обновлять Lampa сама', description: 'Сервер byskaz проверяется каждые 30 минут; новая версия ставится сама (во время фильма — после закрытия плеера).' },
-        onChange: function (v) { try { window.localStorage.setItem('bs_autoupdate', String(v === true || v === 'true')); } catch (e) {} }
-    });
-
-    title('bs_t_skaz', 'Плагины Skaz — просмотр и ТВ by Skaz');
-    Lampa.SettingsApi.addParam({
-        component: C,
-        param: { name: 'bs_info_skaz', type: 'static' },
-        field: {
-            name: 'Обновляются сами',
-            description: 'Загружаются с серверов Skaz при каждом запуске Lampa: новая версия приходит не позже чем через сутки, ' +
-                'сразу — кнопкой «Проверить и обновить». Работают по подписке Skaz TV — skaz.tv.'
-        }
-    });
-
-    title('bs_t_pkg', 'Sunic Apps — бот, плеер, настройки');
-    Lampa.SettingsApi.addParam({
-        component: C,
-        param: { name: 'bs_info_pkg', type: 'static' },
-        field: {
-            name: 'Версия ' + (window.BS_REMOTE_VERSION || pkgVer || BS_PACKAGE_VERSION),
-            description: (window.BS_REMOTE_VERSION ? 'Сейчас: с GitHub (sunic007/lampa-samsung).' : 'Сейчас: из установленного пакета.') +
-                ' Установлен пакет ' + (pkgVer || '?') + ' со встроенной Lampa ' + BS_BUNDLED_VERSION + '.'
-        }
-    });
-    Lampa.SettingsApi.addParam({
-        component: C,
-        param: { name: 'bs_gh_update', type: 'trigger', 'default': true },
-        field: { name: 'Обновлять с GitHub', description: 'Новая версия функций ставится сама при следующем запуске Lampa, без установки .wgt.' },
-        onChange: function (v) { try { window.localStorage.setItem('bs_gh_update', String(v === true || v === 'true')); } catch (e) {} }
-    });
-
-    title('bs_t_check', 'Проверка');
-    var checked = null;
-    try { checked = window.localStorage.getItem('bs_checked'); } catch (e) {}
-    Lampa.SettingsApi.addParam({
-        component: C,
-        param: { name: 'bs_info_checked', type: 'static' },
-        field: { name: 'Последняя проверка Lampa', description: checked ? bsFormatDate(parseInt(checked, 10)) : '—' }
+        field: { name: (/^\d+\.\d+\.\d+$/.test(String(fnVer)) ? 'Sunic Apps ' + fnVer + ' · ' : '') + 'Lampa ' + bsRunningVersion(), description: 'Обновляется само' }
     });
     Lampa.SettingsApi.addParam({
         component: C,
         param: { name: 'bs_check_now', type: 'button' },
-        field: { name: 'Проверить и обновить', description: 'Есть новая версия Lampa (сервер byskaz) или функций пакета (GitHub) — покажет, что нового, и обновит, если согласитесь; нет — просто скажет.' },
+        field: { name: 'Проверить и обновить', description: 'Покажет, что нового' },
         onChange: function () {
             // «Проверяю…» держится до ответа (GitHub с ТВ бывает отвечает 10–15 с — раньше надпись гасла через 3 с, и
             // казалось, что проверка пропала). Три проверки сразу, итог — когда ответили все или через 20 с.
@@ -984,26 +924,40 @@ function bsAddSettings() {
         }
     });
 
-    title('bs_t_help', 'Помощь');
     Lampa.SettingsApi.addParam({
         component: C,
         param: { name: 'bs_report', type: 'button' },
-        field: { name: 'Сообщить о проблеме', description: 'Отчёт с журналом ошибок уйдёт разработчику одной кнопкой — фото экрана не нужно.' },
+        field: { name: 'Сообщить о проблеме', description: 'Отчёт уйдёт разработчику' },
         onChange: function () { try { BSReport.open(); } catch (e) { bsNoty('Напишите в группу t.me/sunicapps', 6000); } }
     });
 
-    title('bs_t_support', 'Проект');
     Lampa.SettingsApi.addParam({
         component: C,
         param: { name: 'bs_support', type: 'button' },
-        field: { name: 'Поддержать проект', description: 'Пакет бесплатный. Помочь развитию можно на GitHub Sponsors — QR-код для телефона.' },
+        field: { name: 'Поддержать проект', description: 'GitHub Sponsors' },
         onChange: bsSupportQr
     });
+    // автообновление — только в приложении на ТВ: страница sunic.stream (браузер, MSX) и так всегда последней версии
+    if (!BS_HTTPS_PAGE && !window.BS_SITE_VERSION) {
+        title('bs_t_more', 'Дополнительно');
+        Lampa.SettingsApi.addParam({
+            component: C,
+            param: { name: 'bs_autoupdate', type: 'trigger', 'default': true },
+            field: { name: 'Обновлять Lampa сама' },
+            onChange: function (v) { try { window.localStorage.setItem('bs_autoupdate', String(v === true || v === 'true')); } catch (e) {} }
+        });
+        Lampa.SettingsApi.addParam({
+            component: C,
+            param: { name: 'bs_gh_update', type: 'trigger', 'default': true },
+            field: { name: 'Обновлять Sunic Apps сама' },
+            onChange: function (v) { try { window.localStorage.setItem('bs_gh_update', String(v === true || v === 'true')); } catch (e) {} }
+        });
+    }
     // условие API TMDB: указать источник данных о фильмах (бот и строки пакета берут их у TMDB)
     Lampa.SettingsApi.addParam({
         component: C,
         param: { name: 'bs_info_tmdb', type: 'static' },
-        field: { name: 'Данные о фильмах — TMDB', description: 'Этот продукт использует API TMDB, но не одобрен и не сертифицирован TMDB.' }
+        field: { name: 'Данные о фильмах: TMDB', description: 'Этот продукт использует API TMDB, но не одобрен и не сертифицирован TMDB.' }
     });
 }
 

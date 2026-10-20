@@ -11,7 +11,7 @@
 const REPO = 'sunic007/lampa-samsung';
 const GH = 'https://raw.githubusercontent.com/' . REPO . '/main/version.json';
 const CDN = 'https://cdn.jsdelivr.net/gh/' . REPO . '@v';
-const PIN = '2.3.14';   // если GitHub не ответил и ничего не запомнено
+const PIN = '2.3.15';   // если GitHub не ответил и ничего не запомнено
 const LIFE = 600;       // версию проверяем раз в 10 минут
 const KEEP = 2;         // версий на хостинге
 
@@ -131,6 +131,8 @@ if (!$html) {
 $head = '<meta name="referrer" content="no-referrer">' . "\n    " . '<base href="' . $base . '">' . "\n    <script>"
     // страница и так всегда последнего выпуска — своё обновление модулей (update.js: окно «Вышло обновление») не нужно
     . '(function () { try { localStorage.setItem("bs_gh_update", "false"); } catch (x) {} })();'
+    // версия Sunic Apps этой страницы — для «Обновление» (на сайте нет пакета .wgt, откуда её берёт ТВ)
+    . 'window.BS_SITE_VERSION = ' . json_encode($serve ?: $v) . ';'
     . '(function () { if (window.tizen) return; try { localStorage.setItem("bs_player_default", "1");'
     . ' ["player", "player_iptv"].forEach(function (k) { var p = localStorage.getItem(k); if (!p || p === "tizen") localStorage.setItem(k, "inner"); });'
     . ' } catch (x) {} })();'
