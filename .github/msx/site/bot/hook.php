@@ -30,6 +30,8 @@ const T = [
         'old' => 'Поиск устарел — напишите название ещё раз.',
         'tv_off' => 'Телевизор не на связи — откройте на нём Lampa, и кнопка заработает.',
         'which' => 'На каком ТВ включить?',
+        'menu_off' => "Меню, закладки и подписки работают, когда на телевизоре открыта Lampa.
+Сейчас ТВ не на связи. Напишите название фильма — найду, и он включится, когда ТВ включат.",
     ],
     'en' => [
         'hello' => "Hi! I find movies and series and play them on your TV.\n\nSend a title — for example, «Sintel».\n\nTo let me play on the TV: Lampa → Settings → Sunic Apps → Telegram → «Sunic Apps shared bot» — and point your phone camera at the QR.",
@@ -48,6 +50,8 @@ const T = [
         'old' => 'This search is outdated — send the title again.',
         'tv_off' => 'The TV is offline — open Lampa on it and the button will work.',
         'which' => 'Which TV should it play on?',
+        'menu_off' => "The menu, bookmarks and subscriptions work while Lampa is open on the TV.
+The TV is offline now. Send a movie title — I'll find it and it will start when the TV is on.",
     ],
     'uz' => [
         'hello' => "Salom! Men film va seriallarni topaman va ularni televizoringizda yoqaman.\n\nNomini yozing — masalan, «Sintel».\n\nTelevizorda yoqishim uchun: Lampa → Sozlamalar → Sunic Apps → Telegram → «Sunic Apps umumiy boti» — va telefon kamerasini QR-kodga qarating.",
@@ -66,6 +70,8 @@ const T = [
         'old' => "Qidiruv eskirgan — nomini qayta yozing.",
         'tv_off' => "Televizor aloqada emas — unda Lampa ni oching, tugma ishlaydi.",
         'which' => "Qaysi televizorda yoqay?",
+        'menu_off' => "Menyu, xatcho'plar va obunalar televizorda Lampa ochiq bo'lganda ishlaydi.
+Hozir televizor aloqada emas. Film nomini yozing — topaman, televizor yoqilganda u ishga tushadi.",
     ],
 ];
 function lang_of($from) {
@@ -239,4 +245,6 @@ if ($text === '/tv') {
     exit;
 }
 if ($text[0] === '/') { say($chat, t($l, 'hello')); exit; }
+// кнопки бота на ТВ («📋 Меню», «⭐ Закладки»…: начинаются со значка), а ТВ не на связи — не искать фильм с таким названием
+if (preg_match('/^\p{So}/u', $text) && q('SELECT 1 FROM tvs WHERE chat_id = ?', [$chat])->fetch()) { say($chat, t($l, 'menu_off')); exit; }
 search($chat, $l, mb_substr($text, 0, 100));

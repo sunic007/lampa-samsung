@@ -2441,8 +2441,8 @@ var BSTelegram = (function () {
             }
             var staleTold = {};
             (updates || []).forEach(function (u) { takeUpdate(u, staleTold); });
-            // общий бот: сервер сам ждёт апдейт до 3 с — сразу следующий вопрос, как с Telegram
-            setTimeout(poll, 200);
+            // общий бот: пусто — следующий вопрос через 1 с (сервер ждёт ещё 1 с сам; дольше держать хостинг не может)
+            setTimeout(poll, relay() && !(updates && updates.length) ? 1000 : 200);
         }, function (e) {
             polling = false;
             if (!/conflict/i.test(String(e))) return;

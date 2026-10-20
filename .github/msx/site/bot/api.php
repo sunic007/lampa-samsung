@@ -38,12 +38,12 @@ if ($m === 'getUpdates') {
     $off = (int) ($p['offset'] ?? 0);
     if ($off < 0) { q('DELETE FROM updates WHERE tv_id = ?', [$tv]); json_out(['ok' => true, 'result' => []]); }
     if ($off > 0) q('DELETE FROM updates WHERE tv_id = ? AND uid < ?', [$tv, $off]);
-    // ждём до 3 с, пока hook.php положит апдейт: нажатие доходит до ТВ сразу, а не к следующему опросу
+    // пусто — подождать 1 с (не дольше: процессов PHP у хостинга мало, долгое ожидание занимало их, и Telegram получал 503)
     $rows = [];
-    for ($i = 0; $plus && $i < 15; $i++) {
+    for ($i = 0; $plus && $i < 2; $i++) {
         $rows = q('SELECT body FROM updates WHERE tv_id = ? ORDER BY uid LIMIT 50', [$tv])->fetchAll();
-        if ($rows) break;
-        usleep(200000);
+        if ($rows || $i) break;
+        sleep(1);
     }
     json_out(['ok' => true, 'result' => array_map(function ($r) { return json_decode($r['body'], true); }, $rows)]);
 }
