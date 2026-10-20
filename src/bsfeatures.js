@@ -331,8 +331,19 @@ var BSFeatures = (function () {
         C.add.__bsWrap = true;
     }
 
+    /* Кнопка «На весь экран» в шапке: Lampa прячет её на любом Android, считая, что это её приложение (там экран
+     * делает оно само). В браузере на планшете или телефоне (сайт sunic.stream) она нужна — показываем, если браузер умеет. */
+    function fullscreenButton() {
+        if (!window.BS_SITE_VERSION || window.AndroidJS || window.Android) return;
+        var el = document.documentElement;
+        if (!(el.requestFullscreen || el.webkitRequestFullScreen || el.mozRequestFullScreen)) return;
+        var b = document.querySelectorAll('.head .full--screen');
+        for (var i = 0; i < b.length; i++) b[i].classList.remove('hide');
+    }
+
     function start() {
         try { keyboardWrap(); } catch (e) { console.log('BS keyboard wrap', e.message); }
+        try { fullscreenButton(); } catch (e) {}
         try { noticesAbovePanel(); } catch (e) {}
         try { lazyYouTube(); } catch (e) {}
         try { installFastStart(); } catch (e) { console.log('BS fast start', e.message); }
