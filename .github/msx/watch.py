@@ -39,8 +39,21 @@ def main():
     try:
         page = get('/lampa/')
         base = re.search(r'<base href="([^"]+)"', page)
-        if not base or not re.fullmatch(r'https://cdn\.jsdelivr\.net/gh/sunic007/lampa-samsung@v\d+\.\d+\.\d+/src/', base.group(1)):
-            bad.append('/lampa/: <base> не на наш jsDelivr: %s' % (base.group(1) if base else 'нет'))
+        local = base and re.fullmatch(r'/lampa/v/(\d+\.\d+\.\d+)/', base.group(1))
+        if not base or not (local or re.fullmatch(r'https://cdn\.jsdelivr\.net/gh/sunic007/lampa-samsung@v\d+\.\d+\.\d+/src/', base.group(1))):
+            bad.append('/lampa/: <base> не на свою копию и не на наш jsDelivr: %s' % (base.group(1) if base else 'нет'))
+        if local:
+            # своя копия выпуска на хостинге — байт в байт как выпуск на GitHub (подмену файла видно сразу)
+            ver = local.group(1)
+            for f in ['index.html', 'update.js', 'loader.js', 'bsfix.js', 'bssources.js', 'bstg.js', 'app.js', 'bs.css']:
+                try:
+                    mine = get(base.group(1) + f)
+                    with urllib.request.urlopen('https://raw.githubusercontent.com/sunic007/lampa-samsung/v%s/src/%s' % (ver, f), timeout=60) as r:
+                        orig = r.read().decode('utf-8', 'replace')
+                    if mine != orig:
+                        bad.append('/lampa/v/%s/%s отличается от выпуска на GitHub' % (ver, f))
+                except Exception as e:
+                    bad.append('/lampa/v/%s/%s: %s' % (ver, f, e))
         for src in re.findall(r'<script[^>]*\ssrc="([^"]+)"', page):
             if src not in ALLOWED_SRC and not src.startswith(ALLOWED_SRC_PREFIX):
                 bad.append('/lampa/: чужой скрипт %s' % src)

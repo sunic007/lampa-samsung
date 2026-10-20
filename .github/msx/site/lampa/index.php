@@ -1,46 +1,112 @@
 <?php
 /*
- * Lampa «Sunic Apps» для Media Station X (sunic.stream — хостинг в Узбекистане, не Cloudflare: его диапазоны у
+ * Lampa «Sunic Apps» для Media Station X и браузера (sunic.stream — хостинг в Узбекистане, не Cloudflare: его диапазоны у
  * провайдеров блокируют). MSX открывает эту страницу сразу при старте (msx/start.json → "action": "link:…").
- * Сервер отдаёт index.html последнего выпуска (version.json в main) с <base> на jsDelivr по тегу — файлы оттуда же.
- * Обычной страницей, не document.write: Lampa тогда правильно считает размеры экрана. Обновлять не нужно — новые
- * выпуски приходят сами. Только http: источники Skaz работают по http.
+ *
+ * Файлы — на этом же хостинге: lampa/v/<версия>/ — копия src последнего выпуска (без службы Tizen). Раз в 10 минут —
+ * version.json на GitHub (или jsDelivr); вышла новая — сервер сам докачивает её после ответа (в фоне), а пока работает
+ * прежняя. Держим две версии (новая и прошлая). Своей копии ещё нет (первый запуск) — файлы с jsDelivr (<base>).
+ * Обновлять этот файл не нужно. По http и https: источники Skaz — только по http (их серверы https не умеют).
  */
-// По https (браузеры сами открывают https) — тоже работает: каталог и источники с https (Online Mod, Z01). Skaz — только
-// по http (его серверы https не умеют): на ТВ через MSX и по http-адресу. Поиск по источникам его тогда пропускает.
-const GH = 'https://raw.githubusercontent.com/sunic007/lampa-samsung/main/version.json';
-const CDN = 'https://cdn.jsdelivr.net/gh/sunic007/lampa-samsung@v';
-const PIN = '2.3.4';    // если GitHub не ответил и ничего не запомнено
-const LIFE = 600;       // версию и страницу держим 10 минут
+const REPO = 'sunic007/lampa-samsung';
+const GH = 'https://raw.githubusercontent.com/' . REPO . '/main/version.json';
+const CDN = 'https://cdn.jsdelivr.net/gh/' . REPO . '@v';
+const PIN = '2.3.10';   // если GitHub не ответил и ничего не запомнено
+const LIFE = 600;       // версию проверяем раз в 10 минут
+const KEEP = 2;         // версий на хостинге
 
-function fetch_url($u) {
+function fetch_url($u, $timeout = 10) {
     $c = curl_init($u);
-    curl_setopt_array($c, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_TIMEOUT => 10,
+    curl_setopt_array($c, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_TIMEOUT => $timeout,
         CURLOPT_USERAGENT => 'sunic.stream']);
     $b = curl_exec($c);
     $ok = curl_getinfo($c, CURLINFO_HTTP_CODE) === 200;
     curl_close($c);
-    return $ok ? $b : '';
+    return $ok ? $b : false;
 }
+function ok_ver($v) { return is_string($v) && preg_match('/^\d+\.\d+\.\d+$/', $v); }
 
 $cache = __DIR__ . '/.cache';
+$store = __DIR__ . '/v';
 if (!is_dir($cache)) @mkdir($cache, 0700);
+if (!is_dir($store)) @mkdir($store, 0755);
+
+/* ---------- какая версия последняя ---------- */
 $vf = $cache . '/version';
 $v = is_file($vf) ? trim(file_get_contents($vf)) : '';
-if (!$v || time() - filemtime($vf) > LIFE) {
-    $j = json_decode(fetch_url(GH . '?t=' . time()), true);
-    // GitHub не ответил — тот же version.json с jsDelivr (ветка main)
-    if (!is_array($j)) $j = json_decode(fetch_url('https://cdn.jsdelivr.net/gh/sunic007/lampa-samsung@main/version.json'), true);
-    if (is_array($j) && preg_match('/^\d+\.\d+\.\d+$/', $j['version'] ?? '')) { $v = $j['version']; @file_put_contents($vf, $v); }
-    elseif ($v) @touch($vf);            // GitHub не ответил — прежняя версия ещё на 10 минут
+if (!ok_ver($v) || time() - filemtime($vf) > LIFE) {
+    $j = json_decode((string) fetch_url(GH . '?t=' . time()), true);
+    if (!is_array($j)) $j = json_decode((string) fetch_url('https://cdn.jsdelivr.net/gh/' . REPO . '@main/version.json'), true);
+    if (is_array($j) && ok_ver($j['version'] ?? '')) { $v = $j['version']; @file_put_contents($vf, $v); }
+    elseif (ok_ver($v)) @touch($vf);    // GitHub не ответил — прежняя версия ещё на 10 минут
 }
-if (!$v) $v = PIN;
+if (!ok_ver($v)) $v = PIN;
 
-$pf = $cache . '/page-' . $v . '.html';
-$html = is_file($pf) ? file_get_contents($pf) : '';
-if (!$html) {
-    $html = fetch_url(CDN . $v . '/src/index.html');
-    if ($html) @file_put_contents($pf, $html);
+/* ---------- своя копия выпуска ---------- */
+function ready($store, $ver) { return ok_ver($ver) && is_file("$store/$ver/.complete"); }
+/** Список файлов src выпуска: GitHub API, иначе jsDelivr. [путь => размер] */
+function release_files($ver) {
+    $out = [];
+    $t = json_decode((string) fetch_url('https://api.github.com/repos/' . REPO . '/git/trees/v' . $ver . '?recursive=1', 20), true);
+    if (is_array($t) && !empty($t['tree'])) {
+        foreach ($t['tree'] as $f) if (($f['type'] ?? '') === 'blob' && strpos($f['path'], 'src/') === 0) $out[substr($f['path'], 4)] = (int) ($f['size'] ?? 0);
+    } else {
+        $d = json_decode((string) fetch_url('https://data.jsdelivr.com/v1/packages/gh/' . REPO . '@v' . $ver . '?structure=flat', 20), true);
+        foreach (($d['files'] ?? []) as $f) if (strpos($f['name'], '/src/') === 0) $out[substr($f['name'], 5)] = (int) ($f['size'] ?? 0);
+    }
+    // служба Tizen, проект Tizen Studio и config.xml странице не нужны
+    foreach (array_keys($out) as $p) if (preg_match('#^(service/|\.tproject|config\.xml$)#', $p)) unset($out[$p]);
+    return $out;
+}
+/** Скачать выпуск в v/<версия>/ (сначала во временную папку). true — готово. */
+function sync_release($store, $cache, $ver) {
+    $lock = fopen($cache . '/sync.lock', 'c');
+    if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) return false;    // уже качаем в другом запросе
+    $files = release_files($ver);
+    if (count($files) < 20 || !isset($files['index.html'], $files['app.js'], $files['loader.js'])) return false;
+    $tmp = "$store/.tmp-$ver";
+    @mkdir($tmp, 0755, true);
+    foreach ($files as $p => $size) {
+        if (!preg_match('#^[A-Za-z0-9_./ -]+$#', $p) || strpos($p, '..') !== false) continue;   // только обычные пути
+        if (is_file("$tmp/$p") && filesize("$tmp/$p") === $size) continue;                   // уже скачан
+        $b = fetch_url(CDN . $ver . '/src/' . str_replace('%2F', '/', rawurlencode($p)), 60);
+        if ($b === false) $b = fetch_url('https://raw.githubusercontent.com/' . REPO . '/v' . $ver . '/src/' . str_replace('%2F', '/', rawurlencode($p)), 60);
+        if ($b === false || ($size && strlen($b) !== $size)) return false;                      // в следующий раз докачаем
+        @mkdir(dirname("$tmp/$p"), 0755, true);
+        file_put_contents("$tmp/$p", $b);
+    }
+    // в папке выпусков PHP не выполняется — только файлы Lampa
+    file_put_contents("$tmp/.htaccess", "RemoveHandler .php .phtml\nRemoveType .php .phtml\n<FilesMatch \"\\.(php|phtml|phar)$\">\n    Require all denied\n</FilesMatch>\n# файлы выпуска не меняются — кеш браузера надолго\n<IfModule mod_headers.c>\n    Header set Cache-Control \"public, max-age=31536000, immutable\"\n</IfModule>\n");
+    file_put_contents("$tmp/.complete", date('c'));
+    if (is_dir("$store/$ver")) rrmdir("$store/$ver");
+    rename($tmp, "$store/$ver");
+    // старые версии — прочь (держим KEEP новейших)
+    $vers = array_values(array_filter(scandir($store), 'ok_ver'));
+    usort($vers, 'version_compare');
+    foreach (array_slice($vers, 0, max(0, count($vers) - KEEP)) as $old) rrmdir("$store/$old");
+    return true;
+}
+function rrmdir($d) {
+    foreach (array_diff(scandir($d), ['.', '..']) as $f) is_dir("$d/$f") && !is_link("$d/$f") ? rrmdir("$d/$f") : @unlink("$d/$f");
+    @rmdir($d);
+}
+
+$serve = '';
+if (ready($store, $v)) $serve = $v;
+else {
+    $vers = array_values(array_filter(scandir($store), function ($x) use ($store) { return ready($store, $x); }));
+    usort($vers, 'version_compare');
+    if ($vers) $serve = end($vers);                    // пока новая качается — прежняя своя
+}
+
+if ($serve) {
+    $html = (string) @file_get_contents("$store/$serve/index.html");
+    $base = '/lampa/v/' . $serve . '/';
+} else {                                               // своей копии ещё нет — с jsDelivr
+    $pf = $cache . '/page-' . $v . '.html';
+    $html = is_file($pf) ? file_get_contents($pf) : '';
+    if (!$html) { $html = (string) fetch_url(CDN . $v . '/src/index.html'); if ($html) @file_put_contents($pf, $html); }
+    $base = CDN . $v . '/src/';
 }
 if (!$html) {
     http_response_code(503);
@@ -50,19 +116,18 @@ if (!$html) {
 }
 
 // В MSX нет API Samsung (window.tizen): плеер «Tizen» (AVPlay) не запустится — встроенный плеер Lampa (loader.js на
-// первом запуске ставит «tizen», если bs_player_default нет — ставим раньше). Ошибки файлов с jsDelivr браузер отдаёт без
-// текста («Script error.») — Lampa показывала бы их уведомлением, понять по нему нечего: глушим только такие.
-$head = '<base href="' . CDN . $v . '/src/">' . "\n    <script>"
+// первом запуске ставит «tizen», если bs_player_default нет — ставим раньше). Файлы с jsDelivr (первый запуск): их ошибки
+// браузер отдаёт без текста («Script error.») — Lampa показывала бы их уведомлением, понять по нему нечего: глушим такие.
+$head = '<base href="' . $base . '">' . "\n    <script>"
     // страница и так всегда последнего выпуска — своё обновление модулей (update.js: окно «Вышло обновление») не нужно
     . '(function () { try { localStorage.setItem("bs_gh_update", "false"); } catch (x) {} })();'
     . '(function () { if (window.tizen) return; try { localStorage.setItem("bs_player_default", "1");'
     . ' ["player", "player_iptv"].forEach(function (k) { var p = localStorage.getItem(k); if (!p || p === "tizen") localStorage.setItem(k, "inner"); });'
     . ' } catch (x) {} })();'
-    // <base> на jsDelivr: Lampa пишет в историю «?card=…» — браузер считал бы это адресом jsDelivr и запрещал
-    // (SecurityError, карточка не открывается). Относительные адреса истории — от адреса страницы, не от <base>.
+    // <base>: Lampa пишет в историю «/?card=…» от корня или от <base> — адрес истории всегда от этой страницы
+    // (иначе SecurityError на jsDelivr или переход на корень сайта)
     . ' (function () { var h = window.history; if (!h || !h.pushState) return; ["pushState", "replaceState"].forEach(function (m) {'
     . ' var o = h[m]; h[m] = function (s, t, u) { if (typeof u === "string" && !/^[a-z]+:/i.test(u)) {'
-    // Lampa с <base> пишет «/?card=…» — от корня сайта; у нас она в /lampa/
     . ' var p = location.pathname; if (/^\/[?#]/.test(u)) u = u.slice(1);'
     . ' u = location.origin + (u.charAt(0) === "?" ? p + u : u.charAt(0) === "#" ? p + location.search + u : u.charAt(0) === "/" ? u : p + u); }'
     . ' return o.call(h, s, t, u); }; }); })();'
@@ -72,6 +137,15 @@ $html = preg_replace('/<head>/', "<head>\n    " . $head, $html, 1);
 $html = preg_replace('#<script src="\$WEBAPIS/webapis/webapis\.js"></script>#', '', $html);   // только у установленного .wgt
 $html = str_replace('<title>Lampa</title>', '<title>Lampa · Sunic Apps</title>', $html);
 
+// ответ — сразу; докачка новой версии — после него, человек не ждёт
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-cache');
+header('Content-Length: ' . strlen($html));
+header('Connection: close');
 echo $html;
+if ($serve === $v) exit;
+ignore_user_abort(true);
+@set_time_limit(900);
+if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+else { @ob_end_flush(); flush(); }
+sync_release($store, $cache, $v);
