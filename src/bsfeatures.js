@@ -278,21 +278,22 @@ var BSFeatures = (function () {
      * бесплатных каналов: iptv-org (страны, языки, темы) и Free-TV (только официальные бесплатные трансляции).
      * Наши записи — с id «sunic-iptv-…»: повторное нажатие убирает только их, чужие плейлисты не трогаем. */
     var IPTV_ORG = 'https://iptv-org.github.io/iptv/';
+    // [ключ, название, адрес, подпись на плитке]
     var IPTV_LISTS = [
-        ['uz', 'Узбекистан', IPTV_ORG + 'countries/uz.m3u'],
-        ['rus', 'На русском языке', IPTV_ORG + 'languages/rus.m3u'],
-        ['ru', 'Россия', IPTV_ORG + 'countries/ru.m3u'],
-        ['kz', 'Казахстан', IPTV_ORG + 'countries/kz.m3u'],
-        ['tr', 'Турция', IPTV_ORG + 'countries/tr.m3u'],
-        ['movies', 'Фильмы (весь мир)', IPTV_ORG + 'categories/movies.m3u'],
-        ['series', 'Сериалы (весь мир)', IPTV_ORG + 'categories/series.m3u'],
-        ['kids', 'Детские (весь мир)', IPTV_ORG + 'categories/kids.m3u'],
-        ['animation', 'Мультфильмы (весь мир)', IPTV_ORG + 'categories/animation.m3u'],
-        ['documentary', 'Документальные (весь мир)', IPTV_ORG + 'categories/documentary.m3u'],
-        ['sports', 'Спорт (весь мир)', IPTV_ORG + 'categories/sports.m3u'],
-        ['music', 'Музыка (весь мир)', IPTV_ORG + 'categories/music.m3u'],
-        ['news', 'Новости (весь мир)', IPTV_ORG + 'categories/news.m3u'],
-        ['freetv', 'Официальные бесплатные каналы (Free-TV)', 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8']
+        ['uz', 'Узбекистан', IPTV_ORG + 'countries/uz.m3u', 'Каналы страны'],
+        ['rus', 'На русском', IPTV_ORG + 'languages/rus.m3u', 'Все страны'],
+        ['ru', 'Россия', IPTV_ORG + 'countries/ru.m3u', 'Каналы страны'],
+        ['kz', 'Казахстан', IPTV_ORG + 'countries/kz.m3u', 'Каналы страны'],
+        ['tr', 'Турция', IPTV_ORG + 'countries/tr.m3u', 'Каналы страны'],
+        ['movies', 'Фильмы', IPTV_ORG + 'categories/movies.m3u', 'Весь мир'],
+        ['series', 'Сериалы', IPTV_ORG + 'categories/series.m3u', 'Весь мир'],
+        ['kids', 'Детские', IPTV_ORG + 'categories/kids.m3u', 'Весь мир'],
+        ['animation', 'Мультфильмы', IPTV_ORG + 'categories/animation.m3u', 'Весь мир'],
+        ['documentary', 'Документальные', IPTV_ORG + 'categories/documentary.m3u', 'Весь мир'],
+        ['sports', 'Спорт', IPTV_ORG + 'categories/sports.m3u', 'Весь мир'],
+        ['music', 'Музыка', IPTV_ORG + 'categories/music.m3u', 'Весь мир'],
+        ['news', 'Новости', IPTV_ORG + 'categories/news.m3u', 'Весь мир'],
+        ['freetv', 'Free-TV', 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8', 'Официальные бесплатные, весь мир']
     ];
     function iptvList() {
         var l = [];
@@ -368,6 +369,11 @@ var BSFeatures = (function () {
             for (i = 0; i < IPTV_LISTS.length; i++) l.push({ id: 'sunic-iptv-' + IPTV_LISTS[i][0], custom: true, url: IPTV_LISTS[i][2], name: IPTV_LISTS[i][1] });
             try { Lampa.Storage.set('iptv_playlist_custom', l); } catch (e) {}
         }
+        // как в привычных IPTV-плеерах: открыл — сразу каналы (на русском), сменить список — «Назад» в IPTV
+        try {
+            var book = Lampa.Storage.get('iptv_pilot_book', '{}');
+            if (book && typeof book === 'object' && !book.playlist) { book.playlist = 'sunic-iptv-rus'; Lampa.Storage.set('iptv_pilot_book', book); }
+        } catch (e) {}
         iptvFresh();
         if (!iptvInstalled()) {
             var dom = 'cub.red';
@@ -375,6 +381,162 @@ var BSFeatures = (function () {
             try { Lampa.Plugins.add({ url: 'https://' + dom + '/plugin/iptv', status: 1, name: 'IPTV', author: '@lampa' }); } catch (e) { return; }
         }
         lsSet('bs_iptv_auto', '1');
+    }
+    /* ---------- IPTV: вид ----------
+     * Экраны расширения IPTV сделаны под ссылки провайдеров: адреса m3u, «Метод загрузки CUB», совет зайти на cub.best,
+     * разделы и названия каналов по-английски с пометками «[Not 24/7]». Для наших плейлистов приводим в порядок:
+     * плитки с названием и подписью в нашем порядке, разделы по-русски, названия каналов без служебных пометок.
+     * Только вид: данные и поведение расширения не трогаем. */
+    var IPTV_GROUPS = { animation: 'Мультфильмы', auto: 'Авто', business: 'Бизнес', classic: 'Классика', comedy: 'Комедии',
+        cooking: 'Кулинария', culture: 'Культура', documentary: 'Документальные', education: 'Образование',
+        entertainment: 'Развлечения', family: 'Семейные', general: 'Общие', interactive: 'Интерактив', kids: 'Детские',
+        legislative: 'Парламент', lifestyle: 'Стиль жизни', movies: 'Фильмы', music: 'Музыка', news: 'Новости',
+        outdoor: 'Природа и отдых', 'public': 'Общественные', relax: 'Релакс', religious: 'Религия', science: 'Наука',
+        series: 'Сериалы', shop: 'Магазины', sports: 'Спорт', travel: 'Путешествия', weather: 'Погода', undefined: 'Разное' };
+    function iptvGroup(t) {
+        var parts = String(t || '').split(';'), out = [], i, k, hit = false;
+        for (i = 0; i < parts.length; i++) {
+            k = parts[i].replace(/^\s+|\s+$/g, '');
+            if (IPTV_GROUPS.hasOwnProperty(k.toLowerCase())) { k = IPTV_GROUPS[k.toLowerCase()]; hit = true; }
+            if (k) out.push(k);
+        }
+        return hit ? out.join(' · ') : t;
+    }
+    function iptvChannel(t) {
+        return String(t || '').replace(/\s*\[(Not 24\/7|Geo-blocked)\]/gi, '').replace(/\s*\((\d{3,4}[pi]|\d+K)\)/gi, '').replace(/^\s+|\s+$/g, '') || t;
+    }
+    function iptvByUrl(url) {
+        for (var i = 0; i < IPTV_LISTS.length; i++) if (IPTV_LISTS[i][2] === url) return i;
+        return -1;
+    }
+    function iptvByKey(key) {
+        for (var i = 0; i < IPTV_LISTS.length; i++) if (IPTV_LISTS[i][0] === key) return i;
+        return -1;
+    }
+    function iptvText(el, f) {
+        if (!el) return;
+        var t = el.textContent, n = f(t);
+        if (n !== t) el.textContent = n;
+    }
+    function iptvConst(v) { return function () { return v; }; }
+    /** Порядок плиток: наши — как в IPTV_LISTS, чужие следом, «+ Свой плейлист» в конце. → true, если переставили. */
+    function iptvSort(q) {
+        var list = [], i, parent = q.length ? q[0].parentNode : null, moved = false;
+        for (i = 0; i < q.length; i++) {
+            if (q[i].parentNode !== parent) return false;
+            list.push({ el: q[i], k: q[i].className.indexOf('bs-iptv-add') >= 0 ? 1000 : +(q[i].getAttribute('data-bs-at') || 500), i: i });
+        }
+        list.sort(function (a, b) { return a.k - b.k || a.i - b.i; });
+        for (i = 0; i < list.length; i++) if (list[i].el !== q[i]) moved = true;
+        if (moved) for (i = 0; i < list.length; i++) parent.appendChild(list[i].el);
+        return moved;
+    }
+    function iptvTidy(root) {
+        var i, q, el, u, at;
+        q = root.querySelectorAll('.iptv-playlist-item');
+        for (i = 0; i < q.length; i++) {
+            el = q[i];
+            if (!el.querySelector('.iptv-playlist-item__body')) {
+                if (el.className.indexOf('bs-iptv-add') < 0) el.className += ' bs-iptv-add';
+                continue;
+            }
+            u = el.querySelector('.iptv-playlist-item__url');
+            at = u ? iptvByUrl(u.getAttribute('data-bs-url') || u.textContent) : -1;
+            if (at < 0) continue;
+            if (!u.getAttribute('data-bs-url')) u.setAttribute('data-bs-url', u.textContent);
+            el.setAttribute('data-bs-at', at);
+            iptvText(u, iptvConst(IPTV_LISTS[at][3]));
+            iptvText(el.querySelector('.iptv-playlist-item__name-text'), iptvConst(IPTV_LISTS[at][1]));
+            iptvText(el.querySelector('.iptv-playlist-item__name-ico span'), iptvConst(IPTV_LISTS[at][1].charAt(0)));
+            if (el.className.indexOf('bs-iptv-own') < 0) el.className += ' bs-iptv-own bs-iptv-c' + (at % 6);
+        }
+        // переставили — фокус пульта на первую плитку (расширение ставит его на первую по своему порядку)
+        if (q.length && iptvSort(q)) {
+            try {
+                var first = root.querySelector('.iptv-playlist-item'), sc = root.querySelector('.iptv-list__items .scroll');
+                if (first && sc) Lampa.Controller.collectionFocus(first, sc);
+            } catch (e) {}
+        }
+        q = root.querySelectorAll('.iptv-menu__list-item > div');
+        for (i = 0; i < q.length; i++) {
+            // «Комедии;Семейные;Фильмы — 1 канал»: такие сборные разделы только засоряют меню, каналы есть во «Все каналы»
+            if (q[i].textContent.indexOf(';') >= 0) { el = q[i].parentNode; el.className = el.className.replace(/\bselector\b/, '') + ' hide'; }
+            else iptvText(q[i], iptvGroup);
+        }
+        el = root.querySelector('.iptv-menu__title');
+        if (el) {
+            try { at = iptvByKey(String(Lampa.Storage.get('iptv_pilot_book', '{}').playlist || '').replace(/^sunic-iptv-/, '')); } catch (e) { at = -1; }
+            if (at >= 0) iptvText(el, iptvConst(IPTV_LISTS[at][1]));
+        }
+        q = root.querySelectorAll('.iptv-details__play span:last-child, .iptv-hud-menu-info__group');
+        for (i = 0; i < q.length; i++) iptvText(q[i], iptvGroup);
+        q = root.querySelectorAll('.iptv-channel__name, .iptv-details__title, .iptv-hud-menu-info__name');
+        for (i = 0; i < q.length; i++) iptvText(q[i], iptvChannel);
+        // логотип не пришёл за 4 с (часть картинок каталога недоступна) — пустая плитка; пусть расширение покажет букву и название
+        q = root.querySelectorAll('img.iptv-channel__ico');
+        for (i = 0; i < q.length; i++) {
+            if (q[i].getAttribute('data-bs-wait')) continue;
+            q[i].setAttribute('data-bs-wait', '1');
+            setTimeout((function (img) {
+                return function () {
+                    try {
+                        var f = img.onerror;
+                        if (!img.parentNode || img.naturalWidth || !f || img.parentNode.querySelector('.iptv-channel__simb')) return;
+                        img.onerror = img.onload = null;                // поздняя ошибка картинки не добавит название второй раз
+                        img.removeAttribute('src');
+                        img.style.display = 'none';
+                        f.call(img);
+                    } catch (e) {}
+                };
+            })(q[i]), 4000);
+        }
+    }
+    function iptvWords() {
+        try {
+            Lampa.Lang.add({
+                iptv_select_playlist: { ru: 'ТВ-каналы', en: 'TV channels', uk: 'ТБ-канали' },
+                iptv_select_playlist_text: { ru: 'Бесплатные каналы из открытых источников. Списки обновляются каждый день.',
+                    en: 'Free channels from open sources. Lists update every day.', uk: 'Безкоштовні канали з відкритих джерел. Списки оновлюються щодня.' },
+                iptv_playlist_add_new: { ru: '+ Свой плейлист', en: '+ Own playlist', uk: '+ Свій плейлист' }
+            });
+        } catch (e) {}
+    }
+    var IPTV_CSS = '.iptv-list__ico{display:none}.iptv-list__title{font-size:2.2em;font-weight:600;margin-bottom:.4em}' +
+        '.iptv-menu .iptv-menu__head .iptv-menu__title{font-size:1.9em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+        '.iptv-list__text{opacity:.6;margin-bottom:1.2em}.iptv-list__items{width:92%}.iptv-list__items .scroll{height:28em}' +
+        '.iptv-list__items .scroll__body{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap}' +
+        '.iptv-list__items .iptv-playlist-item{width:30%;width:calc(33.333% - 2em);box-sizing:border-box;margin:1em;padding:1.3em 1.4em;border-radius:1em}' +
+        '.iptv-playlist-item.bs-iptv-own .iptv-playlist-item__body{-webkit-box-orient:vertical;-webkit-flex-direction:column;flex-direction:column;' +
+        '-webkit-box-align:start;-webkit-align-items:flex-start;align-items:flex-start}' +
+        '.iptv-playlist-item.bs-iptv-own .iptv-playlist-item__name{width:100%}' +
+        '.iptv-playlist-item.bs-iptv-own .iptv-playlist-item__name-text{font-size:1.35em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+        '.iptv-playlist-item.bs-iptv-own .iptv-playlist-item__url{width:100%;padding:0;margin-top:.7em;text-align:left;opacity:.55;white-space:normal}' +
+        '.iptv-playlist-item.bs-iptv-own .iptv-playlist-item__footer{display:none}' +
+        '.iptv-playlist-item.bs-iptv-own .iptv-playlist-item__name-ico{color:#fff;border-radius:.6em;min-width:2.6em;padding:.45em .5em}' +
+        '.bs-iptv-c0 .iptv-playlist-item__name-ico{background:#2f7cf6}.bs-iptv-c1 .iptv-playlist-item__name-ico{background:#e5484d}' +
+        '.bs-iptv-c2 .iptv-playlist-item__name-ico{background:#12a594}.bs-iptv-c3 .iptv-playlist-item__name-ico{background:#f59e0b}' +
+        '.bs-iptv-c4 .iptv-playlist-item__name-ico{background:#8e4ec6}.bs-iptv-c5 .iptv-playlist-item__name-ico{background:#e54666}' +
+        '.iptv-playlist-item.bs-iptv-add{background:none;border:.15em dashed rgba(255,255,255,.3);' +
+        'display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-align:center;-webkit-align-items:center;align-items:center;' +
+        '-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center}' +
+        '.iptv-playlist-item.bs-iptv-add .iptv-playlist-item__title{padding:0;font-size:1.2em;opacity:.7}';
+    function iptvLook() {
+        try {
+            var st = document.createElement('style');
+            st.textContent = IPTV_CSS;
+            document.head.appendChild(st);
+            Lampa.Listener.follow('activity', function (e) {
+                if (!e || e.type !== 'init' || e.component !== 'iptv' || !e.object || !e.object.activity) return;
+                iptvWords();                                            // до создания экрана: тексты он берёт при создании
+                var root = e.object.activity.render(true), wait = false;
+                if (!root || !window.MutationObserver) return;
+                new MutationObserver(function () {
+                    if (wait) return;
+                    wait = true;
+                    setTimeout(function () { wait = false; try { iptvTidy(root); } catch (er) {} }, 30);
+                }).observe(root, { childList: true, subtree: true, characterData: true });
+            });
+        } catch (e) {}
     }
     function iptvChoose() {
         var list = iptvList(), ctrl = 'settings_component';
@@ -483,6 +645,7 @@ var BSFeatures = (function () {
         try { lazyYouTube(); } catch (e) {}
         try { installFastStart(); } catch (e) { console.log('BS fast start', e.message); }
         try { addSettings(); } catch (e) { console.log('BS features settings', e.message); }
+        iptvLook();
         setTimeout(function () { try { iptvAuto(); iptvFresh(); } catch (e) {} }, 8000);   // IPTV по умолчанию; плейлисты 2.3.24 — тоже «каждый день»
         registerColorKeys();
         document.addEventListener('keydown', onColorKey, true);
@@ -499,5 +662,5 @@ var BSFeatures = (function () {
     }
 
     return {
-        _iptvToggle: iptvToggle, _iptvLists: IPTV_LISTS, _iptvFix: iptvFix, _iptvInstalled: iptvInstalled, _iptvAuto: iptvAuto, start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
+        _iptvToggle: iptvToggle, _iptvLists: IPTV_LISTS, _iptvFix: iptvFix, _iptvInstalled: iptvInstalled, _iptvAuto: iptvAuto, _iptvGroup: iptvGroup, _iptvChannel: iptvChannel, _iptvLook: iptvLook, start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
 })();

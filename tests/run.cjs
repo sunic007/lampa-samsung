@@ -3870,17 +3870,19 @@ async function serviceTests() {
         saved.length === 2 && saved[0].id === 'mine' && saved[1].id === 'sunic-iptv-uz' && saved[1].custom === true && /countries\/uz\.m3u$/.test(saved[1].url) && saved[1].name === 'Узбекистан');
     t('IPTV: добавленный обновляется каждый день (параметры расширения)', params['iptv_playlist_params_sunic-iptv-uz'] && params['iptv_playlist_params_sunic-iptv-uz'].update === 'day');
     t('IPTV: «каждый день» ставим один раз — выбор человека потом не перебиваем', F._iptvFix({ update: 'none', update_time: 5 }).update === 'day' && F._iptvFix({ update: 'week', sunic: 1 }) === null);
+    t('IPTV: разделы по-русски, сборные — через точку', F._iptvGroup('Kids') === 'Детские' && F._iptvGroup('Entertainment;Music') === 'Развлечения · Музыка' && F._iptvGroup('Undefined') === 'Разное' && F._iptvGroup('Мои') === 'Мои');
+    t('IPTV: названия каналов без служебных пометок', F._iptvChannel('Biz Cinema (1080p) [Not 24/7]') === 'Biz Cinema' && F._iptvChannel('Russia 24 [Geo-blocked]') === 'Russia 24' && F._iptvChannel('Channel 5') === 'Channel 5');
     t('IPTV: расширение не установлено — так и говорим', F._iptvInstalled() === false);
     plugins.push({ url: 'https://cub.red/plugin/iptv', status: 1 });
     t('IPTV: расширение установлено — видим его', F._iptvInstalled() === true);
     {   // по умолчанию: ставим расширение и кладём все открытые плейлисты — один раз
-        const ls = {}, added = [];
+        const ls = {}, added = []; let book = {};
         let list = [{ id: 'mine', custom: true, url: 'http://x/my.m3u', name: 'Мой' }];
         const c2 = { console: { log() {} }, JSON, Math, Date, String, Object, Array, RegExp, setTimeout: () => 0, setInterval: () => 0, navigator: { userAgent: 'x' },
             XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }), Node: Object.assign(function () {}, { prototype: { appendChild() {} } }),
             document: { querySelectorAll: () => [], documentElement: {}, addEventListener() {} },
             Lampa: { Manifest: { cub_domain: 'cub.red' }, Plugins: { add: pl => { added.push(pl); } },
-                Storage: { get: (k, d) => (k === 'iptv_playlist_custom' ? JSON.parse(JSON.stringify(list)) : k === 'plugins' ? added : JSON.parse(d || 'null')), set: (k, v) => { if (k === 'iptv_playlist_custom') list = v; } }, Noty: { show() {} } } };
+                Storage: { get: (k, d) => (k === 'iptv_playlist_custom' ? JSON.parse(JSON.stringify(list)) : k === 'plugins' ? added : k === 'iptv_pilot_book' ? book : JSON.parse(d || 'null')), set: (k, v) => { if (k === 'iptv_playlist_custom') list = v; if (k === 'iptv_pilot_book') book = v; } }, Noty: { show() {} } } };
         c2.window = c2; c2.localStorage = { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); }, removeItem: k => { delete ls[k]; } };
         vm.createContext(c2); vm.runInContext(fs.readFileSync(path.join(SRC, 'bsfeatures.js'), 'utf8') + ';this.M=BSFeatures;', c2);
         c2.M._iptvAuto();
@@ -3888,6 +3890,7 @@ async function serviceTests() {
             added.length === 1 && added[0].url === 'https://cub.red/plugin/iptv' && added[0].status === 1 &&
             list.length === 1 + c2.M._iptvLists.length && list[0].id === 'mine' && list[1].id === 'sunic-iptv-uz');
         list = list.slice(0, 2); added.length = 0; c2.M._iptvAuto();
+        t('IPTV по умолчанию: открывается сразу со списком «На русском»', JSON.stringify(book) === '{"playlist":"sunic-iptv-rus"}');
         t('IPTV по умолчанию: только один раз — убранное человеком не возвращаем', added.length === 0 && list.length === 2);
     }
     t('IPTV: выбрали ещё раз — убран только наш', F._iptvToggle('uz') === false && saved.length === 1 && saved[0].id === 'mine');
