@@ -6,13 +6,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sunic Apps — Lampa на любом ТВ, телефоне и в браузере</title>
 <meta name="description" content="Lampa с функциями Sunic Apps на любом Smart TV (Samsung, LG, Android TV — через Media Station X), на Android и в браузере. Бесплатно, без регистрации, открытый код.">
-<link rel="icon" type="image/png" href="/media/logo.png">
+<link rel="icon" type="image/png" href="/media/favicon-32.png">
 <link rel="stylesheet" href="/site.css">
+<link rel="preload" href="/site.js" as="script">
+<noscript><link rel="stylesheet" href="/nojs.css"></noscript>
 </head>
 <body>
 <main>
   <header>
-    <img src="/media/logo.png" alt="Sunic Apps">
+    <img src="/media/logo-88.png" alt="Sunic Apps" width="44" height="44">
     <b>Sunic Apps</b><span class="sp"></span>
     <span class="lang"><button data-lang="ru">RU</button> <button data-lang="en">EN</button> <button data-lang="uz">UZ</button></span>
   </header>
@@ -23,13 +25,13 @@
   <p><a class="cta" id="cta" href="#tv" data-t="cta_tv">Как поставить на ТВ</a><a class="cta alt" href="/lampa/" data-t="cta_web">Открыть в браузере</a></p>
 
   <div class="tabs" role="tablist">
-    <button data-tab="tv"><span data-t="tab_tv">📺 Любой Smart TV</span><small data-t="tab_tv_s">Samsung, LG, Android TV — Media Station X</small></button>
-    <button data-tab="phone"><span data-t="tab_phone">📱 Приложение на Samsung</span><small data-t="tab_phone_s">с телефона — TV Installer</small></button>
-    <button data-tab="android"><span data-t="tab_android">🤖 Android ТВ / приставка</span><small data-t="tab_android_s">плагин для Lampa</small></button>
-    <button data-tab="web"><span data-t="tab_web">💻 В браузере</span><small data-t="tab_web_s">компьютер или телефон</small></button>
+    <button role="tab" aria-selected="true" class="on" data-tab="tv"><span data-t="tab_tv">📺 Любой Smart TV</span><small data-t="tab_tv_s">Samsung, LG, Android TV — Media Station X</small></button>
+    <button role="tab" aria-selected="false" data-tab="phone"><span data-t="tab_phone">📱 Приложение на Samsung</span><small data-t="tab_phone_s">с телефона — TV Installer</small></button>
+    <button role="tab" aria-selected="false" data-tab="android"><span data-t="tab_android">🤖 Android ТВ / приставка</span><small data-t="tab_android_s">плагин для Lampa</small></button>
+    <button role="tab" aria-selected="false" data-tab="web"><span data-t="tab_web">💻 В браузере</span><small data-t="tab_web_s">компьютер или телефон</small></button>
   </div>
 
-  <section class="card" data-pane="tv" id="tv">
+  <section class="card on" role="tabpanel" data-pane="tv" id="tv">
     <h2 data-t="tv_h">Любой Smart TV — Media Station X</h2>
     <ol>
       <li data-t="tv_1">Установите <b>Media Station X</b> из магазина приложений телевизора — есть на Samsung, LG, Android TV и других.</li>
@@ -40,7 +42,7 @@
     <p class="muted" data-t="tv_note">Режим разработчика и компьютер не нужны. Источники Skaz работают после входа в CUB (Настройки → Аккаунт); без входа — Online Mod и Z01.</p>
   </section>
 
-  <section class="card" data-pane="phone">
+  <section class="card" role="tabpanel" data-pane="phone">
     <h2 data-t="ph_h">Samsung: своё приложение на ТВ — TV Installer</h2>
     <div class="row">
       <div>
@@ -53,10 +55,10 @@
       </div>
       <div class="qr"><img src="/media/qr-tvinstaller.png" alt="QR TV Installer" width="150" height="150"><br><span data-t="ph_qr">Наведите камеру телефона</span></div>
     </div>
-    <video controls preload="none" playsinline poster="/media/tvinstaller.jpg" src="/media/tvinstaller.mp4"></video>
+    <video controls preload="none" playsinline poster="/media/tvinstaller-300.jpg" width="300" height="533" src="/media/tvinstaller.mp4"></video>
   </section>
 
-  <section class="card" data-pane="android">
+  <section class="card" role="tabpanel" data-pane="android">
     <h2 data-t="an_h">Android ТВ, приставка или телефон — плагин для Lampa</h2>
     <ol>
       <li data-t="an_1">Откройте Lampa (Lampa BS или другую сборку) → Настройки → Расширения → Добавить плагин.</li>
@@ -66,7 +68,7 @@
     </ol>
   </section>
 
-  <section class="card" data-pane="web">
+  <section class="card" role="tabpanel" data-pane="web">
     <h2 data-t="web_h">В браузере</h2>
     <p data-t="web_p">Lampa открывается прямо на этом сайте — на компьютере или телефоне.</p>
     <p><a class="cta" href="/lampa/" data-t="cta_web">Открыть в браузере</a></p>

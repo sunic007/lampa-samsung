@@ -1,5 +1,5 @@
-  :root { --bg:#0e1117; --card:#161b24; --line:#262d3a; --text:#eef1f6; --muted:#98a2b3; --accent:#4d94ff; --ok:#3ccf91; --warn:#f5b84a; --bad:#ff6b6b; }
-  @media (prefers-color-scheme: light) { :root { --bg:#f5f7fa; --card:#fff; --line:#e3e7ee; --text:#151a23; --muted:#5d6676; --accent:#1f6fe5; --ok:#139a63; --warn:#b97a06; --bad:#d33; } }
+  :root { --bg:#0e1117; --card:#161b24; --line:#262d3a; --text:#eef1f6; --muted:#98a2b3; --accent:#4d94ff; --btn:#2563eb; --ok:#3ccf91; --warn:#f5b84a; --bad:#ff6b6b; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f5f7fa; --card:#fff; --line:#e3e7ee; --text:#151a23; --muted:#5d6676; --accent:#1f6fe5; --btn:#1d5fd1; --ok:#139a63; --warn:#b97a06; --bad:#d33; } }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
   main { max-width:880px; margin:0 auto; padding:16px 16px 48px; }
@@ -9,11 +9,12 @@
   header b { font-size:18px; } header .sp { flex:1; }
   .lang button { background:none; border:1px solid var(--line); color:var(--muted); border-radius:8px; padding:3px 9px; cursor:pointer; font:inherit; font-size:13px; }
   .lang button.on { color:var(--text); border-color:var(--accent); }
-  .status { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:13px; color:var(--muted); margin:6px 0 18px; min-height:20px; }
+  .status { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:13px; color:var(--muted); margin:6px 0 18px; min-height:44px; }
+  @media (max-width: 600px) { .status { min-height:86px; } }
   .status span::before { content:''; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; background:var(--muted); }
   .status .ok::before { background:var(--ok); } .status .slow::before { background:var(--warn); } .status .bad::before { background:var(--bad); }
   h1 { font-size:30px; line-height:1.2; margin:8px 0 8px; } .sub { color:var(--muted); margin:0 0 18px; font-size:17px; }
-  .cta { display:inline-block; background:var(--accent); color:#fff; text-decoration:none; padding:13px 22px; border-radius:12px; font-weight:600; font-size:17px; }
+  .cta { display:inline-block; background:var(--btn); color:#fff; text-decoration:none; padding:13px 22px; border-radius:12px; font-weight:600; font-size:17px; }
   .cta.alt { background:none; color:var(--accent); border:1px solid var(--accent); margin-left:8px; }
   .tabs { display:flex; flex-wrap:wrap; gap:8px; margin:28px 0 12px; }
   .tabs button { flex:1 1 180px; background:var(--card); border:1px solid var(--line); color:var(--text); padding:12px; border-radius:12px; cursor:pointer; font:inherit; text-align:left; }
@@ -23,10 +24,13 @@
   .card h2 { font-size:20px; margin:0 0 10px; } .card ol { margin:0; padding-left:22px; } .card li { margin:6px 0; }
   code, .copy { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:2px 8px; font:15px ui-monospace,Consolas,monospace; }
   .copyrow { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0; }
-  .copyrow button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:6px 12px; cursor:pointer; font:inherit; font-size:14px; }
+  .copyrow button { background:var(--btn); color:#fff; border:0; border-radius:8px; padding:6px 12px; cursor:pointer; font:inherit; font-size:14px; }
   .row { display:flex; gap:18px; align-items:center; flex-wrap:wrap; } .row > * { flex:1 1 240px; }
   .qr { flex:0 0 150px; text-align:center; font-size:13px; color:var(--muted); } .qr img { width:150px; height:150px; border-radius:10px; background:#fff; padding:6px; }
-  video { width:100%; max-width:300px; border-radius:14px; display:block; margin:0 auto; background:#000; }
+  /* главная видна, когда site.js расставил язык и вкладку (без сдвига); без JS — nojs.css */
+  html:not(.ready) main { visibility:hidden; animation:bs-show 0s 2s forwards; }   /* site.js не пришёл — всё равно через 2 с */
+  @keyframes bs-show { to { visibility:visible; } }
+  video { height:auto; width:100%; max-width:300px; border-radius:14px; display:block; margin:0 auto; background:#000; }
   .trust { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; }
   .trust div { background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:12px; font-size:14px; color:var(--muted); }
   .trust b { display:block; color:var(--text); font-size:15px; }

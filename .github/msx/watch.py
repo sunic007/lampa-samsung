@@ -32,7 +32,7 @@ def main():
             bad.append('msx/start.json отличается от репозитория')
     except Exception as e:
         bad.append('msx/start.json: %s' % e)
-    for path, name in (('/', 'index.html'), ('/site.js', 'site.js'), ('/site.css', 'site.css'), ('/.well-known/security.txt', '.well-known/security.txt')):
+    for path, name in (('/', 'index.html'), ('/site.js', 'site.js'), ('/site.css', 'site.css'), ('/nojs.css', 'nojs.css'), ('/.well-known/security.txt', '.well-known/security.txt')):
         try:
             if get(path).strip() != open(os.path.join(HERE, 'site', name), encoding='utf-8').read().strip():
                 bad.append('%s отличается от репозитория' % name)

@@ -78,7 +78,7 @@
   var ua = navigator.userAgent || '';
   var dev = /SMART-TV|Tizen|Web0S|SmartTV/i.test(ua) ? 'tv' : /Android/i.test(ua) ? (/Mobile/i.test(ua) ? 'phone' : 'android') : /iPhone|iPad/i.test(ua) ? 'web' : 'web';
   function tab(id) {
-    document.querySelectorAll('[data-tab]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === id); });
+    document.querySelectorAll('[data-tab]').forEach(function (b) { var on = b.getAttribute('data-tab') === id; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
     document.querySelectorAll('[data-pane]').forEach(function (p) { p.classList.toggle('on', p.getAttribute('data-pane') === id); });
   }
   document.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { tab(b.getAttribute('data-tab')); }; });
@@ -139,4 +139,5 @@
     getJSON(['https://api.github.com/repos/sunic007/lampa-samsung/releases/latest'], function (r) { if (r && r.published_at) { verData.date = r.published_at; version(); } });
   });
   setLang(lang);
+  document.documentElement.className += ' ready';
 })();

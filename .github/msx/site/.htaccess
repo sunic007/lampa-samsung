@@ -51,5 +51,15 @@ RedirectMatch 404 /\.(?!well-known/)
     Header always set Cross-Origin-Opener-Policy "same-origin"
 </If>
 
+# сроки кеша: картинки и видео меняются редко — месяц; site.css/site.js — час (главная — no-cache выше)
+<IfModule mod_headers.c>
+    <FilesMatch "\.(png|jpe?g|svg|ico|webp|mp4)$">
+        Header set Cache-Control "public, max-age=2592000"
+    </FilesMatch>
+    <If "%{REQUEST_URI} =~ m#^/site\.(css|js)$#">
+        Header set Cache-Control "public, max-age=3600"
+    </If>
+</IfModule>
+
 AddType application/json .json
 AddDefaultCharset utf-8
