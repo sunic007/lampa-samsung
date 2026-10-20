@@ -334,7 +334,7 @@ var BSFeatures = (function () {
     /* Кнопка «На весь экран» в шапке: Lampa прячет её на любом Android, считая, что это её приложение (там экран
      * делает оно само). В браузере на планшете или телефоне (сайт sunic.stream) она нужна — показываем, если браузер умеет. */
     /* iPhone: Safari не даёт странице весь экран (только видео) — кнопка подсказывает «На экран «Домой»» (сайт откроется
-     * как приложение, без панелей Safari), а в плеере видео разворачивает своя кнопка (bsplayer.js). */
+     * как приложение, без панелей Safari); видео само идёт во весь экран — плеер «iOS» (ставит страница sunic.stream). */
     function fullscreenButton() {
         if (!window.BS_SITE_VERSION || window.AndroidJS || window.Android) return;
         var el = document.documentElement, native = !!(el.requestFullscreen || el.webkitRequestFullScreen || el.mozRequestFullScreen);
@@ -344,7 +344,7 @@ var BSFeatures = (function () {
         for (var i = 0; i < b.length; i++) {
             b[i].classList.remove('hide');
             if (!native) $(b[i]).on('hover:enter', function () {
-                noty('На iPhone во весь экран: «Поделиться» → «На экран «Домой»» — Lampa будет открываться без панелей Safari. Видео — кнопкой «Во весь экран» в плеере', 10000);
+                noty('На iPhone во весь экран: «Поделиться» → «На экран «Домой»» — Lampa будет открываться без панелей Safari. Видео и так открывается на весь экран', 10000);
             });
         }
     }

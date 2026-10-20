@@ -11,7 +11,7 @@
 const REPO = 'sunic007/lampa-samsung';
 const GH = 'https://raw.githubusercontent.com/' . REPO . '/main/version.json';
 const CDN = 'https://cdn.jsdelivr.net/gh/' . REPO . '@v';
-const PIN = '2.3.20';   // если GitHub не ответил и ничего не запомнено
+const PIN = '2.3.21';   // если GitHub не ответил и ничего не запомнено
 const LIFE = 600;       // версию проверяем раз в 10 минут
 const KEEP = 2;         // версий на хостинге
 
@@ -167,6 +167,10 @@ $head = '<meta name="referrer" content="no-referrer">' . $app . "\n    " . '<bas
     . 'window.BS_SITE_VERSION = ' . json_encode($serve ?: $v) . ';'
     . '(function () { if (window.tizen) return; try { localStorage.setItem("bs_player_default", "1");'
     . ' ["player", "player_iptv"].forEach(function (k) { var p = localStorage.getItem(k); if (!p || p === "tizen") localStorage.setItem(k, "inner"); });'
+    // iPhone: Safari не даёт странице весь экран — плеер Lampa «iOS» играет видео в плеере iPhone, во весь экран.
+    // Один раз (метка bs_player_ios): выбрал человек потом другой — не трогаем
+    . ' if (/iPhone|iPod/.test(navigator.userAgent) && !localStorage.getItem("bs_player_ios")) { localStorage.setItem("bs_player_ios", "1");'
+    . ' var p0 = localStorage.getItem("player"); if (!p0 || p0 === "inner" || p0 === "tizen") localStorage.setItem("player", "ios"); }'
     . ' } catch (x) {} })();'
     // <base>: Lampa пишет в историю «/?card=…» от корня или от <base> — адрес истории всегда от этой страницы
     // (иначе SecurityError на jsDelivr или переход на корень сайта)
