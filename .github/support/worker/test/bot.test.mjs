@@ -163,14 +163,14 @@ function modEnv(opts = {}) {
 }
 const apk = (extra = {}) => msg('', Object.assign({ text: undefined, caption: 'Новая версия TV Installer, ставьте', document: { file_name: 'SunicTvInstaller-2.4.0.apk', mime_type: 'application/vnd.android.package-archive' } }, extra));
 
-test('защита: чужой APK — удалён, предупреждение с официальными ссылками', async () => {
+test('защита: чужой APK — удалён, предупреждение с одной ссылкой — sunic.stream', async () => {
     const e = modEnv();
     const r = await e.bot.handleMessage(apk());
     assert.equal(r.kind, 'removed');
     assert.equal(e.calls('deleteMessage').length, 1);
     const w = e.calls('sendMessage')[0].text;
     assert.match(w, /удалено: в группе нельзя присылать файлы приложений/);
-    assert.ok(w.includes('https://github.com/sunic007/tvinstaller/releases/latest/download/SunicTvInstaller.apk'));
+    assert.ok(w.includes('https://sunic.stream') && !w.includes('github.com'));
     assert.equal(e.calls('restrictChatMember').length + e.calls('banChatMember').length, 0);
 });
 test('защита: второе нарушение — молчание на 7 дней, третье — бан', async () => {
@@ -192,10 +192,10 @@ test('защита: администратор и анонимный админ�
     assert.equal(e2.calls('deleteMessage').length + e2.calls('getChatMember').length, 0);
 });
 test('защита: ссылки — свои и известные можно, чужие и спрятанные под текстом нельзя', () => {
-    for (const ok of ['https://github.com/sunic007/tvinstaller', 'https://sunic007.github.io/lampa-android/sunic.js', 'https://t.me/sunicapps', 't.me/sunicapps_uzb/24',
+    for (const ok of ['https://sunic.stream', 'https://sunic.stream/sunic.js', 'www.sunic.stream/lampa/', 'https://github.com/sunic007/tvinstaller', 'https://sunic007.github.io/lampa-android/sunic.js', 'https://t.me/sunicapps', 't.me/sunicapps_uzb/24',
         'https://skaz.tv', 'http://online3.skaz.tv/x', 'https://youtu.be/abc', 'https://github.com/yumata/lampa']) assert.equal(B.linkAllowed(ok), true, ok);
     for (const bad of ['https://github.com/evil/tvinstaller-mod/releases/x.apk', 'https://t.me/joinchat/AAAA', 'https://t.me/other_channel', 'bit.ly/abc',
-        'https://sunic007-github.io.evil.com/x', 'https://mega.nz/file/x', 'javascript:alert(1)']) assert.equal(B.linkAllowed(bad), false, bad);
+        'https://sunic007-github.io.evil.com/x', 'https://sunic.stream.evil.com/x', 'https://evilsunic.stream/x', 'https://mega.nz/file/x', 'javascript:alert(1)']) assert.equal(B.linkAllowed(bad), false, bad);
     const hidden = msg('Скачать новую версию', { entities: [{ type: 'text_link', offset: 0, length: 7, url: 'https://evil.example/tvi.apk' }] });
     assert.equal(B.violation(hidden), 'link');
     const own = msg('Вот https://github.com/sunic007/tvinstaller', { entities: [{ type: 'url', offset: 4, length: 39 }] });

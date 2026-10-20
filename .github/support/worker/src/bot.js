@@ -33,7 +33,7 @@ export const TEXTS = {
         mod_file: 'в группе нельзя присылать файлы приложений и архивы — так распространяют поддельные APK',
         mod_link: 'в группе нельзя присылать сторонние ссылки',
         mod_spam: 'реклама и предложения заработка здесь запрещены',
-        mod_official: 'Скачивайте только с официальных страниц: <a href="https://github.com/sunic007/tvinstaller/releases/latest/download/SunicTvInstaller.apk">TV Installer</a>, <a href="https://github.com/sunic007/lampa-samsung">Lampa для Samsung</a>, <a href="https://github.com/sunic007/lampa-android">плагин для Android</a>.',
+        mod_official: 'Скачивайте и ставьте только с официального сайта: <a href="https://sunic.stream">sunic.stream</a>.',
         mod_muted: 'Повторное нарушение — писать в группу можно снова через 7 дней.',
         mod_banned: 'Третье нарушение за неделю — участник удалён из группы.',
     },
@@ -52,7 +52,7 @@ export const TEXTS = {
         mod_file: "guruhga ilova fayllari va arxivlarni yuborish mumkin emas — soxta APK shunday tarqatiladi",
         mod_link: "guruhga begona havolalarni yuborish mumkin emas",
         mod_spam: "reklama va pul ishlash takliflari taqiqlangan",
-        mod_official: 'Faqat rasmiy sahifalardan yuklab oling: <a href="https://github.com/sunic007/tvinstaller/releases/latest/download/SunicTvInstaller.apk">TV Installer</a>, <a href="https://github.com/sunic007/lampa-samsung">Samsung uchun Lampa</a>, <a href="https://github.com/sunic007/lampa-android">Android uchun plagin</a>.',
+        mod_official: "Faqat rasmiy saytdan yuklab oling va o'rnating: <a href=\"https://sunic.stream\">sunic.stream</a>.",
         mod_muted: "Takroriy buzilish — guruhga 7 kundan keyin yozish mumkin.",
         mod_banned: "Bir hafta ichida uchinchi buzilish — ishtirokchi guruhdan chiqarildi.",
     },
@@ -71,7 +71,7 @@ export const TEXTS = {
         mod_file: "app files and archives aren't allowed here — that's how fake APKs spread",
         mod_link: "third-party links aren't allowed here",
         mod_spam: 'ads and money-making offers are not allowed',
-        mod_official: 'Download only from the official pages: <a href="https://github.com/sunic007/tvinstaller/releases/latest/download/SunicTvInstaller.apk">TV Installer</a>, <a href="https://github.com/sunic007/lampa-samsung">Lampa for Samsung</a>, <a href="https://github.com/sunic007/lampa-android">Android plugin</a>.',
+        mod_official: 'Download and install only from the official site: <a href="https://sunic.stream">sunic.stream</a>.',
         mod_muted: 'Repeated violation — you can post again in 7 days.',
         mod_banned: 'Third violation this week — the member was removed.',
     },
@@ -193,7 +193,7 @@ export const SYSTEM = `You are the support assistant of the Telegram group «Sun
 Products:
 - lampa: «Lampa для Samsung» — the Lampa media center package for Samsung Smart TVs (Tizen): installs on the TV, updates itself, protects the player from freezing, adds a Telegram bot.
 - tvinstaller: «TV Installer» — an Android phone app that installs apps (Lampa and others) onto Samsung TVs over Wi-Fi.
-- android: «Sunic Apps для Lampa на Android» — a plugin for the Lampa app on Android phones/TV boxes (e.g. Lampa BS): the same Sunic Apps functions as on the TV (Telegram bot, continue watching, player watchdog). Added in Lampa → Settings → Extensions by the address https://sunic007.github.io/lampa-android/sunic.js.
+- android: «Sunic Apps для Lampa на Android» — a plugin for the Lampa app on Android phones/TV boxes (e.g. Lampa BS): the same Sunic Apps functions as on the TV (Telegram bot, continue watching, player watchdog). Added in Lampa → Settings → Extensions by the address https://sunic.stream/sunic.js (the old address https://sunic007.github.io/lampa-android/sunic.js also works). Everything for users — install steps, downloads, FAQ — is on https://sunic.stream: give that one link.
 Classify the user's message. Reply with ONE JSON object only:
 {"kind":"question|question_unknown|bug|suggestion|spam|other","product":"lampa|tvinstaller|android|both|unknown","lang":"ru|uz|en","title":"...","answer":"..."}
 Rules:
@@ -257,7 +257,7 @@ export function parseClassification(content, text) {
 // ---------------------------------------------------------------- нарушения
 const BAD_FILE = /\.(apk|xapk|apks|apkm|aab|exe|msi|bat|cmd|com|scr|pif|vbs|js|jse|wsf|ps1|jar|lnk|zip|rar|7z|tar|gz|wgt|ipk|tpk)$/i;
 const BAD_MIME = /(android\.package-archive|x-msdownload|x-msi|x-executable|zip|x-rar|x-7z|java-archive)/i;
-const OK_HOSTS = [/^(www\.)?(sunic007\.github\.io|skaz\.tv|byskaz\.ru|lampa\.mx|themoviedb\.org|youtube\.com|youtu\.be|m\.youtube\.com)$/i,
+const OK_HOSTS = [/^(www\.)?(sunic\.stream|sunic007\.github\.io|skaz\.tv|byskaz\.ru|lampa\.mx|themoviedb\.org|youtube\.com|youtu\.be|m\.youtube\.com)$/i,
     /\.(skaz\.tv|byskaz\.ru)$/i];
 const OK_PATHS = [[/^(www\.)?github\.com$/i, /^\/(sunic007|yumata)(\/|$)/i], [/^raw\.githubusercontent\.com$/i, /^\/sunic007\//i],
     [/^(www\.)?(t\.me|telegram\.me)$/i, /^\/(sunicapps|sunicapps_uzb|helpiptv|sunicapps_news_bot)\/?(\d+\/?)?$/i]];
