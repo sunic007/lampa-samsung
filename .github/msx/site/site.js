@@ -58,7 +58,8 @@
       pl_web: 'Kompyuter va iPhone — brauzerda',
       fin_h: 'Bugun kechqurun ko\'rishni boshlang',
       fin_p: 'O\'rnatishga ikki daqiqa — va hammasi o\'zi ishlaydi.',
-      fin_tg: 'Telegramda so\'rash'
+      fin_tg: 'Telegramda so\'rash',
+      credits: 'Rasmlarda — Blender Foundation filmlari (CC BY 4.0), blender.org'
     },
     en: {
       h1: 'All movies and series — on your TV',
@@ -118,7 +119,8 @@
       pl_web: 'Computer and iPhone — in the browser',
       fin_h: 'Start watching tonight',
       fin_p: 'Two minutes to set up — and everything works by itself.',
-      fin_tg: 'Ask in Telegram'
+      fin_tg: 'Ask in Telegram',
+      credits: 'Screenshots show Blender Foundation films (CC BY 4.0), blender.org'
     },
     ru: { news: 'Что нового:', copied: 'Скопировано', st_ok: 'работает', st_slow: 'медленно', st_bad: 'не отвечает' }
   };

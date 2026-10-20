@@ -34,20 +34,12 @@ h1 { font-size:clamp(32px, 5vw, 52px); line-height:1.08; margin:0 0 16px; letter
 /* рисунок: ТВ и телефон (абстрактные плитки, без постеров) */
 .hero-art { position:relative; height:330px; }
 .tv { position:absolute; left:0; right:40px; top:10px; }
-.tv-screen { aspect-ratio:16/9; background:#0d1118; border:10px solid #1c2230; border-radius:14px; padding:14px; box-shadow:0 30px 60px -25px #000; position:relative; overflow:hidden; }
+.tv-screen { background:#0d1118; border:10px solid #1c2230; border-radius:14px; box-shadow:0 30px 60px -25px #000; overflow:hidden; }
+.tv-screen img, .phone-screen img { display:block; width:100%; height:auto; }
 .tv-stand { width:30%; height:10px; margin:0 auto; background:#1c2230; border-radius:0 0 8px 8px; }
-.ui-bar { display:flex; gap:6px; margin-bottom:10px; } .ui-bar span { height:7px; width:16%; border-radius:4px; background:#273044; } .ui-bar span:first-child { width:24%; background:#3a4560; }
-.ui-row { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:8px; }
-.ui-row i { display:block; aspect-ratio:2/3; border-radius:7px; }
-.c1 { background:linear-gradient(160deg,#ff7a59,#b8325e); } .c2 { background:linear-gradient(160deg,#4fd1c5,#2b6cb0); } .c3 { background:linear-gradient(160deg,#f6e05e,#dd6b20); } .c4 { background:linear-gradient(160deg,#9f7aea,#553c9a); }
-.c5 { background:linear-gradient(160deg,#68d391,#2f855a); } .c6 { background:linear-gradient(160deg,#63b3ed,#3c366b); } .c7 { background:linear-gradient(160deg,#fc8181,#9b2c2c); } .c8 { background:linear-gradient(160deg,#f687b3,#702459); }
-.ui-next { position:absolute; left:14px; bottom:14px; background:rgba(10,12,18,.85); color:#fff; font-size:12px; padding:6px 10px; border-radius:8px; border:1px solid #3a4560; }
-.phone { position:absolute; right:0; bottom:0; width:150px; height:260px; background:#1c2230; border-radius:24px; padding:8px; box-shadow:0 25px 50px -20px #000; }
-.phone-screen { height:100%; background:#17212b; border-radius:18px; padding:14px 10px; display:flex; flex-direction:column; justify-content:flex-end; gap:8px; }
-.bubble { font-size:12px; padding:7px 10px; border-radius:12px; max-width:90%; color:#fff; }
-.bubble.me { align-self:flex-end; background:#2b5278; } .bubble.bot { background:#232e3c; }
-.bubble.bot b { display:block; margin-bottom:6px; } .bubble .btn { display:block; text-align:center; background:#2b5278; border-radius:8px; padding:5px 6px; }
-@media (max-width: 860px) { .hero-art { height:260px; max-width:440px; } .phone { width:120px; height:210px; } }
+.phone { position:absolute; right:0; bottom:-10px; width:150px; background:#1c2230; border-radius:24px; padding:7px; box-shadow:0 25px 50px -20px #000; }
+.phone-screen { border-radius:18px; overflow:hidden; aspect-ratio:9/20; }
+@media (max-width: 860px) { .hero-art { height:250px; max-width:460px; } .phone { width:110px; } }
 
 .status { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:13px; color:var(--muted); margin:28px 0 0; min-height:44px; }
 @media (max-width: 600px) { .status { min-height:86px; } }

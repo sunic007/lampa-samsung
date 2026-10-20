@@ -51,15 +51,17 @@ RedirectMatch 404 /\.(?!well-known/)
     Header always set Cross-Origin-Opener-Policy "same-origin"
 </If>
 
-# сроки кеша: картинки и видео меняются редко — месяц; site.css/site.js — час (главная — no-cache выше)
+# сроки кеша: картинки и видео меняются редко — месяц; site.css/site.js — год (адрес с меткой версии)
 <IfModule mod_headers.c>
     <FilesMatch "\.(png|jpe?g|svg|ico|webp|mp4)$">
         Header set Cache-Control "public, max-age=2592000"
     </FilesMatch>
     <If "%{REQUEST_URI} =~ m#^/site\.(css|js)$#">
-        Header set Cache-Control "public, max-age=3600"
+        # в главной они с меткой версии (?v=, stamp.py) — новая версия идёт по новому адресу, старую можно держать год
+        Header set Cache-Control "public, max-age=31536000, immutable"
     </If>
 </IfModule>
 
 AddType application/json .json
+AddType image/webp .webp
 AddDefaultCharset utf-8
