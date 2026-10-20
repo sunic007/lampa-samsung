@@ -428,13 +428,8 @@ var BSWatch = (function () {
 
     /* ---------- настройки и запуск ---------- */
 
-    /** Управляют пультом: ТВ (Samsung, Media Station X, Android TV), а не пальцем или мышью. */
-    function remote() {
-        try {
-            if (typeof tizen !== 'undefined' || /Tizen|SMART-TV|Android TV|AFT|BRAVIA/i.test(navigator.userAgent || '')) return true;
-            return !!window.BS_ANDROID && !('ontouchstart' in window);
-        } catch (e) { return true; }
-    }
+    /** Устройство — bsdevice.js (нет модуля — «нет»). */
+    function dev(f) { try { return !!window.BSDevice[f](); } catch (e) { return false; } }
 
     function addSettings() {
         if (!Lampa.SettingsApi) return;
@@ -450,8 +445,8 @@ var BSWatch = (function () {
             onChange: function (v) { lsSet('bs_next_season', String(v === true || v === 'true')); }
         });
         api.addParam({
-            component: C, param: { name: 'bs_still', type: 'select', values: { auto: 'Через час без ' + (remote() ? 'пульта' : 'нажатий'), '90': 'Через 1,5 часа', '120': 'Через 2 часа', '0': 'Не спрашивать' }, 'default': stillValue() },
-            field: { name: '«Вы ещё смотрите?»', description: 'Пауза, если долго ' + (remote() ? 'не нажимали пульт' : 'ничего не нажимали') + ': серии по 30 мин — на 3-й, от часа — на 2-й.' },
+            component: C, param: { name: 'bs_still', type: 'select', values: { auto: 'Через час без ' + (dev('tv') ? 'пульта' : 'нажатий'), '90': 'Через 1,5 часа', '120': 'Через 2 часа', '0': 'Не спрашивать' }, 'default': stillValue() },
+            field: { name: '«Вы ещё смотрите?»', description: 'Пауза, если долго ' + (dev('tv') ? 'не нажимали пульт' : 'ничего не нажимали') + ': серии по 30 мин — на 3-й, от часа — на 2-й.' },
             onChange: function (v) { lsSet('bs_still', String(v)); }
         });
         api.addParam({

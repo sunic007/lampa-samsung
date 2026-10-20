@@ -3794,6 +3794,48 @@ async function serviceTests() {
     E.M.findEpisode(3, 1, () => {});
     t('поиск серии: новый сезон — текущий источник тоже проверяем', E.ctx.window.BSProbe.calls[1].exclude.length === 0);
 }
+/* ---- bsdevice.js: где запущена Lampa (настройки и подсказки — только правда об устройстве) ---- */
+{
+    const dev = (ua, extra) => {
+        const ctx = Object.assign({ navigator: { userAgent: ua, maxTouchPoints: 0 }, Lampa: { Platform: { is: () => false }, Storage: { field: () => '' } } }, extra || {});
+        ctx.window = Object.assign({}, (extra && extra.window) || {});
+        vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bsdevice.js'), 'utf8') + ';this.D=BSDevice;', ctx);
+        return ctx.D;
+    };
+    const tizen = { application: {} };
+    let d = dev('Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/537.36', { tizen });
+    t('устройство: приложение Samsung — всё «ТВ»', d.samsungApp() && d.samsung() && d.tv() && d.kind() === 'samsung-app');
+    d = dev('Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/537.36');
+    t('устройство: Media Station X на Samsung — Samsung и пульт, но не наше приложение', !d.samsungApp() && d.samsung() && d.tv() && d.kind() === 'tv');
+    d = dev('Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 Chrome/79');
+    t('устройство: LG webOS (Media Station X) — пульт, но подсказки Samsung не для него', d.tv() && !d.samsung() && d.kind() === 'tv');
+    d = dev('Mozilla/5.0 (Linux; Android 13; Pixel 7) Mobile Safari/537.36', { window: { BS_ANDROID: true, ontouchstart: null } });
+    t('устройство: телефон Android — не ТВ', !d.tv() && d.kind() === 'android');
+    d = dev('Mozilla/5.0 (Linux; Android 9; MiBOX4) AppleWebKit/537.36', { window: { BS_ANDROID: true } });
+    t('устройство: Android-приставка без сенсора — пульт', d.tv() && d.kind() === 'tv');
+    d = dev('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0');
+    t('устройство: браузер на компьютере — не ТВ', !d.tv() && !d.samsung() && !d.tvPlayer() && d.kind() === 'browser');
+    d = dev('x', { tizen, Lampa: { Platform: { is: p => p === 'tizen' }, Storage: { field: () => 'tizen' } } });
+    t('устройство: плеер ТВ Samsung — только когда выбран «Tizen»', d.tvPlayer());
+}
+/* ---- loader.js: страница по https — копия из пакета сразу, без 15 с ожидания и «Нет связи с сервером» ---- */
+{
+    const src = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
+    const fn = src.slice(src.indexOf('/** Запуск копии Lampa из пакета.'), src.indexOf('/* ---------- после запуска'));
+    const run = proto => {
+        const scripts = [], ls = {};
+        const ctx = { window: { location: { protocol: proto }, localStorage: { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); } } },
+            BS_SERVER: 'http://lampa.byskaz.ru/lampa-main/', bsStarted: false, bsSource: '', bsRemote: null, Date, Math, console: { log() {} },
+            createScript: s => scripts.push(s), XMLHttpRequest: function () { this.open = () => scripts.push('check'); this.send = () => {}; }, bsDropOldCopy() {}, bsStatus() {},
+            setInterval: () => 1, clearInterval() {}, clearTimeout() {} };
+        vm.createContext(ctx); vm.runInContext(fn + ';countdown();this.r = { src: bsSource, started: bsStarted, https: BS_HTTPS_PAGE };', ctx);
+        return { r: ctx.r, scripts };
+    };
+    let x = run('https:');
+    t('https: сразу копия из пакета, источник «local» (без «Нет связи с сервером»)', x.r.https && x.r.started && x.r.src === 'local' && x.scripts.join() === 'app.js');
+    x = run('http:');
+    t('http (ТВ, MSX): как раньше — сначала проверка сервера', !x.r.https && !x.r.started && x.scripts.join() === 'check');
+}
 serviceTests().catch(e => { fail++; console.log('FAIL служба: исключение', e && e.stack); }).then(() => {
     console.log(pass + ' passed, ' + fail + ' failed');
     process.exit(fail ? 1 : 0);

@@ -203,7 +203,8 @@ var BSPlayer = (function () {
     }
     function nightLevel() { var p = picture(); return p.charAt(0) === 'n' ? parseInt(p.slice(1), 10) : 0; }
     function dayLevel() { var p = picture(); return p.charAt(0) === 'd' ? parseInt(p.slice(1), 10) : 0; }
-    function onTvPlayer() { try { return Lampa.Platform.is('tizen') && Lampa.Storage.field('player') === 'tizen'; } catch (e) { return false; } }
+    /** Устройство — bsdevice.js (нет модуля — «нет»). */
+    function dev(f) { try { return !!window.BSDevice[f](); } catch (e) { return false; } }
 
     function nightApply() {
         try {
@@ -243,7 +244,7 @@ var BSPlayer = (function () {
         var lv = DAY[(DAY.indexOf(dayLevel()) + 1) % DAY.length];
         lsSet('bs_picture', lv ? 'd' + lv : 'off');
         nightApply();
-        if (lv && onTvPlayer()) noty('Ярче — в настройках ТВ: Изображение → «Яркий»', 6000);
+        if (lv && dev('tvPlayer')) noty('Ярче — в настройках ТВ: Изображение → «Яркий»', 6000);
         else noty(lv ? 'День: ярче на ' + lv + '%' : 'День выключен', 2000);
     }
 
@@ -384,7 +385,7 @@ var BSPlayer = (function () {
             field: { name: 'Метки пропуска Skaz', description: 'Заставка и титры. Сами — только проверенные метки.' },
             onChange: function (v) { lsSet('bs_segments', String(v === true || v === 'true')); }
         });
-        if (onTvPlayer()) api.addParam({
+        if (dev('tvPlayer')) api.addParam({
             component: C, param: { name: 'bs_buffer', type: 'select', values: { balanced: 'Сбалансировано — 4 с / 8 с', fast: 'Быстрый старт — 2 с / 6 с', reliable: 'Надёжно — 8 с / 15 с', auto: 'Как у Samsung — 10 с' }, 'default': lsGet('bs_buffer') || 'balanced' },
             field: { name: 'Буфер плеера ТВ', description: 'Запас видео перед стартом. При плохом интернете — «Надёжно».' },
             onChange: function (v) { lsSet('bs_buffer', v); noty('Буфер применится к следующему видео', 2500); }

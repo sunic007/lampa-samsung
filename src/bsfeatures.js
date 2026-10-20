@@ -19,13 +19,8 @@ var BSFeatures = (function () {
     function on(k, def) { var v = lsGet(k); return v === null ? def : v === 'true'; }
     function noty(t, time) { try { Lampa.Noty.show(t, { time: time || 5000 }); } catch (e) {} }
     function playerOpen() { try { return !!Lampa.Player.opened(); } catch (e) { return false; } }
-    /** Приложение на ТВ Samsung (.wgt): есть tizen.application — может закрыться само. */
-    function tizenApp() { try { return typeof tizen !== 'undefined' && !!tizen.application; } catch (e) { return false; } }
-    /** Телевизор Samsung: наше приложение или Media Station X (браузер ТВ, без tizen). Подсказки про меню ТВ — только ему. */
-    function samsungTV() { try { return tizenApp() || /Tizen|SMART-TV/i.test(navigator.userAgent || ''); } catch (e) { return false; } }
-    function tizenPlayer() {
-        try { return Lampa.Platform.is('tizen') && Lampa.Storage.field('player') == 'tizen'; } catch (e) { return false; }
-    }
+    /** Устройство — bsdevice.js (нет модуля — «нет»). */
+    function dev(f) { try { return !!window.BSDevice[f](); } catch (e) { return false; } }
 
     /* ---------- 2. Пропуск рекламы и свежие плагины: ставится сразу, до запуска Lampa ----------
      * Реклама. Lampa не показывает рекламу личным сборкам: при старте она запрашивает рядом с
@@ -86,7 +81,7 @@ var BSFeatures = (function () {
         var PV = Lampa.PlayerVideo, orig = PV.url;
         if (!orig || orig.__bs) return;
         var fast = function (src, change_quality) {
-            if (on('bs_fast_start', true) && tizenPlayer() && /\.m3u8/i.test(String(src)) && !change_quality) {
+            if (on('bs_fast_start', true) && dev('tvPlayer') && /\.m3u8/i.test(String(src)) && !change_quality) {
                 // url() решает «качать плейлист самим» по typeof Hls — на время вызова прячем hls.js,
                 // и поток уходит прямо в AVPlay (тот же путь, что при смене качества).
                 var H = window.Hls;
@@ -130,9 +125,9 @@ var BSFeatures = (function () {
     /* Выключить сам ТВ приложение не может: remotepower — только с партнёрским сертификатом Samsung, сетевой пульт ТВ
      * слушает лишь другие устройства (проверено на двух ТВ, пропуск с телефона Lampa не пускает). Поэтому «Сон»
      * закрывает Lampa, а один раз подсказываем «Автовыключение» самого ТВ — тогда он выключится сам. */
-    function sleepWhat() { return tizenApp() ? 'потом закрою Lampa' : 'потом остановлю видео'; }
+    function sleepWhat() { return dev('samsungApp') ? 'потом закрою Lampa' : 'потом остановлю видео'; }
     function sleepHint() {
-        if (lsGet('bs_sleep_hint') || !samsungTV()) return;
+        if (lsGet('bs_sleep_hint') || !dev('samsung')) return;
         lsSet('bs_sleep_hint', '1');
         setTimeout(function () { noty('Чтобы ТВ выключался сам: Общие → Экономия энергии → Автовыключение', 10000); }, 3500);
     }
@@ -173,7 +168,7 @@ var BSFeatures = (function () {
         sleepAt = 0; sleepEpisode = false;
         try { if (playerOpen()) Lampa.PlayerVideo.pause(); } catch (e) {}
         sleepButton();
-        noty('Сон: нажмите любую кнопку, иначе ' + (tizenApp() ? 'Lampa закроется' : 'видео остановится') + ' через минуту', 15000);
+        noty('Сон: нажмите любую кнопку, иначе ' + (dev('samsungApp') ? 'Lampa закроется' : 'видео остановится') + ' через минуту', 15000);
         // минута до выключения — звук плавно тише (bsvolume.js); отменили или выключаем — громкость как была,
         // чтобы утром ТВ не включился еле слышным
         var unfade = function () {};
@@ -242,7 +237,7 @@ var BSFeatures = (function () {
     function addSettings() {
         var C = 'bs_update', api = Lampa.SettingsApi;
         api.addParam({ component: C, param: { name: 'bs_feat_title', type: 'title' }, field: { name: 'Плеер' } });
-        if (tizenPlayer()) api.addParam({
+        if (dev('tvPlayer')) api.addParam({
             component: C,
             param: { name: 'bs_fast_start', type: 'trigger', 'default': true },
             field: { name: 'Быстрый старт видео', description: 'Поток сразу уходит в плеер Tizen, без предварительной загрузки плейлиста. Если пропали качества в меню — выключите.' },
@@ -265,7 +260,7 @@ var BSFeatures = (function () {
             onRender: function (item) { item.find('.settings-param__descr').text('Сейчас: ' + sleepLabel()); },
             onChange: function (v) { sleepSet(v); try { Lampa.Storage.set('bs_sleep', '0'); } catch (e) {} }
         });
-        if (samsungTV()) api.addParam({
+        if (dev('tv')) api.addParam({
             component: C,
             param: { name: 'bs_keys_info', type: 'static' },
             field: { name: 'Цветные кнопки в плеере', description: 'Красная — другой источник, зелёная — качество, жёлтая — озвучка, синяя — субтитры' }

@@ -50,7 +50,7 @@
   <header>
     <img src="/media/logo.png" alt="Sunic Apps">
     <b>Sunic Apps</b><span class="sp"></span>
-    <span class="lang"><button data-lang="ru">RU</button> <button data-lang="uz">UZ</button></span>
+    <span class="lang"><button data-lang="ru">RU</button> <button data-lang="en">EN</button> <button data-lang="uz">UZ</button></span>
   </header>
   <div class="status" id="status" aria-live="polite"></div>
 
@@ -157,19 +157,50 @@
       q3: '«Video topilmadi» — nima qilish kerak?', a3: 'Sunic Apps boshqa balanserlar va manbalarni o‘zi sinab ko‘radi. Film hech qayerda bo‘lmasa — hali yaxshi sifatda chiqmagan, keyinroq urinib ko‘ring.',
       q4: 'Bu xavfsizmi?', a4: 'Ha: kod ochiq, biz shaxsiy ma’lumotlarni yig‘maymiz. Lampa va manbalar — uchinchi tomon xizmatlari; filmlarni biz saqlamaymiz va tarqatmaymiz.',
       q5: 'Ishlamayapti — qayerga yozish kerak?', a5: 't.me/sunicapps guruhiga yoki Sunic Apps sozlamalaridagi «Muammo haqida xabar berish» tugmasi orqali — hisobot o‘zi yuboriladi.',
-      foot: 'Savollar', notsam: 'televizor ishlab chiqaruvchilari va Media Station X bilan bog‘liq emas', st_ok: 'ishlaydi', st_slow: 'sekin', st_bad: 'javob bermayapti', news: 'Yangi:'
+      foot: 'Savollar', notsam: 'televizor ishlab chiqaruvchilari va Media Station X bilan bog‘liq emas', st_ok: 'ishlaydi', st_slow: 'sekin', st_bad: 'javob bermayapti', news: 'Yangi:',
+      st_cub: 'Katalog (CUB)', st_skaz_api: 'Skaz serverlari', st_github: 'Yangilanishlar (GitHub)'
+    },
+    en: {
+      h1: 'Lampa on any TV, phone and computer',
+      sub: 'Movies and series on Samsung, LG, Android TV, your phone and in the browser: plays the next episode and season by itself, searches every source, controlled from Telegram. Free, no sign-up.',
+      cta_tv: 'How to install on a TV', cta_web: 'Open in the browser',
+      tab_tv: '📺 Any Smart TV', tab_tv_s: 'Samsung, LG, Android TV — Media Station X', tab_phone: '📱 App for Samsung', tab_phone_s: 'from your phone — TV Installer',
+      tab_android: '🤖 Android TV / box', tab_android_s: 'plugin for Lampa', tab_web: '💻 In the browser', tab_web_s: 'computer or phone',
+      tv_h: 'Any Smart TV — Media Station X', tv_1: 'Install <b>Media Station X</b> from your TV app store — it is on Samsung, LG, Android TV and others.',
+      tv_2: 'Open it: <b>Settings → Start Parameter → Setup</b>.', tv_3: 'Enter the address and confirm:', tv_4: 'Done: every time you open Media Station X, Lampa with Sunic Apps starts right away.',
+      tv_note: 'No developer mode or computer needed. Skaz sources work after signing in to CUB (Settings → Account); without it — Online Mod and Z01.',
+      ph_h: 'Samsung: its own app on the TV — TV Installer', ph_1: 'Download TV Installer to your Android phone (QR code or the button below).',
+      ph_2: 'Phone and TV on the same Wi-Fi; turn on developer mode on the TV once (TV Installer shows how).', ph_3: 'Choose Lampa — in a couple of minutes it is on the TV. This is the fullest version: TV volume, Smart Hub panel, «Sleep» closes the app.',
+      ph_btn: 'Download TV Installer', ph_qr: 'Point your phone camera',
+      an_h: 'Android TV, box or phone — plugin for Lampa', an_1: 'Open Lampa (Lampa BS or another build) → Settings → Extensions → Add plugin.', an_2: 'Paste the address:',
+      an_3: 'Restart Lampa — the «Sunic Apps» section appears.', copy: 'Copy', copied: 'Copied',
+      web_h: 'In the browser', web_p: 'Lampa opens right on this site — on a computer or phone.',
+      web_note: 'Over a secure connection (https) Online Mod and Z01 work; Skaz — only on TVs and in Media Station X: its servers do not support https.',
+      trust_h: 'Why you can trust it', trust_ver: 'latest version', trust_src: 'Open source', trust_reg: 'No sign-up', trust_reg_s: 'and no ads from us',
+      trust_chk: 'The site is checked', trust_chk_s: 'every 30 minutes: files match GitHub',
+      faq_h: 'Questions', q1: 'Do I need developer mode?', a1: 'For Media Station X — no. For installing via TV Installer — once, the app shows how.',
+      q2: 'Why no sources or «no access»?', a2: 'Skaz sources need a CUB sign-in (Settings → Account, code at cub.red). Without it «Watch» looks for the movie in Online Mod and Z01 by itself.',
+      q3: '«Video not found» — what to do?', a3: 'Sunic Apps tries other balancers and sources by itself. If the movie is nowhere — it is not out in good quality yet, try later.',
+      q4: 'Is it safe?', a4: 'Yes: the code is open, we do not collect personal data. Lampa and the sources are third-party services; we do not store or share movies.',
+      q5: 'Not working — where to write?', a5: 'To the t.me/sunicapps group or with «Report a problem» in Sunic Apps settings — the report is sent by itself.',
+      foot: 'Questions', notsam: 'not affiliated with TV makers or Media Station X', st_ok: 'works', st_slow: 'slow', st_bad: 'not responding', news: 'New:',
+      st_cub: 'Catalog (CUB)', st_skaz_api: 'Skaz servers', st_github: 'Updates (GitHub)'
     },
     ru: { news: 'Что нового:', copied: 'Скопировано', st_ok: 'работает', st_slow: 'медленно', st_bad: 'не отвечает' }
   };
   var ru = {};
   document.querySelectorAll('[data-t]').forEach(function (e) { ru[e.getAttribute('data-t')] = e.innerHTML; });
   var lang = 'ru';
-  try { lang = localStorage.getItem('lang') || ((navigator.language || '').toLowerCase().indexOf('uz') === 0 ? 'uz' : 'ru'); } catch (e) {}
+  try {
+    var nl = (navigator.language || '').toLowerCase().slice(0, 2);
+    lang = localStorage.getItem('lang') || (nl === 'uz' ? 'uz' : /^(ru|uk|be|kk|ky|tg)$/.test(nl) || !nl ? 'ru' : 'en');
+  } catch (e) {}
+  if (!T[lang] && lang !== 'ru') lang = 'ru';
   function t(k) { return (T[lang] && T[lang][k]) || T.ru[k] || ru[k] || k; }
   function setLang(l) {
     lang = l; document.documentElement.lang = l;
     try { localStorage.setItem('lang', l); } catch (e) {}
-    document.querySelectorAll('[data-t]').forEach(function (e) { var k = e.getAttribute('data-t'); e.innerHTML = l === 'ru' ? ru[k] : (T.uz[k] || ru[k]); });
+    document.querySelectorAll('[data-t]').forEach(function (e) { var k = e.getAttribute('data-t'); e.innerHTML = l === 'ru' ? ru[k] : (T[l][k] || ru[k]); });
     document.querySelectorAll('[data-lang]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-lang') === l); });
     status(); version();
   }
@@ -202,7 +233,7 @@
     stData.items.forEach(function (i) {
       var s = document.createElement('span');
       s.className = i.ok ? (i.slow ? 'slow' : 'ok') : 'bad';
-      s.textContent = i.name + ' — ' + t(i.ok ? (i.slow ? 'st_slow' : 'st_ok') : 'st_bad');
+      s.textContent = (lang === 'ru' ? i.name : t('st_' + i.id) !== 'st_' + i.id ? t('st_' + i.id) : i.name) + ' — ' + t(i.ok ? (i.slow ? 'st_slow' : 'st_ok') : 'st_bad');
       box.appendChild(s);
     });
   }
@@ -215,9 +246,10 @@
   function version() {
     if (!verData) return;
     var d = verData.date ? new Date(verData.date) : null;
-    var mon = lang === 'uz' ? ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr']
+    var mon = lang === 'en' ? ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+      : lang === 'uz' ? ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr']
       : ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-    document.getElementById('ver').textContent = verData.v + (d ? ' · ' + d.getDate() + ' ' + mon[d.getMonth()] : '');
+    document.getElementById('ver').textContent = verData.v + (d ? ' · ' + (lang === 'en' ? mon[d.getMonth()] + ' ' + d.getDate() : d.getDate() + ' ' + mon[d.getMonth()]) : '');
     var n = verData.notes;
     document.getElementById('news').innerHTML = n && n.title ? t('news') + ' <b>' + esc(n.title) + '</b>' : '';
   }

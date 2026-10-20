@@ -294,13 +294,14 @@ function bsDropOldCopy(){
     try { window.localStorage.removeItem('app.js') } catch (e) {}
 }
 
-function loadFromLocal(){
+/** Запуск копии Lampa из пакета. source: 'bundled' (сервер недоступен — по умолчанию) или 'local' (сервер не нужен). */
+function loadFromLocal(source){
 	if(window.appready || bsSource === 'bundled') return
 
     // Сервер ответил новой сборкой, а скачать её не вышло — запоминаем, иначе автообновление через 15 с увидит
     // «новую версию», перезапустит, загрузка снова сорвётся — и так по кругу каждые полминуты.
     if (bsRemote && bsRemote.hash) { try { window.localStorage.setItem('bs_failed_hash', bsRemote.hash + '|' + Date.now()); } catch (e) {} }
-    bsSource = 'bundled';
+    bsSource = source === 'local' ? 'local' : 'bundled';
 
     createScript('app.js', function(){
         console.log('Load local error');
@@ -361,14 +362,7 @@ function countdown() {
     if (BS_HTTPS_PAGE) {
         clearInterval(timerId);
         timeLeft = -1;
-        if (!bsStarted) {
-            bsStarted = true;
-            bsSource = 'local';
-            createScript('app.js', function () {
-                console.log('Load local error');
-                bsStatus('Не удалось запустить Lampa', 'Проверьте интернет и перезапустите приложение.', false);
-            });
-        }
+        if (!bsStarted) { bsStarted = true; loadFromLocal('local'); }
         return;
     }
     if (checking && timeLeft > 0) { timeLeft--; return; }

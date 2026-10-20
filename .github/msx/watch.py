@@ -52,6 +52,18 @@ def main():
     except Exception as e:
         bad.append('/sunic.js: %s' % e)
     try:
+        # запасное зеркало обновлений sunic.stream/gh/ (gh.php): этот код ТВ выполняют — байт в байт как выпуск на GitHub
+        for repo, files in (('lampa-samsung', ['src/update.js', 'src/loader.js', 'src/bsfix.js']), ('lampa-android', ['src/android.js'])):
+            with urllib.request.urlopen('https://raw.githubusercontent.com/sunic007/%s/main/version.json' % repo, timeout=60) as r:
+                ver = json.loads(r.read().decode('utf-8'))['version']
+            for f in files:
+                mine = get('/gh/sunic007/%s@v%s/%s' % (repo, ver, f))
+                with urllib.request.urlopen('https://raw.githubusercontent.com/sunic007/%s/v%s/%s' % (repo, ver, f), timeout=60) as r:
+                    if mine != r.read().decode('utf-8', 'replace'):
+                        bad.append('/gh/ %s@v%s/%s отличается от выпуска на GitHub' % (repo, ver, f))
+    except Exception as e:
+        bad.append('/gh/: %s' % e)
+    try:
         page = get('/lampa/')
         base = re.search(r'<base href="([^"]+)"', page)
         local = base and re.fullmatch(r'/lampa/v/(\d+\.\d+\.\d+)/', base.group(1))
