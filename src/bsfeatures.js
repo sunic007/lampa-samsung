@@ -358,6 +358,24 @@ var BSFeatures = (function () {
         } catch (e) {}
         return false;
     }
+    /* По умолчанию (один раз, метка bs_iptv_auto): ставим расширение IPTV и кладём в него все открытые плейлисты —
+     * человек открывает IPTV и сразу выбирает. Убрал расширение или плейлист сам — больше не возвращаем. */
+    function iptvAuto() {
+        if (lsGet('bs_iptv_auto')) return;
+        var l = iptvList(), i, had = false;
+        for (i = 0; i < l.length; i++) if (l[i] && /^sunic-iptv-/.test(l[i].id)) had = true;
+        if (!had) {
+            for (i = 0; i < IPTV_LISTS.length; i++) l.push({ id: 'sunic-iptv-' + IPTV_LISTS[i][0], custom: true, url: IPTV_LISTS[i][2], name: IPTV_LISTS[i][1] });
+            try { Lampa.Storage.set('iptv_playlist_custom', l); } catch (e) {}
+        }
+        iptvFresh();
+        if (!iptvInstalled()) {
+            var dom = 'cub.red';
+            try { dom = Lampa.Manifest.cub_domain || dom; } catch (e) {}
+            try { Lampa.Plugins.add({ url: 'https://' + dom + '/plugin/iptv', status: 1, name: 'IPTV', author: '@lampa' }); } catch (e) { return; }
+        }
+        lsSet('bs_iptv_auto', '1');
+    }
     function iptvChoose() {
         var list = iptvList(), ctrl = 'settings_component';
         try { ctrl = Lampa.Controller.enabled().name; } catch (e) {}
@@ -465,7 +483,7 @@ var BSFeatures = (function () {
         try { lazyYouTube(); } catch (e) {}
         try { installFastStart(); } catch (e) { console.log('BS fast start', e.message); }
         try { addSettings(); } catch (e) { console.log('BS features settings', e.message); }
-        setTimeout(iptvFresh, 8000);                                     // плейлисты, добавленные в 2.3.24, — тоже «каждый день»
+        setTimeout(function () { try { iptvAuto(); iptvFresh(); } catch (e) {} }, 8000);   // IPTV по умолчанию; плейлисты 2.3.24 — тоже «каждый день»
         registerColorKeys();
         document.addEventListener('keydown', onColorKey, true);
         try {
@@ -481,5 +499,5 @@ var BSFeatures = (function () {
     }
 
     return {
-        _iptvToggle: iptvToggle, _iptvLists: IPTV_LISTS, _iptvFix: iptvFix, _iptvInstalled: iptvInstalled, start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
+        _iptvToggle: iptvToggle, _iptvLists: IPTV_LISTS, _iptvFix: iptvFix, _iptvInstalled: iptvInstalled, _iptvAuto: iptvAuto, start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
 })();

@@ -3873,6 +3873,23 @@ async function serviceTests() {
     t('IPTV: расширение не установлено — так и говорим', F._iptvInstalled() === false);
     plugins.push({ url: 'https://cub.red/plugin/iptv', status: 1 });
     t('IPTV: расширение установлено — видим его', F._iptvInstalled() === true);
+    {   // по умолчанию: ставим расширение и кладём все открытые плейлисты — один раз
+        const ls = {}, added = [];
+        let list = [{ id: 'mine', custom: true, url: 'http://x/my.m3u', name: 'Мой' }];
+        const c2 = { console: { log() {} }, JSON, Math, Date, String, Object, Array, RegExp, setTimeout: () => 0, setInterval: () => 0, navigator: { userAgent: 'x' },
+            XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }), Node: Object.assign(function () {}, { prototype: { appendChild() {} } }),
+            document: { querySelectorAll: () => [], documentElement: {}, addEventListener() {} },
+            Lampa: { Manifest: { cub_domain: 'cub.red' }, Plugins: { add: pl => { added.push(pl); } },
+                Storage: { get: (k, d) => (k === 'iptv_playlist_custom' ? JSON.parse(JSON.stringify(list)) : k === 'plugins' ? added : JSON.parse(d || 'null')), set: (k, v) => { if (k === 'iptv_playlist_custom') list = v; } }, Noty: { show() {} } } };
+        c2.window = c2; c2.localStorage = { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); }, removeItem: k => { delete ls[k]; } };
+        vm.createContext(c2); vm.runInContext(fs.readFileSync(path.join(SRC, 'bsfeatures.js'), 'utf8') + ';this.M=BSFeatures;', c2);
+        c2.M._iptvAuto();
+        t('IPTV по умолчанию: расширение ставится, все открытые плейлисты уже внутри, свой на месте',
+            added.length === 1 && added[0].url === 'https://cub.red/plugin/iptv' && added[0].status === 1 &&
+            list.length === 1 + c2.M._iptvLists.length && list[0].id === 'mine' && list[1].id === 'sunic-iptv-uz');
+        list = list.slice(0, 2); added.length = 0; c2.M._iptvAuto();
+        t('IPTV по умолчанию: только один раз — убранное человеком не возвращаем', added.length === 0 && list.length === 2);
+    }
     t('IPTV: выбрали ещё раз — убран только наш', F._iptvToggle('uz') === false && saved.length === 1 && saved[0].id === 'mine');
     t('IPTV: неизвестный — ничего не меняет', F._iptvToggle('xx') === false && saved.length === 1);
 }
