@@ -3678,9 +3678,15 @@ var BSTelegram = (function () {
     var TMDB_TIMEOUT = 10000;
     /** Язык TMDB для того, кому отвечаем: английский — en-US; узбекских данных у TMDB почти нет — русский. */
     function tmdbLang() { return lang() === 'en' ? 'en-US' : 'ru'; }
-    function tmdbGet(path, cb) {
+    function tmdbGet(path, cb, retried) {
         cb = keep(cb);
-        var done = false, finish = function (j) { if (done) return; done = true; cb(j || null); };
+        var done = false, t0 = Date.now(), finish = function (j) {
+            if (done) return; done = true;
+            // разовый быстрый сбой TMDB или его прокси — ещё одна попытка, только потом «TMDB не ответил»
+            // (после долгого ожидания не повторяем: ответ на кнопку Telegram ждёт недолго)
+            if (!j && !retried && Date.now() - t0 < 5000) return setTimeout(function () { tmdbGet(path, cb, true); }, 700);
+            cb(j || null);
+        };
         var req = new Lampa.Reguest();
         try { req.timeout(TMDB_TIMEOUT); } catch (e) {}
         req.silent(Lampa.TMDB.api(path + (path.indexOf('?') < 0 ? '?' : '&') + 'api_key=' + Lampa.TMDB.key() + '&language=' + tmdbLang()),
