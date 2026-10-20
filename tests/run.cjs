@@ -18,7 +18,7 @@ function load(file, name, store) {
     ctx.XMLHttpRequest.prototype = { open() {}, send() {}, setRequestHeader() {} }; ctx.Node.prototype = { appendChild() {} };
     w.window = w; vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(SRC, file), 'utf8') + ';this.M=' + name + ';', ctx);
-    return { M: ctx.M, store };
+    return { M: ctx.M, store, w };
 }
 
 /* ---- skazauto.js: решения о переключении серверов ---- */
@@ -1165,6 +1165,11 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
 /* ---- bscontinue.js: продолжить с места ---- */
 {
     const C = load('bscontinue.js', 'BSContinue'), M = C.M, st = C.store;
+    // Skaz — один из источников: автозапуск на экране любого онлайн-источника из списка bssources.js
+    t('источники: Skaz — экран источника, карточка — нет', M._sourceScreen({ component: 'lampacskaz' }) && !M._sourceScreen({ component: 'full' }) && !M._sourceScreen(null));
+    C.w.BSSources = { list: [{ id: 'z01', comp: ['lampac_z'] }, { id: 'showy', comp: ['showy_free', 'showy'] }] };
+    t('источники: Z01 и Showy — тоже экраны источников (автозапуск и продолжение не только у Skaz)', M._sourceScreen({ component: 'lampac_z' }) && M._sourceScreen({ component: 'showy' }) && !M._sourceScreen({ component: 'category_full' }));
+    delete C.w.BSSources;
     const tv = { id: 7, name: 'Сериал', original_name: 'Show', poster_path: '/p.jpg', first_air_date: '2024-01-01' };
     const film = { id: 9, title: 'Фильм', original_title: 'Film', release_date: '2020-01-01' };
     M._record(tv, 2, 5, 600, 2400, 1000);

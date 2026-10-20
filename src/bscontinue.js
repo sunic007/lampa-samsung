@@ -305,17 +305,28 @@ var BSContinue = (function () {
         log('онлайн — сразу с места', o.movie.id);
     }
 
+    /* Skaz — один из источников, не главный по умолчанию в логике: автозапуск — на экране любого онлайн-источника из
+     * списка (Skaz и bssources.js: Z01, Vod, Online Mod, Showy…). Плагины на Lampac понимают lampac_continue_episode и
+     * рисуют список через uiDraw (onDraw); остальным эти поля просто не мешают. */
+    function lampacScreen(o) {
+        if (!o || !o.component) return false;
+        if (o.component === 'lampacskaz') return true;
+        var list = window.BSSources && window.BSSources.list || [];
+        for (var i = 0; i < list.length; i++) if ((list[i].comp || []).indexOf(o.component) >= 0) return true;
+        return false;
+    }
+
     function hookPush() {
         var A = Lampa.Activity, push = A.push;
         if (!push || push.__bsCont) return;
         A.push = function (o) {
             try { noteResume(o); } catch (e) {}
             try {
-                if (o && o.component === 'lampacskaz' && pending && pending.tv && pending.episode && Date.now() < pending.until &&
+                if (lampacScreen(o) && pending && pending.tv && pending.episode && Date.now() < pending.until &&
                     o.movie && o.movie.id == pending.id) {
                     o.lampac_continue_episode = pending.episode;
                     pending = null;
-                } else if (o && o.component === 'lampacskaz') autoResume(o);
+                } else if (lampacScreen(o)) autoResume(o);
             } catch (e) {}
             return push.apply(this, arguments);
         };
@@ -490,6 +501,6 @@ var BSContinue = (function () {
         return (r.s | 0) === (s | 0) && (r.e | 0) === (e | 0) ? r : null;
     }
 
-    return { start: start, onDraw: onDraw, _ruScore: ruScore, _pickRu: pickRu, resume: resume, last: last, _record: record, _load: load, _label: label, _newer: newer, hubItems: hubItems, _targetEpisode: targetEpisode, _autoResume: autoResume,
+    return { start: start, onDraw: onDraw, _ruScore: ruScore, _pickRu: pickRu, resume: resume, last: last, _record: record, _load: load, _label: label, _newer: newer, hubItems: hubItems, _targetEpisode: targetEpisode, _autoResume: autoResume, _sourceScreen: lampacScreen,
         _pickLater: pickLater, _mergeTimeline: mergeTimeline, _lampaKey: lampaKey, _lampaView: lampaView, _lampaSave: lampaSave, _onStart: onStart, _onTime: onTime, _onStop: onStop };
 })();
