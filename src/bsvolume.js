@@ -119,6 +119,7 @@ var BSVolume = (function () {
     }
 
     function addSettings() {
+        if (!audio()) return;                                     // не ТВ Samsung (Media Station X, браузер) — громкость не наша
         var api = Lampa.SettingsApi;
         api.addParam({
             component: 'bs_update',

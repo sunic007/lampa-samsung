@@ -384,7 +384,7 @@ var BSPlayer = (function () {
             field: { name: 'Метки пропуска Skaz', description: 'Заставка и титры. Сами — только проверенные метки.' },
             onChange: function (v) { lsSet('bs_segments', String(v === true || v === 'true')); }
         });
-        api.addParam({
+        if (onTvPlayer()) api.addParam({
             component: C, param: { name: 'bs_buffer', type: 'select', values: { balanced: 'Сбалансировано — 4 с / 8 с', fast: 'Быстрый старт — 2 с / 6 с', reliable: 'Надёжно — 8 с / 15 с', auto: 'Как у Samsung — 10 с' }, 'default': lsGet('bs_buffer') || 'balanced' },
             field: { name: 'Буфер плеера ТВ', description: 'Запас видео перед стартом. При плохом интернете — «Надёжно».' },
             onChange: function (v) { lsSet('bs_buffer', v); noty('Буфер применится к следующему видео', 2500); }
