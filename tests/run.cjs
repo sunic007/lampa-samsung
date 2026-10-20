@@ -1884,7 +1884,8 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
         r.store.bs_upd_mirror === '1' && !r.store.bs_upd_skip && !('bs_upd_try' in r.store) && r.reloaded() === 1);
     r = mk({ bs_upd: upd, bs_upd_mirror: '1' });
     t('обновление: второе зеркало — fastly', /https:\/\/fastly\.jsdelivr\.net\/gh\/sunic007\/lampa-samsung@v9\.9\.9\/src\//.test(r.written()));
-    r = mk({ bs_upd: upd, bs_upd_mirror: '2' });
+    r = mk({ bs_upd: upd, bs_upd_mirror: '3' });
+    t('обновление: последнее зеркало — свой хостинг sunic.stream (те же адреса, что у jsDelivr)', /https:\/\/sunic\.stream\/gh\/sunic007\/lampa-samsung@v9\.9\.9\/src\/loader\.js/.test(r.written()));
     r.w.bsUpdFail();
     t('обновление: все зеркала не ответили — час на пакете, потом снова с первого', !!r.store.bs_upd_skip && !('bs_upd_mirror' in r.store));
     r = mk({ bs_upd: upd, bs_upd_mirror: '7' });

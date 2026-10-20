@@ -17,7 +17,8 @@
     var MANIFEST = 'https://raw.githubusercontent.com/' + REPO + '/main/version.json';
     // Зеркала jsDelivr (разные сети одного CDN). Свежий тег основной иногда отдаёт с 503 — тогда следующее зеркало, а не
     // час на пакете. raw.githubusercontent не годится: text/plain + nosniff, такой скрипт ТВ не выполнит.
-    var MIRRORS = ['https://cdn.jsdelivr.net/gh/', 'https://fastly.jsdelivr.net/gh/', 'https://gcore.jsdelivr.net/gh/'];
+    // последний — свой хостинг (sunic.stream/gh/ — те же адреса): выручает, когда у человека закрыты GitHub и jsDelivr
+    var MIRRORS = ['https://cdn.jsdelivr.net/gh/', 'https://fastly.jsdelivr.net/gh/', 'https://gcore.jsdelivr.net/gh/', 'https://sunic.stream/gh/'];
     var mirror = +(get('bs_upd_mirror') || 0);
     if (!(mirror >= 0 && mirror < MIRRORS.length)) mirror = 0;
     var CDN = MIRRORS[mirror] + REPO + '@v';
