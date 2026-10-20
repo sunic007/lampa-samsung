@@ -52,6 +52,14 @@ $head = '<base href="' . CDN . $v . '/src/">' . "\n    <script>"
     . '(function () { if (window.tizen) return; try { localStorage.setItem("bs_player_default", "1");'
     . ' ["player", "player_iptv"].forEach(function (k) { var p = localStorage.getItem(k); if (!p || p === "tizen") localStorage.setItem(k, "inner"); });'
     . ' } catch (x) {} })();'
+    // <base> на jsDelivr: Lampa пишет в историю «?card=…» — браузер считал бы это адресом jsDelivr и запрещал
+    // (SecurityError, карточка не открывается). Относительные адреса истории — от адреса страницы, не от <base>.
+    . ' (function () { var h = window.history; if (!h || !h.pushState) return; ["pushState", "replaceState"].forEach(function (m) {'
+    . ' var o = h[m]; h[m] = function (s, t, u) { if (typeof u === "string" && !/^[a-z]+:/i.test(u)) {'
+    // Lampa с <base> пишет «/?card=…» — от корня сайта; у нас она в /lampa/
+    . ' var p = location.pathname; if (/^\/[?#]/.test(u)) u = u.slice(1);'
+    . ' u = location.origin + (u.charAt(0) === "?" ? p + u : u.charAt(0) === "#" ? p + location.search + u : u.charAt(0) === "/" ? u : p + u); }'
+    . ' return o.call(h, s, t, u); }; }); })();'
     . ' window.addEventListener("error", function (e) { if (!e.lineno && /^Script error\.?$/i.test(e.message || "")) {'
     . ' try { e.stopImmediatePropagation(); } catch (x) {} } }, true);</script>';
 $html = preg_replace('/<head>/', "<head>\n    " . $head, $html, 1);
