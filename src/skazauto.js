@@ -278,7 +278,8 @@ var BSSkaz = (function () {
             var ws = waiters; waiters = [];
             var reload = enabled() && decide(res, 'full');
             if (reload) reloadSoon('server');
-            else if (recheck) setTimeout(function () { check(false); }, 20000);   // подтвердить, что сервер правда умер
+            else if (recheck && enabled()) setTimeout(function () { check(false); }, 20000);   // подтвердить, что сервер правда умер
+            else if (recheck) recheck = false;                  // автовыбор выключили — перепроверка больше не нужна
             else if (manual) say('Серверы фильмов: ' + famName(curFamily()) + ' · ' + fmt(familyStat(res, curFamily())));
             for (var i = 0; i < ws.length; i++) { try { ws[i](res); } catch (e) {} }
         });

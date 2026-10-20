@@ -490,6 +490,8 @@ var BSContinue = (function () {
             Lampa.Listener.follow('full', function (e) { if (e && e.type === 'complite') handleFull(e); });
         } catch (e) { log('listen', e.message); }
         setTimeout(checkNews, 20000);
+        // приложение живёт днями — «Новая серия» проверяем и дальше (каждую карточку не чаще раза в 12 ч, см. checkNews)
+        setInterval(function () { if (!document.hidden) checkNews(); }, 6 * 3600000);
     }
 
     /** Запись о прошлом просмотре этой карточки (и серии): {pos, dur, at} или null. */

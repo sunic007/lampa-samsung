@@ -52,7 +52,8 @@ var BSMenu = (function () {
     }
 
     function select(title, items, onSelect) {
-        var ctrl = Lampa.Controller.enabled().name;
+        var ctrl = 'content';
+        try { ctrl = Lampa.Controller.enabled().name; } catch (e) {}
         Lampa.Select.show({
             title: title, items: items,
             onBack: function () { Lampa.Controller.toggle(ctrl); },

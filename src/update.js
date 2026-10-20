@@ -14,6 +14,7 @@
     var BS_PKG_APP = null;
     window.BS_PKG_APP = BS_PKG_APP;
     var REPO = 'sunic007/lampa-samsung';
+    function isArr(a) { return Object.prototype.toString.call(a) === '[object Array]'; }
     var MANIFEST = 'https://raw.githubusercontent.com/' + REPO + '/main/version.json';
     // Зеркала jsDelivr (разные сети одного CDN). Свежий тег основной иногда отдаёт с 503 — тогда следующее зеркало, а не
     // час на пакете. raw.githubusercontent не годится: text/plain + nosniff, такой скрипт ТВ не выполнит.
@@ -41,7 +42,7 @@
     var badRaw = String(get('bs_upd_bad') || ''), badAt = +(badRaw.split('|')[1] || 0);
     var bad = badRaw && (!badAt || Date.now() - badAt < 86400000) ? badRaw.split('|')[0] : '', skipUntil = +(get('bs_upd_skip') || 0);
     var remote = get('bs_gh_update') !== 'false' && !!upd && /^\d+\.\d+\.\d+$/.test(String(upd.v)) && num(upd.v) > num(pkg) && upd.v !== bad && Date.now() > skipUntil &&
-        !!upd.files && upd.files.length > 0 && upd.files.every(okName);
+        isArr(upd.files) && upd.files.length > 0 && upd.files.every(okName);   // битый bs_upd — не падаем, грузим своё
     if (remote && get('bs_upd_try') === upd.v) {            // прошлый запуск с этой версией до готовности не дошёл
         set('bs_upd_bad', upd.v + '|' + Date.now());
         bad = upd.v;
@@ -160,7 +161,7 @@
                 x.onload = function () {
                     var m = null;
                     try { m = JSON.parse(x.responseText); } catch (e) {}
-                    fin(x.status === 200 && m && /^\d+\.\d+\.\d+$/.test(String(m.version)) && m.files && m.files.length && m.files.every(okName) ? m : null);
+                    fin(x.status === 200 && m && /^\d+\.\d+\.\d+$/.test(String(m.version)) && isArr(m.files) && m.files.length && m.files.every(okName) ? m : null);
                 };
                 x.onerror = x.ontimeout = function () { fin(null); };
                 x.send();

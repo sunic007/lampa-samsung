@@ -255,8 +255,9 @@ test('/test у администратора — показывает, что б�
     assert.equal(r3.reason, '');
     assert.match(e.calls('sendMessage')[2].text, /нарушений нет/);
 });
-test('/test у обычного участника — молчим', async () => {
+test('/test у обычного участника — без проверки защиты, но модерацию не обходит', async () => {
     const e = modEnv();
-    assert.equal(await e.bot.handleMessage(msg('/test https://example.com')), null);
+    assert.equal(await e.bot.handleMessage(msg('/test')), null);
     assert.equal(e.calls('sendMessage').length, 0);
+    assert.deepEqual(await e.bot.handleMessage(msg('/test https://example.com')), { kind: 'removed' });
 });

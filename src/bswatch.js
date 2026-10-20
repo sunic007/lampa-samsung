@@ -79,6 +79,7 @@ var BSWatch = (function () {
     function onTime(e) {
         if (!e || !(e.duration > 0)) return;
         var left = e.duration - (e.current || 0);
+        if (!mode && left > NS_ASK + 2) return;     // до конца далеко — флаги не считаем на каждом кадре (слабые ТВ)
         if (seasonEnd(left, e.duration)) return;
         var want = wantCountdown(left, e.duration, {
             enabled: on('bs_next_countdown', true), autonext: playlistNext(), next: canNext(),
@@ -355,6 +356,8 @@ var BSWatch = (function () {
     /* ---------- 6. плашка серии ---------- */
 
     var epTimer = null;
+    function playerOpen() { try { return !!Lampa.Player.opened(); } catch (e) { return false; } }
+    var startTimers = { ep: 0, still: 0 };   // отложенные баннер серии и «Вы ещё смотрите?» — снимаются при закрытии плеера
     function esc(t) { return String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
     /** Текст плашки: show — название сериала, title — то, что Lampa показывает в плеере (название серии или «Серия 15»). */
     function epLines(show, s, e, title) {
@@ -471,20 +474,21 @@ var BSWatch = (function () {
                 hide();
                 var card = cardOf(data);
                 ep = data && data.season > 0 && data.episode > 0 && tvCard(card) ? { card: card, s: data.season | 0, e: data.episode | 0 } : null;
-                setTimeout(function () { epBanner(data); }, 800);
+                clearTimeout(startTimers.ep); clearTimeout(startTimers.still);
+                startTimers.ep = setTimeout(function () { if (playerOpen()) epBanner(data); }, 800);
                 clearInterval(resumeTimer); resumeTimer = null;
                 cancelled = false;
                 restoreAutonext();
                 var still = stillOnStart(Date.now());
                 setTimeout(addButton, 300);
                 // за 2,5 с могли нажать пульт (счёт обнулился) — проверяем ещё раз перед вопросом
-                if (still) setTimeout(function () { if (!mode && wantStill(idleSec, stillMinutes())) askStill(); }, 2500);
+                if (still) startTimers.still = setTimeout(function () { if (playerOpen() && !mode && wantStill(idleSec, stillMinutes())) askStill(); }, 2500);
 
             });
             // после 'start' Lampa (needToContinue) сама сбрасывает timeline.waiting_for_user — спрашиваем на 'ready',
             // он приходит сразу после, до первого кадра (место Lampa ставит на первом timeupdate)
             Lampa.Player.listener.follow('ready', function (data) { onResumeStart(data); });
-            Lampa.Player.listener.follow('destroy', function () { clearTimeout(epTimer); $('.bs-ep-banner').remove(); clearInterval(resumeTimer); resumeTimer = null; hide(); restoreAutonext(); });
+            Lampa.Player.listener.follow('destroy', function () { clearTimeout(startTimers.ep); clearTimeout(startTimers.still); clearTimeout(epTimer); $('.bs-ep-banner').remove(); clearInterval(resumeTimer); resumeTimer = null; hide(); restoreAutonext(); });
             Lampa.PlayerVideo.listener.follow('timeupdate', onTime);
             Lampa.PlayerVideo.listener.follow('timeupdate', stillTick);
             Lampa.PlayerVideo.listener.follow('timeupdate', onResumeFrame);

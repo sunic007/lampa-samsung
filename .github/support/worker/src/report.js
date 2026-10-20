@@ -47,9 +47,10 @@ export function reportTitle(rep) {
 }
 
 async function bump(store, key, max, ttl) {
-    const n = +(await store.get(key) || 0);
+    let n = 0;
+    try { n = +(await store.get(key) || 0); } catch (e) { return true; }   // KV не ответил — отчёт важнее счётчика
     if (n >= max) return false;
-    await store.put(key, String(n + 1), ttl);
+    try { await store.put(key, String(n + 1), ttl); } catch (e) { /* квота KV — пропускаем счёт */ }
     return true;
 }
 
@@ -64,8 +65,12 @@ export async function handleReport(raw, deps) {
     const day = new Date().toISOString().slice(0, 10), DAY = 86400, hash = await devHash(rep.device);
     const repo = REPOS['lampa-samsung'];
     // тот же ТВ, та же проблема за сутки — дополняем прежнюю задачу (лимит ТВ не тратим, но IP — тратим)
-    const dupKey = `rep:last:${hash}:${rep.kind}`, prev = await store.get(dupKey);
+    let prev = null;
+    const dupKey = `rep:last:${hash}:${rep.kind}`;
+    try { prev = await store.get(dupKey); } catch (e) { /* без KV — новая задача */ }
     if (deps.ip && !(await bump(store, `rep:ip:${deps.ip}:${day}`, REPORT_PER_IP, DAY))) return { ok: false, error: 'limit' };
+    // дополнения тоже не бесконечны: свой лимит на ТВ в сутки (через ntfy IP нет — держит только он)
+    if (prev && !(await bump(store, `rep:more:${hash}:${day}`, REPORT_PER_DEVICE * 2, DAY))) return { ok: false, error: 'limit' };
     if (prev) {
         try {
             const [number, url] = prev.split('|');
@@ -81,7 +86,7 @@ export async function handleReport(raw, deps) {
     try {
         issue = await gh('POST', `/repos/${repo}/issues`, { title: reportTitle(rep), body: reportBody(rep, hash), labels: [REPORT_LABEL, 'bug'] }, [201]);
     } catch (e) { log('report issue: ' + e.message); return { ok: false, error: 'github' }; }
-    await store.put(dupKey, `${issue.number}|${issue.html_url}`, DAY);
+    try { await store.put(dupKey, `${issue.number}|${issue.html_url}`, DAY); } catch (e) { /* квота KV */ }
     log(`report: #${issue.number} ${rep.kind}`);
     return { ok: true, number: issue.number, url: issue.html_url };
 }
@@ -97,13 +102,13 @@ export async function pollNtfy(deps, fetchText, max = 10) {
         if (!ev || ev.event !== 'message') continue;
         if (done >= max) break;                                  // остальное — в следующий раз (since не сдвигаем дальше)
         done++;
-        last = ev.id;
         // больше 4 КБ ntfy хранит вложением — текст отчёта по ссылке
         let body = ev.message;
         if (ev.attachment && /^https:\/\/ntfy\.sh\/file\//.test(String(ev.attachment.url || ''))) {
-            try { body = await fetchText(ev.attachment.url); } catch (e) { continue; }
+            try { body = await fetchText(ev.attachment.url); } catch (e) { break; }   // вложение не скачалось — в следующий раз с этого места
         }
         await handleReport(body, { ...deps, ip: '' });
+        last = ev.id;
     }
     if (last) await deps.store.put('rep:since', last, 3 * 86400);
     return done;

@@ -300,7 +300,9 @@ var BSPlayer = (function () {
         if (!key || !s.tracks || s.tracks.length < 2) return;
         var t = currentTrack(s.tracks);
         if (!t) return;
-        lsSet(key, JSON.stringify({ index: t.index !== undefined ? t.index : s.tracks.indexOf(t), lang: trackLang(t) }));
+        var val = JSON.stringify({ index: t.index !== undefined ? t.index : s.tracks.indexOf(t), lang: trackLang(t) });
+        if (lsGet(key) === val) return;                          // та же дорожка — не пишем каждые 15 с
+        lsSet(key, val);
         trimTracks(key);
     }
 

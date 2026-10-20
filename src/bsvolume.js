@@ -69,7 +69,7 @@ var BSVolume = (function () {
         if (!audio()) return;
         var key = cardKey(data);
         if (cur && cur.key === key) return;                       // следующая серия того же сериала
-        var before = cur ? cur.before : getVol();                  // в плеере сменили карточку — «до плеера» прежнее
+        var before = cur && cur.before >= 0 ? cur.before : getVol();   // в плеере сменили карточку — «до плеера» прежнее
         cur = { key: key, before: before, auto: cur ? cur.auto : false };
         if (before < 0) return;
         var rec = key ? load()[key] : null;

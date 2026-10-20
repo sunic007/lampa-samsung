@@ -88,3 +88,18 @@ test('ntfy: больше max — остальное в следующий раз
     assert.equal(await pollNtfy({ gh: e.gh, store: e.store }, async () => lines, 2), 2);
     assert.equal(e.kv.get('rep:since'), 'm2');
 });
+test('отчёт: KV не отвечает (квота) — задача всё равно создаётся', async () => {
+    const e = env();
+    const store = { get: async () => { throw new Error('KV quota'); }, put: async () => { throw new Error('KV quota'); } };
+    const r = await handleReport(rep(), { gh: e.gh, store, ip: '1.2.3.4' });
+    assert.equal(r.ok, true);
+    assert.equal(e.issues().length, 1);
+});
+test('отчёт: дополнения с одного ТВ тоже ограничены в сутки', async () => {
+    const e = env();
+    const deps = { gh: e.gh, store: e.store, ip: '' };
+    await handleReport(rep(), deps);
+    let more = 0;
+    for (let i = 0; i < 20; i++) if ((await handleReport(rep(), deps)).dup) more++;
+    assert.equal(more, REPORT_PER_DEVICE * 2);
+});

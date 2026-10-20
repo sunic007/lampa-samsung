@@ -89,11 +89,14 @@ async function handleTelegram(request, env) {
     const u = await request.json().catch(() => null);
     if (!u || typeof u.update_id !== 'number') return new Response('ok');
     // Telegram повторяет обновление, если ответ не пришёл вовремя, — второй раз не обрабатываем
-    if (await env.STATE.get('u:' + u.update_id)) return new Response('ok');
-    await env.STATE.put('u:' + u.update_id, '1', { expirationTtl: 86400 });
+    // KV упал или кончилась суточная квота записей — бот всё равно отвечает (без защиты от повтора), иначе Telegram получит 500
+    try {
+        if (await env.STATE.get('u:' + u.update_id)) return new Response('ok');
+        await env.STATE.put('u:' + u.update_id, '1', { expirationTtl: 86400 });
+    } catch (e) { log('dedupe: ' + redact(e && e.message, env)); }
     const day = new Date().toISOString().slice(0, 10), stateKey = 'day:' + day;
-    const state = await env.STATE.get(stateKey, 'json');
-    let me = await env.STATE.get('me', 'json');
+    let state = null, me = null;
+    try { state = await env.STATE.get(stateKey, 'json'); me = await env.STATE.get('me', 'json'); } catch (e) { log('state: ' + redact(e && e.message, env)); }
     const tg = telegram(env);
     try {
         if (!me) { me = await tg('getMe'); await env.STATE.put('me', JSON.stringify({ id: me.id, username: me.username }), { expirationTtl: 7 * 86400 }); }

@@ -306,6 +306,8 @@ export function issueFromEntities(msg) {
 }
 
 // ---------------------------------------------------------------- бот
+const FOLLOWUPS_PER_DAY = 15;
+
 export class Bot {
     // deps: tg(method, params) → result; gh(method, path, body?, okCodes?) → json; llm(messages) → text | throws;
     //       state {day, llm, u, t} (суточные счётчики), cfg {group, chatId, secret, llmPerDay, llmPerUserDay, issuesPerUserDay}
@@ -316,7 +318,7 @@ export class Bot {
         this.now = now; this.me = deps.me || null; this.openCache = {}; this.labelsOk = new Set(); this.log = deps.log || (() => {});
         const day = new Date(now() * 1000).toISOString().slice(0, 10);
         const st = state && state.day === day ? state : {};
-        this.state = { day, llm: +st.llm || 0, u: Object.assign({}, st.u), t: Object.assign({}, st.t) };
+        this.state = { day, llm: +st.llm || 0, u: Object.assign({}, st.u), t: Object.assign({}, st.t), f: Object.assign({}, st.f) };
     }
     isGroup(chat) {
         if (!chat) return false;
@@ -444,13 +446,20 @@ export class Bot {
             await this.send(chat.id, `Номер этого чата: <code>${chat.id}</code>`);
             return null;
         }
-        if (this.isGroup(chat) && /^\/(test|тест|proverka)(@\w+)?(\s|$)/i.test(String(m.text || m.caption || ''))) return this.modTest(m);
-        if (await this.moderate(m)) return { kind: 'removed' };
+        const isTest = this.isGroup(chat) && /^\/(test|тест|proverka)(@\w+)?(\s|$)/i.test(String(m.text || m.caption || ''));
+        if (isTest) { const r = await this.modTest(m); if (r !== null) return r; }   // администратор — проверка защиты
+        if (await this.moderate(m)) return { kind: 'removed' };                  // обычный участник: «/test» модерацию не обходит
+        if (isTest) return null;
         const f = this.filter(m);
         if (!f) return null;
         const [text, ctx] = f, mid = m.message_id, thread = m.is_topic_message ? m.message_thread_id : null, user = (m.from || {}).id || 0;
         const botReply = ctx && ctx.botReply, linked = botReply ? issueFromEntities(botReply) : null;
-        if (botReply && linked && !THANKS.test(text.trim())) return this.addFollowup(linked, text, chat, mid, thread, botReply.text || '');
+        if (botReply && linked && !THANKS.test(text.trim())) {
+            // ответы боту пишутся комментариями в задачу — не больше FOLLOWUPS_PER_DAY в сутки от одного человека
+            if ((this.state.f[user] || 0) >= FOLLOWUPS_PER_DAY) { this.log('follow-up limit — skipped'); return null; }
+            this.state.f[user] = (this.state.f[user] || 0) + 1;
+            return this.addFollowup(linked, text, chat, mid, thread, botReply.text || '');
+        }
         if (botReply && linked) return null;
         const cls = await this.classify(text, ctx, user);
         if (botReply) {

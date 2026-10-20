@@ -278,7 +278,7 @@ var BSGuard = (function () {
     function tick() {
         if (!s) return;
         if (!playerOpen()) return stop();
-        if (s.paused || document.hidden || s.closing) return;
+        if (s.paused || s.ended || document.hidden || s.closing) return;
         if (s.searching) return;              // ищем другой источник (sourceInPlayer)
         if (inGrace(s, Date.now())) return;   // Lampa восстанавливает плеер после Smart Hub
         // Нет сети — ничего не переключаем, ждём её возвращения (см. 'online').
@@ -471,9 +471,11 @@ var BSGuard = (function () {
             var v = Lampa.PlayerVideo.listener;
             v.follow('timeupdate', onTime);
             v.follow('progress', onBuffer);
-            v.follow('play', function () { if (s) { s.paused = false; progress(); } });
+            v.follow('play', function () { if (s) { s.paused = false; s.ended = false; progress(); } });
             v.follow('pause', function () { if (s) s.paused = true; });
-            v.follow('rewind', function () { if (s) progress(); });
+            v.follow('rewind', function () { if (s) { s.ended = false; progress(); } });
+            // досмотрели до конца: время больше не идёт — это не зависание (иначе через PLAY_LIMIT перезапуск)
+            v.follow('ended', function () { if (s) { s.ended = true; s.lastProgressAt = Date.now(); } });
             v.follow('error', function (e) {
                 if (s && !s.closing && !s.errorAt && (!e || e.fatal !== false)) s.errorAt = Date.now();
                 // hls.js: «буфер на миг опустел, догружаю» (fatal false) — Lampa пишет это на экран на 10 с
