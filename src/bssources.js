@@ -31,10 +31,10 @@ var BSSources = (function () {
     /* Плагины на выбор. comp — компонент Lampa, который открывает плагин (по нему знаем, чей сейчас экран). group —
      * плагины с одинаковым компонентом и кнопкой: включить можно только один из группы. */
     var LIST = [
-        { id: 'z01', key: 'bs_src_z01', name: 'Z01', url: 'http://z01.online/live', comp: ['lampac_z'],
+        { id: 'z01', key: 'bs_src_z01', name: 'Z01', url: 'http://z01.online/live', comp: ['lampac_z'], on: true,
           note: 'Бесплатные источники и платный VIP. Есть реклама.',
           match: function (b) { return /^Z01\b/i.test(sub(b)); } },
-        { id: 'online_mod', key: 'bs_src_online_mod', name: 'Online Mod', url: 'http://nb557.github.io/plugins/online_mod.js', comp: ['online_mod'], group: 'online_mod',
+        { id: 'online_mod', key: 'bs_src_online_mod', name: 'Online Mod', url: 'http://nb557.github.io/plugins/online_mod.js', comp: ['online_mod'], group: 'online_mod', on: true,
           note: 'Открытый код (GitHub nb557).', match: hasCls('view--online_mod') },
         { id: 'vod_llpp', key: 'bs_src_vod_llpp', name: 'VOD (llpp.in)', url: 'http://llpp.in/v/vod.js', comp: ['online_mod'], group: 'online_mod',
           note: 'Вариант Online Mod — включается вместо него.', match: hasCls('view--online_mod') },
@@ -46,7 +46,8 @@ var BSSources = (function () {
     var SKAZ_COMP = ['lampacskaz'];
 
     function byId(id) { for (var i = 0; i < LIST.length; i++) if (LIST[i].id === id) return LIST[i]; return null; }
-    function enabled(s) { return on(s.key, false); }
+    // бесплатные Z01 и Online Mod включены по умолчанию — «Смотреть» ищет фильм во всех источниках по очереди
+    function enabled(s) { return on(s.key, !!s.on); }
 
     /** Чья это кнопка на карточке: id плагина из списка, 'skaz' или ''. */
     function owner(btn) {
@@ -156,7 +157,7 @@ var BSSources = (function () {
         });
         LIST.forEach(function (s) {
             api.addParam({
-                component: C, param: { name: s.key, type: 'trigger', 'default': false },
+                component: C, param: { name: s.key, type: 'trigger', 'default': !!s.on },
                 field: { name: 'Источник ' + s.name, description: s.note + ' Выключение — после перезапуска Lampa.' },
                 onChange: function (v) {
                     var want = v === true || v === 'true';
@@ -190,6 +191,104 @@ var BSSources = (function () {
         return true;
     }
 
+    /* ---------- поиск по всем источникам ----------
+     * «Смотреть» (bsmenu.js) начинает поиск с главного источника. Источник сдался — нет фильма, нет доступа (Skaz без
+     * CUB), сервер не отвечает и свои балансеры кончились (bsfix.js зовёт giveUp) — назад на карточку и кнопка
+     * следующего включённого источника. Только в течение поиска, начатого «Смотреть» (не при ручном выборе). */
+    var SEARCH_LIFE = 180000;
+    var search = null;   // {id: фильм, tried: [id источника], until}
+    function order() {
+        var main = mainId(), ids = [main];
+        if (main !== 'skaz') ids.push('skaz');
+        var groups = {};
+        LIST.forEach(function (s) {
+            if (!enabled(s) || (s.group && groups[s.group])) return;
+            if (s.group) groups[s.group] = true;
+            if (ids.indexOf(s.id) < 0) ids.push(s.id);
+        });
+        return ids;
+    }
+    /** Один и тот же источник: id совпадают или это плагины одной группы (одинаковая кнопка — Online Mod / VOD). */
+    function sameSource(a, b) { var x = byId(a), y = byId(b); return a === b || !!(x && y && x.group && x.group === y.group); }
+    function nameOf(id) { var s = byId(id); return s ? s.name : 'Skaz'; }
+    function activeMovieId() { try { var a = Lampa.Activity.active(); return (a.movie || a.card || {}).id || 0; } catch (e) { return 0; } }
+
+    /* Источники, которые человек добавил сам (свои плагины в «Расширениях»), тоже участвуют: на карточке — любая кнопка
+     * онлайн-источника. Известные — по порядку order(), свои — за ними, как стоят на карточке. Ключ кнопки: id из списка
+     * или «x:подпись» для своих. Торренты, трейлеры, Shots, «Подписаться» и наши «Смотреть»/«Источники» — не источники. */
+    function looksOnline(b) {
+        if (b.hasClass('bs-watch') || b.hasClass('button--play') || b.hasClass('view--torrent') || b.hasClass('view--trailer')) return false;
+        var t = sub(b) + ' ' + $.trim(b.text());
+        if (/нарезк|shots|трейлер|trailer|торрент|torrent|подписа|subscribe|закладк/i.test(t)) return false;
+        return b.hasClass('view--online') || b.hasClass('lampac--button') || /онлайн|online/i.test(t);
+    }
+    function keyOf(b) {
+        var o = owner(b), s = $.trim(sub(b));
+        if (o === 'skaz' && s && !skazSure(b)) return 'x:' + s;    // свой плагин на Lampac (класс как у Skaz, подпись своя)
+        if (o) return o;
+        s = s || $.trim(b.text());
+        return s ? 'x:' + s : '';
+    }
+    function labelOf(k) { return k.indexOf('x:') === 0 ? k.slice(2) : nameOf(k); }
+    /** Кнопки источников на карточке по порядку поиска: [{key, btn}]. */
+    function candidates(btns) {
+        var known = [], own = [], ids = order(), i;
+        for (i = 0; i < btns.length; i++) {
+            var b = btns[i], k = keyOf(b);
+            if (!k || !looksOnline(b) && !byId(k) && k !== 'skaz') continue;
+            if (k === 'skaz' || byId(k)) {
+                var at = -1;
+                for (var j = 0; j < ids.length; j++) if (sameSource(ids[j], k)) { at = j; break; }
+                if (at >= 0) known.push({ key: ids[at], btn: b, at: at });
+            } else own.push({ key: k, btn: b });
+        }
+        known.sort(function (a, b) { return a.at - b.at; });
+        return known.concat(own);
+    }
+    function triedHas(k) {
+        for (var i = 0; i < search.tried.length; i++) if (sameSource(search.tried[i], k)) return true;
+        return false;
+    }
+
+    /** «Смотреть» нажали: поиск по источникам для этого фильма, первый — first (ключ кнопки). */
+    function startSearch(movieId, first) {
+        first = first || mainId();
+        search = movieId ? { id: movieId, tried: [first], current: first, until: Date.now() + SEARCH_LIFE } : null;
+    }
+    /** Экран источника comp сдался (why: 'empty' | 'denied' | 'noanswer'). true — идём к следующему источнику. */
+    function giveUp(comp, why) {
+        if (!search || Date.now() > search.until || search.id != activeMovieId()) return false;
+        var who = compOwner(comp) || search.current;
+        if (!triedHas(who)) search.tried.push(who);
+        var cur = labelOf(who), id = search.id, s = search;
+        noty((why === 'denied' ? 'В «' + cur + '» нет доступа' : why === 'noanswer' ? '«' + cur + '» не отвечает' : 'В «' + cur + '» нет') +
+            ' — ищу в других источниках');
+        log('поиск: ' + who + ' сдался', why);
+        try { Lampa.Activity.backward(); } catch (e) {}
+        var tries = 0;
+        (function press() {
+            if (++tries > 15 || search !== s) return;
+            setTimeout(function () {
+                var list = null;
+                try {
+                    var a = Lampa.Activity.active(), btns = [];
+                    if (a.component !== 'full' || (a.card || a.movie || {}).id != id) return press();
+                    $(a.activity.render()).find('.buttons--container > .full-start__button').each(function () { btns.push($(this)); });
+                    list = candidates(btns).filter(function (c) { return !triedHas(c.key); });
+                } catch (e) { return press(); }
+                if (!list.length) {
+                    search = null;
+                    return noty('Фильма нет ни в одном источнике — попробуйте позже или другой фильм');
+                }
+                s.tried.push(list[0].key);
+                s.current = list[0].key;
+                noty('Ищу в «' + labelOf(list[0].key) + '»');
+                list[0].btn.trigger('hover:enter');
+            }, 300);
+        })();
+        return true;
+    }
+
     function start() {
         try { addSettings(); } catch (e) { log('настройки', e.message); }
         try { Lampa.Listener.follow('activity', onActivity); } catch (e) {}
@@ -197,5 +296,6 @@ var BSSources = (function () {
     }
 
     return { start: start, owner: owner, mainId: mainId, isMain: isMain, pick: pick, list: LIST, useMain: useMain,
+        startSearch: startSearch, giveUp: giveUp, order: order, _search: function () { return search; }, _candidates: candidates, _looksOnline: looksOnline,
         _swapTo: swapTo, _compOwner: compOwner, _onActivity: onActivity, _loadAll: loadAll };
 })();

@@ -272,6 +272,29 @@ var BSFix = (function () {
                 catch (e) { linkAdd('проверка источников упала: ' + (e && e.message)); }
             };
         }
+        /* Поиск по всем источникам (bssources.js): экран сдался — нет доступа (Skaz без CUB), нет фильма, балансеры не
+         * отвечают — после паузы просим следующий источник. Пауза — чтобы плагин успел сам перейти на свой следующий
+         * балансер: любой новый шаг плагина (отрисовка, новая ошибка) отменяет нашу просьбу. */
+        var surrender = function (self, why, delay) {
+            var stamp = self.__bsStep = (self.__bsStep || 0) + 1;
+            setTimeout(function () {
+                if (self.__bsStep !== stamp || !onScreen(self) || playerOpen() || self.__bsItems > 0) return;
+                var comp = '';
+                try { comp = Lampa.Activity.active().component; } catch (e) {}
+                try { if (window.BSSources && BSSources.giveUp) BSSources.giveUp(comp, why); } catch (e) { log('поиск', e.message); }
+            }, delay);
+        };
+        ['noConnectToServer', 'doesNotAnswer', 'empty'].forEach(function (m) {
+            if (typeof c[m] !== 'function') return;
+            var orig = c[m];
+            c[m] = function (er) {
+                var r = orig.apply(this, arguments);
+                this.__bsItems = 0;
+                var denied = m === 'noConnectToServer' || !!(er && (er.accsdb || er.blocked));
+                surrender(this, denied ? 'denied' : m === 'empty' ? 'empty' : 'noanswer', denied ? 2500 : m === 'empty' ? 9000 : 16000);
+                return r;
+            };
+        });
         if (typeof c.destroy === 'function') {
             var destroy = c.destroy;
             c.destroy = function () {
@@ -300,6 +323,9 @@ var BSFix = (function () {
             var draw = c.uiDraw;
             c.uiDraw = function (items, params) {
                 var r = draw.apply(this, arguments);
+                // список нарисован — источник не сдался (поиск по источникам ждёт; новая отрисовка отменяет просьбу)
+                this.__bsStep = (this.__bsStep || 0) + 1;
+                this.__bsItems = (items || []).filter(function (it) { return it && !(it.method === 'link' && it.similar); }).length;
                 try { autoPick(items, params, this); } catch (e) { log('autoPick', e.message); }
                 try { if (window.BSContinue) BSContinue.onDraw(items, params, this); } catch (e) { log('resume', e.message); }
                 return r;

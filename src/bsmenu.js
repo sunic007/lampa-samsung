@@ -401,6 +401,7 @@ var BSMenu = (function () {
         try { var P = Lampa.Account && Lampa.Account.Permit; if (P && 'access' in P) return !!P.access; } catch (e) {}
         try { return !!Lampa.Storage.get('account_email', ''); } catch (e) { return true; }
     }
+    function cardId() { try { var a = Lampa.Activity.active(); return (a.card || a.movie || {}).id || 0; } catch (e) { return 0; } }
     function needCubChoice() {
         return lsGet('bs_cub_choice') !== 'done' && !cubLogged() && (!window.BSSources || BSSources.mainId() === 'skaz');
     }
@@ -452,8 +453,13 @@ var BSMenu = (function () {
             if (playLabel.length) playLabel.text('Источники');
             play.removeClass('hide');
             clon.on('hover:enter', function () {
-                if (needCubChoice()) return cubChoice(function () { src.trigger('hover:enter'); });
-                src.trigger('hover:enter');
+                var go = function () {
+                    // поиск по всем источникам: этот не нашёл — следующий (bssources.js giveUp)
+                    try { if (window.BSSources && BSSources.startSearch) BSSources.startSearch(((e.data || {}).movie || {}).id || cardId(), BSSources.owner(src)); } catch (err) {}
+                    src.trigger('hover:enter');
+                };
+                if (needCubChoice()) return cubChoice(go);
+                go();
             })
                 .on('hover:focus', function () { try { e.link.items[0].last = clon[0]; } catch (err) {} });
             cont.prepend(clon);

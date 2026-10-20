@@ -1771,8 +1771,9 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('источники: кнопки узнаются по признакам', S.owner(skaz) === 'skaz' && S.owner(z01) === 'z01' && S.owner(ark) === 'arkmv' &&
         S.owner(mod) === 'online_mod' && S.owner(showy) === 'showy' && S.owner(shots) === '');
     t('источники: по умолчанию главный — Skaz', S.mainId() === 'skaz' && S.isMain(skaz) && !S.isMain(z01) && !S.isMain(ark));
-    store.bs_src_main = 'z01';
-    t('источники: выбран, но не включён — главный остаётся Skaz', S.mainId() === 'skaz' && S.isMain(skaz));
+    store.bs_src_main = 'z01'; store.bs_src_z01 = 'false';
+    t('источники: выбран, но выключен — главный остаётся Skaz', S.mainId() === 'skaz' && S.isMain(skaz));
+    delete store.bs_src_z01;
     store.bs_src_z01 = 'true';
     t('источники: выбран и включён — «Смотреть» открывает его, не Skaz', S.mainId() === 'z01' && S.isMain(z01) && !S.isMain(skaz));
     store.bs_src_main = 'vod_llpp'; store.bs_src_vod_llpp = 'true';
@@ -1817,14 +1818,43 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     r = mk({ bs_src_online_mod: 'true', bs_src_vod_llpp: 'true', bs_src_showy: 'true' });
     r.S._loadAll();
     t('подключение: из группы Online Mod — только один плагин', r.loaded.filter(u => /online_mod\.js|llpp\.in/.test(u)).length === 1);
-    t('подключение: выключенные не грузятся, включённые грузятся', r.loaded.indexOf('http://showy.online/m.js') >= 0 && r.loaded.indexOf('http://z01.online/live') < 0);
+    t('подключение: включённые грузятся, выключенные (arkmv) — нет', r.loaded.indexOf('http://showy.online/m.js') >= 0 && r.loaded.indexOf('http://arkmv.ru/vod') < 0);
     t('подключение: Клубничку сами не грузим — решает переключатель Skaz', !r.loaded.some(u => /sisi\.js/.test(u)));
     r = mk({});
     r.S._loadAll();
-    t('подключение: по умолчанию ничего не грузим', r.loaded.length === 0);
-    r = mk({ bs_src_z01: 'true' }, [{ url: 'http://z01.online/live' }]);
+    t('подключение: по умолчанию — бесплатные Z01 и Online Mod (поиск по всем источникам)', r.loaded.join() === 'http://z01.online/live,http://nb557.github.io/plugins/online_mod.js');
+    r = mk({ bs_src_z01: 'true', bs_src_online_mod: 'false' }, [{ url: 'http://z01.online/live' }]);
     r.S._loadAll();
     t('подключение: плагин уже добавлен вручную — второй раз не грузим', r.loaded.length === 0);
+    // поиск по всем источникам: «Смотреть» начинает с главного, сдавшийся источник — следующий включённый
+    let s1 = mk({});
+    t('поиск: порядок по умолчанию — Skaz, Z01, Online Mod', s1.S.order().join() === 'skaz,z01,online_mod');
+    t('поиск: главный Z01 — с него, потом Skaz', mk({ bs_src_main: 'z01' }).S.order().join() === 'z01,skaz,online_mod');
+    t('поиск: без «Смотреть» — сдавшийся источник ничего не переключает', s1.S.giveUp('lampacskaz', 'denied') === false);
+}
+/* ---- bssources.js: поиск по всем источникам (giveUp) ---- */
+{
+    const store = {}, notes = [], acts = [];
+    const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+    const Lampa = { Storage: { get: (k, d) => (d === undefined ? '' : d), set() {} }, Utils: { putScriptAsync() {} }, Noty: { show: t2 => notes.push(t2) },
+        Listener: { follow() {} }, Plugins: { get: () => [] },
+        Activity: { active: () => ({ component: 'lampacskaz', movie: { id: 5 } }), backward: () => acts.push('back') } };
+    const ctx = { window: { localStorage: ls }, Lampa, $: { trim: x => String(x).trim() }, console: { log() {} }, setTimeout: () => 0, JSON, String, Object, Array, Date };
+    ctx.window.window = ctx.window; vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync(path.join(SRC, 'bssources.js'), 'utf8') + ';this.M=BSSources;', ctx);
+    const S = ctx.M;
+    S.startSearch(5, 'skaz');
+    t('поиск: Skaz без доступа — назад на карточку, ищем дальше', S.giveUp('lampacskaz', 'denied') === true && acts.join() === 'back' && /В «Skaz» нет доступа — ищу в других источниках/.test(notes[0]));
+    t('поиск: Skaz записан как пробованный', S._search().tried.join() === 'skaz');
+    S.startSearch(7, 'skaz');
+    t('поиск: на экране другого фильма — не трогаем', S.giveUp('lampacskaz', 'empty') === false);
+    // кнопки карточки: известные — по порядку поиска, свои плагины человека — за ними; не источники — мимо
+    const b = (cls, subtitle, text) => ({ hasClass: c => cls.split(' ').indexOf(c) >= 0, attr: () => subtitle, data: () => subtitle, text: () => text || '' });
+    const btns = [b('view--torrent', '', 'Торренты'), b('view--online lampac--button', 'Мой Lampac 2.0', 'Онлайн'), b('view--online', 'Смотреть нарезки', 'Shots'),
+        b('view--online lampac--button', 'Z01 2.1', 'Онлайн'), b('view--online lampac--button', 'Онлайн by Skaz', 'Онлайн'), b('view--trailer', '', 'Трейлеры'),
+        b('view--online view--online_mod', 'Online Mod', 'Онлайн'), b('selector', 'Свой источник', 'Online')];
+    t('поиск: порядок кнопок — Skaz, Z01, Online Mod, потом свои (Мой Lampac, Свой источник); торренты, Shots, трейлеры — мимо',
+        S._candidates(btns).map(c => c.key).join() === 'skaz,z01,online_mod,x:Мой Lampac 2.0,x:Свой источник');
 }
 /* ---- update.js: запасные зеркала CDN ---- */
 {
