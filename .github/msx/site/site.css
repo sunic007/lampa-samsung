@@ -1,42 +1,100 @@
-  :root { --bg:#0e1117; --card:#161b24; --line:#262d3a; --text:#eef1f6; --muted:#98a2b3; --accent:#4d94ff; --btn:#2563eb; --ok:#3ccf91; --warn:#f5b84a; --bad:#ff6b6b; }
-  @media (prefers-color-scheme: light) { :root { --bg:#f5f7fa; --card:#fff; --line:#e3e7ee; --text:#151a23; --muted:#5d6676; --accent:#1f6fe5; --btn:#1d5fd1; --ok:#139a63; --warn:#b97a06; --bad:#d33; } }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-  main { max-width:880px; margin:0 auto; padding:16px 16px 48px; }
-  a { color:var(--accent); }
-  header { display:flex; align-items:center; gap:12px; padding:8px 0 4px; }
-  header img { width:44px; height:44px; border-radius:10px; }
-  header b { font-size:18px; } header .sp { flex:1; }
-  .lang button { background:none; border:1px solid var(--line); color:var(--muted); border-radius:8px; padding:3px 9px; cursor:pointer; font:inherit; font-size:13px; }
-  .lang button.on { color:var(--text); border-color:var(--accent); }
-  .status { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:13px; color:var(--muted); margin:6px 0 18px; min-height:44px; }
-  @media (max-width: 600px) { .status { min-height:86px; } }
-  .status span::before { content:''; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; background:var(--muted); }
-  .status .ok::before { background:var(--ok); } .status .slow::before { background:var(--warn); } .status .bad::before { background:var(--bad); }
-  h1 { font-size:30px; line-height:1.2; margin:8px 0 8px; } .sub { color:var(--muted); margin:0 0 18px; font-size:17px; }
-  .cta { display:inline-block; background:var(--btn); color:#fff; text-decoration:none; padding:13px 22px; border-radius:12px; font-weight:600; font-size:17px; }
-  .cta.alt { background:none; color:var(--accent); border:1px solid var(--accent); margin-left:8px; }
-  .tabs { display:flex; flex-wrap:wrap; gap:8px; margin:28px 0 12px; }
-  .tabs button { flex:1 1 180px; background:var(--card); border:1px solid var(--line); color:var(--text); padding:12px; border-radius:12px; cursor:pointer; font:inherit; text-align:left; }
-  .tabs button small { display:block; color:var(--muted); font-size:13px; }
-  .tabs button.on { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:16px; }
-  .card h2 { font-size:20px; margin:0 0 10px; } .card ol { margin:0; padding-left:22px; } .card li { margin:6px 0; }
-  code, .copy { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:2px 8px; font:15px ui-monospace,Consolas,monospace; }
-  .copyrow { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0; }
-  .copyrow button { background:var(--btn); color:#fff; border:0; border-radius:8px; padding:6px 12px; cursor:pointer; font:inherit; font-size:14px; }
-  .row { display:flex; gap:18px; align-items:center; flex-wrap:wrap; } .row > * { flex:1 1 240px; }
-  .qr { flex:0 0 150px; text-align:center; font-size:13px; color:var(--muted); } .qr img { width:150px; height:150px; border-radius:10px; background:#fff; padding:6px; }
-  /* главная видна, когда site.js расставил язык и вкладку (без сдвига); без JS — nojs.css */
-  html:not(.ready) main { visibility:hidden; animation:bs-show 0s 2s forwards; }   /* site.js не пришёл — всё равно через 2 с */
-  @keyframes bs-show { to { visibility:visible; } }
-  video { height:auto; width:100%; max-width:300px; border-radius:14px; display:block; margin:0 auto; background:#000; }
-  .trust { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; }
-  .trust div { background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:12px; font-size:14px; color:var(--muted); }
-  .trust b { display:block; color:var(--text); font-size:15px; }
-  details { border-top:1px solid var(--line); padding:10px 0; } details:first-of-type { border-top:0; }
-  summary { cursor:pointer; font-weight:600; } details p { margin:8px 0 0; color:var(--muted); }
-  .muted { color:var(--muted); font-size:14px; } footer { color:var(--muted); font-size:14px; text-align:center; margin-top:28px; }
-  [data-pane] { display:none; } [data-pane].on { display:block; }
-  .cta.alt.solo { margin-left:0; }
-  #news { margin-top:12px; }
+:root { --bg:#0b0e14; --bg2:#10141d; --card:#151a24; --line:#232a37; --text:#eef1f6; --muted:#9aa4b5; --accent:#5b9dff; --btn:#2563eb; --btn2:#7c3aed; --ok:#3ccf91; --warn:#f5b84a; --bad:#ff6b6b; }
+@media (prefers-color-scheme: light) { :root { --bg:#f6f8fb; --bg2:#eef2f8; --card:#fff; --line:#e1e6ee; --text:#121722; --muted:#566072; --accent:#1f6fe5; --btn:#1d5fd1; --btn2:#6d28d9; --ok:#139a63; --warn:#b97a06; --bad:#d33; } }
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+a { color:var(--accent); }
+.wrap { max-width:1080px; margin:0 auto; padding:0 16px; }
+
+/* шапка */
+.top { position:sticky; top:0; z-index:5; background:color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+.top-in { display:flex; align-items:center; gap:18px; height:60px; }
+.brand { display:flex; align-items:center; gap:10px; color:var(--text); text-decoration:none; font-size:17px; }
+.brand img { border-radius:9px; }
+.nav { display:flex; gap:18px; flex:1; } .nav a { color:var(--muted); text-decoration:none; font-size:15px; } .nav a:hover { color:var(--text); }
+@media (max-width: 720px) { .nav { display:none; } .top-in { justify-content:space-between; } }
+.lang { display:flex; gap:4px; }
+.lang button { background:none; border:1px solid var(--line); color:var(--muted); border-radius:8px; padding:4px 9px; cursor:pointer; font:inherit; font-size:13px; min-width:40px; min-height:32px; }
+.lang button.on { color:var(--text); border-color:var(--accent); }
+
+/* первый экран */
+.hero { background:radial-gradient(1100px 520px at 75% -10%, color-mix(in srgb, var(--btn2) 30%, transparent), transparent 65%), radial-gradient(900px 500px at 0% 0%, color-mix(in srgb, var(--btn) 26%, transparent), transparent 60%); padding:56px 0 18px; }
+.hero-in { display:grid; grid-template-columns:1.05fr 1fr; gap:36px; align-items:center; }
+@media (max-width: 860px) { .hero-in { grid-template-columns:1fr; } .hero { padding-top:32px; } }
+.eyebrow { display:inline-block; margin:0 0 14px; padding:5px 12px; border:1px solid var(--line); border-radius:999px; font-size:13px; color:var(--muted); background:var(--card); }
+h1 { font-size:clamp(32px, 5vw, 52px); line-height:1.08; margin:0 0 16px; letter-spacing:-.02em; }
+.sub { color:var(--muted); margin:0 0 24px; font-size:18px; max-width:560px; }
+.cta-row { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 16px; }
+.cta { display:inline-block; background:var(--btn); color:#fff; text-decoration:none; padding:12px 20px; border-radius:12px; font-weight:600; font-size:16px; }
+.cta.big { padding:15px 24px; font-size:17px; background:linear-gradient(135deg, var(--btn), var(--btn2)); box-shadow:0 10px 30px -10px color-mix(in srgb, var(--btn) 70%, transparent); }
+.cta.alt, .cta.alt.big { background:none; color:var(--text); border:1px solid var(--line); box-shadow:none; }
+.cta:hover { filter:brightness(1.08); }
+.platforms-line { color:var(--muted); font-size:14px; margin:0; }
+
+/* рисунок: ТВ и телефон (абстрактные плитки, без постеров) */
+.hero-art { position:relative; height:330px; }
+.tv { position:absolute; left:0; right:40px; top:10px; }
+.tv-screen { aspect-ratio:16/9; background:#0d1118; border:10px solid #1c2230; border-radius:14px; padding:14px; box-shadow:0 30px 60px -25px #000; position:relative; overflow:hidden; }
+.tv-stand { width:30%; height:10px; margin:0 auto; background:#1c2230; border-radius:0 0 8px 8px; }
+.ui-bar { display:flex; gap:6px; margin-bottom:10px; } .ui-bar span { height:7px; width:16%; border-radius:4px; background:#273044; } .ui-bar span:first-child { width:24%; background:#3a4560; }
+.ui-row { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:8px; }
+.ui-row i { display:block; aspect-ratio:2/3; border-radius:7px; }
+.c1 { background:linear-gradient(160deg,#ff7a59,#b8325e); } .c2 { background:linear-gradient(160deg,#4fd1c5,#2b6cb0); } .c3 { background:linear-gradient(160deg,#f6e05e,#dd6b20); } .c4 { background:linear-gradient(160deg,#9f7aea,#553c9a); }
+.c5 { background:linear-gradient(160deg,#68d391,#2f855a); } .c6 { background:linear-gradient(160deg,#63b3ed,#3c366b); } .c7 { background:linear-gradient(160deg,#fc8181,#9b2c2c); } .c8 { background:linear-gradient(160deg,#f687b3,#702459); }
+.ui-next { position:absolute; left:14px; bottom:14px; background:rgba(10,12,18,.85); color:#fff; font-size:12px; padding:6px 10px; border-radius:8px; border:1px solid #3a4560; }
+.phone { position:absolute; right:0; bottom:0; width:150px; height:260px; background:#1c2230; border-radius:24px; padding:8px; box-shadow:0 25px 50px -20px #000; }
+.phone-screen { height:100%; background:#17212b; border-radius:18px; padding:14px 10px; display:flex; flex-direction:column; justify-content:flex-end; gap:8px; }
+.bubble { font-size:12px; padding:7px 10px; border-radius:12px; max-width:90%; color:#fff; }
+.bubble.me { align-self:flex-end; background:#2b5278; } .bubble.bot { background:#232e3c; }
+.bubble.bot b { display:block; margin-bottom:6px; } .bubble .btn { display:block; text-align:center; background:#2b5278; border-radius:8px; padding:5px 6px; }
+@media (max-width: 860px) { .hero-art { height:260px; max-width:440px; } .phone { width:120px; height:210px; } }
+
+.status { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:13px; color:var(--muted); margin:28px 0 0; min-height:44px; }
+@media (max-width: 600px) { .status { min-height:86px; } }
+.status span::before { content:''; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; background:var(--muted); }
+.status .ok::before { background:var(--ok); } .status .slow::before { background:var(--warn); } .status .bad::before { background:var(--bad); }
+
+/* блоки */
+.block { padding-top:64px; }
+.h2 { font-size:clamp(24px, 3.4vw, 34px); line-height:1.2; margin:0 0 22px; letter-spacing:-.01em; }
+.h3 { font-size:20px; margin:0 0 10px; }
+.grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+@media (max-width: 860px) { .grid { grid-template-columns:repeat(2,1fr); } } @media (max-width: 560px) { .grid { grid-template-columns:1fr; } }
+.feat { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; }
+.feat .ico { display:inline-flex; width:44px; height:44px; align-items:center; justify-content:center; font-size:22px; border-radius:12px; background:var(--bg2); margin-bottom:10px; }
+.feat h3 { margin:0 0 6px; font-size:18px; } .feat p { margin:0; color:var(--muted); font-size:15px; }
+.steps { list-style:none; padding:0; margin:0 0 18px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+@media (max-width: 760px) { .steps { grid-template-columns:1fr; } }
+.steps li { display:flex; gap:12px; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
+.steps b { flex:0 0 34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg, var(--btn), var(--btn2)); color:#fff; }
+.tabs { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 12px; }
+.tabs button { flex:1 1 200px; background:var(--card); border:1px solid var(--line); color:var(--text); padding:12px 14px; border-radius:12px; cursor:pointer; font:inherit; text-align:left; }
+.tabs button small { display:block; color:var(--muted); font-size:13px; }
+.tabs button.on { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; margin-bottom:16px; }
+.card ol { margin:0; padding-left:22px; } .card li { margin:6px 0; }
+code, .copy { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:2px 8px; font:15px ui-monospace,Consolas,monospace; }
+.copyrow { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0; }
+.copyrow button { background:var(--btn); color:#fff; border:0; border-radius:8px; padding:6px 12px; cursor:pointer; font:inherit; font-size:14px; }
+.row { display:flex; gap:18px; align-items:center; flex-wrap:wrap; } .row > * { flex:1 1 240px; }
+.qr { flex:0 0 150px; text-align:center; font-size:13px; color:var(--muted); } .qr img { width:150px; height:150px; border-radius:10px; background:#fff; padding:6px; }
+video { height:auto; width:100%; max-width:300px; border-radius:14px; display:block; margin:12px auto 0; background:#000; }
+[data-pane] { display:none; } [data-pane].on { display:block; }
+.cta.alt.solo { margin-left:0; }
+.plats { display:flex; flex-wrap:wrap; gap:10px; }
+.plats span { background:var(--card); border:1px solid var(--line); border-radius:999px; padding:9px 16px; font-weight:600; }
+.trust { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
+.trust div { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; font-size:14px; color:var(--muted); }
+.trust b { display:block; color:var(--text); font-size:16px; }
+#news { margin-top:12px; }
+.faq { padding:6px 20px; }
+details { border-top:1px solid var(--line); padding:12px 0; } details:first-of-type { border-top:0; }
+summary { cursor:pointer; font-weight:600; } details p { margin:8px 0 0; color:var(--muted); }
+.final { text-align:center; padding-bottom:20px; }
+.final .sub { margin:0 auto 22px; } .final .cta-row { justify-content:center; }
+.muted { color:var(--muted); font-size:14px; }
+.foot { color:var(--muted); font-size:14px; text-align:center; padding:36px 16px 40px; border-top:1px solid var(--line); margin-top:56px; }
+
+/* главная видна, когда site.js расставил язык и вкладку (без сдвига); без JS — nojs.css */
+html:not(.ready) main { visibility:hidden; animation:bs-show 0s 2s forwards; }   /* site.js не пришёл — всё равно через 2 с */
+@keyframes bs-show { to { visibility:visible; } }

@@ -4,81 +4,133 @@
 <meta charset="utf-8">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sunic Apps — Lampa на любом ТВ, телефоне и в браузере</title>
-<meta name="description" content="Lampa с функциями Sunic Apps на любом Smart TV (Samsung, LG, Android TV — через Media Station X), на Android и в браузере. Бесплатно, без регистрации, открытый код.">
+<title>Sunic Apps — фильмы и сериалы на любом телевизоре</title>
+<meta name="description" content="Бесплатная Lampa с функциями Sunic Apps: следующая серия сама, поиск во всех источниках, управление из Telegram. Samsung, LG, Android TV, телефон и браузер. Без регистрации.">
+<meta property="og:title" content="Sunic Apps — фильмы и сериалы на любом телевизоре">
+<meta property="og:description" content="Бесплатно, без регистрации. Samsung, LG, Android TV, телефон и браузер.">
+<meta property="og:image" content="https://sunic.stream/media/logo-88.png">
 <link rel="icon" type="image/png" href="/media/favicon-32.png">
 <link rel="stylesheet" href="/site.css">
 <link rel="preload" href="/site.js" as="script">
 <noscript><link rel="stylesheet" href="/nojs.css"></noscript>
 </head>
 <body>
-<main>
-  <header>
-    <img src="/media/logo-88.png" alt="Sunic Apps" width="44" height="44">
-    <b>Sunic Apps</b><span class="sp"></span>
-    <span class="lang"><button data-lang="ru">RU</button> <button data-lang="en">EN</button> <button data-lang="uz">UZ</button></span>
-  </header>
-  <div class="status" id="status" aria-live="polite"></div>
-
-  <h1 data-t="h1">Lampa на любом телевизоре, телефоне и компьютере</h1>
-  <p class="sub" data-t="sub">Фильмы и сериалы на Samsung, LG, Android TV, телефоне и в браузере: сама включает следующую серию и сезон, ищет фильм во всех источниках, управляется из Telegram. Бесплатно и без регистрации.</p>
-  <p><a class="cta" id="cta" href="#tv" data-t="cta_tv">Как поставить на ТВ</a><a class="cta alt" href="/lampa/" data-t="cta_web">Открыть в браузере</a></p>
-
-  <div class="tabs" role="tablist">
-    <button role="tab" aria-selected="true" class="on" data-tab="tv"><span data-t="tab_tv">📺 Любой Smart TV</span><small data-t="tab_tv_s">Samsung, LG, Android TV — Media Station X</small></button>
-    <button role="tab" aria-selected="false" data-tab="phone"><span data-t="tab_phone">📱 Приложение на Samsung</span><small data-t="tab_phone_s">с телефона — TV Installer</small></button>
-    <button role="tab" aria-selected="false" data-tab="android"><span data-t="tab_android">🤖 Android ТВ / приставка</span><small data-t="tab_android_s">плагин для Lampa</small></button>
-    <button role="tab" aria-selected="false" data-tab="web"><span data-t="tab_web">💻 В браузере</span><small data-t="tab_web_s">компьютер или телефон</small></button>
+<header class="top">
+  <div class="wrap top-in">
+    <a class="brand" href="#"><img src="/media/logo-88.png" alt="" width="36" height="36"><b>Sunic Apps</b></a>
+    <nav class="nav"><a href="#features" data-t="nav_f">Возможности</a><a href="#start" data-t="nav_s">Как начать</a><a href="#faq" data-t="nav_q">Вопросы</a></nav>
+    <span class="lang"><button data-lang="ru">RU</button><button data-lang="en">EN</button><button data-lang="uz">UZ</button></span>
   </div>
-
-  <section class="card on" role="tabpanel" data-pane="tv" id="tv">
-    <h2 data-t="tv_h">Любой Smart TV — Media Station X</h2>
-    <ol>
-      <li data-t="tv_1">Установите <b>Media Station X</b> из магазина приложений телевизора — есть на Samsung, LG, Android TV и других.</li>
-      <li data-t="tv_2">Откройте её: <b>Settings → Start Parameter → Setup</b>.</li>
-      <li><span data-t="tv_3">Введите адрес и подтвердите:</span> <code>sunic.stream</code></li>
-      <li data-t="tv_4">Готово: при каждом открытии Media Station X сразу запускается Lampa с функциями Sunic Apps.</li>
-    </ol>
-    <p class="muted" data-t="tv_note">Режим разработчика и компьютер не нужны. Источники Skaz работают после входа в CUB (Настройки → Аккаунт); без входа — Online Mod и Z01.</p>
-  </section>
-
-  <section class="card" role="tabpanel" data-pane="phone">
-    <h2 data-t="ph_h">Samsung: своё приложение на ТВ — TV Installer</h2>
-    <div class="row">
-      <div>
-        <ol>
-          <li data-t="ph_1">Скачайте TV Installer на Android-телефон (QR-код или кнопка ниже).</li>
-          <li data-t="ph_2">Телефон и телевизор — в одной сети Wi-Fi; на ТВ один раз включите режим разработчика (TV Installer подскажет).</li>
-          <li data-t="ph_3">Выберите Lampa — через пару минут она на телевизоре. Это самая полная версия: громкость ТВ, панель Smart Hub, «Сон» выключает приложение.</li>
-        </ol>
-        <p><a class="cta" href="https://sunic007.github.io/tvinstaller/" data-t="ph_btn">Скачать TV Installer</a></p>
+</header>
+<main>
+  <section class="hero">
+    <div class="wrap hero-in">
+      <div class="hero-text">
+        <p class="eyebrow" data-t="eyebrow">Бесплатно · без регистрации · без рекламы от нас</p>
+        <h1 data-t="h1">Все фильмы и сериалы — на&nbsp;вашем телевизоре</h1>
+        <p class="sub" data-t="sub">Lampa с функциями Sunic Apps: включает следующую серию сама, находит фильм во всех источниках, а искать можно с телефона в Telegram.</p>
+        <p class="cta-row"><a class="cta big" id="cta" href="#start" data-t="cta_start">Начать за 2 минуты</a><a class="cta alt big" href="/lampa/" data-t="cta_web">Открыть в браузере</a></p>
+        <p class="platforms-line" data-t="pl_line">Samsung · LG · Android TV · телефон · компьютер</p>
       </div>
-      <div class="qr"><img src="/media/qr-tvinstaller.png" alt="QR TV Installer" width="150" height="150"><br><span data-t="ph_qr">Наведите камеру телефона</span></div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="tv"><div class="tv-screen">
+          <div class="ui-bar"><span></span><span></span><span></span></div>
+          <div class="ui-row"><i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i></div>
+          <div class="ui-row"><i class="c5"></i><i class="c6"></i><i class="c7"></i><i class="c8"></i></div>
+          <div class="ui-next" data-t="art_next">Следующая серия через 5</div>
+        </div><div class="tv-stand"></div></div>
+        <div class="phone"><div class="phone-screen">
+          <div class="bubble me" data-t="art_q">Дюна</div>
+          <div class="bubble bot"><b data-t="art_found">Нашёл ✓</b><span class="btn" data-t="art_play">▶ Смотреть на ТВ</span></div>
+        </div></div>
+      </div>
     </div>
-    <video controls preload="none" playsinline poster="/media/tvinstaller-300.jpg" width="300" height="533" src="/media/tvinstaller.mp4"></video>
+    <div class="wrap"><div class="status" id="status" aria-live="polite"></div></div>
   </section>
 
-  <section class="card" role="tabpanel" data-pane="android">
-    <h2 data-t="an_h">Android ТВ, приставка или телефон — плагин для Lampa</h2>
-    <ol>
-      <li data-t="an_1">Откройте Lampa (Lampa BS или другую сборку) → Настройки → Расширения → Добавить плагин.</li>
-      <li><span data-t="an_2">Вставьте адрес:</span>
-        <div class="copyrow"><span class="copy" id="plug">https://sunic.stream/sunic.js</span><button data-copy="plug" data-t="copy">Скопировать</button></div></li>
-      <li data-t="an_3">Перезапустите Lampa — появится раздел «Sunic Apps».</li>
+  <section class="wrap block" id="features">
+    <h2 class="h2" data-t="f_h">Что умеет Sunic Apps</h2>
+    <div class="grid">
+      <div class="feat"><span class="ico">⏭️</span><h3 data-t="f1">Следующая серия — сама</h3><p data-t="f1d">Досмотрели — включится следующая серия, а после сезона — новый сезон.</p></div>
+      <div class="feat"><span class="ico">🔎</span><h3 data-t="f2">Ищет во всех источниках</h3><p data-t="f2d">Нет фильма в одном источнике — сам найдёт в другом, даже в добавленных вами.</p></div>
+      <div class="feat"><span class="ico">📱</span><h3 data-t="f3">Телефон вместо пульта</h3><p data-t="f3d">Нашли фильм в Telegram-боте — нажали «Смотреть», и он уже на телевизоре.</p></div>
+      <div class="feat"><span class="ico">⏯️</span><h3 data-t="f4">С того же места</h3><p data-t="f4d">Продолжит там, где остановились, с той же озвучкой.</p></div>
+      <div class="feat"><span class="ico">🛡️</span><h3 data-t="f5">Не зависает</h3><p data-t="f5d">Видео встало — само перезапустится, сменит качество или источник.</p></div>
+      <div class="feat"><span class="ico">🌙</span><h3 data-t="f6">Удобно вечером</h3><p data-t="f6d">«Вы ещё смотрите?», сон после серии, ночью не громче.</p></div>
+    </div>
+  </section>
+
+  <section class="wrap block" id="start">
+    <h2 class="h2" data-t="s_h">Как начать — 3 шага</h2>
+    <ol class="steps">
+      <li><b>1</b><span data-t="s1">Выберите своё устройство ниже</span></li>
+      <li><b>2</b><span data-t="s2">Введите адрес или поставьте приложение</span></li>
+      <li><b>3</b><span data-t="s3">Смотрите — всё остальное Sunic Apps сделает сам</span></li>
     </ol>
+
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" class="on" data-tab="tv"><span data-t="tab_tv">📺 Любой Smart TV</span><small data-t="tab_tv_s">Samsung, LG, Android TV — Media Station X</small></button>
+      <button role="tab" aria-selected="false" data-tab="phone"><span data-t="tab_phone">📱 Приложение на Samsung</span><small data-t="tab_phone_s">с телефона — TV Installer</small></button>
+      <button role="tab" aria-selected="false" data-tab="android"><span data-t="tab_android">🤖 Android ТВ / приставка</span><small data-t="tab_android_s">плагин для Lampa</small></button>
+      <button role="tab" aria-selected="false" data-tab="web"><span data-t="tab_web">💻 В браузере</span><small data-t="tab_web_s">компьютер или телефон</small></button>
+    </div>
+
+    <section class="card on" role="tabpanel" data-pane="tv" id="tv">
+      <h3 class="h3" data-t="tv_h">Любой Smart TV — Media Station X</h3>
+      <ol>
+        <li data-t="tv_1">Установите <b>Media Station X</b> из магазина приложений телевизора — есть на Samsung, LG, Android TV и других.</li>
+        <li data-t="tv_2">Откройте её: <b>Settings → Start Parameter → Setup</b>.</li>
+        <li><span data-t="tv_3">Введите адрес и подтвердите:</span> <code>sunic.stream</code></li>
+        <li data-t="tv_4">Готово: при каждом открытии Media Station X сразу запускается Lampa с функциями Sunic Apps.</li>
+      </ol>
+      <p class="muted" data-t="tv_note">Режим разработчика и компьютер не нужны. Источники Skaz работают после входа в CUB (Настройки → Аккаунт); без входа — Online Mod и Z01.</p>
+    </section>
+
+    <section class="card" role="tabpanel" data-pane="phone">
+      <h3 class="h3" data-t="ph_h">Samsung: своё приложение на ТВ — TV Installer</h3>
+      <div class="row">
+        <div>
+          <ol>
+            <li data-t="ph_1">Скачайте TV Installer на Android-телефон (QR-код или кнопка ниже).</li>
+            <li data-t="ph_2">Телефон и телевизор — в одной сети Wi-Fi; на ТВ один раз включите режим разработчика (TV Installer подскажет).</li>
+            <li data-t="ph_3">Выберите Lampa — через пару минут она на телевизоре. Это самая полная версия: громкость ТВ, панель Smart Hub, «Сон» выключает приложение.</li>
+          </ol>
+          <p><a class="cta" href="https://sunic007.github.io/tvinstaller/" data-t="ph_btn">Скачать TV Installer</a></p>
+        </div>
+        <div class="qr"><img src="/media/qr-tvinstaller.png" alt="QR TV Installer" width="150" height="150"><br><span data-t="ph_qr">Наведите камеру телефона</span></div>
+      </div>
+      <video controls preload="none" playsinline poster="/media/tvinstaller-300.jpg" width="300" height="533" src="/media/tvinstaller.mp4"></video>
+    </section>
+
+    <section class="card" role="tabpanel" data-pane="android">
+      <h3 class="h3" data-t="an_h">Android ТВ, приставка или телефон — плагин для Lampa</h3>
+      <ol>
+        <li data-t="an_1">Откройте Lampa (Lampa BS или другую сборку) → Настройки → Расширения → Добавить плагин.</li>
+        <li><span data-t="an_2">Вставьте адрес:</span>
+          <div class="copyrow"><span class="copy" id="plug">https://sunic.stream/sunic.js</span><button data-copy="plug" data-t="copy">Скопировать</button></div></li>
+        <li data-t="an_3">Перезапустите Lampa — появится раздел «Sunic Apps».</li>
+      </ol>
+    </section>
+
+    <section class="card" role="tabpanel" data-pane="web">
+      <h3 class="h3" data-t="web_h">В браузере</h3>
+      <p data-t="web_p">Lampa открывается прямо на этом сайте — на компьютере или телефоне.</p>
+      <p><a class="cta" href="/lampa/" data-t="cta_web">Открыть в браузере</a></p>
+      <p><a class="cta alt solo" href="/lampa/?http=1" data-t="web_http_btn">Открыть по http — со Skaz</a></p>
+      <p class="muted" data-t="web_http_note">⚠️ На свой риск: соединение без защиты (http) — браузер предупредит, что сайт «не защищён». Нужно только ради источников Skaz; паролей и данных карт там не вводите. Настройки и история у http и https — отдельные.</p>
+      <p class="muted" data-t="web_note">По защищённому соединению (https) работают источники Online Mod и Z01; Skaz — на ТВ, в Media Station X или по http (кнопка выше): его серверы https не поддерживают.</p>
+    </section>
   </section>
 
-  <section class="card" role="tabpanel" data-pane="web">
-    <h2 data-t="web_h">В браузере</h2>
-    <p data-t="web_p">Lampa открывается прямо на этом сайте — на компьютере или телефоне.</p>
-    <p><a class="cta" href="/lampa/" data-t="cta_web">Открыть в браузере</a></p>
-    <p><a class="cta alt solo" href="/lampa/?http=1" data-t="web_http_btn">Открыть по http — со Skaz</a></p>
-    <p class="muted" data-t="web_http_note">⚠️ На свой риск: соединение без защиты (http) — браузер предупредит, что сайт «не защищён». Нужно только ради источников Skaz; паролей и данных карт там не вводите. Настройки и история у http и https — отдельные.</p>
-    <p class="muted" data-t="web_note">По защищённому соединению (https) работают источники Online Mod и Z01; Skaz — на ТВ, в Media Station X или по http (кнопка выше): его серверы https не поддерживают.</p>
+  <section class="wrap block">
+    <h2 class="h2" data-t="pl_h">Работает там, где вы смотрите</h2>
+    <div class="plats">
+      <span>Samsung</span><span>LG</span><span>Android TV</span><span>Fire TV</span><span data-t="pl_phone">Android-телефон</span><span data-t="pl_web">Компьютер и iPhone — в браузере</span>
+    </div>
   </section>
 
-  <section class="card">
-    <h2 data-t="trust_h">Почему можно доверять</h2>
+  <section class="wrap block">
+    <h2 class="h2" data-t="trust_h">Почему можно доверять</h2>
     <div class="trust">
       <div><b id="ver">—</b><span data-t="trust_ver">последняя версия</span></div>
       <div><b data-t="trust_src">Открытый код</b><a href="https://github.com/sunic007/lampa-samsung">github.com/sunic007</a></div>
@@ -88,17 +140,24 @@
     <div id="news" class="muted"></div>
   </section>
 
-  <section class="card">
-    <h2 data-t="faq_h">Вопросы</h2>
-    <details><summary data-t="q1">Нужен ли режим разработчика?</summary><p data-t="a1">Для Media Station X — нет. Для установки через TV Installer — один раз, приложение подскажет как.</p></details>
-    <details><summary data-t="q2">Почему нет источников или «нет доступа»?</summary><p data-t="a2">Источникам Skaz нужен вход в CUB (Настройки → Аккаунт, код на cub.red). Без входа «Смотреть» само ищет фильм в Online Mod и Z01.</p></details>
-    <details><summary data-t="q3">«Видео не найдено» — что делать?</summary><p data-t="a3">Sunic Apps сам пробует другие балансеры и источники. Если фильма нет нигде — он ещё не вышел в хорошем качестве, попробуйте позже.</p></details>
-    <details><summary data-t="q4">Это безопасно?</summary><p data-t="a4">Да: код открыт, мы не собираем личные данные. Lampa и источники — сторонние сервисы; фильмы мы не храним и не раздаём.</p></details>
-    <details><summary data-t="q5">Не работает — куда писать?</summary><p data-t="a5">В группу t.me/sunicapps или кнопкой «Сообщить о проблеме» в настройках Sunic Apps — отчёт уйдёт сам, без фото экрана.</p></details>
+  <section class="wrap block" id="faq">
+    <h2 class="h2" data-t="faq_h">Вопросы</h2>
+    <div class="card faq">
+      <details><summary data-t="q1">Нужен ли режим разработчика?</summary><p data-t="a1">Для Media Station X — нет. Для установки через TV Installer — один раз, приложение подскажет как.</p></details>
+      <details><summary data-t="q2">Почему нет источников или «нет доступа»?</summary><p data-t="a2">Источникам Skaz нужен вход в CUB (Настройки → Аккаунт, код на cub.red). Без входа «Смотреть» само ищет фильм в Online Mod и Z01.</p></details>
+      <details><summary data-t="q3">«Видео не найдено» — что делать?</summary><p data-t="a3">Sunic Apps сам пробует другие балансеры и источники. Если фильма нет нигде — он ещё не вышел в хорошем качестве, попробуйте позже.</p></details>
+      <details><summary data-t="q4">Это безопасно?</summary><p data-t="a4">Да: код открыт, мы не собираем личные данные. Lampa и источники — сторонние сервисы; фильмы мы не храним и не раздаём.</p></details>
+      <details><summary data-t="q5">Не работает — куда писать?</summary><p data-t="a5">В группу t.me/sunicapps или кнопкой «Сообщить о проблеме» в настройках Sunic Apps — отчёт уйдёт сам, без фото экрана.</p></details>
+    </div>
   </section>
 
-  <footer><span data-t="foot">Вопросы</span> — <a href="https://t.me/sunicapps">t.me/sunicapps</a> · Sunic Apps · <span data-t="notsam">не связан с производителями ТВ и Media Station X</span></footer>
+  <section class="wrap block final">
+    <h2 class="h2" data-t="fin_h">Начните смотреть сегодня вечером</h2>
+    <p class="sub" data-t="fin_p">Две минуты на установку — и всё работает само.</p>
+    <p class="cta-row"><a class="cta big" href="#start" data-t="cta_start">Начать за 2 минуты</a><a class="cta alt big" href="https://t.me/sunicapps" data-t="fin_tg">Спросить в Telegram</a></p>
+  </section>
 </main>
+<footer class="wrap foot"><span data-t="foot">Вопросы</span> — <a href="https://t.me/sunicapps">t.me/sunicapps</a> · Sunic Apps · <span data-t="notsam">не связан с производителями ТВ и Media Station X</span></footer>
 <script src="/site.js"></script>
 </body>
 </html>

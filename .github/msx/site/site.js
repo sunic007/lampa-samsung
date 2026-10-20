@@ -1,8 +1,8 @@
 (function () {
   var T = {
     uz: {
-      h1: 'Lampa har qanday televizor, telefon va kompyuterda',
-      sub: 'Samsung, LG, Android TV, telefon va brauzerda filmlar va seriallar: keyingi qism va faslni o‘zi yoqadi, filmni barcha manbalardan qidiradi, Telegram orqali boshqariladi. Bepul va ro‘yxatdan o‘tmasdan.',
+      h1: 'Barcha filmlar va seriallar — televizoringizda',
+      sub: 'Sunic Apps bilan Lampa: keyingi qismni o\'zi yoqadi, filmni barcha manbalardan topadi, qidirishni esa telefondan Telegram orqali qilish mumkin.',
       cta_tv: 'Televizorga qanday o‘rnatiladi', cta_web: 'Brauzerda ochish',
       tab_tv: '📺 Har qanday Smart TV', tab_tv_s: 'Samsung, LG, Android TV — Media Station X', tab_phone: '📱 Samsung uchun ilova', tab_phone_s: 'telefondan — TV Installer',
       tab_android: '🤖 Android TV / pristavka', tab_android_s: 'Lampa uchun plagin', tab_web: '💻 Brauzerda', tab_web_s: 'kompyuter yoki telefon',
@@ -25,11 +25,44 @@
       q4: 'Bu xavfsizmi?', a4: 'Ha: kod ochiq, biz shaxsiy ma’lumotlarni yig‘maymiz. Lampa va manbalar — uchinchi tomon xizmatlari; filmlarni biz saqlamaymiz va tarqatmaymiz.',
       q5: 'Ishlamayapti — qayerga yozish kerak?', a5: 't.me/sunicapps guruhiga yoki Sunic Apps sozlamalaridagi «Muammo haqida xabar berish» tugmasi orqali — hisobot o‘zi yuboriladi.',
       foot: 'Savollar', notsam: 'televizor ishlab chiqaruvchilari va Media Station X bilan bog‘liq emas', st_ok: 'ishlaydi', st_slow: 'sekin', st_bad: 'javob bermayapti', news: 'Yangi:',
-      st_cub: 'Katalog (CUB)', st_skaz_api: 'Skaz serverlari', st_github: 'Yangilanishlar (GitHub)'
+      st_cub: 'Katalog (CUB)', st_skaz_api: 'Skaz serverlari', st_github: 'Yangilanishlar (GitHub)',
+      nav_f: 'Imkoniyatlar',
+      nav_s: 'Boshlash',
+      nav_q: 'Savollar',
+      eyebrow: 'Bepul · ro\'yxatdan o\'tmasdan · bizdan reklamasiz',
+      cta_start: '2 daqiqada boshlash',
+      pl_line: 'Samsung · LG · Android TV · telefon · kompyuter',
+      art_next: 'Keyingi qism 5 dan keyin',
+      art_q: 'Dyuna',
+      art_found: 'Topildi ✓',
+      art_play: '▶ Televizorda ko\'rish',
+      f_h: 'Sunic Apps nimalar qiladi',
+      f1: 'Keyingi qism — o\'zi',
+      f1d: 'Tugadi — keyingi qism, fasl tugagach — yangi fasl yoqiladi.',
+      f2: 'Barcha manbalardan qidiradi',
+      f2d: 'Bitta manbada yo\'q bo\'lsa — boshqasidan, hatto siz qo\'shganlaridan ham topadi.',
+      f3: 'Telefon — pult o\'rnida',
+      f3d: 'Telegram-botda filmni topdingiz — «Ko\'rish»ni bosdingiz, u allaqachon televizorda.',
+      f4: 'To\'xtagan joydan',
+      f4d: 'To\'xtagan joyingizdan, o\'sha ovoz bilan davom etadi.',
+      f5: 'Qotib qolmaydi',
+      f5d: 'Video to\'xtadi — o\'zi qayta ishga tushiradi, sifat yoki manbani almashtiradi.',
+      f6: 'Kechqurun qulay',
+      f6d: '«Hali ko\'ryapsizmi?», qismdan keyin uyqu, tunda ovoz baland emas.',
+      s_h: 'Boshlash — 3 qadam',
+      s1: 'Quyida qurilmangizni tanlang',
+      s2: 'Manzilni kiriting yoki ilovani o\'rnating',
+      s3: 'Ko\'ring — qolganini Sunic Apps o\'zi qiladi',
+      pl_h: 'Siz ko\'radigan joyda ishlaydi',
+      pl_phone: 'Android telefon',
+      pl_web: 'Kompyuter va iPhone — brauzerda',
+      fin_h: 'Bugun kechqurun ko\'rishni boshlang',
+      fin_p: 'O\'rnatishga ikki daqiqa — va hammasi o\'zi ishlaydi.',
+      fin_tg: 'Telegramda so\'rash'
     },
     en: {
-      h1: 'Lampa on any TV, phone and computer',
-      sub: 'Movies and series on Samsung, LG, Android TV, your phone and in the browser: plays the next episode and season by itself, searches every source, controlled from Telegram. Free, no sign-up.',
+      h1: 'All movies and series — on your TV',
+      sub: 'Lampa with Sunic Apps: plays the next episode by itself, finds a movie in every source, and you can search from your phone in Telegram.',
       cta_tv: 'How to install on a TV', cta_web: 'Open in the browser',
       tab_tv: '📺 Any Smart TV', tab_tv_s: 'Samsung, LG, Android TV — Media Station X', tab_phone: '📱 App for Samsung', tab_phone_s: 'from your phone — TV Installer',
       tab_android: '🤖 Android TV / box', tab_android_s: 'plugin for Lampa', tab_web: '💻 In the browser', tab_web_s: 'computer or phone',
@@ -52,7 +85,40 @@
       q4: 'Is it safe?', a4: 'Yes: the code is open, we do not collect personal data. Lampa and the sources are third-party services; we do not store or share movies.',
       q5: 'Not working — where to write?', a5: 'To the t.me/sunicapps group or with «Report a problem» in Sunic Apps settings — the report is sent by itself.',
       foot: 'Questions', notsam: 'not affiliated with TV makers or Media Station X', st_ok: 'works', st_slow: 'slow', st_bad: 'not responding', news: 'New:',
-      st_cub: 'Catalog (CUB)', st_skaz_api: 'Skaz servers', st_github: 'Updates (GitHub)'
+      st_cub: 'Catalog (CUB)', st_skaz_api: 'Skaz servers', st_github: 'Updates (GitHub)',
+      nav_f: 'Features',
+      nav_s: 'Get started',
+      nav_q: 'FAQ',
+      eyebrow: 'Free · no sign-up · no ads from us',
+      cta_start: 'Start in 2 minutes',
+      pl_line: 'Samsung · LG · Android TV · phone · computer',
+      art_next: 'Next episode in 5',
+      art_q: 'Dune',
+      art_found: 'Found ✓',
+      art_play: '▶ Watch on TV',
+      f_h: 'What Sunic Apps does',
+      f1: 'Next episode — by itself',
+      f1d: 'Finished — the next episode starts, and after the season — the new season.',
+      f2: 'Searches every source',
+      f2d: 'Not in one source — it finds it in another, even in the ones you added.',
+      f3: 'Your phone as a remote',
+      f3d: 'Found a movie in the Telegram bot — tap «Watch» and it is already on the TV.',
+      f4: 'Right where you stopped',
+      f4d: 'Continues where you left off, with the same dub.',
+      f5: 'Does not freeze',
+      f5d: 'Video stalled — it restarts, changes quality or source by itself.',
+      f6: 'Made for evenings',
+      f6d: '«Are you still watching?», sleep after the episode, no louder at night.',
+      s_h: 'Get started — 3 steps',
+      s1: 'Choose your device below',
+      s2: 'Enter the address or install the app',
+      s3: 'Watch — Sunic Apps does the rest',
+      pl_h: 'Works wherever you watch',
+      pl_phone: 'Android phone',
+      pl_web: 'Computer and iPhone — in the browser',
+      fin_h: 'Start watching tonight',
+      fin_p: 'Two minutes to set up — and everything works by itself.',
+      fin_tg: 'Ask in Telegram'
     },
     ru: { news: 'Что нового:', copied: 'Скопировано', st_ok: 'работает', st_slow: 'медленно', st_bad: 'не отвечает' }
   };
@@ -83,7 +149,6 @@
   }
   document.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { tab(b.getAttribute('data-tab')); }; });
   tab(dev === 'web' ? 'tv' : dev);
-  if (dev === 'web') document.getElementById('cta').setAttribute('href', '#tv');
 
   document.querySelectorAll('[data-copy]').forEach(function (b) {
     b.onclick = function () {
