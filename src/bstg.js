@@ -3684,23 +3684,24 @@ var BSTelegram = (function () {
     /* ---------- поиск в боте ---------- */
 
     /* TMDB без таймаута: если сервер не отвечает, поиск висел бы до минут. Через TMDB_TIMEOUT отвечаем «не ответил». */
-    var TMDB_TIMEOUT = 10000;
+    var TMDB_TIMEOUT = 10000, TMDB_FIRST = 6000, TMDB_DIRECT = 'https://api.themoviedb.org/3/';
     /** Язык TMDB для того, кому отвечаем: английский — en-US; узбекских данных у TMDB почти нет — русский. */
     function tmdbLang() { return lang() === 'en' ? 'en-US' : 'ru'; }
     function tmdbGet(path, cb, retried) {
         cb = keep(cb);
-        var done = false, t0 = Date.now(), finish = function (j) {
+        var q = path + (path.indexOf('?') < 0 ? '?' : '&') + 'api_key=' + Lampa.TMDB.key() + '&language=' + tmdbLang();
+        // сначала как Lampa (её прокси TMDB), не ответил — сам TMDB напрямую: у каждого адреса есть запасной
+        var url = retried ? TMDB_DIRECT + q : Lampa.TMDB.api(q), wait = retried ? TMDB_TIMEOUT : TMDB_FIRST;
+        var done = false, finish = function (j) {
             if (done) return; done = true;
-            // разовый быстрый сбой TMDB или его прокси — ещё одна попытка, только потом «TMDB не ответил»
-            // (после долгого ожидания не повторяем: ответ на кнопку Telegram ждёт недолго)
-            if (!j && !retried && Date.now() - t0 < 5000) return setTimeout(function () { tmdbGet(path, cb, true); }, 700);
+            if (!j && !retried) return tmdbGet(path, cb, true);
+            if (!j) log('TMDB не ответил', path.split('?')[0]);
             cb(j || null);
         };
         var req = new Lampa.Reguest();
-        try { req.timeout(TMDB_TIMEOUT); } catch (e) {}
-        req.silent(Lampa.TMDB.api(path + (path.indexOf('?') < 0 ? '?' : '&') + 'api_key=' + Lampa.TMDB.key() + '&language=' + tmdbLang()),
-            function (j) { finish(j); }, function () { finish(null); });
-        setTimeout(function () { finish(null); }, TMDB_TIMEOUT + 2000);
+        try { req.timeout(wait); } catch (e) {}
+        req.silent(url, function (j) { finish(j); }, function () { finish(null); });
+        setTimeout(function () { finish(null); }, wait + 1000);
     }
     /** Карточка Lampa из ответа TMDB (подробности фильма/сериала). */
     function toCard(j, kind) {
@@ -4163,7 +4164,7 @@ var BSTelegram = (function () {
     function searchAction(q, act, kind, id) {
         var answer = function (t) { call('answerCallbackQuery', { callback_query_id: q.id, text: t }, null, null); };
         tmdbGet((kind === 't' ? 'tv/' : 'movie/') + id, function (j) {
-            if (!j || !j.id) return answer(L('TMDB не ответил, попробуйте ещё раз', "TMDB didn't answer, try again", "TMDB javob bermadi, qayta urinib ko'ring"));
+            if (!j || !j.id) return answer(L('TMDB не ответил, попробуйте ещё раз', "TMDB didn't answer, try again", "TMDB javob bermadi, qayta urinib ko'ring") + ' (' + tvName() + ')');
             var card = toCard(j, kind), name = card.title || card.name || '';
             var already = function () { return answer(L('Вы уже подписаны', "You're already subscribed", "Siz allaqachon obuna bo'lgansiz")); };
             if (act === 'q') return qualityWait(card, kind, name, answer);
