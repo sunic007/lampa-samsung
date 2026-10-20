@@ -27,6 +27,15 @@ function fetch_url($u, $timeout = 10) {
 function ok_ver($v) { return is_string($v) && preg_match('/^\d+\.\d+\.\d+$/', $v); }
 
 $cache = __DIR__ . '/.cache';
+$https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+// «Открыть по http» с главной (/lampa/?http=1): человек сам выбрал страницу без защиты ради Skaz — браузер, который
+// поднял адрес до https, отправляем обратно на http (Chrome и Vivaldi один раз спросят, открыть ли сайт без защиты)
+if ($https && isset($_GET['http'])) {
+    header('Location: http://' . preg_replace('/[^A-Za-z0-9.-]/', '', $_SERVER['HTTP_HOST'] ?? 'sunic.stream') . '/lampa/?http=1', true, 302);
+    header('Cache-Control: no-store');
+    exit;
+}
+
 $store = __DIR__ . '/v';
 if (!is_dir($cache)) @mkdir($cache, 0700);
 if (!is_dir($store)) @mkdir($store, 0755);
@@ -138,6 +147,9 @@ $html = preg_replace('#<script src="\$WEBAPIS/webapis/webapis\.js"></script>#', 
 $html = str_replace('<title>Lampa</title>', '<title>Lampa · Sunic Apps</title>', $html);
 
 // ответ — сразу; докачка новой версии — после него, человек не ждёт
+// По https браузер сам переводит запросы страницы на https: что умеет https (Z01, Online Mod, CUB) — грузится, чего нет
+// (Skaz, локальные адреса ТВ) — просто не отвечает, без «Не защищено». По http (ТВ, Media Station X) — ничего не меняется.
+if ($https) header('Content-Security-Policy: upgrade-insecure-requests');
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-cache');
 header('Content-Length: ' . strlen($html));

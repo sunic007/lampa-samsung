@@ -1768,6 +1768,7 @@ var BSTelegram = (function () {
         return n.slice(0, 40);
     }
     function loadDevName() {
+        try { if (window.BSDevice && !BSDevice.samsung()) return; } catch (e) {}   // имя отдаёт только ТВ Samsung (приложение или MSX)
         var x = new XMLHttpRequest();
         try {
             x.open('GET', 'http://127.0.0.1:8001/api/v2/', true);

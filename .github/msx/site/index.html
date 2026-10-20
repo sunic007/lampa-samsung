@@ -106,7 +106,9 @@
     <h2 data-t="web_h">В браузере</h2>
     <p data-t="web_p">Lampa открывается прямо на этом сайте — на компьютере или телефоне.</p>
     <p><a class="cta" href="/lampa/" data-t="cta_web">Открыть в браузере</a></p>
-    <p class="muted" data-t="web_note">По защищённому соединению (https) работают источники Online Mod и Z01; Skaz — только на ТВ и в Media Station X: его серверы https не поддерживают.</p>
+    <p><a class="cta alt" style="margin-left:0" href="/lampa/?http=1" data-t="web_http_btn">Открыть по http — со Skaz</a></p>
+    <p class="muted" data-t="web_http_note">⚠️ На свой риск: соединение без защиты (http) — браузер предупредит, что сайт «не защищён». Нужно только ради источников Skaz; паролей и данных карт там не вводите. Настройки и история у http и https — отдельные.</p>
+    <p class="muted" data-t="web_note">По защищённому соединению (https) работают источники Online Mod и Z01; Skaz — на ТВ, в Media Station X или по http (кнопка выше): его серверы https не поддерживают.</p>
   </section>
 
   <section class="card">
@@ -149,7 +151,8 @@
       an_h: 'Android TV, pristavka yoki telefon — Lampa uchun plagin', an_1: 'Lampa ni oching → Sozlamalar → Kengaytmalar → Plagin qo‘shish.', an_2: 'Manzilni qo‘ying:',
       an_3: 'Lampa ni qayta ishga tushiring — «Sunic Apps» bo‘limi paydo bo‘ladi.', copy: 'Nusxalash', copied: 'Nusxalandi',
       web_h: 'Brauzerda', web_p: 'Lampa shu saytning o‘zida ochiladi — kompyuter yoki telefonda.',
-      web_note: 'Himoyalangan ulanishda (https) Online Mod va Z01 ishlaydi; Skaz — faqat televizorda va Media Station X da: uning serverlari https ni qo‘llamaydi.',
+      web_http_btn: 'http orqali ochish — Skaz bilan', web_http_note: '⚠️ O‘z xavfingizga: ulanish himoyalanmagan (http) — brauzer sayt «himoyalanmagan» deb ogohlantiradi. Faqat Skaz manbalari uchun kerak; u yerda parol va karta ma’lumotlarini kiritmang. http va https uchun sozlamalar va tarix alohida.',
+      web_note: 'Himoyalangan ulanishda (https) Online Mod va Z01 ishlaydi; Skaz — televizorda, Media Station X da yoki http orqali (yuqoridagi tugma): uning serverlari https ni qo‘llamaydi.',
       trust_h: 'Nega ishonsa bo‘ladi', trust_ver: 'oxirgi versiya', trust_src: 'Ochiq kod', trust_reg: 'Ro‘yxatdan o‘tmasdan', trust_reg_s: 'va bizdan reklamasiz',
       trust_chk: 'Sayt tekshiriladi', trust_chk_s: 'har 30 daqiqada: fayllar GitHub bilan bir xil',
       faq_h: 'Savollar', q1: 'Dasturchi rejimi kerakmi?', a1: 'Media Station X uchun — yo‘q. TV Installer orqali o‘rnatish uchun — bir marta, ilova ko‘rsatadi.',
@@ -175,7 +178,8 @@
       an_h: 'Android TV, box or phone — plugin for Lampa', an_1: 'Open Lampa (Lampa BS or another build) → Settings → Extensions → Add plugin.', an_2: 'Paste the address:',
       an_3: 'Restart Lampa — the «Sunic Apps» section appears.', copy: 'Copy', copied: 'Copied',
       web_h: 'In the browser', web_p: 'Lampa opens right on this site — on a computer or phone.',
-      web_note: 'Over a secure connection (https) Online Mod and Z01 work; Skaz — only on TVs and in Media Station X: its servers do not support https.',
+      web_http_btn: 'Open over http — with Skaz', web_http_note: '⚠️ At your own risk: the connection is not protected (http) — the browser will warn that the site is «not secure». Only needed for Skaz sources; do not enter passwords or card details there. Settings and history are separate for http and https.',
+      web_note: 'Over a secure connection (https) Online Mod and Z01 work; Skaz — on TVs, in Media Station X or over http (button above): its servers do not support https.',
       trust_h: 'Why you can trust it', trust_ver: 'latest version', trust_src: 'Open source', trust_reg: 'No sign-up', trust_reg_s: 'and no ads from us',
       trust_chk: 'The site is checked', trust_chk_s: 'every 30 minutes: files match GitHub',
       faq_h: 'Questions', q1: 'Do I need developer mode?', a1: 'For Media Station X — no. For installing via TV Installer — once, the app shows how.',
