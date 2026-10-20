@@ -3,26 +3,243 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sunic Apps — Lampa на Samsung через Media Station X</title>
+<title>Sunic Apps — Lampa на Samsung Smart TV</title>
+<meta name="description" content="Lampa с функциями Sunic Apps на Samsung Smart TV, Android и в браузере. Бесплатно, без регистрации, открытый код.">
+<link rel="icon" type="image/png" href="/media/logo.png">
 <style>
-  body { margin: 0; font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #0e1117; color: #eef1f6; }
-  main { max-width: 720px; margin: 0 auto; padding: 32px 16px; }
-  h1 { font-size: 26px; margin: 0 0 8px; } .muted { color: #98a2b3; }
-  code { background: #171b24; border: 1px solid #262c38; border-radius: 6px; padding: 2px 8px; font-size: 18px; }
-  ol li { margin: 8px 0; } a { color: #4d94ff; }
+  :root { --bg:#0e1117; --card:#161b24; --line:#262d3a; --text:#eef1f6; --muted:#98a2b3; --accent:#4d94ff; --ok:#3ccf91; --warn:#f5b84a; --bad:#ff6b6b; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f5f7fa; --card:#fff; --line:#e3e7ee; --text:#151a23; --muted:#5d6676; --accent:#1f6fe5; --ok:#139a63; --warn:#b97a06; --bad:#d33; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:880px; margin:0 auto; padding:16px 16px 48px; }
+  a { color:var(--accent); }
+  header { display:flex; align-items:center; gap:12px; padding:8px 0 4px; }
+  header img { width:44px; height:44px; border-radius:10px; }
+  header b { font-size:18px; } header .sp { flex:1; }
+  .lang button { background:none; border:1px solid var(--line); color:var(--muted); border-radius:8px; padding:3px 9px; cursor:pointer; font:inherit; font-size:13px; }
+  .lang button.on { color:var(--text); border-color:var(--accent); }
+  .status { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:13px; color:var(--muted); margin:6px 0 18px; min-height:20px; }
+  .status span::before { content:''; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; background:var(--muted); }
+  .status .ok::before { background:var(--ok); } .status .slow::before { background:var(--warn); } .status .bad::before { background:var(--bad); }
+  h1 { font-size:30px; line-height:1.2; margin:8px 0 8px; } .sub { color:var(--muted); margin:0 0 18px; font-size:17px; }
+  .cta { display:inline-block; background:var(--accent); color:#fff; text-decoration:none; padding:13px 22px; border-radius:12px; font-weight:600; font-size:17px; }
+  .cta.alt { background:none; color:var(--accent); border:1px solid var(--accent); margin-left:8px; }
+  .tabs { display:flex; flex-wrap:wrap; gap:8px; margin:28px 0 12px; }
+  .tabs button { flex:1 1 180px; background:var(--card); border:1px solid var(--line); color:var(--text); padding:12px; border-radius:12px; cursor:pointer; font:inherit; text-align:left; }
+  .tabs button small { display:block; color:var(--muted); font-size:13px; }
+  .tabs button.on { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:16px; }
+  .card h2 { font-size:20px; margin:0 0 10px; } .card ol { margin:0; padding-left:22px; } .card li { margin:6px 0; }
+  code, .copy { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:2px 8px; font:15px ui-monospace,Consolas,monospace; }
+  .copyrow { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0; }
+  .copyrow button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:6px 12px; cursor:pointer; font:inherit; font-size:14px; }
+  .row { display:flex; gap:18px; align-items:center; flex-wrap:wrap; } .row > * { flex:1 1 240px; }
+  .qr { flex:0 0 150px; text-align:center; font-size:13px; color:var(--muted); } .qr img { width:150px; height:150px; border-radius:10px; background:#fff; padding:6px; }
+  video { width:100%; max-width:300px; border-radius:14px; display:block; margin:0 auto; background:#000; }
+  .trust { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; }
+  .trust div { background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:12px; font-size:14px; color:var(--muted); }
+  .trust b { display:block; color:var(--text); font-size:15px; }
+  details { border-top:1px solid var(--line); padding:10px 0; } details:first-of-type { border-top:0; }
+  summary { cursor:pointer; font-weight:600; } details p { margin:8px 0 0; color:var(--muted); }
+  .muted { color:var(--muted); font-size:14px; } footer { color:var(--muted); font-size:14px; text-align:center; margin-top:28px; }
+  [data-pane] { display:none; } [data-pane].on { display:block; }
 </style>
 </head>
 <body>
 <main>
-  <h1>Lampa · Sunic Apps на Samsung Smart TV</h1>
-  <p class="muted">Без режима разработчика и без компьютера — через приложение Media Station X из магазина Samsung.</p>
-  <ol>
-    <li>Установите <b>Media Station X</b> из магазина приложений (Smart Hub / Apps).</li>
-    <li>Откройте её: <b>Settings → Start Parameter → Setup</b>.</li>
-    <li>Введите <code>sunic.stream</code> и подтвердите.</li>
-    <li>Готово: при каждом открытии Media Station X сразу запускается Lampa с функциями Sunic Apps.</li>
-  </ol>
-  <p class="muted">Вопросы — <a href="https://t.me/sunicapps">t.me/sunicapps</a> · исходный код — <a href="https://github.com/sunic007/lampa-samsung">github.com/sunic007/lampa-samsung</a></p>
+  <header>
+    <img src="/media/logo.png" alt="Sunic Apps">
+    <b>Sunic Apps</b><span class="sp"></span>
+    <span class="lang"><button data-lang="ru">RU</button> <button data-lang="uz">UZ</button></span>
+  </header>
+  <div class="status" id="status" aria-live="polite"></div>
+
+  <h1 data-t="h1">Lampa на Samsung Smart TV — без компьютера</h1>
+  <p class="sub" data-t="sub">Фильмы и сериалы на большом экране: сама включает следующую серию и сезон, ищет фильм во всех источниках, управляется из Telegram. Бесплатно и без регистрации.</p>
+  <p><a class="cta" id="cta" href="#tv" data-t="cta_tv">Как поставить на ТВ</a><a class="cta alt" href="/lampa/" data-t="cta_web">Открыть в браузере</a></p>
+
+  <div class="tabs" role="tablist">
+    <button data-tab="tv"><span data-t="tab_tv">📺 Телевизор Samsung</span><small data-t="tab_tv_s">через Media Station X</small></button>
+    <button data-tab="phone"><span data-t="tab_phone">📱 С телефона на ТВ</span><small data-t="tab_phone_s">TV Installer</small></button>
+    <button data-tab="android"><span data-t="tab_android">🤖 Android ТВ / приставка</span><small data-t="tab_android_s">плагин для Lampa</small></button>
+    <button data-tab="web"><span data-t="tab_web">💻 В браузере</span><small data-t="tab_web_s">компьютер или телефон</small></button>
+  </div>
+
+  <section class="card" data-pane="tv" id="tv">
+    <h2 data-t="tv_h">Телевизор Samsung — Media Station X</h2>
+    <ol>
+      <li data-t="tv_1">Откройте магазин приложений на ТВ (Smart Hub → Apps) и установите <b>Media Station X</b>.</li>
+      <li data-t="tv_2">Откройте её: <b>Settings → Start Parameter → Setup</b>.</li>
+      <li><span data-t="tv_3">Введите адрес и подтвердите:</span> <code>sunic.stream</code></li>
+      <li data-t="tv_4">Готово: при каждом открытии Media Station X сразу запускается Lampa с функциями Sunic Apps.</li>
+    </ol>
+    <p class="muted" data-t="tv_note">Режим разработчика и компьютер не нужны. Источники Skaz работают после входа в CUB (Настройки → Аккаунт); без входа — Online Mod и Z01.</p>
+  </section>
+
+  <section class="card" data-pane="phone">
+    <h2 data-t="ph_h">С телефона на ТВ — TV Installer</h2>
+    <div class="row">
+      <div>
+        <ol>
+          <li data-t="ph_1">Скачайте TV Installer на Android-телефон (QR-код или кнопка ниже).</li>
+          <li data-t="ph_2">Телефон и телевизор — в одной сети Wi-Fi; на ТВ один раз включите режим разработчика (TV Installer подскажет).</li>
+          <li data-t="ph_3">Выберите Lampa — через пару минут она на телевизоре.</li>
+        </ol>
+        <p><a class="cta" href="https://sunic007.github.io/tvinstaller/" data-t="ph_btn">Скачать TV Installer</a></p>
+      </div>
+      <div class="qr"><img src="/media/qr-tvinstaller.png" alt="QR TV Installer" width="150" height="150"><br><span data-t="ph_qr">Наведите камеру телефона</span></div>
+    </div>
+    <video controls preload="none" playsinline poster="/media/tvinstaller.jpg" src="/media/tvinstaller.mp4"></video>
+  </section>
+
+  <section class="card" data-pane="android">
+    <h2 data-t="an_h">Android ТВ, приставка или телефон — плагин для Lampa</h2>
+    <ol>
+      <li data-t="an_1">Откройте Lampa (Lampa BS или другую сборку) → Настройки → Расширения → Добавить плагин.</li>
+      <li><span data-t="an_2">Вставьте адрес:</span>
+        <div class="copyrow"><span class="copy" id="plug">https://sunic007.github.io/lampa-android/sunic.js</span><button data-copy="plug" data-t="copy">Скопировать</button></div></li>
+      <li data-t="an_3">Перезапустите Lampa — появится раздел «Sunic Apps».</li>
+    </ol>
+  </section>
+
+  <section class="card" data-pane="web">
+    <h2 data-t="web_h">В браузере</h2>
+    <p data-t="web_p">Lampa открывается прямо на этом сайте — на компьютере или телефоне.</p>
+    <p><a class="cta" href="/lampa/" data-t="cta_web">Открыть в браузере</a></p>
+    <p class="muted" data-t="web_note">По защищённому соединению (https) работают источники Online Mod и Z01; Skaz — только на ТВ и в Media Station X: его серверы https не поддерживают.</p>
+  </section>
+
+  <section class="card">
+    <h2 data-t="trust_h">Почему можно доверять</h2>
+    <div class="trust">
+      <div><b id="ver">—</b><span data-t="trust_ver">последняя версия</span></div>
+      <div><b data-t="trust_src">Открытый код</b><a href="https://github.com/sunic007/lampa-samsung">github.com/sunic007</a></div>
+      <div><b data-t="trust_reg">Без регистрации</b><span data-t="trust_reg_s">и без рекламы от нас</span></div>
+      <div><b data-t="trust_chk">Сайт проверяется</b><span data-t="trust_chk_s">каждые 30 минут: файлы совпадают с GitHub</span></div>
+    </div>
+    <div id="news" class="muted" style="margin-top:12px"></div>
+  </section>
+
+  <section class="card">
+    <h2 data-t="faq_h">Вопросы</h2>
+    <details><summary data-t="q1">Нужен ли режим разработчика?</summary><p data-t="a1">Для Media Station X — нет. Для установки через TV Installer — один раз, приложение подскажет как.</p></details>
+    <details><summary data-t="q2">Почему нет источников или «нет доступа»?</summary><p data-t="a2">Источникам Skaz нужен вход в CUB (Настройки → Аккаунт, код на cub.red). Без входа «Смотреть» само ищет фильм в Online Mod и Z01.</p></details>
+    <details><summary data-t="q3">«Видео не найдено» — что делать?</summary><p data-t="a3">Sunic Apps сам пробует другие балансеры и источники. Если фильма нет нигде — он ещё не вышел в хорошем качестве, попробуйте позже.</p></details>
+    <details><summary data-t="q4">Это безопасно?</summary><p data-t="a4">Да: код открыт, мы не собираем личные данные. Lampa и источники — сторонние сервисы; фильмы мы не храним и не раздаём.</p></details>
+    <details><summary data-t="q5">Не работает — куда писать?</summary><p data-t="a5">В группу t.me/sunicapps или кнопкой «Сообщить о проблеме» в настройках Sunic Apps — отчёт уйдёт сам, без фото экрана.</p></details>
+  </section>
+
+  <footer><span data-t="foot">Вопросы</span> — <a href="https://t.me/sunicapps">t.me/sunicapps</a> · Sunic Apps · <span data-t="notsam">не связан с Samsung</span></footer>
 </main>
+<script>
+(function () {
+  var T = {
+    uz: {
+      h1: 'Samsung Smart TV uchun Lampa — kompyutersiz',
+      sub: 'Katta ekranda filmlar va seriallar: keyingi qism va faslni o‘zi yoqadi, filmni barcha manbalardan qidiradi, Telegram orqali boshqariladi. Bepul va ro‘yxatdan o‘tmasdan.',
+      cta_tv: 'Televizorga qanday o‘rnatiladi', cta_web: 'Brauzerda ochish',
+      tab_tv: '📺 Samsung televizori', tab_tv_s: 'Media Station X orqali', tab_phone: '📱 Telefondan televizorga', tab_phone_s: 'TV Installer',
+      tab_android: '🤖 Android TV / pristavka', tab_android_s: 'Lampa uchun plagin', tab_web: '💻 Brauzerda', tab_web_s: 'kompyuter yoki telefon',
+      tv_h: 'Samsung televizori — Media Station X', tv_1: 'Televizorda ilovalar do‘konini oching (Smart Hub → Apps) va Media Station X ni o‘rnating.',
+      tv_2: 'Uni oching: Settings → Start Parameter → Setup.', tv_3: 'Manzilni kiriting va tasdiqlang:', tv_4: 'Tayyor: Media Station X har ochilganda Sunic Apps bilan Lampa darhol ishga tushadi.',
+      tv_note: 'Dasturchi rejimi va kompyuter kerak emas. Skaz manbalari CUB ga kirgandan keyin ishlaydi (Sozlamalar → Akkaunt); kirmasdan — Online Mod va Z01.',
+      ph_h: 'Telefondan televizorga — TV Installer', ph_1: 'TV Installer ni Android telefonga yuklab oling (QR-kod yoki pastdagi tugma).',
+      ph_2: 'Telefon va televizor bitta Wi-Fi tarmog‘ida; televizorda bir marta dasturchi rejimini yoqing (TV Installer ko‘rsatadi).', ph_3: 'Lampa ni tanlang — bir necha daqiqada u televizorda.',
+      ph_btn: 'TV Installer ni yuklab olish', ph_qr: 'Telefon kamerasini qarating',
+      an_h: 'Android TV, pristavka yoki telefon — Lampa uchun plagin', an_1: 'Lampa ni oching → Sozlamalar → Kengaytmalar → Plagin qo‘shish.', an_2: 'Manzilni qo‘ying:',
+      an_3: 'Lampa ni qayta ishga tushiring — «Sunic Apps» bo‘limi paydo bo‘ladi.', copy: 'Nusxalash', copied: 'Nusxalandi',
+      web_h: 'Brauzerda', web_p: 'Lampa shu saytning o‘zida ochiladi — kompyuter yoki telefonda.',
+      web_note: 'Himoyalangan ulanishda (https) Online Mod va Z01 ishlaydi; Skaz — faqat televizorda va Media Station X da: uning serverlari https ni qo‘llamaydi.',
+      trust_h: 'Nega ishonsa bo‘ladi', trust_ver: 'oxirgi versiya', trust_src: 'Ochiq kod', trust_reg: 'Ro‘yxatdan o‘tmasdan', trust_reg_s: 'va bizdan reklamasiz',
+      trust_chk: 'Sayt tekshiriladi', trust_chk_s: 'har 30 daqiqada: fayllar GitHub bilan bir xil',
+      faq_h: 'Savollar', q1: 'Dasturchi rejimi kerakmi?', a1: 'Media Station X uchun — yo‘q. TV Installer orqali o‘rnatish uchun — bir marta, ilova ko‘rsatadi.',
+      q2: 'Nega manbalar yo‘q yoki «kirish yo‘q»?', a2: 'Skaz manbalariga CUB ga kirish kerak (Sozlamalar → Akkaunt, cub.red da kod). Kirmasdan «Ko‘rish» filmni Online Mod va Z01 dan o‘zi qidiradi.',
+      q3: '«Video topilmadi» — nima qilish kerak?', a3: 'Sunic Apps boshqa balanserlar va manbalarni o‘zi sinab ko‘radi. Film hech qayerda bo‘lmasa — hali yaxshi sifatda chiqmagan, keyinroq urinib ko‘ring.',
+      q4: 'Bu xavfsizmi?', a4: 'Ha: kod ochiq, biz shaxsiy ma’lumotlarni yig‘maymiz. Lampa va manbalar — uchinchi tomon xizmatlari; filmlarni biz saqlamaymiz va tarqatmaymiz.',
+      q5: 'Ishlamayapti — qayerga yozish kerak?', a5: 't.me/sunicapps guruhiga yoki Sunic Apps sozlamalaridagi «Muammo haqida xabar berish» tugmasi orqali — hisobot o‘zi yuboriladi.',
+      foot: 'Savollar', notsam: 'Samsung bilan bog‘liq emas', st_ok: 'ishlaydi', st_slow: 'sekin', st_bad: 'javob bermayapti', news: 'Yangi:'
+    },
+    ru: { news: 'Что нового:', copied: 'Скопировано', st_ok: 'работает', st_slow: 'медленно', st_bad: 'не отвечает' }
+  };
+  var ru = {};
+  document.querySelectorAll('[data-t]').forEach(function (e) { ru[e.getAttribute('data-t')] = e.innerHTML; });
+  var lang = 'ru';
+  try { lang = localStorage.getItem('lang') || ((navigator.language || '').toLowerCase().indexOf('uz') === 0 ? 'uz' : 'ru'); } catch (e) {}
+  function t(k) { return (T[lang] && T[lang][k]) || T.ru[k] || ru[k] || k; }
+  function setLang(l) {
+    lang = l; document.documentElement.lang = l;
+    try { localStorage.setItem('lang', l); } catch (e) {}
+    document.querySelectorAll('[data-t]').forEach(function (e) { var k = e.getAttribute('data-t'); e.innerHTML = l === 'ru' ? ru[k] : (T.uz[k] || ru[k]); });
+    document.querySelectorAll('[data-lang]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-lang') === l); });
+    status(); version();
+  }
+  document.querySelectorAll('[data-lang]').forEach(function (b) { b.onclick = function () { setLang(b.getAttribute('data-lang')); }; });
+
+  // какое устройство — тот способ первым
+  var ua = navigator.userAgent || '';
+  var dev = /SMART-TV|Tizen|Web0S|SmartTV/i.test(ua) ? 'tv' : /Android/i.test(ua) ? (/Mobile/i.test(ua) ? 'phone' : 'android') : /iPhone|iPad/i.test(ua) ? 'web' : 'web';
+  function tab(id) {
+    document.querySelectorAll('[data-tab]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === id); });
+    document.querySelectorAll('[data-pane]').forEach(function (p) { p.classList.toggle('on', p.getAttribute('data-pane') === id); });
+  }
+  document.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { tab(b.getAttribute('data-tab')); }; });
+  tab(dev === 'web' ? 'tv' : dev);
+  if (dev === 'web') document.getElementById('cta').setAttribute('href', '#tv');
+
+  document.querySelectorAll('[data-copy]').forEach(function (b) {
+    b.onclick = function () {
+      var s = document.getElementById(b.getAttribute('data-copy')).textContent;
+      var done = function () { b.textContent = t('copied'); setTimeout(function () { b.textContent = t('copy'); }, 2000); };
+      if (navigator.clipboard) navigator.clipboard.writeText(s).then(done, done); else done();
+    };
+  });
+
+  var stData = null;
+  function status() {
+    var box = document.getElementById('status');
+    if (!stData) return;
+    box.innerHTML = '';
+    stData.items.forEach(function (i) {
+      var s = document.createElement('span');
+      s.className = i.ok ? (i.slow ? 'slow' : 'ok') : 'bad';
+      s.textContent = i.name + ' — ' + t(i.ok ? (i.slow ? 'st_slow' : 'st_ok') : 'st_bad');
+      box.appendChild(s);
+    });
+  }
+  var x = new XMLHttpRequest();
+  x.open('GET', '/status.php', true);
+  x.onload = function () { try { stData = JSON.parse(x.responseText); status(); } catch (e) {} };
+  x.send();
+
+  var verData = null;
+  function version() {
+    if (!verData) return;
+    var d = verData.date ? new Date(verData.date) : null;
+    var mon = lang === 'uz' ? ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr']
+      : ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+    document.getElementById('ver').textContent = verData.v + (d ? ' · ' + d.getDate() + ' ' + mon[d.getMonth()] : '');
+    var n = verData.notes;
+    document.getElementById('news').innerHTML = n && n.title ? t('news') + ' <b>' + esc(n.title) + '</b>' : '';
+  }
+  function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+  function getJSON(urls, cb) {
+    (function next(i) {
+      if (i >= urls.length) return cb(null);
+      var r = new XMLHttpRequest();
+      r.open('GET', urls[i], true); r.timeout = 8000;
+      r.onload = function () { var j = null; try { j = JSON.parse(r.responseText); } catch (e) {} if (r.status === 200 && j) cb(j); else next(i + 1); };
+      r.onerror = r.ontimeout = function () { next(i + 1); };
+      r.send();
+    })(0);
+  }
+  getJSON(['https://raw.githubusercontent.com/sunic007/lampa-samsung/main/version.json', 'https://cdn.jsdelivr.net/gh/sunic007/lampa-samsung@main/version.json'], function (m) {
+    if (!m) return;
+    verData = { v: m.version, notes: m.notes };
+    version();
+    getJSON(['https://api.github.com/repos/sunic007/lampa-samsung/releases/latest'], function (r) { if (r && r.published_at) { verData.date = r.published_at; version(); } });
+  });
+  setLang(lang);
+})();
+</script>
 </body>
 </html>

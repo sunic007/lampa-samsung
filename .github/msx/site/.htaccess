@@ -7,6 +7,14 @@ RedirectMatch 404 /\.
     Require all denied
 </FilesMatch>
 
+# главная — по https (замок в браузере); Lampa и msx/start.json — как есть (MSX и источники Skaz работают по http)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+    RewriteRule ^(index\.html)?$ https://%{HTTP_HOST}/ [R=301,L]
+</IfModule>
+
 # только чтение: сайт ничего не принимает (кроме GET/HEAD/OPTIONS)
 <LimitExcept GET HEAD OPTIONS>
     Require all denied
