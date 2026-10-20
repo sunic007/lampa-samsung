@@ -7,6 +7,15 @@ RedirectMatch 404 /\.
     Require all denied
 </FilesMatch>
 
+# Lampa — только по http: браузеры сами пробуют https, а на https-странице блокируются плагин и серверы Skaz (http) —
+# нет кнопки источников, «нет связи с сервером». Инструкция (главная) открывается и по https.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} on [OR]
+    RewriteCond %{HTTP:X-Forwarded-Proto} =https
+    RewriteRule ^(lampa|msx)(/.*)?$ http://%{HTTP_HOST}/$1$2 [R=302,L]
+</IfModule>
+
 # только чтение: сайт ничего не принимает (кроме GET/HEAD/OPTIONS)
 <LimitExcept GET HEAD OPTIONS>
     Require all denied

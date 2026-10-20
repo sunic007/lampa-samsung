@@ -6,6 +6,11 @@
  * Обычной страницей, не document.write: Lampa тогда правильно считает размеры экрана. Обновлять не нужно — новые
  * выпуски приходят сами. Только http: источники Skaz работают по http.
  */
+// открыли по https (браузер сам пробует https) — на http: иначе плагин и серверы Skaz (http) браузер заблокирует
+if ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') {
+    header('Location: http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'], true, 302);
+    exit;
+}
 const GH = 'https://raw.githubusercontent.com/sunic007/lampa-samsung/main/version.json';
 const CDN = 'https://cdn.jsdelivr.net/gh/sunic007/lampa-samsung@v';
 const PIN = '2.3.4';    // если GitHub не ответил и ничего не запомнено
