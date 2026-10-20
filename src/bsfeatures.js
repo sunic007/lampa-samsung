@@ -265,6 +265,74 @@ var BSFeatures = (function () {
             param: { name: 'bs_keys_info', type: 'static' },
             field: { name: 'Цветные кнопки в плеере', description: 'Красная — другой источник, зелёная — качество, жёлтая — озвучка, синяя — субтитры' }
         });
+        api.addParam({
+            component: C, param: { name: 'bs_iptv_lists', type: 'button' },
+            field: { name: 'IPTV: открытые плейлисты', description: 'Каналы для расширения IPTV — выбрать и добавить' },
+            onChange: iptvChoose
+        });
+    }
+
+    /* ---------- IPTV: открытые плейлисты ----------
+     * Расширение IPTV (cub.red/plugin/iptv) приходит без плейлистов. Свои оно хранит в iptv_playlist_custom —
+     * {id, custom, url, name}, так же, как его кнопка «Добавить плейлист». Здесь — выбор из открытых каталогов
+     * бесплатных каналов: iptv-org (страны, языки, темы) и Free-TV (только официальные бесплатные трансляции).
+     * Наши записи — с id «sunic-iptv-…»: повторное нажатие убирает только их, чужие плейлисты не трогаем. */
+    var IPTV_ORG = 'https://iptv-org.github.io/iptv/';
+    var IPTV_LISTS = [
+        ['uz', 'Узбекистан', IPTV_ORG + 'countries/uz.m3u'],
+        ['rus', 'На русском языке', IPTV_ORG + 'languages/rus.m3u'],
+        ['ru', 'Россия', IPTV_ORG + 'countries/ru.m3u'],
+        ['kz', 'Казахстан', IPTV_ORG + 'countries/kz.m3u'],
+        ['tr', 'Турция', IPTV_ORG + 'countries/tr.m3u'],
+        ['movies', 'Фильмы (весь мир)', IPTV_ORG + 'categories/movies.m3u'],
+        ['series', 'Сериалы (весь мир)', IPTV_ORG + 'categories/series.m3u'],
+        ['kids', 'Детские (весь мир)', IPTV_ORG + 'categories/kids.m3u'],
+        ['animation', 'Мультфильмы (весь мир)', IPTV_ORG + 'categories/animation.m3u'],
+        ['documentary', 'Документальные (весь мир)', IPTV_ORG + 'categories/documentary.m3u'],
+        ['sports', 'Спорт (весь мир)', IPTV_ORG + 'categories/sports.m3u'],
+        ['music', 'Музыка (весь мир)', IPTV_ORG + 'categories/music.m3u'],
+        ['news', 'Новости (весь мир)', IPTV_ORG + 'categories/news.m3u'],
+        ['freetv', 'Официальные бесплатные каналы (Free-TV)', 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8']
+    ];
+    function iptvList() {
+        var l = [];
+        try { l = Lampa.Storage.get('iptv_playlist_custom', '[]'); } catch (e) {}
+        return Object.prototype.toString.call(l) === '[object Array]' ? l : [];
+    }
+    function iptvHas(list, key) { for (var i = 0; i < list.length; i++) if (list[i] && list[i].id === 'sunic-iptv-' + key) return i; return -1; }
+    /** Добавить или убрать плейлист key в списке расширения IPTV. → true — добавлен, false — убран. */
+    function iptvToggle(key) {
+        var it = null, i, list = iptvList();
+        for (i = 0; i < IPTV_LISTS.length; i++) if (IPTV_LISTS[i][0] === key) it = IPTV_LISTS[i];
+        if (!it) return false;
+        var at = iptvHas(list, key), added = at < 0;
+        if (added) list.push({ id: 'sunic-iptv-' + key, custom: true, url: it[2], name: it[1] });
+        else list.splice(at, 1);
+        try { Lampa.Storage.set('iptv_playlist_custom', list); } catch (e) {}
+        return added;
+    }
+    function iptvInstalled() {
+        try {
+            var p = Lampa.Storage.get('plugins', '[]');
+            for (var i = 0; i < p.length; i++) if (/\/plugin\/iptv/.test(String((p[i] && (p[i].url || p[i].link)) || p[i]))) return true;
+        } catch (e) {}
+        return false;
+    }
+    function iptvChoose() {
+        var list = iptvList(), ctrl = 'settings_component';
+        try { ctrl = Lampa.Controller.enabled().name; } catch (e) {}
+        var items = IPTV_LISTS.map(function (it) { return { title: (iptvHas(list, it[0]) >= 0 ? '✓ ' : '') + it[1], key: it[0] }; });
+        Lampa.Select.show({
+            title: 'IPTV: открытые плейлисты',
+            items: items,
+            onSelect: function (a) {
+                var added = iptvToggle(a.key);
+                noty(added ? 'Добавлен: ' + a.title.replace(/^✓ /, '') + (iptvInstalled() ? ' — откройте IPTV' : ' — установите расширение IPTV (Настройки → Расширения)')
+                    : 'Убран: ' + a.title.replace(/^✓ /, ''), 5000);
+                iptvChoose();                                           // список снова, с новыми отметками
+            },
+            onBack: function () { try { Lampa.Controller.toggle(ctrl); } catch (e) {} }
+        });
     }
 
     /* YouTube IFrame API. Раньше грузилась на каждом старте (и дважды); Lampa 3.3.5 играет трейлеры своим мостом и
@@ -371,5 +439,6 @@ var BSFeatures = (function () {
         } catch (e) {}
     }
 
-    return { start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
+    return {
+        _iptvToggle: iptvToggle, _iptvLists: IPTV_LISTS, start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
 })();

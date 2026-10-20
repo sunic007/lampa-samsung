@@ -12,7 +12,7 @@ function load(file, name, store) {
     store = store || {};
     const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
     const w = { localStorage: ls, appready: false };
-    const ctx = { window: w, XMLHttpRequest: function () {}, Node: function () {}, document: { hidden: false, addEventListener() {} },
+    const ctx = { window: w, XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }), Node: function () {}, document: { hidden: false, addEventListener() {} },
         navigator: { userAgent: 'test', onLine: true }, location: { reload() {} }, setTimeout: () => 0, setInterval: () => 0, clearTimeout() {}, clearInterval() {},
         console, JSON, Math, Date, Infinity, String, Array, Object, Number, Promise, parseInt, parseFloat, isNaN };
     ctx.XMLHttpRequest.prototype = { open() {}, send() {}, setRequestHeader() {} }; ctx.Node.prototype = { appendChild() {} };
@@ -83,7 +83,7 @@ t('кэш: метка ставится до #, а не во фрагмент', /
     let sock;
     function WS(url) { sock = this; this.url = url; this.send = d => sent.push(JSON.parse(d)); this.close = () => {}; }
     const w = { localStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } } };
-    const ctx = { window: w, XMLHttpRequest: function () {}, Node: function () {}, document: {}, console: { log() {} }, WebSocket: WS, btoa: x => Buffer.from(x).toString('base64'),
+    const ctx = { window: w, XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }), Node: function () {}, document: {}, console: { log() {} }, WebSocket: WS, btoa: x => Buffer.from(x).toString('base64'),
         setTimeout, clearTimeout, setInterval, clearInterval, Date, Math, JSON, Lampa: { Noty: { show() {} } } };
     ctx.XMLHttpRequest.prototype = { open() {} }; ctx.Node.prototype = { appendChild() {} }; w.window = w; vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(SRC, 'bsfeatures.js'), 'utf8') + ';this.M=BSFeatures;', ctx);
@@ -369,7 +369,7 @@ t('мультики: поиск — мультфильмы и детские, н
 /* ---- быстрый старт: библиотеки из пакета, память дорожек ---- */
 function featuresWith(src) {
     const w = { localStorage: { getItem: () => null, setItem() {} } };
-    const ctx = { window: w, XMLHttpRequest: function () {}, Node: function () {}, document: {}, console, bsSource: src };
+    const ctx = { window: w, XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }), Node: function () {}, document: {}, console, bsSource: src };
     ctx.XMLHttpRequest.prototype = { open() {} }; ctx.Node.prototype = { appendChild() {} }; w.window = w; vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(SRC, 'bsfeatures.js'), 'utf8') + ';this.M=BSFeatures;', ctx);
     return ctx.M;
@@ -387,7 +387,7 @@ function fixCtx(store) {
     store = store || {};
     const w = { localStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } } };
     const notes = [], env = { bal: 'rhsprem', screen: null };
-    const ctx = { window: w, XMLHttpRequest: function () {}, console: { log() {} }, setTimeout: fn => fn(), clearTimeout() {}, Date, JSON, Math, Object, String, Array,
+    const ctx = { window: w, XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }), console: { log() {} }, setTimeout: fn => fn(), clearTimeout() {}, Date, JSON, Math, Object, String, Array,
         $: () => ({ last: () => ({ text: () => env.bal }) }),
         Lampa: { Storage: { get: k => (k === 'online_balanser' ? env.bal : '') }, Noty: { show: t => notes.push(t) }, Player: { close() {} },
             Activity: { active: () => ({ activity: { component: env.screen } }) } } };
@@ -1020,7 +1020,7 @@ t('обновления: непроверенная версия функций 
     const $ = sel => (/hg-button\.focus/.test(sel) ? (pos < 0 ? { length: 0 } : cur) : { length: 1 });
     const added = {};
     const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, setTimeout: () => 0, setInterval: () => 0, $,
-        document: { addEventListener() {} }, XMLHttpRequest: function () {}, Node: function () {},
+        document: { addEventListener() {} }, XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }), Node: function () {},
         Lampa: { Controller: { add: (n, o) => { added[n] = o; }, collectionFocus: el => { focused = el; } } } };
     ctx.window = ctx; ctx.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
     ctx.XMLHttpRequest.prototype = { open() {} }; ctx.Node.prototype = { appendChild() {} };
@@ -1666,7 +1666,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
 /* ---- bstg.js: записи Shots (свой ключ списка) и разовое «что нового» ---- */
 {
     const mk = (store, pkg) => {
-        const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: function () {},
+        const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }),
             Uint8Array, unescape, escape, encodeURIComponent, decodeURIComponent,
             Lampa: { Noty: { show() {} }, Storage: { get: () => [] } },
             tizen: { application: { getCurrentApplication: () => ({ appInfo: { version: pkg || '1.7.63' } }) } } };
@@ -1697,7 +1697,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
 /* ---- bstg.js: failover главного ТВ ---- */
 {
     const store = { bs_tv_id: 'ZZZZZZZZ', bs_tg_chat: '1', bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw' };
-    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: function () {},
+    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }),
         Uint8Array, btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'), unescape, escape,
         encodeURIComponent, decodeURIComponent, Lampa: { Noty: { show() {} } } };
     ctx.window = ctx; ctx.crypto = require('crypto').webcrypto;
@@ -1718,7 +1718,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     const store = { bs_tv_id: 'ZZZZZZZZ', bs_tg_chat: '1', bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw' };
     let clock = 1700000000000;
     class FakeDate extends Date { constructor(...args) { if (args.length) super(...args); else super(clock); } static now() { return clock; } }
-    const ctx = { console: { log() {} }, Date: FakeDate, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: function () {},
+    const ctx = { console: { log() {} }, Date: FakeDate, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }),
         Uint8Array, btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'), unescape, escape,
         encodeURIComponent, decodeURIComponent, Lampa: { Noty: { show() {} } } };
     ctx.window = ctx; ctx.crypto = require('crypto').webcrypto;
@@ -1745,7 +1745,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
 /* ---- bstg.js: только что запущенный ТВ не знает главного — «занято» от Telegram не даёт ему отбирать сообщения ---- */
 {
     const store = { bs_tv_id: 'ZZZZZZZZ', bs_tg_chat: '1', bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw' };
-    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: function () {},
+    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }),
         Uint8Array, btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'), unescape, escape,
         encodeURIComponent, decodeURIComponent, Lampa: { Noty: { show() {} } } };
     ctx.window = ctx; ctx.crypto = require('crypto').webcrypto;
@@ -1894,7 +1894,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
 /* ---- bstg.js: качество фильма в поиске бота и «Сообщить о качестве» ---- */
 {
     const store = { bs_tv_id: 'ZZZZZZZZ', bs_tg_chat: '1', bs_tg_token: '123456789:' + 'AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw' };
-    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: function () {},
+    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setTimeout: () => 0, setInterval: () => 0, XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }),
         Uint8Array, btoa: s => Buffer.from(s, 'binary').toString('base64'), atob: s => Buffer.from(s, 'base64').toString('binary'), unescape, escape,
         encodeURIComponent, decodeURIComponent, Lampa: { Noty: { show() {} } } };
     ctx.window = ctx; ctx.crypto = require('crypto').webcrypto;
@@ -3840,7 +3840,7 @@ async function serviceTests() {
 {
     const store = {}, opened = [];
     const ctx = { console: { log() {} }, JSON, Math, Date, String, encodeURIComponent, Uint8Array, setTimeout: () => 0, clearTimeout() {},
-        document: { hidden: false, addEventListener() {} }, XMLHttpRequest: function () {},
+        document: { hidden: false, addEventListener() {} }, XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }),
         BSTelegram: { open: (k, id, play) => opened.push([k, id, play]), tvName: () => 'Гостиная' } };
     ctx.window = ctx; ctx.crypto = require('crypto').webcrypto;
     ctx.window.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
@@ -3854,6 +3854,21 @@ async function serviceTests() {
     t('общий бот: своего бота нет — общий остаётся', B._ownFirst() === false && store.bs_sb_on === '1');
     ctx.BSTelegram.hasOwn = () => true;
     t('общий бот: на ТВ подключили свой бот — от общего отвязываемся (один ТВ — один бот)', B._ownFirst() === true && !('bs_sb_on' in store));
+}
+/* ---- bsfeatures.js: IPTV — открытые плейлисты в расширение IPTV ---- */
+{
+    let saved = [{ id: 'mine', custom: true, url: 'http://x/my.m3u', name: 'Мой' }];
+    const ctx = { console: { log() {} }, JSON, Math, Date, String, Object, Array, setTimeout: () => 0, setInterval: () => 0, navigator: { userAgent: 'x' }, XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }), Node: Object.assign(function () {}, { prototype: { appendChild() {} } }),
+        document: { querySelectorAll: () => [], documentElement: {}, addEventListener() {} },
+        Lampa: { Storage: { get: (k, d) => (k === 'iptv_playlist_custom' ? JSON.parse(JSON.stringify(saved)) : JSON.parse(d || 'null')), set: (k, v) => { if (k === 'iptv_playlist_custom') saved = v; } }, Noty: { show() {} } } };
+    ctx.window = ctx; ctx.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bsfeatures.js'), 'utf8') + ';this.M=BSFeatures;', ctx);
+    const F = ctx.M;
+    t('IPTV: плейлисты — открытые каталоги по https (iptv-org, Free-TV)', F._iptvLists.length >= 10 && F._iptvLists.every(x => /^https:\/\/(iptv-org\.github\.io|raw\.githubusercontent\.com\/Free-TV)\//.test(x[2])));
+    t('IPTV: выбрали — добавлен в формате расширения IPTV, свой плейлист человека на месте', F._iptvToggle('uz') === true &&
+        saved.length === 2 && saved[0].id === 'mine' && saved[1].id === 'sunic-iptv-uz' && saved[1].custom === true && /countries\/uz\.m3u$/.test(saved[1].url) && saved[1].name === 'Узбекистан');
+    t('IPTV: выбрали ещё раз — убран только наш', F._iptvToggle('uz') === false && saved.length === 1 && saved[0].id === 'mine');
+    t('IPTV: неизвестный — ничего не меняет', F._iptvToggle('xx') === false && saved.length === 1);
 }
 serviceTests().catch(e => { fail++; console.log('FAIL служба: исключение', e && e.stack); }).then(() => {
     console.log(pass + ' passed, ' + fail + ' failed');
