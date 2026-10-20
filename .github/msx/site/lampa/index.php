@@ -127,7 +127,8 @@ if (!$html) {
 // В MSX нет API Samsung (window.tizen): плеер «Tizen» (AVPlay) не запустится — встроенный плеер Lampa (loader.js на
 // первом запуске ставит «tizen», если bs_player_default нет — ставим раньше). Файлы с jsDelivr (первый запуск): их ошибки
 // браузер отдаёт без текста («Script error.») — Lampa показывала бы их уведомлением, понять по нему нечего: глушим такие.
-$head = '<base href="' . $base . '">' . "\n    <script>"
+// referrer — в самой странице: хостинг дописывает свой, слабее нашего из .htaccess, и браузер берёт последний заголовок
+$head = '<meta name="referrer" content="no-referrer">' . "\n    " . '<base href="' . $base . '">' . "\n    <script>"
     // страница и так всегда последнего выпуска — своё обновление модулей (update.js: окно «Вышло обновление») не нужно
     . '(function () { try { localStorage.setItem("bs_gh_update", "false"); } catch (x) {} })();'
     . '(function () { if (window.tizen) return; try { localStorage.setItem("bs_player_default", "1");'
