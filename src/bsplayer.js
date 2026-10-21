@@ -385,14 +385,16 @@ var BSPlayer = (function () {
      * на этом устройстве (bs_pbtn_hide). Прячем стилем, а не классом hide: свой hide Lampa сама снимает (дорожки,
      * субтитры), и кнопка вернулась бы. Значок настроек плеера не прячется: через него и качество, и дорожки. */
     var PANEL_BTNS = [
-        ['sleep', 'Сон (таймер)', '.bs-btn-sleep'], ['day', 'День (громче)', '.bs-btn-day'], ['night', 'Ночь (тише)', '.bs-btn-night'],
+        ['sleep', 'Сон (таймер)', '.bs-btn-sleep'], ['day', 'День (ярче)', '.bs-btn-day'], ['night', 'Ночь (темнее)', '.bs-btn-night'],
         ['quality', 'Качество (AUTO)', '.player-panel__quality'], ['tracks', 'Звуковые дорожки', '.player-panel__tracks'],
         ['subs', 'Субтитры', '.player-panel__subs'], ['flow', 'Поток', '.player-panel__flow'], ['pip', 'Картинка в картинке', '.player-panel__pip'],
         ['volume', 'Громкость', '.player-panel__volume'], ['fullscreen', 'Во весь экран', '.player-panel__fullscreen']
     ];
+    var PANEL_HIDE_DEFAULT = ['sleep', 'day', 'night'];   // свои кнопки — в шестерёнке плеера, на панель — по желанию
     function hiddenBtns() {
-        var l = null;
-        try { l = JSON.parse(lsGet('bs_pbtn_hide') || '[]'); } catch (e) {}
+        var l = null, raw = lsGet('bs_pbtn_hide');
+        if (raw === null) return PANEL_HIDE_DEFAULT.slice();
+        try { l = JSON.parse(raw || '[]'); } catch (e) {}
         return Object.prototype.toString.call(l) === '[object Array]' ? l : [];
     }
     function panelCss(hidden) {
@@ -415,23 +417,69 @@ var BSPlayer = (function () {
         return i < 0;                                           // true — спрятали
     }
     function choosePanelBtns() {
-        var h = hiddenBtns(), ctrl = 'settings_component';
-        try { ctrl = Lampa.Controller.enabled().name; } catch (e) {}
+        var h = hiddenBtns();
         Lampa.Select.show({
-            title: 'Кнопки в плеере',
-            items: PANEL_BTNS.map(function (b) { return { title: (h.indexOf(b[0]) < 0 ? '✓ ' : '    ') + b[1], key: b[0] }; }),
-            onSelect: function (a) { togglePanelBtn(a.key); choosePanelBtns(); },
-            onBack: function () { try { Lampa.Controller.toggle(ctrl); } catch (e) {} }
+            title: 'Кнопки на панели плеера',
+            items: [{ title: '✓ — кнопка на панели, без ✓ — только здесь, в шестерёнке', separator: true }].concat(
+                PANEL_BTNS.map(function (b) { return { title: (h.indexOf(b[0]) < 0 ? '✓ ' : '    ') + b[1], key: b[0] }; })),
+            onSelect: function (a) { if (a.key) togglePanelBtn(a.key); choosePanelBtns(); },
+            onBack: gearAgain
         });
+    }
+
+    /* ---------- шестерёнка плеера: «Сон», «День», «Ночь» и выбор кнопок панели ----------
+     * Меню шестерёнки Lampa строит сама (размер, скорость, «Поделиться», метки, субтитры) и показывает через
+     * Lampa.Select. Узнаём его по пунктам size/speed и дописываем свои — так они под рукой, даже когда их кнопок на
+     * панели нет. Нажали — сделали и открыли шестерёнку заново: видно новое значение. */
+    function playerOpen() { try { return !!Lampa.Player.opened(); } catch (e) { return false; } }
+    function gearOpen() { try { var el = Lampa.PlayerPanel.render().find('.player-panel__settings'); if (el.length) el.trigger('hover:enter'); } catch (e) {} }
+    function gearAgain() { setTimeout(gearOpen, 50); }
+    function sleepText() { try { return window.BSFeatures && BSFeatures._sleepLabel ? BSFeatures._sleepLabel() : ''; } catch (e) { return ''; } }
+    function gearItems() {
+        return [
+            { title: 'Sunic Apps', separator: true },
+            { title: 'Сон', subtitle: 'Выключить: ' + (sleepText() || 'выключен'), bs: 'sleep' },
+            { title: 'День — ярче', subtitle: dayLevel() ? 'ярче на ' + dayLevel() + '%' : 'выключен', bs: 'day' },
+            { title: 'Ночь — темнее', subtitle: nightLevel() ? 'затемнение ' + nightLevel() + '%' : 'выключена', bs: 'night' },
+            { title: 'Кнопки на панели', subtitle: 'Вынести «Сон», «День», «Ночь» и другие на панель или убрать', bs: 'btns' }
+        ];
+    }
+    function isGearMenu(p) {
+        if (!p || !p.items || !p.items.length || p.__bs) return false;
+        var size = false, speed = false;
+        for (var i = 0; i < p.items.length; i++) { if (p.items[i].method === 'size') size = true; if (p.items[i].method === 'speed') speed = true; }
+        return size && speed && playerOpen();
+    }
+    function gearAction(key) {
+        if (key === 'btns') return choosePanelBtns();
+        try {
+            if (key === 'sleep' && window.BSFeatures && BSFeatures._sleepNext) BSFeatures._sleepNext();
+            if (key === 'day') dayNext();
+            if (key === 'night') nightNext();
+        } catch (e) { log('шестерёнка', e.message); }
+        gearAgain();
+    }
+    function hookGear() {
+        var S = Lampa.Select, show = S && S.show;
+        if (!show || show.__bs) return;
+        S.show = function (p) {
+            try {
+                if (isGearMenu(p)) {
+                    var o = {}, k, onSel = p.onSelect;
+                    for (k in p) if (p.hasOwnProperty(k)) o[k] = p[k];
+                    o.__bs = true;
+                    o.items = p.items.concat(gearItems());
+                    o.onSelect = function (a) { if (a && a.bs) return gearAction(a.bs); if (onSel) return onSel.apply(this, arguments); };
+                    return show.call(this, o);
+                }
+            } catch (e) { log('шестерёнка', e.message); }
+            return show.apply(this, arguments);
+        };
+        S.show.__bs = true;
     }
 
     function addSettings() {
         var C = 'bs_update', api = Lampa.SettingsApi;
-        api.addParam({
-            component: C, param: { name: 'bs_pbtn', type: 'button' },
-            field: { name: 'Кнопки в плеере', description: 'Какие кнопки показывать на панели плеера — ✓ показана' },
-            onChange: choosePanelBtns
-        });
         api.addParam({
             component: C, param: { name: 'bs_segments', type: 'trigger', 'default': true },
             field: { name: 'Пропуск заставки и титров', description: 'Где у источника есть метки' },
@@ -501,10 +549,11 @@ var BSPlayer = (function () {
         } catch (e) { log('не подключился', e.message); }
         try { hookHls(); } catch (e) {}
         applyPanelBtns();
+        try { hookGear(); } catch (e) {}
         try { addSettings(); } catch (e) {}
     }
 
     function hasEndMark() { return !!(s && s.endMark); }
 
-    return { start: start, hasEndMark: hasEndMark, _toLampa: toLampa, _parseChapters: parseChapters, _feedLampa: feedLampa, _state: function () { return s; }, _trimTracks: trimTracks, _night: nightNext, _bwUsable: bwUsable, _audioGuard: audioGuard, _panelCss: panelCss, _togglePanelBtn: togglePanelBtn };
+    return { start: start, hasEndMark: hasEndMark, _toLampa: toLampa, _parseChapters: parseChapters, _feedLampa: feedLampa, _state: function () { return s; }, _trimTracks: trimTracks, _night: nightNext, _bwUsable: bwUsable, _audioGuard: audioGuard, _panelCss: panelCss, _togglePanelBtn: togglePanelBtn, _hiddenBtns: hiddenBtns, _isGearMenu: isGearMenu, _gearItems: gearItems };
 })();

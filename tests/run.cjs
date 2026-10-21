@@ -18,7 +18,7 @@ function load(file, name, store) {
     ctx.XMLHttpRequest.prototype = { open() {}, send() {}, setRequestHeader() {} }; ctx.Node.prototype = { appendChild() {} };
     w.window = w; vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(SRC, file), 'utf8') + ';this.M=' + name + ';', ctx);
-    return { M: ctx.M, store, w };
+    return { M: ctx.M, store, w, ctx };
 }
 
 /* ---- skazauto.js: решения о переключении серверов ---- */
@@ -78,9 +78,15 @@ x2 = decide2({}, res({}, DEAD_DIRECT)); t('источники: прямые ме
 {   /* bsplayer: кнопки панели плеера — каждый выбирает, какие показывать */
     const store = {};
     const P = load('bsplayer.js', 'BSPlayer', store);
-    t('кнопки плеера: по умолчанию все на месте', P.M._panelCss([]) === '');
+    t('кнопки плеера: по умолчанию «Сон», «День», «Ночь» — в шестерёнке, кнопки Lampa на панели', P.M._hiddenBtns().join() === 'sleep,day,night' && P.M._panelCss([]) === '');
+    store.bs_pbtn_hide = '[]';
     t('кнопки плеера: спрятали «Сон» — прячется только он', P.M._togglePanelBtn('sleep') === true && JSON.parse(store.bs_pbtn_hide).join() === 'sleep' && P.M._panelCss(['sleep']) === '.player-panel .bs-btn-sleep{display:none!important}');
-    t('кнопки плеера: ещё раз — снова показан', P.M._togglePanelBtn('sleep') === false && JSON.parse(store.bs_pbtn_hide).length === 0);
+    t('кнопки плеера: ещё раз — снова показан', P.M._togglePanelBtn('sleep') === false && JSON.parse(store.bs_pbtn_hide).indexOf('sleep') < 0);
+    P.ctx.Lampa = { Player: { opened: () => true } };
+    const gear = { items: [{ method: 'size' }, { method: 'speed' }, { method: 'share' }] };
+    t('шестерёнка: меню настроек плеера узнаём, чужие списки — нет', P.M._isGearMenu(gear) === true && P.M._isGearMenu({ items: [{ title: 'x' }] }) === false);
+    const gi = P.M._gearItems().map(i => i.bs || '#').join();
+    t('шестерёнка: «Сон», «День», «Ночь» и выбор кнопок панели', gi === '#,sleep,day,night,btns');
     t('кнопки плеера: кнопки Lampa тоже (качество, картинка в картинке)', /player-panel__quality/.test(P.M._panelCss(['quality'])) && /player-panel__pip/.test(P.M._panelCss(['pip'])) && !/settings/.test(P.M._panelCss(['quality', 'pip', 'tracks', 'subs', 'flow', 'volume', 'fullscreen', 'sleep', 'day', 'night'])));
 }
 {   /* bsplayer: дорожку, которую hls.js не разбирает (AC3 под видом AAC), — назад на прежнюю */
