@@ -10,6 +10,18 @@ if (!hash_equals(hook_secret(), (string) ($_SERVER['HTTP_X_TELEGRAM_BOT_API_SECR
 $u = json_decode((string) file_get_contents('php://input'), true);
 http_response_code(200);
 if (!is_array($u)) exit;
+// одно сообщение — один раз: Cloudflare (bot-front) и сам Telegram при сбое присылают его повторно
+if (isset($u['update_id']) && !q('INSERT OR IGNORE INTO seen (id, at) VALUES (?, ?)', [(int) $u['update_id'], time()])->rowCount()) exit;
+/* Замер скорости (пока лежит private/speed-log): насколько сообщение опоздало от Telegram до нас и сколько мы его
+ * обрабатывали — в журнал bot.log. Только числа и тип апдейта, без текста и чатов. */
+if (is_file(PRIVATE_DIR . '/speed-log')) {
+    $speedAt = microtime(true);
+    $speedLag = isset($u['message']['date']) ? time() - (int) $u['message']['date'] : -1;
+    $speedKind = isset($u['callback_query']) ? 'button' : (isset($u['message']) ? 'message' : 'other');
+    register_shutdown_function(function () use ($speedAt, $speedLag, $speedKind) {
+        bot_log(sprintf('speed %s: delivered after %s s, handled in %d ms', $speedKind, $speedLag < 0 ? '?' : $speedLag, round((microtime(true) - $speedAt) * 1000)));
+    });
+}
 
 /* ---------- тексты (RU / EN / UZ — одно и то же) ---------- */
 const T = [

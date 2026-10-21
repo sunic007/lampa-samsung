@@ -40,6 +40,7 @@ function db() {
     $db->exec('CREATE INDEX IF NOT EXISTS updates_tv ON updates (tv_id, uid)');
     $db->exec('CREATE TABLE IF NOT EXISTS searches (id INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER, items TEXT, at INTEGER)');
     $db->exec('CREATE TABLE IF NOT EXISTS rate (k TEXT PRIMARY KEY, n INTEGER NOT NULL, until INTEGER NOT NULL)');
+    $db->exec('CREATE TABLE IF NOT EXISTS seen (id INTEGER PRIMARY KEY, at INTEGER NOT NULL)');
     $db->exec('CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTOINCREMENT, chat_id INTEGER NOT NULL, charge_id TEXT NOT NULL, stars INTEGER, at INTEGER NOT NULL)');
     // столбцы, добавленные позже: есть ли — по PRAGMA, без исключений на каждом запросе
     $cols = array_column($db->query('PRAGMA table_info(tvs)')->fetchAll(), 'name');
@@ -96,6 +97,7 @@ function housekeeping() {
     q('DELETE FROM cmds WHERE at < ?', [$now - CMD_LIFE]);
     q('DELETE FROM searches WHERE at < ?', [$now - 7 * 86400]);
     q('DELETE FROM rate WHERE until < ?', [$now]);
+    q('DELETE FROM seen WHERE at < ?', [$now - 86400]);
 }
 
 /** Ключ TMDB — тот же открытый, что в самой Lampa (её app.js у нас на хостинге); свой можно положить в private/tmdb-key.txt. */

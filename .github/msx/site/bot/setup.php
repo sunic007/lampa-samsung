@@ -2,6 +2,8 @@
 /*
  * Разовая настройка @SunicStreamBot: вебхук на hook.php (с секретом), команды и описание на трёх языках.
  * Повторный запуск безопасен — ставит то же самое. Открыть: https://sunic.stream/bot/setup.php?go=1
+ * Вебхук — на приёмник в Cloudflare (lampa-samsung/.github/bot-front): Telegram не всегда достаёт до хостинга напрямую.
+ * Приёмник не работает — ?go=1&direct=1 ставит вебхук прямо на hook.php, как раньше.
  * Только с разрешением: файл private/setup-allow (кладётся по FTP, в папку вне сайта) — иначе любой мог бы сбросить
  * очередь сообщений бота (drop_pending_updates). Разрешение одноразовое: после запуска файл удаляется.
  */
@@ -13,7 +15,8 @@ $allow = PRIVATE_DIR . '/setup-allow';
 if (!is_file($allow)) { http_response_code(403); exit("нет разрешения: положите пустой файл private/setup-allow\n"); }
 @unlink($allow);
 $r = [];
-$r['webhook'] = tg('setWebhook', ['url' => 'https://sunic.stream/bot/hook.php', 'secret_token' => hook_secret(),
+$hook = ($_GET['direct'] ?? '') === '1' ? 'https://sunic.stream/bot/hook.php' : 'https://sunicstream-hook.sunic007.workers.dev/hook';
+$r['webhook'] = tg('setWebhook', ['url' => $hook, 'secret_token' => hook_secret(),
     'allowed_updates' => ['message', 'callback_query', 'pre_checkout_query'], 'drop_pending_updates' => true]);
 $cmds = [
     'ru' => [['command' => 'start', 'description' => 'Начать'], ['command' => 'tv', 'description' => 'Мои телевизоры'], ['command' => 'plus', 'description' => 'Sunic Apps Plus'], ['command' => 'paysupport', 'description' => 'Помощь с оплатой']],
