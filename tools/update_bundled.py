@@ -14,6 +14,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # скрип
 SRC = os.path.join(ROOT, 'src')
 MIRROR = 'http://lampa.byskaz.ru/lampa-main/'
 TREE = 'https://api.github.com/repos/yumata/lampa/git/trees/main?recursive=1'
+VERIFY = 'https://sunic.stream/lampa/verify.php?h='   # независимая сверка app.js (отчёт ревью 2026-10-21, S1)
 UA = {'User-Agent': 'Mozilla/5.0'}
 
 
@@ -53,6 +54,18 @@ def main():
     app = got.get('app.js', b'').decode('utf-8', 'ignore')
     if h not in app:
         raise SystemExit('ОШИБКА: скачанный app.js не содержит hash %s — сервер отдал другую сборку, повторите позже' % h)
+    # byskaz отдаёт Lampa только по http: hash из того же ответа подмену не выдаст. Сверяем с копией, которую скачал
+    # наш хостинг другой сетью (site/lampa/verify.php). Не совпало или сверка недоступна — ничего не пишем.
+    import hashlib
+    mine = hashlib.sha256(got['app.js']).hexdigest()
+    try:
+        v = json.loads(get(VERIFY + h, timeout=90))
+    except Exception as e:
+        raise SystemExit('ОШИБКА: сверка app.js через sunic.stream недоступна (%s) — ничего не записано, повторите позже' % e)
+    if not v.get('ok') or v.get('sha256') != mine:
+        raise SystemExit('ОШИБКА: app.js отличается от скачанного хостингом (%s ≠ %s) — возможна подмена по дороге, ничего не записано'
+                         % (mine[:12], str(v.get('sha256'))[:12]))
+    print('app.js сверен с хостингом:', mine[:16])
     for dst, data in got.items():
         path = os.path.join(SRC, dst)
         os.makedirs(os.path.dirname(path), exist_ok=True)

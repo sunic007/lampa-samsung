@@ -2,11 +2,16 @@
 /*
  * Разовая настройка @SunicStreamBot: вебхук на hook.php (с секретом), команды и описание на трёх языках.
  * Повторный запуск безопасен — ставит то же самое. Открыть: https://sunic.stream/bot/setup.php?go=1
+ * Только с разрешением: файл private/setup-allow (кладётся по FTP, в папку вне сайта) — иначе любой мог бы сбросить
+ * очередь сообщений бота (drop_pending_updates). Разрешение одноразовое: после запуска файл удаляется.
  */
 require __DIR__ . '/lib.php';
 header('Content-Type: text/plain; charset=utf-8');
 if (!bot_token()) { http_response_code(503); exit("нет private/bot-token.txt\n"); }
 if (($_GET['go'] ?? '') !== '1') exit("?go=1\n");
+$allow = PRIVATE_DIR . '/setup-allow';
+if (!is_file($allow)) { http_response_code(403); exit("нет разрешения: положите пустой файл private/setup-allow\n"); }
+@unlink($allow);
 $r = [];
 $r['webhook'] = tg('setWebhook', ['url' => 'https://sunic.stream/bot/hook.php', 'secret_token' => hook_secret(),
     'allowed_updates' => ['message', 'callback_query', 'pre_checkout_query'], 'drop_pending_updates' => true]);
