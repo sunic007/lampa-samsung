@@ -38,5 +38,4 @@ if (isset($u['callback_query'])) {
 $msg = $u['message'] ?? null;
 if (!$msg || ($msg['chat']['type'] ?? '') !== 'private') exit;
 $chat = (int) $msg['chat']['id'];
-if (!rate_ok('closed:' . $chat, 5, 3600)) exit;   // не больше 5 ответов в час одному чату
 tg('sendMessage', ['chat_id' => $chat, 'text' => CLOSED[lang_of($msg['from'] ?? [])], 'disable_web_page_preview' => true, 'reply_markup' => ['remove_keyboard' => true]]);
