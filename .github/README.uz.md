@@ -25,7 +25,7 @@ Sunic Apps bilan Lampa istalgan platformada ishlaydi. Batafsil — <a href="http
 - <b>Samsung Smart TV</b> — <code>samsung.wgt</code> ilovasi (TV Installer yoki Tizen orqali o'rnatiladi, pastga qarang). Eng to'liq versiya: televizor ovoz balandligini eslab qolish, Smart Hub paneli, ilovani yopadigan uyqu taymeri, televizor pleyeri (AVPlay).
 - <b>Istalgan Smart TV</b> — Samsung, LG, Android TV va boshqalar — <b>Media Station X</b> ilovasi orqali: <b>Settings → Start Parameter → Setup</b> → <code>sunic.stream</code>. Dasturchi rejimi kerak emas.
 - <b>Android</b> — televizor, pristavka, telefon: Lampa'da (masalan, Lampa BS) <code>https://sunic.stream/sunic.js</code> plagini — <a href="https://github.com/sunic007/lampa-android">lampa-android</a>'ga qarang.
-- <b>Brauzer</b> — <a href="https://sunic.stream/lampa/">sunic.stream/lampa</a>. Brauzerda Skaz manbalari ochilmaydi (Skaz serverlari faqat http'da, sahifa esa https'da); Online Mod va Z01 ishlaydi.
+- <b>Brauzer</b> — kompyuter, telefon, planshet: <a href="https://sunic.stream/lampa/">sunic.stream/lampa</a>; oddiy klaviaturada yozish mumkin, planshetda — sensorli boshqaruv. Brauzerda Skaz manbalari ochilmaydi (Skaz serverlari faqat http'da, sahifa esa https'da); Online Mod va Z01 ishlaydi.
 
 </div>
 

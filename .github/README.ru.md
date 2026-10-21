@@ -25,7 +25,7 @@ Lampa с Sunic Apps работает на любой платформе. Под�
 - <b>Samsung Smart TV</b> — приложение <code>samsung.wgt</code> (ставится через TV Installer или Tizen, см. ниже). Самая полная версия: память громкости ТВ, панель Smart Hub, сон с закрытием приложения, плеер ТВ (AVPlay).
 - <b>Любой Smart TV</b> — Samsung, LG, Android TV и другие — через приложение <b>Media Station X</b>: <b>Settings → Start Parameter → Setup</b> → <code>sunic.stream</code>. Без режима разработчика.
 - <b>Android</b> — ТВ, приставки, телефоны: плагин <code>https://sunic.stream/sunic.js</code> в Lampa (например, Lampa BS) — см. <a href="https://github.com/sunic007/lampa-android">lampa-android</a>.
-- <b>Браузер</b> — <a href="https://sunic.stream/lampa/">sunic.stream/lampa</a>. В браузере источники Skaz не открываются (их серверы работают только по http, а страница — по https); Online Mod и Z01 работают.
+- <b>Браузер</b> — компьютер, телефон, планшет: <a href="https://sunic.stream/lampa/">sunic.stream/lampa</a>, печатать можно с обычной клавиатуры, на планшете — управление касанием. В браузере источники Skaz не открываются (их серверы работают только по http, а страница — по https); Online Mod и Z01 работают.
 
 </div>
 

@@ -334,11 +334,14 @@ def changelog_latest(md, n=2, lang_ru=True):
 QUICK = """### БЫСТРЫЕ ОТВЕТЫ (где скачать, как поставить) — все три проекта
 - TV Installer (product=tvinstaller) — приложение для Android-телефона, ставит приложения на ТВ Samsung по Wi-Fi.
   Скачать: https://github.com/sunic007/tvinstaller/releases/latest/download/SunicTvInstaller.apk (обновляется само).
-- Lampa для Samsung (product=lampa) — Lampa на телевизор Samsung. Проще всего поставить через TV Installer:
-  каталог → Lampa → Установить. Файл пакета: https://github.com/sunic007/lampa-samsung/releases/latest/download/samsung.wgt
-  Включённый ТВ обновляется сам.
+- Lampa by Sunic Apps (product=lampa) — на любом ТВ, приставке, компьютере и телефоне:
+  • Samsung — приложение, проще всего через TV Installer: каталог → Lampa → Установить. Включённый ТВ обновляется сам.
+    Файл пакета: https://github.com/sunic007/lampa-samsung/releases/latest/download/samsung.wgt
+  • Любой Smart TV и приставка (LG, Android TV и другие) — приложение Media Station X: Settings → Start Parameter →
+    Setup → sunic.stream. Без режима разработчика.
+  • Компьютер, телефон, планшет — в браузере: https://sunic.stream/lampa/ (источники Skaz там не открываются).
 - Sunic Apps для Lampa на Android (product=android) — плагин для Lampa на телефоне или приставке (например, Lampa BS).
-  Lampa → Настройки → Расширения → Добавить плагин → адрес https://sunic007.github.io/lampa-android/sunic.js
+  Lampa → Настройки → Расширения → Добавить плагин → адрес https://sunic.stream/sunic.js
 - Новости и новые версии — канал @sunicapps_uzb, вопросы — эта группа @sunicapps. Всё бесплатно.
 """
 
