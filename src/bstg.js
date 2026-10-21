@@ -740,6 +740,8 @@ var BSTelegram = (function () {
         var rows = [[{ text: L('👤 Профиль', '👤 Profile', '👤 Profil'), callback_data: 'st:prof' }, { text: '🌐 Язык / Language / Til', callback_data: 'mn:lang' }],
             [{ text: L('🧠 ИИ-поиск — ключи API', '🧠 AI search — API keys', "🧠 AI qidiruv — API kalitlari"), callback_data: 'st:ai' }]];
         if (isOwner()) rows.push([{ text: L('📺 Телевизоры', '📺 TVs', '📺 Televizorlar'), callback_data: 'mn:tvs' }, { text: L('👥 Люди', '👥 People', '👥 Odamlar'), callback_data: 'st:people' }]);
+        // общий бот: подписка и оплата — экран сервера sunic.stream (кнопку sv: сервер забирает себе, на ТВ она не приходит)
+        if (relay()) rows.push([{ text: '⭐ Sunic Apps Plus', callback_data: 'sv:plus' }]);
         rows.push([{ text: L('📋 Меню', '📋 Menu', '📋 Menyu'), callback_data: 'mn:menu' }]);
         return rows;
     }

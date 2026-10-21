@@ -19,9 +19,9 @@ $hook = ($_GET['direct'] ?? '') === '1' ? 'https://sunic.stream/bot/hook.php' : 
 $r['webhook'] = tg('setWebhook', ['url' => $hook, 'secret_token' => hook_secret(),
     'allowed_updates' => ['message', 'callback_query', 'pre_checkout_query'], 'drop_pending_updates' => true]);
 $cmds = [
-    'ru' => [['command' => 'start', 'description' => 'Начать'], ['command' => 'tv', 'description' => 'Мои телевизоры'], ['command' => 'plus', 'description' => 'Sunic Apps Plus'], ['command' => 'paysupport', 'description' => 'Помощь с оплатой']],
-    'en' => [['command' => 'start', 'description' => 'Start'], ['command' => 'tv', 'description' => 'My TVs'], ['command' => 'plus', 'description' => 'Sunic Apps Plus'], ['command' => 'paysupport', 'description' => 'Payment help']],
-    'uz' => [['command' => 'start', 'description' => 'Boshlash'], ['command' => 'tv', 'description' => 'Televizorlarim'], ['command' => 'plus', 'description' => 'Sunic Apps Plus'], ['command' => 'paysupport', 'description' => "To'lov bo'yicha yordam"]],
+    'ru' => [['command' => 'start', 'description' => 'Начать'], ['command' => 'menu', 'description' => '📋 Меню'], ['command' => 'settings', 'description' => '⚙️ Настройки и Sunic Apps Plus'], ['command' => 'tv', 'description' => 'Мои телевизоры'], ['command' => 'plus', 'description' => 'Sunic Apps Plus'], ['command' => 'paysupport', 'description' => 'Помощь с оплатой']],
+    'en' => [['command' => 'start', 'description' => 'Start'], ['command' => 'menu', 'description' => '📋 Menu'], ['command' => 'settings', 'description' => '⚙️ Settings and Sunic Apps Plus'], ['command' => 'tv', 'description' => 'My TVs'], ['command' => 'plus', 'description' => 'Sunic Apps Plus'], ['command' => 'paysupport', 'description' => 'Payment help']],
+    'uz' => [['command' => 'start', 'description' => 'Boshlash'], ['command' => 'menu', 'description' => '📋 Menyu'], ['command' => 'settings', 'description' => '⚙️ Sozlamalar va Sunic Apps Plus'], ['command' => 'tv', 'description' => 'Televizorlarim'], ['command' => 'plus', 'description' => 'Sunic Apps Plus'], ['command' => 'paysupport', 'description' => "To'lov bo'yicha yordam"]],
 ];
 $about = [
     'ru' => 'Ищу фильмы и сериалы и включаю их на вашем телевизоре с Lampa и Sunic Apps. sunic.stream',

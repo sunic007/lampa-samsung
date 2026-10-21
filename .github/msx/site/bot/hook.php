@@ -45,6 +45,13 @@ const T = [
         'paysupport' => "Вопросы по оплате Sunic Apps Plus — напишите в группу https://t.me/sunicapps. Если Plus не включился или нужен возврат Stars — поможем.",
         'tv_off' => 'Телевизор не на связи — откройте на нём Lampa, и кнопка заработает.',
         'which' => 'На каком ТВ включить?',
+        'kb' => '📋 Меню', 'b_find' => '🔎 Найти', 'b_tvs' => '📺 Телевизоры', 'b_help' => '❓ Помощь', 'b_set' => '⚙️ Настройки',
+        'b_plus' => '⭐ Sunic Apps Plus', 'b_renew' => '⭐ Продлить на 30 дней — %d ⭐', 'b_back' => '⬅️ Настройки', 'b_menu' => '📋 Меню',
+        'b_watch' => '▶️ Смотреть', 'b_open' => '📺 Открыть на ТВ', 'opened' => 'Открываю на ТВ «%s»',
+        'menu' => "%s\n\nВыберите раздел:", 'tv_on' => '📺 На связи: %s', 'tv_wait' => '📺 Телевизор сейчас не на связи — работают поиск и «Смотреть»: фильм включится, когда на ТВ откроется Lampa. Закладки, подписки и «На неделе» — когда Lampa открыта.',
+        'find' => '🔎 Напишите название фильма или сериала — например, «Синтел».',
+        'settings' => "⚙️ Настройки\n\n⭐ Sunic Apps Plus: %s", 'until' => 'до %s', 'ended' => 'закончился',
+        'help' => "❓ Помощь\n\n🔎 Напишите название — пришлю карточку с постером.\n▶️ «Смотреть» — фильм включится на ТВ, 📺 «Открыть на ТВ» — откроется его карточка.\nКогда на ТВ открыта Lampa, работают и закладки, подписки, «На неделе».\n\n⭐ Sunic Apps Plus — «⚙️ Настройки» или /plus\n💬 Вопросы, помощь и новости: https://t.me/sunicapps",
         'menu_off' => "Меню, закладки и подписки работают, когда на телевизоре открыта Lampa.
 Сейчас ТВ не на связи. Напишите название фильма — найду, и он включится, когда ТВ включат.",
     ],
@@ -68,6 +75,13 @@ const T = [
         'paysupport' => "Questions about paying for Sunic Apps Plus — write to the group https://t.me/sunicapps. If Plus didn't turn on or you need your Stars back — we'll help.",
         'tv_off' => 'The TV is offline — open Lampa on it and the button will work.',
         'which' => 'Which TV should it play on?',
+        'kb' => '📋 Menu', 'b_find' => '🔎 Find', 'b_tvs' => '📺 TVs', 'b_help' => '❓ Help', 'b_set' => '⚙️ Settings',
+        'b_plus' => '⭐ Sunic Apps Plus', 'b_renew' => '⭐ Renew for 30 days — %d ⭐', 'b_back' => '⬅️ Settings', 'b_menu' => '📋 Menu',
+        'b_watch' => '▶️ Watch', 'b_open' => '📺 Open on TV', 'opened' => 'Opening on the TV «%s»',
+        'menu' => "%s\n\nChoose a section:", 'tv_on' => '📺 Online: %s', 'tv_wait' => '📺 The TV is offline now — search and «Watch» work: the movie starts when Lampa opens on the TV. Bookmarks, subscriptions and «This week» — while Lampa is open.',
+        'find' => '🔎 Send a movie or series title — for example, «Sintel».',
+        'settings' => "⚙️ Settings\n\n⭐ Sunic Apps Plus: %s", 'until' => 'until %s', 'ended' => 'ended',
+        'help' => "❓ Help\n\n🔎 Send a title — I reply with a card and poster.\n▶️ «Watch» — the movie starts on the TV, 📺 «Open on TV» — its card opens.\nWhile Lampa is open on the TV, bookmarks, subscriptions and «This week» work too.\n\n⭐ Sunic Apps Plus — «⚙️ Settings» or /plus\n💬 Questions, help and news: https://t.me/sunicapps",
         'menu_off' => "The menu, bookmarks and subscriptions work while Lampa is open on the TV.
 The TV is offline now. Send a movie title — I'll find it and it will start when the TV is on.",
     ],
@@ -91,6 +105,13 @@ The TV is offline now. Send a movie title — I'll find it and it will start whe
         'paysupport' => "Sunic Apps Plus to'lovi bo'yicha savollar — https://t.me/sunicapps guruhiga yozing. Plus yoqilmagan bo'lsa yoki Stars'ni qaytarish kerak bo'lsa — yordam beramiz.",
         'tv_off' => "Televizor aloqada emas — unda Lampa ni oching, tugma ishlaydi.",
         'which' => "Qaysi televizorda yoqay?",
+        'kb' => '📋 Menyu', 'b_find' => '🔎 Topish', 'b_tvs' => '📺 Televizorlar', 'b_help' => '❓ Yordam', 'b_set' => '⚙️ Sozlamalar',
+        'b_plus' => '⭐ Sunic Apps Plus', 'b_renew' => '⭐ 30 kunga uzaytirish — %d ⭐', 'b_back' => '⬅️ Sozlamalar', 'b_menu' => '📋 Menyu',
+        'b_watch' => "▶️ Ko'rish", 'b_open' => "📺 TV'da ochish", 'opened' => "«%s» televizorida ochyapman",
+        'menu' => "%s\n\nBo'limni tanlang:", 'tv_on' => '📺 Aloqada: %s', 'tv_wait' => "📺 Televizor hozir aloqada emas — qidiruv va «Ko'rish» ishlaydi: film televizorda Lampa ochilganda yoqiladi. Xatcho'plar, obunalar va «Bu hafta» — Lampa ochiq bo'lganda.",
+        'find' => "🔎 Film yoki serial nomini yozing — masalan, «Sintel».",
+        'settings' => "⚙️ Sozlamalar\n\n⭐ Sunic Apps Plus: %s", 'until' => '%s gacha', 'ended' => 'tugagan',
+        'help' => "❓ Yordam\n\n🔎 Nomini yozing — poster bilan kartochka yuboraman.\n▶️ «Ko'rish» — film televizorda yoqiladi, 📺 «TV'da ochish» — uning kartochkasi ochiladi.\nTelevizorda Lampa ochiq bo'lsa, xatcho'plar, obunalar va «Bu hafta» ham ishlaydi.\n\n⭐ Sunic Apps Plus — «⚙️ Sozlamalar» yoki /plus\n💬 Savollar, yordam va yangiliklar: https://t.me/sunicapps",
         'menu_off' => "Menyu, xatcho'plar va obunalar televizorda Lampa ochiq bo'lganda ishlaydi.
 Hozir televizor aloqada emas. Film nomini yozing — topaman, televizor yoqilganda u ishga tushadi.",
     ],
@@ -102,6 +123,15 @@ function lang_of($from) {
 function t($l, $k) { return T[$l][$k] ?? T['ru'][$k]; }
 function day($ts) { return date('d.m.Y', $ts); }
 function say($chat, $text, $kb = null) { tg('sendMessage', ['chat_id' => $chat, 'text' => $text] + ($kb ? ['reply_markup' => ['inline_keyboard' => $kb]] : [])); }
+/** Как у бесплатного бота: постоянная кнопка «📋 Меню» внизу чата. */
+function reply_kb($l) { return ['keyboard' => [[['text' => t($l, 'kb')]]], 'resize_keyboard' => true, 'is_persistent' => true]; }
+function say_kb($chat, $l, $text) { tg('sendMessage', ['chat_id' => $chat, 'text' => $text, 'reply_markup' => reply_kb($l)]); }
+/** Экран из кнопки — меняем её сообщение на месте (чат не растёт); без кнопки — новое сообщение. */
+function screen($chat, $mid, $text, $kb) {
+    if ($mid) { $r = tg('editMessageText', ['chat_id' => $chat, 'message_id' => $mid, 'text' => $text, 'reply_markup' => ['inline_keyboard' => $kb]]); if (!empty($r['ok'])) return; }
+    say($chat, $text, $kb);
+}
+function sv_btn($l, $k, $a) { return ['text' => t($l, $k), 'callback_data' => 'sv:' . $a]; }
 
 housekeeping();
 
@@ -116,7 +146,7 @@ function relay_tv($chat) {
 }
 function server_own($u) {
     if (isset($u['pre_checkout_query'])) return true;
-    if (isset($u['callback_query'])) return (bool) preg_match('/^([swtu]:|noop$)/', (string) ($u['callback_query']['data'] ?? ''));
+    if (isset($u['callback_query'])) return (bool) preg_match('/^([swto]:\d+:\d+(:[A-Za-z0-9]{12,40})?|u:[A-Za-z0-9]{12,40}|sv:[a-z]+|noop)$/', (string) ($u['callback_query']['data'] ?? ''));
     $m = $u['message'] ?? null;
     if (!$m || isset($m['successful_payment']) || isset($m['refunded_payment'])) return true;
     return (bool) preg_match('/^\/(start\s+tv[A-Z0-9]{10}|plus|tv|paysupport|plustest)\b/', trim((string) ($m['text'] ?? '')));
@@ -134,7 +164,7 @@ if (!server_own($u) && isset($u['update_id'])) {
 function card_msg($l, $sid, $items, $i) {
     $it = $items[$i];
     $cap = $it['title'] . ($it['year'] ? ' (' . $it['year'] . ')' : '') . "\n" . t($l, $it['kind'] === 't' ? 'series' : 'film') . ($it['vote'] ? ' · ★ ' . $it['vote'] : '') . ($it['about'] ? "\n\n" . $it['about'] : '');
-    $kb = [[['text' => t($l, 'watch'), 'callback_data' => "w:$sid:$i"]]];
+    $kb = [[['text' => t($l, 'b_watch'), 'callback_data' => "w:$sid:$i"], ['text' => t($l, 'b_open'), 'callback_data' => "o:$sid:$i"]]];
     if (count($items) > 1) $kb[] = [
         ['text' => '◀', 'callback_data' => "s:$sid:" . (($i + count($items) - 1) % count($items))],
         ['text' => ($i + 1) . ' / ' . count($items), 'callback_data' => 'noop'],
@@ -165,20 +195,47 @@ function search($chat, $l, $text) {
     else say($chat, $cap, $kb);
 }
 
+function tv_list($chat, $l) {
+    $tvs = q('SELECT id, name FROM tvs WHERE chat_id = ?', [$chat])->fetchAll();
+    if (!$tvs) return say($chat, t($l, 'no_tv'));
+    $kb = array_map(function ($r) use ($l) { return [['text' => sprintf(t($l, 'unlink'), $r['name'] ?: 'TV'), 'callback_data' => 'u:' . $r['id']]]; }, $tvs);
+    say($chat, sprintf(t($l, 'tvs'), implode("\n", array_map(function ($r) { return '📺 ' . ($r['name'] ?: 'TV'); }, $tvs))), $kb);
+}
+
 function link_tv($chat, $l, $code) {
     $tv = q('SELECT * FROM tvs WHERE pair_code = ? AND pair_until >= ?', [$code, time()])->fetch();
     if (!$tv) return say($chat, t($l, 'pair_old'));
     q('UPDATE tvs SET chat_id = ?, pair_code = NULL WHERE id = ?', [$chat, $tv['id']]);
     if (!q('SELECT 1 FROM users WHERE chat_id = ?', [$chat])->fetch()) q('INSERT INTO users (chat_id, trial_until, paid_until, lang) VALUES (?, ?, 0, ?)', [$chat, time() + TRIAL_DAYS * 86400, $l]);
-    say($chat, sprintf(t($l, 'linked'), $tv['name'] ?: 'TV', day(plus_until($chat))));
+    say_kb($chat, $l, sprintf(t($l, 'linked'), $tv['name'] ?: 'TV', day(plus_until($chat))));
 }
 
-function plus_info($chat, $l) {
+function server_menu($chat, $l, $mid = 0) {
+    $tvs = q('SELECT id, name FROM tvs WHERE chat_id = ?', [$chat])->fetchAll();
+    if (!$tvs) return screen($chat, $mid, t($l, 'no_tv'), [[sv_btn($l, 'b_help', 'help'), sv_btn($l, 'b_set', 'set')]]);
+    $on = relay_tv($chat) ? sprintf(t($l, 'tv_on'), implode(', ', array_map(function ($r) { return $r['name'] ?: 'TV'; }, $tvs))) : t($l, 'tv_wait');
+    screen($chat, $mid, sprintf(t($l, 'menu'), $on), [[sv_btn($l, 'b_find', 'find'), sv_btn($l, 'b_tvs', 'tvs')], [sv_btn($l, 'b_help', 'help'), sv_btn($l, 'b_set', 'set')]]);
+}
+function plus_state($chat, $l) { $u = plus_until($chat); return $u > time() ? sprintf(t($l, 'until'), day($u)) : t($l, 'ended'); }
+function server_settings($chat, $l, $mid = 0) {
+    screen($chat, $mid, sprintf(t($l, 'settings'), plus_state($chat, $l)), [[sv_btn($l, 'b_plus', 'plus')], [sv_btn($l, 'b_tvs', 'tvs'), sv_btn($l, 'b_menu', 'menu')]]);
+}
+/** «⭐ Sunic Apps Plus»: срок и «Продлить» — и пока действует (оплата добавляет 30 дней к концу срока). Назад — в
+ *  настройки бота на ТВ, если он на связи (оттуда и пришли), иначе — в настройки сервера. */
+function plus_screen($chat, $l, $mid = 0) {
     $until = plus_until($chat);
-    if ($until > time()) return say($chat, sprintf(t($l, 'plus_on'), day($until)));
-    say($chat, sprintf(t($l, 'plus_off'), PLUS_STARS));
+    $text = $until > time() ? sprintf(t($l, 'plus_on'), day($until)) : sprintf(t($l, 'plus_off'), PLUS_STARS);
+    $back = relay_tv($chat) ? ['text' => t($l, 'b_back'), 'callback_data' => 'st:main'] : sv_btn($l, 'b_back', 'set');
+    screen($chat, $mid, $text, [[['text' => sprintf(t($l, 'b_renew'), PLUS_STARS), 'callback_data' => 'sv:pay']], [$back]]);
+}
+function send_invoice($chat, $l) {
     tg('sendInvoice', ['chat_id' => $chat, 'title' => t($l, 'pay_title'), 'description' => t($l, 'pay_desc'), 'payload' => 'plus30',
         'currency' => 'XTR', 'prices' => [['label' => t($l, 'pay_title'), 'amount' => PLUS_STARS]]]);
+}
+function plus_info($chat, $l) {
+    if (plus_until($chat) > time()) return plus_screen($chat, $l);
+    say($chat, sprintf(t($l, 'plus_off'), PLUS_STARS));
+    send_invoice($chat, $l);
 }
 
 /* ---------- оплата Stars ---------- */
@@ -195,7 +252,19 @@ if (isset($u['callback_query'])) {
     $l = lang_of($c['from'] ?? []);
     $data = (string) ($c['data'] ?? '');
     $answer = ['callback_query_id' => $c['id']];
-    if (preg_match('/^([swt]):(\d+):(\d+)(?::([A-Za-z0-9]{12,40}))?$/', $data, $m)) {
+    $mid = (int) ($c['message']['message_id'] ?? 0);
+    if (preg_match('/^sv:([a-z]+)$/', $data, $m)) {
+        if ($m[1] === 'menu') server_menu($chat, $l, $mid);
+        elseif ($m[1] === 'set') server_settings($chat, $l, $mid);
+        elseif ($m[1] === 'plus') plus_screen($chat, $l, $mid);
+        elseif ($m[1] === 'pay') send_invoice($chat, $l);
+        elseif ($m[1] === 'help') screen($chat, $mid, t($l, 'help'), [[sv_btn($l, 'b_menu', 'menu')]]);
+        elseif ($m[1] === 'find') say($chat, t($l, 'find'));
+        elseif ($m[1] === 'tvs') tv_list($chat, $l);
+        tg('answerCallbackQuery', $answer);
+        exit;
+    }
+    if (preg_match('/^([swto]):(\d+):(\d+)(?::([A-Za-z0-9]{12,40}))?$/', $data, $m)) {
         $row = q('SELECT items FROM searches WHERE id = ? AND chat_id = ?', [(int) $m[2], $chat])->fetch();
         $items = $row ? json_decode($row['items'], true) : null;
         $i = (int) $m[3];
@@ -210,7 +279,7 @@ if (isset($u['callback_query'])) {
             $tvs = q('SELECT id, name FROM tvs WHERE chat_id = ? ORDER BY seen DESC', [$chat])->fetchAll();
             $tv = null;
             if ($m[1] === 't') { foreach ($tvs as $x) if ($x['id'] === ($m[4] ?? '')) $tv = $x; }
-            elseif (count($tvs) === 1) $tv = $tvs[0];
+            elseif (count($tvs) === 1 || $m[1] === 'o') $tv = $tvs[0] ?? null;   // «Открыть» — на ТВ, который был на связи последним
             if (!$tvs) { $answer['text'] = t($l, 'no_tv'); $answer['show_alert'] = true; }
             elseif (plus_until($chat) < time()) { $answer['text'] = t($l, 'expired'); $answer['show_alert'] = true; }
             elseif (!$tv) {
@@ -218,8 +287,8 @@ if (isset($u['callback_query'])) {
                 tg('editMessageReplyMarkup', ['chat_id' => $chat, 'message_id' => $c['message']['message_id'], 'reply_markup' => ['inline_keyboard' => $kb]]);
                 $answer['text'] = t($l, 'which');
             } else {
-                q('INSERT INTO cmds (tv_id, body, at) VALUES (?, ?, ?)', [$tv['id'], json_encode(['t' => 'open', 'kind' => $items[$i]['kind'], 'id' => $items[$i]['id'], 'play' => true]), time()]);
-                $answer['text'] = sprintf(t($l, 'sent'), $tv['name'] ?: 'TV');
+                q('INSERT INTO cmds (tv_id, body, at) VALUES (?, ?, ?)', [$tv['id'], json_encode(['t' => 'open', 'kind' => $items[$i]['kind'], 'id' => $items[$i]['id'], 'play' => $m[1] !== 'o']), time()]);
+                $answer['text'] = sprintf(t($l, $m[1] === 'o' ? 'opened' : 'sent'), $tv['name'] ?: 'TV');
                 if ($m[1] === 't') { list(, $kb) = card_msg($l, (int) $m[2], $items, $i); tg('editMessageReplyMarkup', ['chat_id' => $chat, 'message_id' => $c['message']['message_id'], 'reply_markup' => ['inline_keyboard' => $kb]]); }
             }
         }
@@ -259,7 +328,10 @@ if (isset($msg['successful_payment'])) {
 
 $text = trim((string) ($msg['text'] ?? ''));
 if ($text === '') exit;
-if (preg_match('/^\/start(?:\s+tv([A-Z0-9]{10}))?$/', $text, $m)) { empty($m[1]) ? say($chat, t($l, 'hello')) : link_tv($chat, $l, $m[1]); exit; }
+if (preg_match('/^\/start(?:\s+tv([A-Z0-9]{10}))?$/', $text, $m)) { empty($m[1]) ? say_kb($chat, $l, t($l, 'hello')) : link_tv($chat, $l, $m[1]); exit; }
+if ($text === '/menu' || in_array($text, ['📋 Меню', '📋 Menu', '📋 Menyu'], true)) { server_menu($chat, $l); exit; }
+if ($text === '/settings') { server_settings($chat, $l); exit; }
+if ($text === '/help') { screen($chat, 0, t($l, 'help'), [[sv_btn($l, 'b_menu', 'menu')]]); exit; }
 if ($text === '/plus') { plus_info($chat, $l); exit; }
 // правило Telegram для оплаты Stars: у бота должна быть /paysupport — куда писать по оплате
 if ($text === '/paysupport') { say($chat, t($l, 'paysupport')); exit; }
@@ -286,13 +358,7 @@ if (preg_match('/^\/plustest\s+(end|refund|back)$/', $text, $m) && is_file(PRIVA
     }
     exit;
 }
-if ($text === '/tv') {
-    $tvs = q('SELECT id, name FROM tvs WHERE chat_id = ?', [$chat])->fetchAll();
-    if (!$tvs) { say($chat, t($l, 'no_tv')); exit; }
-    $kb = array_map(function ($r) use ($l) { return [['text' => sprintf(t($l, 'unlink'), $r['name'] ?: 'TV'), 'callback_data' => 'u:' . $r['id']]]; }, $tvs);
-    say($chat, sprintf(t($l, 'tvs'), implode("\n", array_map(function ($r) { return '📺 ' . ($r['name'] ?: 'TV'); }, $tvs))), $kb);
-    exit;
-}
+if ($text === '/tv') { tv_list($chat, $l); exit; }
 if ($text[0] === '/') { say($chat, t($l, 'hello')); exit; }
 // кнопки бота на ТВ («📋 Меню», «⭐ Закладки»…: начинаются со значка), а ТВ не на связи — не искать фильм с таким названием
 if (preg_match('/^\p{So}/u', $text) && q('SELECT 1 FROM tvs WHERE chat_id = ?', [$chat])->fetch()) { say($chat, t($l, 'menu_off')); exit; }
