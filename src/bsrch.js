@@ -106,11 +106,17 @@ var BSRch = (function () {
     function limit(name) { return recentFail() ? Math.round(cfg[name] / 2) : cfg[name]; }
     function retries() { return recentFail() ? 0 : cfg.RETRIES; }
 
+    function playerNow() { try { return !!(Lampa.Player && Lampa.Player.opened && Lampa.Player.opened()); } catch (e) { return false; } }
+
     function wrapClient(Orig) {
         if (!Orig || !Orig.prototype || Orig.__bs) return Orig;
         Orig.__bs = true;
         var P = Orig.prototype, connect = P.connect, emit = P._emit, close = P.close;
         P.connect = function () {
+            // клиент подключается заново (плагин переиспользует его для следующего фильма) — сторож снова нужен: без него
+            // зависшее переподключение оставляло бы «Загрузку» навсегда. Во время видео не трогаем: там переподключение —
+            // дело самого клиента, а наш отказ переключил бы источник посреди фильма.
+            if (this.__bsDone && !playerNow()) { this.__bsDone = false; this.__bsArmed = false; }
             if (!this.__bsArmed && !this.__bsDone) {
                 this.__bsArmed = true;
                 this.__bsTries = 0;

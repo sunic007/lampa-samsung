@@ -75,6 +75,26 @@ x2 = decide2({}, res({}, DEAD_DIRECT)); t('источники: прямые ме
     m = load('skazauto.js', 'BSSkaz', { bs_srv_lastuse: String(now - 3600000), bs_srv_auto: 'false' });
     t('серверы: автовыбор выключен — не меряем', m.M._dueWatch(now) === false);
 }
+{   /* bsplayer: дорожку, которую hls.js не разбирает (AC3 под видом AAC), — назад на прежнюю */
+    const P = load('bsplayer.js', 'BSPlayer', {});
+    const notes = []; P.w.Lampa = undefined;
+    const h = { audioTrack: 0, audioTracks: [{ name: '01. Оригинал' }, { name: '02' }, { name: '05. Дубляж (RUS) AC3' }] };
+    const g = P.M._audioGuard;
+    g(h, 'hlsFragBuffered', { frag: { type: 'audio' } });                       // дорожка 0 играет
+    h.audioTrack = 2; g(h, 'hlsAudioTrackSwitching', { id: 2 });               // человек выбрал AC3
+    const bad = { details: 'fragParsingError', frag: { type: 'audio' }, fatal: false };
+    g(h, 'hlsError', bad);
+    t('дорожка: одна ошибка разбора — ещё ждём', h.audioTrack === 2);
+    g(h, 'hlsError', bad);
+    t('дорожка: две ошибки разбора подряд — вернули прежнюю, которая играла', h.audioTrack === 0);
+    const h2 = { audioTrack: 1, audioTracks: [{}, {}] };
+    g(h2, 'hlsError', bad); g(h2, 'hlsError', bad);
+    t('дорожка: рабочей ещё не было — не трогаем', h2.audioTrack === 1);
+    const h3 = { audioTrack: 0, audioTracks: [{}, {}] };
+    g(h3, 'hlsFragBuffered', { frag: { type: 'audio' } }); h3.audioTrack = 1; g(h3, 'hlsAudioTrackSwitching', { id: 1 });
+    g(h3, 'hlsError', { details: 'fragLoadError', frag: { type: 'audio' } }); g(h3, 'hlsError', { details: 'fragParsingError', frag: { type: 'main' } });
+    t('дорожка: другие ошибки и ошибки видео — не повод менять звук', h3.audioTrack === 1);
+}
 const st = load('skazauto.js', 'BSSkaz').M._stats([100, 140, 100], 4); t('серверы: медиана/джиттер/потери', st.median === 100 && st.jitter === 40 && st.loss === 0.25);
 
 /* ---- bsplayer.js: метки и главы ---- */
@@ -286,6 +306,12 @@ R = rchEnv(); rc = R.client(); rc.connect(); R.client(); R.clock.run(20000);
 t('rch: брошенный ради другого источника сокет молчит', R.comp.calls.length === 0 && R.notes.length === 0);
 R = rchEnv(); rc = R.client(); rc.connect(); rc._emit('Connected', ['id']); rc.socket.onclose(); R.clock.run(1);
 t('rch: обрыв до регистрации — ошибка без ожидания таймера', R.comp.calls.length === 1);
+R = rchEnv(); rc = R.client(); rc.connect(); rc._emit('Connected', ['id']); rc._emit('RchRegistry', ['ip']); R.clock.run(1000);
+rc.connect(); R.clock.run(20000);
+t('rch: тот же клиент подключается снова (следующий фильм) и зависает — сторож снова срабатывает', R.comp.calls.length === 1);
+R = rchEnv(); rc = R.client(); rc.connect(); rc._emit('Connected', ['id']); rc._emit('RchRegistry', ['ip']);
+R.Lampa.Player = { opened: () => true }; rc.connect(); R.clock.run(20000);
+t('rch: переподключение во время видео — не трогаем (источник посреди фильма не меняем)', R.comp.calls.length === 0);
 
 /* ---- bsfix.js: качество объектом не роняет плагин Skaz ---- */
 const X = load('bsfix.js', 'BSFix').M;

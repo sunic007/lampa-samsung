@@ -162,6 +162,16 @@ var BSContinue = (function () {
 
     var cur = null;     // {card, s, e, pos, dur}
 
+    /* «История» Lampa (и её ряд «Продолжить просмотр») пополняется, когда человек сам нажимает файл в источнике. Фильм
+     * из Telegram («▶️ Смотреть») и автопереход включают файл без нажатия — и в истории его не было. Нет в истории —
+     * добавляем так же, как источник (Favorite.add с лимитом 100). */
+    function toHistory(card) {
+        try {
+            var list = Lampa.Favorite.get({ type: 'history' }) || [];
+            for (var i = 0; i < list.length; i++) if (list[i] && list[i].id === card.id) return;
+            Lampa.Favorite.add('history', card, 100);
+        } catch (e) {}
+    }
     function activeCard() {
         try {
             var a = Lampa.Activity.active() || {};
@@ -177,6 +187,11 @@ var BSContinue = (function () {
             if (cur.lk && cur.pos > 30) lampaSave(cur.lk, cur.pos, cur.dur);
         }
         cur = null;
+        try {
+            // история Lampa — для фильма из любого источника (Telegram и автопереход включают файл без нажатия)
+            var hc = (data && (data.card || data.movie)) || activeCard();
+            if (hc && hc.id > 0) toHistory(hc);
+        } catch (e) {}
         try {
             // только видео из источников Skaz: продолжить можно только через них
             var lp = window.BSFix && BSFix.current && BSFix.current();

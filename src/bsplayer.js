@@ -404,8 +404,44 @@ var BSPlayer = (function () {
         });
     }
 
+    /* Звуковая дорожка, которую встроенный плеер (hls.js) не может разобрать. Бывает AC3/E-AC3, записанная в плейлисте
+     * источника как AAC (mp4a.40.2): hls.js на каждый кусок пишет «Found no media», через полминуты сдаётся (fatal) —
+     * картинка ломается, звук идёт. Две такие ошибки подряд на новой дорожке — возвращаем прежнюю, которая играла,
+     * и говорим, в чём дело. Hls — глобальный класс hls.js, грузится вместе с Lampa; ловим через trigger, без своих
+     * обработчиков в чужом объекте. */
+    var HLS_BAD_AUDIO = 2;
+    function audioGuard(h, ev, d) {
+        var g = h.__bsAudio || (h.__bsAudio = { good: -1, bad: 0, cur: -1, back: false });
+        if (ev === 'hlsAudioTrackSwitching' && d && typeof d.id === 'number') {
+            if (d.id !== g.cur) { g.cur = d.id; g.bad = 0; }
+        } else if (ev === 'hlsFragBuffered' && d && d.frag && d.frag.type === 'audio') {
+            g.good = g.cur = h.audioTrack; g.bad = 0;
+        } else if (ev === 'hlsError' && d && d.details === 'fragParsingError' && d.frag && d.frag.type === 'audio') {
+            if (++g.bad < HLS_BAD_AUDIO || g.back || g.good < 0 || g.good === h.audioTrack) return;
+            var name = '', tr = h.audioTracks && h.audioTracks[h.audioTrack];
+            if (tr) name = tr.name || tr.lang || '';
+            g.back = true;
+            log('дорожка не разбирается — возвращаю прежнюю', name);
+            try { h.audioTrack = g.good; } catch (e) { return; }
+            noty('Дорожка ' + (name ? '«' + name + '» ' : '') + 'не воспроизводится встроенным плеером — вернул прежнюю. ' +
+                'Нужна именно она — выберите в настройках плеер Tizen', 9000);
+            setTimeout(function () { g.back = false; }, 15000);
+        }
+    }
+    function hookHls() {
+        var H = window.Hls;
+        if (!H || !H.prototype || H.prototype.trigger.__bs) return;
+        var orig = H.prototype.trigger;
+        H.prototype.trigger = function (ev, d) {
+            try { audioGuard(this, ev, d); } catch (e) {}
+            return orig.apply(this, arguments);
+        };
+        H.prototype.trigger.__bs = true;
+    }
+
     function start() {
         try {
+            Lampa.Player.listener.follow('start', function () { try { hookHls(); } catch (e) {} });
             Lampa.Player.listener.follow('start', begin);
             Lampa.Player.listener.follow('destroy', function () { rememberTrack(); s = null; });
             var v = Lampa.PlayerVideo.listener;
@@ -413,10 +449,11 @@ var BSPlayer = (function () {
             v.follow('tracks', onTracks);
             setInterval(function () { if (s) rememberTrack(); }, 15000);
         } catch (e) { log('не подключился', e.message); }
+        try { hookHls(); } catch (e) {}
         try { addSettings(); } catch (e) {}
     }
 
     function hasEndMark() { return !!(s && s.endMark); }
 
-    return { start: start, hasEndMark: hasEndMark, _toLampa: toLampa, _parseChapters: parseChapters, _feedLampa: feedLampa, _state: function () { return s; }, _trimTracks: trimTracks, _night: nightNext, _bwUsable: bwUsable };
+    return { start: start, hasEndMark: hasEndMark, _toLampa: toLampa, _parseChapters: parseChapters, _feedLampa: feedLampa, _state: function () { return s; }, _trimTracks: trimTracks, _night: nightNext, _bwUsable: bwUsable, _audioGuard: audioGuard };
 })();
