@@ -929,11 +929,34 @@ var BSFeatures = (function () {
             });
         }
     }
+    /* Браузер (компьютер, телефон, планшет): поле поиска и ввода — обычное (loader.js ставит системную клавиатуру).
+     * Печать с клавиатуры сразу идёт в открытое поле — кликать в него не надо; на компьютере поиск открывается уже
+     * с курсором в поле. На ТВ (пульт) — ничего не меняем. */
+    function webKeys() {
+        if (typeof bsIsTv !== 'function' || bsIsTv()) return;
+        var field = function () { var f = $('.simple-keyboard-input:visible'); return f.length ? f[f.length - 1] : null; };
+        var busy = function () {
+            var a = document.activeElement;
+            return a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable);
+        };
+        document.addEventListener('keydown', function (e) {
+            if (e.ctrlKey || e.metaKey || e.altKey || !e.key || e.key.length !== 1 || busy()) return;
+            var f = field();
+            if (f) try { f.focus(); } catch (x) {}
+        }, true);
+        var touch = 'ontouchstart' in window && navigator.maxTouchPoints > 0;   // на телефоне не открываем клавиатуру сами
+        if (touch || !Lampa.Controller || !Lampa.Controller.listener) return;
+        Lampa.Controller.listener.follow('toggle', function (e) {
+            if (e.name !== 'keybord') return;
+            setTimeout(function () { var f = field(); if (f && !busy()) try { f.focus(); } catch (x) {} }, 100);
+        });
+    }
     function iphone() { try { return /iPhone|iPod/.test(navigator.userAgent || ''); } catch (e) { return false; } }
 
     function start() {
         try { keyboardWrap(); } catch (e) { console.log('BS keyboard wrap', e.message); }
         try { fullscreenButton(); } catch (e) {}
+        try { webKeys(); } catch (e) {}
         try { noticesAbovePanel(); } catch (e) {}
         try { lazyYouTube(); } catch (e) {}
         try { installFastStart(); } catch (e) { console.log('BS fast start', e.message); }

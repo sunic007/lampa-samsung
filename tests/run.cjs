@@ -975,6 +975,36 @@ t('обновление: GitHub не ответил — без версии', uc
 uc = updCheck(M46, () => 200, { bs_upd: JSON.stringify({ v: '1.7.45', files: ['loader.js'], m: 1, ok: 1 }) });
 t('обновление: при запуске берём зеркало, где проверка нашла файлы', /fastly\.jsdelivr\.net/.test(uc.U._base));
 
+/* ---- loader.js: клавиатура — экранная Lampa только на ТВ; в браузере системная, планшет — «Касание» ---- */
+function kbStart(o) {
+    const src = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
+    const fn = src.slice(src.indexOf('function bsIsTv('), src.indexOf('/* Все наши настройки'));
+    const ls = Object.assign({}, o.store || {});
+    const w = { localStorage: { getItem: k => (k in ls ? ls[k] : null), setItem: (k, x) => { ls[k] = String(x); } } };
+    if (o.tizen) w.tizen = {};
+    if (o.touch) w.ontouchstart = null;
+    const ctx = { window: w, navigator: { userAgent: o.ua || '', maxTouchPoints: o.touch ? 5 : 0 } };
+    vm.createContext(ctx); vm.runInContext(fn, ctx);
+    return ls;
+}
+const UA_PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140', UA_TAB = 'Mozilla/5.0 (Linux; Android 14; SM-X710) Chrome/140';
+let kb = kbStart({ tizen: true, ua: 'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0)' });
+t('клавиатура: ТВ Samsung — экранная Lampa', kb.keyboard_type === 'lampa' && !kb.navigation_type);
+kb = kbStart({ ua: 'Mozilla/5.0 (Web0S; Linux/SmartTV) MSX' });
+t('клавиатура: другой ТВ (MSX) — экранная Lampa', kb.keyboard_type === 'lampa');
+kb = kbStart({ ua: 'Mozilla/5.0 (Linux; Android 11; MiBOX4) Chrome/120' });
+t('клавиатура: приставка Android без касаний — экранная Lampa', kb.keyboard_type === 'lampa');
+kb = kbStart({ ua: UA_PC, store: { keyboard_type: 'lampa', bs_kb_lampa2: '1' } });
+t('клавиатура: компьютер — системная, даже если раньше стояла экранная', kb.keyboard_type === 'integrate' && kb.bs_kb_web === '1' && !kb.navigation_type);
+kb = kbStart({ ua: UA_PC, store: { bs_kb_web: '1', keyboard_type: 'lampa' } });
+t('клавиатура: в браузере выбрали экранную сами — не трогаем', kb.keyboard_type === 'lampa');
+kb = kbStart({ ua: UA_TAB, touch: true });
+t('планшет: системная клавиатура и управление «Касание»', kb.keyboard_type === 'integrate' && kb.navigation_type === 'touch' && kb.is_true_mobile === 'true');
+kb = kbStart({ ua: UA_TAB, touch: true, store: { navigation_type: 'mouse' } });
+t('планшет: выбрали управление сами — не трогаем', kb.navigation_type === 'mouse' && kb.bs_touch_web === '1');
+kb = kbStart({ ua: UA_PC, touch: true });
+t('компьютер с сенсорным экраном — управление не трогаем', !kb.navigation_type);
+
 /* ---- loader.js: «Проверить и обновить» — «что нового» в окно, согласие даёт «плохой» версии ещё шанс ---- */
 function ghCheck(v, m, store) {
     const src = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');

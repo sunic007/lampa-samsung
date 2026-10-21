@@ -654,10 +654,35 @@ function bsStartAutoUpdate() {
 /* Клавиатура: своя экранная клавиатура Lampa вместо системной Samsung (просили: «Samsung неудобная»). Один раз —
  * до запуска Lampa (она читает keyboard_type при старте); вернули «Системную» в настройках — больше не трогаем.
  * bs_kb_lampa2: 1.7.44 на день переключала на системную — возвращаем экранную и тем, у кого она успела сработать.
- * Прятать клавиатуру после набора - bstg.js (searchKeypad). */
+ * Прятать клавиатуру после набора - bstg.js (searchKeypad).
+ * Это только для ТВ (пульт). В браузере компьютера, телефона, планшета экранная Lampa не принимает обычную
+ * клавиатуру — там один раз (bs_kb_web) ставим системную: печатает и клавиатура, и экранная телефона. */
+function bsIsTv() {
+    var ua = navigator.userAgent || '', touch = 'ontouchstart' in window && navigator.maxTouchPoints > 0;
+    if (/android/i.test(ua) && !touch) return true;   // приставка Android: пульт, экрана касаний нет
+    return !!window.tizen || /tizen|web0s|webos|smart-?tv|netcast|maple|hbbtv|bravia|vidaa|philips|nettv|whaletv|googletv|google tv|android tv|mibox|mitv|aft[a-z]|crkey|large screen/i.test(ua);
+}
 (function () {
     try {
         var ls = window.localStorage;
+        if (!bsIsTv()) {
+            if (ls.getItem('bs_kb_web') !== '1') {
+                ls.setItem('keyboard_type', 'integrate');
+                ls.setItem('bs_kb_web', '1');
+                ls.setItem('bs_kb_lampa2', '1');
+            }
+            // Планшет в альбомной ориентации (ширина от 1280) Lampa принимает за телевизор: интерфейс под пульт, листать
+            // пальцем нельзя. Один раз (bs_touch_web) — управление «Касание», как на телефоне; выбрал другое — не трогаем.
+            // Компьютер с сенсорным экраном (Windows) — не трогаем: там мышь.
+            if (ls.getItem('bs_touch_web') !== '1') {
+                if ('ontouchstart' in window && navigator.maxTouchPoints > 0 && !/windows nt/i.test(navigator.userAgent || '') && !ls.getItem('navigation_type')) {
+                    ls.setItem('navigation_type', 'touch');
+                    ls.setItem('is_true_mobile', 'true');
+                }
+                ls.setItem('bs_touch_web', '1');
+            }
+            return;
+        }
         if (ls.getItem('bs_kb_lampa2') !== '1') {
             if (ls.getItem('bs_kb_lampa') !== '1' || ls.getItem('bs_kb_system') === '1') ls.setItem('keyboard_type', 'lampa');
             ls.setItem('bs_kb_lampa', '1');
