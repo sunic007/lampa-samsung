@@ -1,11 +1,8 @@
 <?php
 /*
- * Разовая настройка @SunicStreamBot: вебхук на hook.php (с секретом), команды и описание на трёх языках.
- * Повторный запуск безопасен — ставит то же самое. Открыть: https://sunic.stream/bot/setup.php?go=1
- * Вебхук — на приёмник в Cloudflare (lampa-samsung/.github/bot-front): Telegram не всегда достаёт до хостинга напрямую.
- * Приёмник не работает — ?go=1&direct=1 ставит вебхук прямо на hook.php, как раньше.
- * Только с разрешением: файл private/setup-allow (кладётся по FTP, в папку вне сайта) — иначе любой мог бы сбросить
- * очередь сообщений бота (drop_pending_updates). Разрешение одноразовое: после запуска файл удаляется.
+ * Разовая настройка @SunicStreamBot после закрытия общего бота (2026-10-21): вебхук прямо на hook.php (он отвечает
+ * «закрыт, подключите свой бот»), команд нет, описание — о закрытии. Открыть: https://sunic.stream/bot/setup.php?go=1
+ * Только с разрешением: файл private/setup-allow (кладётся по FTP, вне сайта); разрешение одноразовое.
  */
 require __DIR__ . '/lib.php';
 header('Content-Type: text/plain; charset=utf-8');
@@ -15,53 +12,17 @@ $allow = PRIVATE_DIR . '/setup-allow';
 if (!is_file($allow)) { http_response_code(403); exit("нет разрешения: положите пустой файл private/setup-allow\n"); }
 @unlink($allow);
 $r = [];
-$hook = ($_GET['direct'] ?? '') === '1' ? 'https://sunic.stream/bot/hook.php' : 'https://sunicstream-hook.sunic007.workers.dev/hook';
-$r['webhook'] = tg('setWebhook', ['url' => $hook, 'secret_token' => hook_secret(),
+$r['webhook'] = tg('setWebhook', ['url' => 'https://sunic.stream/bot/hook.php', 'secret_token' => hook_secret(),
     'allowed_updates' => ['message', 'callback_query', 'pre_checkout_query'], 'drop_pending_updates' => true]);
-$cmds = [
-    'ru' => [['command' => 'start', 'description' => 'Начать'], ['command' => 'menu', 'description' => '📋 Меню'], ['command' => 'settings', 'description' => '⚙️ Настройки и Sunic Apps Plus'], ['command' => 'tv', 'description' => 'Мои телевизоры'], ['command' => 'plus', 'description' => 'Sunic Apps Plus'], ['command' => 'paysupport', 'description' => 'Помощь с оплатой']],
-    'en' => [['command' => 'start', 'description' => 'Start'], ['command' => 'menu', 'description' => '📋 Menu'], ['command' => 'settings', 'description' => '⚙️ Settings and Sunic Apps Plus'], ['command' => 'tv', 'description' => 'My TVs'], ['command' => 'plus', 'description' => 'Sunic Apps Plus'], ['command' => 'paysupport', 'description' => 'Payment help']],
-    'uz' => [['command' => 'start', 'description' => 'Boshlash'], ['command' => 'menu', 'description' => '📋 Menyu'], ['command' => 'settings', 'description' => '⚙️ Sozlamalar va Sunic Apps Plus'], ['command' => 'tv', 'description' => 'Televizorlarim'], ['command' => 'plus', 'description' => 'Sunic Apps Plus'], ['command' => 'paysupport', 'description' => "To'lov bo'yicha yordam"]],
-];
-$about = [
-    'ru' => 'Ищу фильмы и сериалы и включаю их на вашем телевизоре с Lampa и Sunic Apps. sunic.stream',
-    'en' => 'I find movies and series and play them on your TV with Lampa and Sunic Apps. sunic.stream',
-    'uz' => "Film va seriallarni topaman va ularni Lampa va Sunic Apps bilan televizoringizda yoqaman. sunic.stream",
-];
 $desc = [
-    'ru' => "Ищу фильмы и сериалы и включаю их на вашем телевизоре.
-
-• Напишите название — пришлю карточку с постером.
-• «▶ Смотреть на ТВ» — фильм включится на телевизоре с Lampa и Sunic Apps.
-
-Подключить ТВ: Lampa → Настройки → Sunic Apps → Telegram → «Общий бот Sunic Apps» — и наведите камеру на QR.
-
-Первый месяц бесплатно, дальше Sunic Apps Plus. sunic.stream",
-    'en' => "I find movies and series and play them on your TV.
-
-• Send a title — I reply with a card and poster.
-• «▶ Watch on TV» — it starts on the TV with Lampa and Sunic Apps.
-
-Connect a TV: Lampa → Settings → Sunic Apps → Telegram → «Sunic Apps shared bot» — and point the camera at the QR.
-
-First month free, then Sunic Apps Plus. sunic.stream",
-    'uz' => "Film va seriallarni topaman va ularni televizoringizda yoqaman.
-
-• Nomini yozing — poster bilan kartochka yuboraman.
-• «▶ Televizorda ko'rish» — film Lampa va Sunic Apps bilan televizorda yoqiladi.
-
-Televizorni ulash: Lampa → Sozlamalar → Sunic Apps → Telegram → «Sunic Apps umumiy boti» — va kamerani QR-kodga qarating.
-
-Birinchi oy bepul, keyin Sunic Apps Plus. sunic.stream",
+    'ru' => 'Общий бот Sunic Apps закрыт. Бот для Lampa бесплатный — свой: Lampa → Настройки → Sunic Apps → Telegram. Помощь: t.me/sunicapps',
+    'en' => 'The Sunic Apps shared bot is closed. The Lampa bot is free — your own: Lampa → Settings → Sunic Apps → Telegram. Help: t.me/sunicapps',
+    'uz' => "Sunic Apps umumiy boti yopildi. Lampa uchun bot bepul — o'zingizniki: Lampa → Sozlamalar → Sunic Apps → Telegram. Yordam: t.me/sunicapps",
 ];
-foreach ($cmds as $l => $c) {
+foreach ($desc as $l => $d) {
     $lc = $l === 'en' ? [] : ['language_code' => $l];
-    $r['name_' . $l] = tg('setMyName', ['name' => 'Sunic Apps'] + $lc);
-    $r['desc_' . $l] = tg('setMyDescription', ['description' => $desc[$l]] + $lc);
-    $r['cmd_' . $l] = tg('setMyCommands', ['commands' => $c] + ($l === 'en' ? [] : ['language_code' => $l]));
-    $r['about_' . $l] = tg('setMyShortDescription', ['short_description' => $about[$l]] + ($l === 'en' ? [] : ['language_code' => $l]));
+    $r['cmd_' . $l] = tg('deleteMyCommands', $lc);
+    $r['desc_' . $l] = tg('setMyDescription', ['description' => $d] + $lc);
+    $r['about_' . $l] = tg('setMyShortDescription', ['short_description' => mb_substr($d, 0, 120)] + $lc);
 }
-$me = tg('getMe');
-echo 'bot: @', $me['result']['username'] ?? '?', ' — ', $me['result']['first_name'] ?? '?', "
-";
 foreach ($r as $k => $v) echo $k, ': ', ($v['ok'] ?? false) ? 'ok' : ('ошибка ' . ($v['description'] ?? '?')), "\n";

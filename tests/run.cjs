@@ -181,10 +181,6 @@ t('кэш: метка ставится до #, а не во фрагмент', /
     t('люди по каналу: куски собраны в запись', JSON.parse(store.bs_tg_users)['77'].name === 'Аня');
     U._onUserPart({ t: 'u', id: '77', rev: 100, i: 0, n: 1, d: JSON.stringify({ name: 'старое', rev: 100 }) });
     t('люди по каналу: старая версия новую не затирает', JSON.parse(store.bs_tg_users)['77'].name === 'Аня');
-    // общий бот Sunic Apps: люди своего бота туда не переходят — у него свой список
-    store.bs_sb_on = '1'; ctx.BSBot = {};
-    U._onUserPart({ t: 'u', id: '88', rev: 300, i: 0, n: 1, d: JSON.stringify({ name: 'Гость общего', rev: 300 }) });
-    t('люди: у общего бота свой список, люди своего бота не видны', JSON.parse(store.bs_sb_users)['88'] && !JSON.parse(store.bs_sb_users)['77'] && !JSON.parse(store.bs_tg_users)['88']);
 }
 
 {
@@ -4064,25 +4060,6 @@ async function serviceTests() {
     t('https: сразу копия из пакета, источник «local» (без «Нет связи с сервером»)', x.r.https && x.r.started && x.r.src === 'local' && x.scripts.join() === 'app.js');
     x = run('http:');
     t('http (ТВ, MSX): как раньше — сначала проверка сервера', !x.r.https && !x.r.started && x.scripts.join() === 'check');
-}
-/* ---- bsbot.js: общий бот Sunic Apps (без токена) ---- */
-{
-    const store = {}, opened = [];
-    const ctx = { console: { log() {} }, JSON, Math, Date, String, encodeURIComponent, Uint8Array, setTimeout: () => 0, clearTimeout() {},
-        document: { hidden: false, addEventListener() {} }, XMLHttpRequest: Object.assign(function () {}, { prototype: { open() {}, send() {} } }),
-        BSTelegram: { open: (k, id, play) => opened.push([k, id, play]), tvName: () => 'Гостиная' } };
-    ctx.window = ctx; ctx.crypto = require('crypto').webcrypto;
-    ctx.window.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
-    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bsbot.js'), 'utf8') + ';this.M=BSBot;', ctx);
-    const B = ctx.M, a = B._ident(), b = B._ident();
-    t('общий бот: id и ключ ТВ создаются один раз и подходят серверу', a.id === b.id && a.key === b.key && /^[A-Za-z0-9]{20}$/.test(a.id) && /^[A-Za-z0-9]{40}$/.test(a.key));
-    B._run({ t: 'open', kind: 't', id: 311455, play: true });
-    B._run({ t: 'open', kind: 'x', id: 1 }); B._run({ t: 'rm', kind: 'm', id: 2 }); B._run({ t: 'open', kind: 'm', id: -5 }); B._run(null);
-    t('общий бот: «Смотреть» с сервера открывает фильм; чужие и битые команды — нет', opened.length === 1 && opened[0][0] === 't' && opened[0][1] === 311455 && opened[0][2] === true);
-    store.bs_sb_on = '1'; ctx.BSTelegram.hasOwn = () => false; ctx.Lampa = { Noty: { show() {} } };
-    t('общий бот: своего бота нет — общий остаётся', B._ownFirst() === false && store.bs_sb_on === '1');
-    ctx.BSTelegram.hasOwn = () => true;
-    t('общий бот: на ТВ подключили свой бот — от общего отвязываемся (один ТВ — один бот)', B._ownFirst() === true && !('bs_sb_on' in store));
 }
 /* ---- bsfeatures.js: IPTV — зеркало каталогов, подсадка списка, запасные адреса ---- */
 {

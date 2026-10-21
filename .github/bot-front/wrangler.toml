@@ -1,9 +1,0 @@
-# Приёмник вебхука общего бота @SunicStreamBot (src/index.js). Бесплатный тариф, секретов нет.
-# Развернуть: npx -y wrangler@4.14.0 deploy (из этой папки). Вебхук на него ставит site/bot/setup.php?go=1.
-name = "sunicstream-hook"
-main = "src/index.js"
-compatibility_date = "2026-09-01"
-workers_dev = true
-
-[observability]
-enabled = true

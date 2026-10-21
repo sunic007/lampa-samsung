@@ -65,12 +65,9 @@ var BSTelegram = (function () {
     function tokenMigrate() { var t = String(lsGet('bs_tg_token') || '').replace(/\s+/g, ''); if (t) setToken(t); }
     /** Токен лежит в службе Tizen: в localStorage его нет, есть метка bs_tg_svc. */
     function svcTg() { return !token() && lsGet('bs_tg_svc') === '1'; }
-    /** Общий бот Sunic Apps (bsbot.js): своего токена нет — запросы к Telegram идут через сервер sunic.stream/bot/api.php. */
-    var SB_API = 'https://sunic.stream/bot/api.php';
-    function relay() { return !token() && lsGet('bs_tg_svc') !== '1' && lsGet('bs_sb_on') === '1' && !!window.BSBot; }
-    /** Бот подключён (токен есть — у нас или в службе — или общий бот). */
-    function hasToken() { return !!token() || lsGet('bs_tg_svc') === '1' || relay(); }
-    function state() { return relay() ? 'shared' : hasToken() && chat() ? 'own' : 'none'; }
+    /** Бот подключён (токен есть — у нас или в службе). */
+    function hasToken() { return !!token() || lsGet('bs_tg_svc') === '1'; }
+    function state() { return hasToken() && chat() ? 'own' : 'none'; }
     function chat() { return lsGet('bs_tg_chat') || ''; }
     /** Токен сменился (подключение с телефона, по коду, вручную): номер апдейта bs_tg_offset — от прежнего бота, с ним
      *  новый бот молчал бы (его номера могут быть меньше). Без номера опрос начинается заново (offset=-1). */
@@ -196,12 +193,9 @@ var BSTelegram = (function () {
             var end = function (f, v) { if (!done) { done = true; if (f) f(v); } };
             try {
                 // токен в службе — через неё (тело и ответ те же, Date — от Telegram); нет — напрямую, как раньше
-                var sb = !viaSvc && relay() ? BSBot.ident() : null;
                 if (viaSvc) svcOpen(x, 'POST', SVC + '/tg/' + method);
-                else if (sb) x.open('POST', SB_API + '?m=' + method + '&tv=' + sb.id, true);
                 else x.open('POST', API + token() + '/' + method, true);
                 x.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                if (sb) x.setRequestHeader('X-Sunic-Key', sb.key);
                 x.timeout = wait || TIMEOUT;
                 x.onload = function () {
                     var j = null;
@@ -740,8 +734,6 @@ var BSTelegram = (function () {
         var rows = [[{ text: L('👤 Профиль', '👤 Profile', '👤 Profil'), callback_data: 'st:prof' }, { text: '🌐 Язык / Language / Til', callback_data: 'mn:lang' }],
             [{ text: L('🧠 ИИ-поиск — ключи API', '🧠 AI search — API keys', "🧠 AI qidiruv — API kalitlari"), callback_data: 'st:ai' }]];
         if (isOwner()) rows.push([{ text: L('📺 Телевизоры', '📺 TVs', '📺 Televizorlar'), callback_data: 'mn:tvs' }, { text: L('👥 Люди', '👥 People', '👥 Odamlar'), callback_data: 'st:people' }]);
-        // общий бот: подписка и оплата — экран сервера sunic.stream (кнопку sv: сервер забирает себе, на ТВ она не приходит)
-        if (relay()) rows.push([{ text: '⭐ Sunic Apps Plus', callback_data: 'sv:plus' }]);
         rows.push([{ text: L('📋 Меню', '📋 Menu', '📋 Menyu'), callback_data: 'mn:menu' }]);
         return rows;
     }
@@ -1456,16 +1448,13 @@ var BSTelegram = (function () {
      * подписки, «напомнить завтра» и сводка — в bs_tg_users, видны только им в боте. Владельцу — «Подключился…» с
      * кнопкой «Отключить». Приглашение выводится из токена бота — одно на все ТВ, без синхронизации. */
 
-    /** Люди — у каждого бота свои: подключившиеся к своему боту (по его QR) к общему боту Sunic Apps не подключались.
-     *  Общий бот — свой список (bs_sb_users); вернулись к своему боту — прежние люди снова на месте. */
-    function usersKey() { return relay() ? 'bs_sb_users' : 'bs_tg_users'; }
-    function users() { var u = lsJson(usersKey(), {}); return u && typeof u === 'object' ? u : {}; }
+    function users() { var u = lsJson('bs_tg_users', {}); return u && typeof u === 'object' ? u : {}; }
     function active(g) { return !!g && !g.banned && !g.pending; }
     /** Сохранить и разослать другим ТВ изменённых людей (ids). У записи rev — время правки: старое новое не затрёт. */
     function saveUsers(u, ids) {
         var now = Date.now();
         (ids || []).forEach(function (id) { if (u[id]) u[id].rev = now; });
-        lsSet(usersKey(), JSON.stringify(u));
+        lsSet('bs_tg_users', JSON.stringify(u));
         (ids || []).forEach(function (id) { if (u[id]) busUser(id, u[id]); });
     }
     function guest() { if (isOwner()) return null; var g = users()[to()]; return active(g) ? g : null; }
@@ -1492,7 +1481,7 @@ var BSTelegram = (function () {
         var all = users();
         if (all[m.id] && (all[m.id].rev || 0) >= m.rev) return;
         all[m.id] = g;
-        lsSet(usersKey(), JSON.stringify(all));
+        lsSet('bs_tg_users', JSON.stringify(all));
     }
     function sendAllUsers() {
         var u = users(); for (var k in u) if (u.hasOwnProperty(k)) busUser(k, u[k]);
@@ -2457,7 +2446,7 @@ var BSTelegram = (function () {
             var staleTold = {};
             (updates || []).forEach(function (u) { takeUpdate(u, staleTold); });
             // общий бот: пусто — следующий вопрос через 1 с (сервер ждёт ещё 1 с сам; дольше держать хостинг не может)
-            setTimeout(poll, relay() && !(updates && updates.length) ? 1000 : 200);
+            setTimeout(poll, 200);
         }, function (e) {
             polling = false;
             if (!/conflict/i.test(String(e))) return;
@@ -3273,9 +3262,7 @@ var BSTelegram = (function () {
         var fail = function (why) { log('картинка', why); status(/^[^\wА-Яа-яЁё]/.test(why) ? why : L('😔 Не получилось узнать: ', "😔 Couldn't recognize it: ", "😔 Aniqlab bo'lmadi: ") + whyText(why) + '.'); };
         call('getFile', { file_id: file.file_id }, function (f) {
             if (!f || !f.file_path) return fail(L('Telegram не отдал картинку', "Telegram didn't send the picture", 'Telegram rasmni bermadi'));
-            var sbf = relay() ? BSBot.ident() : null;   // общий бот: картинку отдаёт сервер (токен на ТВ не уходит)
-            httpGetBin(svcTg() ? SVC + '/tgfile/' + f.file_path : sbf ? SB_API + '?m=file&tv=' + sbf.id + '&path=' + encodeURIComponent(f.file_path)
-                : 'https://api.telegram.org/file/bot' + token() + '/' + f.file_path, function (buf) {
+            httpGetBin(svcTg() ? SVC + '/tgfile/' + f.file_path : 'https://api.telegram.org/file/bot' + token() + '/' + f.file_path, function (buf) {
                 geminiAsk(bytesB64(buf), mime, String(msg.caption || '').slice(0, 200), function (j, model) {
                     var r = fromGemini(j);
                     if (!r) return status(L('🤔 Не удалось узнать фильм (' + model + '). Напишите название — найду.', "🤔 Couldn't tell which movie this is (" + model + "). Type the name and I'll find it.",
@@ -3284,7 +3271,7 @@ var BSTelegram = (function () {
                     log('картинка', r.query);
                     botSearch(r.query);
                 }, fail);
-            }, function (e) { fail(L('не скачалась из Telegram (', "couldn't download from Telegram (", "Telegram'dan yuklab bo'lmadi (") + e + ')'); }, sbf ? { 'X-Sunic-Key': sbf.key } : null);
+            }, function (e) { fail(L('не скачалась из Telegram (', "couldn't download from Telegram (", "Telegram'dan yuklab bo'lmadi (") + e + ')'); }, null);
         }, function (e) { fail(e); });
     }
 
@@ -4421,7 +4408,6 @@ var BSTelegram = (function () {
         // раздел — по состоянию: не подключено — только способы подключения; подключено — «Отключить» и настройки бота
         var W = window.BS_SETTINGS_WHEN = window.BS_SETTINGS_WHEN || {};
         var linked = function () { return state() !== 'none'; }, none = function () { return state() === 'none'; };
-        W['#Свой бот (бесплатно)'] = function () { return state() !== 'shared'; };
         W.bs_tg_phone = W.bs_tg_join = W.bs_tg_help = W.bs_tg_token = none;
         W.bs_tg_link = function () { return state() === 'own' || (none() && hasToken()); };
         W.bs_tg_off = function () { return state() === 'own'; };
@@ -4432,7 +4418,7 @@ var BSTelegram = (function () {
         api.addParam({
             component: C, param: { name: 'bs_tg_token', type: 'input', values: '', placeholder: '123456789:AA…', 'default': '' },
             field: { name: 'Токен бота', description: 'Хранится только на этом ТВ' },
-            onRender: function (item) { if (hasToken() && !relay()) item.find('.settings-param__descr').text('Сохранён — показать его нельзя. Новый токен заменит старый'); },
+            onRender: function (item) { if (hasToken()) item.find('.settings-param__descr').text('Сохранён — показать его нельзя. Новый токен заменит старый'); },
             onChange: function () {
                 var t = String(lsGet('bs_tg_token') || '').replace(/\s+/g, '');
                 if (!t) return;                                       // пустое поле — токен как был («Отключить Telegram» — ниже)
@@ -4503,6 +4489,8 @@ var BSTelegram = (function () {
         (function svcTick() {
             setTimeout(function () { try { svcCheck(); } catch (e) {} svcTick(); }, Date.now() - svcT0 < 10 * 60000 ? 60000 : 5 * 60000);
         })();
+        // общий бот Sunic Apps закрыт (2.3.45): его метки на ТВ больше не нужны
+        try { ['bs_sb_on', 'bs_sb_key', 'bs_sb_tv', 'bs_sb_users'].forEach(lsDel); if (lsGet('bs_tg_bot') === 'SunicStreamBot') lsDel('bs_tg_bot'); } catch (e) {}
         try { addSettings(); } catch (e) { log('settings', e.message); }
         try { searchKeypad(); } catch (e) { log('клавиатура поиска', e.message); }
         try { Lampa.Player.listener.follow('destroy', onVideoClosed); } catch (e) {}
@@ -4595,12 +4583,8 @@ var BSTelegram = (function () {
     }
 
     return { start: start,
-        /** 'shared' — общий бот, 'own' — свой бот подключён, 'none' — не подключено. */
+        /** 'own' — свой бот подключён, 'none' — не подключено. */
         state: state, refresh: function () { try { refreshSettings(); } catch (e) {} },
-        /** Свой бот подключён (токен у страницы или в службе) — тогда общий бот этому ТВ не нужен. */
-        hasOwn: function () { return !!token() || lsGet('bs_tg_svc') === '1'; },
-        /** Общий бот (bsbot.js): открыть фильм и нажать «Смотреть» — как своя команда «▶️ Смотреть». */
-        open: function (kind, id, play) { openHere(kind, id, null, play !== false, false); },
         tvName: tvName,
         _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _join4: { code: join4Code, show: join4Show, topic: join4Topic, hellos: join4Hellos, box: join4Box, open: join4Open, send: join4Send, BASE9: BASE9 }, _joinTopic: joinTopic, _joinShow: joinShow, _joinKeys: joinKeys, _aiForget: aiForget, _relaySet: relaySet, _svcSync: svcSync, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _lateCommand: lateCommand, _botDesc: function (l, s) { return [botDesc(l || 'ru', s), botShort(l || 'ru', s)]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _tmdbGet: tmdbGet, _blockParse: blockParse, _blockReset: function () { blockIds = null; blockAt = 0; }, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow,
         _call: call, _check: check, _remind: remind, _joinCode: joinCode, _randomTopic: randomTopic,
