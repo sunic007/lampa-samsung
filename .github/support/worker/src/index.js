@@ -100,7 +100,11 @@ async function handleTelegram(request, env) {
     const tg = telegram(env);
     try {
         if (!me) { me = await tg('getMe'); await env.STATE.put('me', JSON.stringify({ id: me.id, username: me.username }), { expirationTtl: 7 * 86400 }); }
-        const store = { get: k => env.STATE.get(k), put: (k, v, ttl) => env.STATE.put(k, v, ttl ? { expirationTtl: Math.max(60, ttl) } : undefined) };
+        // кончилась суточная квота записей KV — модерация и счётчики работают дальше (запись пропускаем), а не падают молча
+        const store = {
+            get: k => env.STATE.get(k).catch(e => { log('kv get: ' + redact(e && e.message, env)); return null; }),
+            put: (k, v, ttl) => env.STATE.put(k, v, ttl ? { expirationTtl: Math.max(60, ttl) } : undefined).catch(e => log('kv put: ' + redact(e && e.message, env)))
+        };
         const bot = new Bot({ tg, gh: github(env), llm: llm(env), kb: await knowledge(env), me, log, store, hasGh: !!env.SUPPORT_TOKEN, hasLlm: llmTargets(env).length > 0 },
             { group: env.SUPPORT_GROUP || 'sunicapps', chatId: env.SUPPORT_CHAT_ID || '', secret: env.TELEGRAM_BOT_TOKEN,
                 llmPerDay: +env.LLM_PER_DAY || 700, llmPerUserDay: +env.LLM_PER_USER_DAY || 20, issuesPerUserDay: +env.ISSUES_PER_USER_DAY || 5 }, state);

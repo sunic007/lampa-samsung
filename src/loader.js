@@ -363,7 +363,7 @@ function countdown() {
     if (checking && timeLeft > 0) { timeLeft--; return; }
 
     if (timeLeft <= 0) {
-        clearTimeout(timerId);
+        clearInterval(timerId);
 
         // Сервер обновлений за 15 с так и не ответил — сеть плохая или её нет. Качать 2 МБ Lampa по такой сети незачем:
         // запускаем проверенную копию из пакета. Окажется на сервере новее — автообновление перейдёт на неё само,
@@ -383,7 +383,7 @@ function countdown() {
             function (xhr) {
                 checking = false;
                 if (timeLeft < 0) return; // уже стартовали по таймауту
-                clearTimeout(timerId);
+                clearInterval(timerId);
 
                 bsRemote = parseAssembly(xhr);
                 if (bsRemote && !bsRemote.hash) bsRemote = null;

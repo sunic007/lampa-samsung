@@ -107,7 +107,8 @@ export async function pollNtfy(deps, fetchText, max = 10) {
         if (ev.attachment && /^https:\/\/ntfy\.sh\/file\//.test(String(ev.attachment.url || ''))) {
             try { body = await fetchText(ev.attachment.url); } catch (e) { break; }   // вложение не скачалось — в следующий раз с этого места
         }
-        await handleReport(body, { ...deps, ip: '' });
+        const r = await handleReport(body, { ...deps, ip: '' });
+        if (r && r.error === 'github') break;                    // GitHub не принял — этот и дальше в следующий раз
         last = ev.id;
     }
     if (last) await deps.store.put('rep:since', last, 3 * 86400);

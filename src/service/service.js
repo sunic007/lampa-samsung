@@ -1163,7 +1163,8 @@ function closedNotice(chat, text, map) {
 function once(map, k, gap) {
     var now = mono(), x;
     if (map[k] && now - map[k] < gap) return false;
-    if (Object.keys(map).length > 200) for (x in map) if (map.hasOwnProperty(x)) delete map[x];
+    // больше 200 ключей — убираем только устаревшие (старше gap), свежие отметки сохраняем: иначе повторы уведомлений
+    if (Object.keys(map).length > 200) for (x in map) if (map.hasOwnProperty(x) && now - map[x] >= gap) delete map[x];
     map[k] = now;
     return true;
 }

@@ -294,7 +294,8 @@ var BSSkaz = (function () {
             ['direct', 'cf'].forEach(function (f) {
                 items.push({ title: famName(f) + (f === curFamily() ? ' — текущие' : ''), subtitle: fmt(familyStat(res, f)) + ', живых ' + familyStat(res, f).alive + ' из 4', kind: 'family', value: f });
             });
-            var ctrl = Lampa.Controller.enabled().name;
+            var ctrl = 'settings_component';
+            try { ctrl = Lampa.Controller.enabled().name; } catch (e) {}
             Lampa.Select.show({
                 title: 'Серверы источников',
                 items: items,

@@ -197,7 +197,9 @@
             clearInterval(t); statHide(); set('bs_upd_try', null); if (remote) set('bs_upd_ran', upd.v); setTimeout(check, 20000);
             setTimeout(function () { window.BSBoot.hide(); }, 3000);         // страховка: карточку прячет loader.js, но не должна остаться
         }
-        else if (++waits > 90) clearInterval(t);                // 3 минуты не поднялась — try остаётся, в следующий раз — пакет
+        // не поднялась и за 3 минуты — не бросаем: в ждущем режиме ТВ Lampa стартует и дольше (сеть придержана); поднимется
+        // позже — try всё равно снимем, иначе хорошая версия попала бы в «плохие» на сутки. Не поднимется — try останется.
+        else if (++waits === 90) { try { console.log('BS update', 'Lampa поднимается дольше 3 минут — жду'); } catch (e) {} }
     }, 2000);
     window.BSUpdate = { local: LOCAL, check: check, _num: num, _base: base, _mirror: mirror, _verify: verify, _manifest: manifest };
 })();

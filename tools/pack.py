@@ -93,11 +93,13 @@ def check_sources():
     tests = os.path.join(ROOT, 'tests', 'run.cjs')
     if os.path.exists(tests):
         try:
-            r = subprocess.run(['node', tests], capture_output=True, text=True, encoding='utf-8', errors='replace')
+            r = subprocess.run(['node', tests], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=600)   # зависший тест не вешает сборку
             print('Автотесты:', (r.stdout.strip().splitlines() or ['?'])[-1])
             if r.returncode != 0:
                 print(r.stdout)
                 die('автотесты не прошли — сборка остановлена')
+        except subprocess.TimeoutExpired:
+            die('автотесты не закончились за 10 минут — сборка остановлена')
         except FileNotFoundError:
             print('ВНИМАНИЕ: Node.js не найден — автотесты пропущены')
     for sig in ('author-signature.xml', 'signature1.xml'):
