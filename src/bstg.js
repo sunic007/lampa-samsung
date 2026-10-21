@@ -1456,13 +1456,16 @@ var BSTelegram = (function () {
      * подписки, «напомнить завтра» и сводка — в bs_tg_users, видны только им в боте. Владельцу — «Подключился…» с
      * кнопкой «Отключить». Приглашение выводится из токена бота — одно на все ТВ, без синхронизации. */
 
-    function users() { var u = lsJson('bs_tg_users', {}); return u && typeof u === 'object' ? u : {}; }
+    /** Люди — у каждого бота свои: подключившиеся к своему боту (по его QR) к общему боту Sunic Apps не подключались.
+     *  Общий бот — свой список (bs_sb_users); вернулись к своему боту — прежние люди снова на месте. */
+    function usersKey() { return relay() ? 'bs_sb_users' : 'bs_tg_users'; }
+    function users() { var u = lsJson(usersKey(), {}); return u && typeof u === 'object' ? u : {}; }
     function active(g) { return !!g && !g.banned && !g.pending; }
     /** Сохранить и разослать другим ТВ изменённых людей (ids). У записи rev — время правки: старое новое не затрёт. */
     function saveUsers(u, ids) {
         var now = Date.now();
         (ids || []).forEach(function (id) { if (u[id]) u[id].rev = now; });
-        lsSet('bs_tg_users', JSON.stringify(u));
+        lsSet(usersKey(), JSON.stringify(u));
         (ids || []).forEach(function (id) { if (u[id]) busUser(id, u[id]); });
     }
     function guest() { if (isOwner()) return null; var g = users()[to()]; return active(g) ? g : null; }
@@ -1489,7 +1492,7 @@ var BSTelegram = (function () {
         var all = users();
         if (all[m.id] && (all[m.id].rev || 0) >= m.rev) return;
         all[m.id] = g;
-        lsSet('bs_tg_users', JSON.stringify(all));
+        lsSet(usersKey(), JSON.stringify(all));
     }
     function sendAllUsers() {
         var u = users(); for (var k in u) if (u.hasOwnProperty(k)) busUser(k, u[k]);

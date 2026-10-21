@@ -181,6 +181,10 @@ t('кэш: метка ставится до #, а не во фрагмент', /
     t('люди по каналу: куски собраны в запись', JSON.parse(store.bs_tg_users)['77'].name === 'Аня');
     U._onUserPart({ t: 'u', id: '77', rev: 100, i: 0, n: 1, d: JSON.stringify({ name: 'старое', rev: 100 }) });
     t('люди по каналу: старая версия новую не затирает', JSON.parse(store.bs_tg_users)['77'].name === 'Аня');
+    // общий бот Sunic Apps: люди своего бота туда не переходят — у него свой список
+    store.bs_sb_on = '1'; ctx.BSBot = {};
+    U._onUserPart({ t: 'u', id: '88', rev: 300, i: 0, n: 1, d: JSON.stringify({ name: 'Гость общего', rev: 300 }) });
+    t('люди: у общего бота свой список, люди своего бота не видны', JSON.parse(store.bs_sb_users)['88'] && !JSON.parse(store.bs_sb_users)['77'] && !JSON.parse(store.bs_tg_users)['88']);
 }
 
 {
