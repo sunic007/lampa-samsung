@@ -56,6 +56,25 @@ let x2 = decide2({}, res({}, LOSSY_DIRECT));
 t('источники: потери 75% — первый замер только подозрение', x2.r1 === false);
 t('источники: потери 75% два замера подряд -> Cloudflare + перезапуск', x2.r2 === true && x2.store.skazonline_servers === 'true');
 x2 = decide2({}, res({}, DEAD_DIRECT)); t('источники: прямые мертвы два замера -> Cloudflare', x2.store.skazonline_servers === 'true' && x2.r2 === true);
+{   /* skazauto: серверы Skaz меряем только тем, кто источниками Skaz пользуется (bs_srv_lastuse) */
+    const now = Date.now(), live = sc => ({ ok: 4, loss: 0, score: sc, median: sc, jitter: 0 });
+    const stats = (sc, t) => JSON.stringify({ time: t, online: { online3: live(sc), online4: live(sc), online5: live(sc), online7: live(sc) } });
+    let m = load('skazauto.js', 'BSSkaz', {});
+    let opened = 0; m.w.XMLHttpRequest = undefined;
+    t('серверы: Skaz не пользуются — фонового замера нет', m.M._used() === false && m.M._dueWatch(now) === false);
+    let called = false; m.M.prepare(() => { called = true; });
+    t('серверы: Skaz не пользуются — до запуска Lampa не меряем, старт сразу', called === true);
+    m = load('skazauto.js', 'BSSkaz', { bs_srv_lastuse: String(now - 8 * 86400000) });
+    t('серверы: пользовались больше недели назад — тоже не меряем', m.M._used() === false && m.M._dueWatch(now) === false);
+    m = load('skazauto.js', 'BSSkaz', { bs_srv_lastuse: String(now - 3600000) });
+    t('серверы: пользуется, замеров ещё не было — меряем', m.M._used() === true && m.M._dueWatch(now) === true);
+    m = load('skazauto.js', 'BSSkaz', { bs_srv_lastuse: String(now - 3600000), bs_srv_stats: stats(900, now - 16 * 60000) });
+    t('серверы: пользуется, прошлый замер не чистый и старше 15 мин — меряем', m.M._cleanLast() === false && m.M._dueWatch(now) === true);
+    m = load('skazauto.js', 'BSSkaz', { bs_srv_lastuse: String(now - 3600000), bs_srv_stats: stats(120, now - 20 * 60000) });
+    t('серверы: прошлый замер чистый — следующий не раньше 30 мин', m.M._cleanLast() === true && m.M._dueWatch(now) === false && m.M._dueWatch(now + 11 * 60000) === true);
+    m = load('skazauto.js', 'BSSkaz', { bs_srv_lastuse: String(now - 3600000), bs_srv_auto: 'false' });
+    t('серверы: автовыбор выключен — не меряем', m.M._dueWatch(now) === false);
+}
 const st = load('skazauto.js', 'BSSkaz').M._stats([100, 140, 100], 4); t('серверы: медиана/джиттер/потери', st.median === 100 && st.jitter === 40 && st.loss === 0.25);
 
 /* ---- bsplayer.js: метки и главы ---- */

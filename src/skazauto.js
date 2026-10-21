@@ -15,6 +15,12 @@
  * До запуска Lampa — быстрый замер (до 2.5 с). После запуска — полный замер через 20 с,
  * затем каждые 3 минуты и при появлении сети. Мёртвый сервер меняется сразу (перезапуск
  * Lampa откладывается, пока открыт плеер), просто медленный — со следующего запуска.
+ *
+ * Только тем, кто источниками Skaz пользуется (bs_srv_lastuse — фильм реально запустился из Skaz, не дольше USE_LIFE
+ * назад): без подписки (входа в CUB) источники Skaz закрыты, и пинговать их серверы — лишние ~640 запросов в час.
+ *  - не пользовался неделю — ни быстрого замера до Lampa, ни фонового; один замер — при первом открытии Skaz в сеансе;
+ *  - пользуется — фоновый замер раз в LIGHT_MS (прошлый чистый — раз в 2 × LIGHT_MS);
+ *  - сервер под подозрением (recheck) — перепроверка через 20 с, как раньше.
  */
 var BSSkaz = (function () {
     var FAMILIES = {
@@ -22,6 +28,7 @@ var BSSkaz = (function () {
         cf: ['onlinecf3', 'onlinecf4', 'onlinecf5', 'onlinecf7']
     };
     var PROBE_TIMEOUT = 3000, FAST_BUDGET = 2500, WATCH_MS = 3 * 60 * 1000;
+    var USE_LIFE = 7 * 24 * 3600 * 1000, LIGHT_MS = 15 * 60 * 1000, CLEAN_MS = 400, SKAZ_COMP = 'lampacskaz';
 
     var last = { online: {}, time: 0 };
     var pendingReload = null;   // причина перезапуска, отложенного до закрытия плеера
@@ -54,6 +61,24 @@ var BSSkaz = (function () {
     }
 
     function enabled() { return lsGet('bs_srv_auto') !== 'false'; }
+    /** Пользуется ли человек источниками Skaz: фильм из них запускался за последние USE_LIFE. */
+    function used() { var t = +(lsGet('bs_srv_lastuse') || 0); return t > 0 && Date.now() - t < USE_LIFE; }
+    /** Прошлый полный замер чистый: в текущем семействе живы все и лучший счёт меньше CLEAN_MS. */
+    function cleanLast() {
+        var f = FAMILIES[curFamily()], best = Infinity, i, st;
+        for (i = 0; i < f.length; i++) {
+            st = last.online[f[i]];
+            if (!st || dead(st)) return false;
+            if (st.score < best) best = st.score;
+        }
+        return best < CLEAN_MS;
+    }
+    /** Пора ли фоновому замеру: только тем, кто пользуется, и не чаще LIGHT_MS (чистый прошлый — 2 × LIGHT_MS). */
+    function dueWatch(now) {
+        if (!enabled() || !used()) return false;
+        var gap = cleanLast() ? 2 * LIGHT_MS : LIGHT_MS;
+        return !last.time || now - last.time >= gap;
+    }
 
     function curFamily() {
         var v = (window.Lampa && Lampa.Storage) ? Lampa.Storage.get('skazonline_servers', false) : lsGet('skazonline_servers');
@@ -256,6 +281,7 @@ var BSSkaz = (function () {
     function prepare(cb) {
         if (!enabled()) return cb();
         try { applyPending(); } catch (e) {}
+        if (!used()) return cb();                                 // Skaz не пользуются — до Lampa не меряем
         var called = false, cf = curFamily();
         function go() { if (!called) { called = true; cb(); } }
         setTimeout(go, FAST_BUDGET);
@@ -354,15 +380,34 @@ var BSSkaz = (function () {
         /* Во время просмотра не меряем: канал забит видео, очередь в роутере раздувает задержки (bufferbloat) — замер
          * показал бы «скачки» у вполне живого сервера, а ~50 запросов за раз ещё и отнимают у видео. Сервер видео уже
          * выбран; новые запросы к Skaz пойдут после плеера — тогда и проверим. */
-        var due = false;
-        var tryCheck = function () { if (!enabled()) return; if (playerOpen() || document.hidden) { due = true; return; } due = false; check(false); };
+        var due = false, first = true;
+        var tryCheck = function () {
+            if (!first && !dueWatch(Date.now())) return;
+            if (first && (!enabled() || !used())) return;
+            if (playerOpen() || document.hidden) { due = true; return; }
+            first = false; due = false; check(false);
+        };
         setTimeout(tryCheck, 20000);
         setInterval(tryCheck, WATCH_MS);
-        try { Lampa.Player.listener.follow('destroy', function () { if (due) setTimeout(tryCheck, 5000); }); } catch (e) {}
-        window.addEventListener('online', function () { if (enabled()) setTimeout(function () { if (!playerOpen()) check(false); }, 3000); });
+        try {
+            Lampa.Player.listener.follow('destroy', function () { if (due) setTimeout(tryCheck, 5000); });
+            // фильм реально пошёл из Skaz — человек им пользуется (вкладку открыть мало: без входа там «Нет доступа»)
+            Lampa.Player.listener.follow('start', function () { if (activeComp() === SKAZ_COMP) lsSet('bs_srv_lastuse', String(Date.now())); });
+            // первое открытие Skaz в сеансе у того, кто им давно не пользовался, — один замер: выбрать семейство серверов
+            var asked = false;
+            Lampa.Listener.follow('activity', function (e) {
+                if (asked || !e || e.type !== 'start' || e.component !== SKAZ_COMP || !enabled() || used()) return;
+                asked = true;
+                if (!last.time || Date.now() - last.time >= LIGHT_MS) check(false);
+            });
+        } catch (e) {}
+        window.addEventListener('online', function () { if (enabled() && used()) setTimeout(function () { if (!playerOpen()) check(false); }, 3000); });
     }
 
     try { last = JSON.parse(lsGet('bs_srv_stats') || 'null') || last; if (!last.online) last.online = {}; } catch (e) {}
 
-    return { prepare: prepare, start: start, check: check, showPicker: showPicker, toast: toast, _decide: decide, _stats: stats };
+    function activeComp() { try { return Lampa.Activity.active().component; } catch (e) { return ''; } }
+
+    return { prepare: prepare, start: start, check: check, showPicker: showPicker, toast: toast, _decide: decide, _stats: stats,
+        _used: used, _dueWatch: dueWatch, _cleanLast: cleanLast };
 })();
