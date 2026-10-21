@@ -1845,11 +1845,11 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
 }
 /* ---- bssources.js: выбор кнопки «Смотреть» и подключение плагинов ---- */
 {
-    const mk = (store, plugins) => {
+    const mk = (store, plugins, httpsFails) => {
         const mem = {}, loaded = [];
         const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
         const Lampa = { Storage: { get: (k, d) => (k in mem ? mem[k] : (d === undefined ? '' : d)), set: (k, v) => { mem[k] = v; } },
-            Utils: { protocol: () => 'http://', putScriptAsync: urls => { loaded.push.apply(loaded, urls); } }, Noty: { show() {} },
+            Utils: { protocol: () => 'http://', putScriptAsync: (urls, done, bad, ok) => { loaded.push.apply(loaded, urls); if (httpsFails && /^https:/.test(urls[0])) { if (bad) bad(urls[0]); } else if (ok) ok(urls[0]); if (done) done(); } }, Noty: { show() {} },
             Listener: { follow() {} }, Plugins: { get: () => plugins || [] } };
         const ctx = { window: { localStorage: ls }, Lampa, $: { trim: x => String(x).trim() }, console: { log() {} }, JSON, String, Object, Array };
         ctx.window.window = ctx.window; vm.createContext(ctx);
@@ -1876,7 +1876,13 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('подключение: Клубничку сами не грузим — решает переключатель Skaz', !r.loaded.some(u => /sisi\.js/.test(u)));
     r = mk({});
     r.S._loadAll();
-    t('подключение: по умолчанию — бесплатные Z01 и Online Mod (поиск по всем источникам)', r.loaded.join() === 'http://z01.online/live,http://nb557.github.io/plugins/online_mod.js');
+    t('подключение: по умолчанию — бесплатные Z01 и Online Mod (поиск по всем источникам), сначала по https', r.loaded.join() === 'https://z01.online/live,https://nb557.github.io/plugins/online_mod.js');
+    r = mk({}, null, true);
+    r.S._loadAll();
+    t('подключение: https не открылся — тот же плагин по http (запасной адрес)', r.loaded.join() === 'https://z01.online/live,http://z01.online/live,https://nb557.github.io/plugins/online_mod.js,http://nb557.github.io/plugins/online_mod.js');
+    r = mk({ bs_src_showy: 'true' }, null, true);
+    r.S._loadAll();
+    t('подключение: у кого https нет (Showy) — сразу http, как раньше', r.loaded.indexOf('http://showy.online/m.js') >= 0 && r.loaded.indexOf('https://showy.online/m.js') < 0);
     r = mk({ bs_src_z01: 'true', bs_src_online_mod: 'false' }, [{ url: 'http://z01.online/live' }]);
     r.S._loadAll();
     t('подключение: плагин уже добавлен вручную — второй раз не грузим', r.loaded.length === 0);

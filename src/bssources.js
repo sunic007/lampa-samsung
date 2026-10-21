@@ -36,7 +36,7 @@ var BSSources = (function () {
           match: function (b) { return /^Z01\b/i.test(sub(b)); } },
         { id: 'online_mod', key: 'bs_src_online_mod', name: 'Online Mod', url: 'http://nb557.github.io/plugins/online_mod.js', comp: ['online_mod'], group: 'online_mod', on: true, https: true,
           note: 'Без рекламы', match: hasCls('view--online_mod') },
-        { id: 'vod_llpp', key: 'bs_src_vod_llpp', name: 'VOD (llpp.in)', url: 'http://llpp.in/v/vod.js', comp: ['online_mod'], group: 'online_mod',
+        { id: 'vod_llpp', key: 'bs_src_vod_llpp', name: 'VOD (llpp.in)', url: 'http://llpp.in/v/vod.js', comp: ['online_mod'], group: 'online_mod', https: true,
           note: 'Вместо Online Mod', match: hasCls('view--online_mod') },
         { id: 'showy', key: 'bs_src_showy', name: 'Showy', url: 'http://showy.online/m.js', comp: ['showy_free', 'showy'],
           note: 'Filmix, Rezka, Kodik · есть реклама', match: hasCls('showy--button') },
@@ -134,16 +134,24 @@ var BSSources = (function () {
         return false;
     }
     var done = {};
-    /** Страница открыта по https (браузер, sunic.stream): http-скрипт браузер заблокирует — у кого есть https, грузим по нему. */
-    function urlFor(s) {
-        var https = false;
-        try { https = window.location.protocol === 'https:'; } catch (e) {}
-        return https && s.https ? s.url.replace(/^http:\/\//, 'https://') : s.url;
+    /* Сначала https (исполняемый скрипт по открытому http можно подменить по дороге); у кого его нет (s.https false) —
+     * как было, http. https не открылся (старый TLS на ТВ, кривой сертификат у хоста) — тогда http, с отметкой в журнале:
+     * у каждого адреса есть запасной. Страница по https (браузер) — http браузер всё равно не пустит, его не пробуем. */
+    function pageHttps() { try { return window.location.protocol === 'https:'; } catch (e) { return false; } }
+    function urlFor(s) { return s.https ? s.url.replace(/^http:\/\//, 'https://') : s.url; }
+    function put(url, ok, bad) {
+        try { Lampa.Utils.putScriptAsync([url], null, bad, ok, false); } catch (e) { log('не подключён', url + ' ' + e.message); bad(); }
     }
-    function load(url) {
-        if (done[url] || loaded(url)) return;
-        done[url] = true;
-        try { Lampa.Utils.putScriptAsync([url], function () { log('подключён', url); }); } catch (e) { log('не подключён', url + ' ' + e.message); }
+    /** Подключить плагин s (один раз); cb() — когда загружен или все адреса не открылись. */
+    function load(s, cb) {
+        var url = urlFor(s), end = function () { if (cb) cb(); };
+        if (done[s.id] || loaded(s.url) || loaded(url)) return end();
+        done[s.id] = true;
+        put(url, function () { log('подключён', url); end(); }, function () {
+            if (url === s.url || pageHttps()) { log('не подключён', url); return end(); }
+            log('https не открылся — подключаю по http', s.url);
+            put(s.url, function () { log('подключён по http', s.url); end(); }, function () { log('не подключён', s.url); end(); });
+        });
     }
     function loadAll() {
         var groups = {};
@@ -151,7 +159,7 @@ var BSSources = (function () {
             var s = LIST[i];
             if (!enabled(s) || (s.group && groups[s.group])) continue;   // из группы — только первый включённый
             if (s.group) groups[s.group] = true;
-            load(urlFor(s));
+            load(s);
         }
     }
 
@@ -181,7 +189,7 @@ var BSSources = (function () {
                             noty(o.name + ' выключен — включён ' + s.name);
                         }
                     });
-                    load(urlFor(s));
+                    load(s);
                 }
             });
         });
@@ -195,11 +203,7 @@ var BSSources = (function () {
         lsSet(s.key, 'true');
         lsSet('bs_src_main', id);
         try { Lampa.Storage.set(s.key, true); Lampa.Storage.set('bs_src_main', id); } catch (e) {}
-        var u = urlFor(s);
-        if (done[u] || loaded(u) || loaded(s.url)) { if (cb) cb(); return true; }
-        done[u] = true;
-        try { Lampa.Utils.putScriptAsync([u], function () { log('подключён', u); if (cb) cb(); }); }
-        catch (e) { log('не подключён', u + ' ' + e.message); }
+        load(s, cb);
         return true;
     }
 

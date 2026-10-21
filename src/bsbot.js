@@ -9,7 +9,10 @@
  * Свой бот с токеном (bstg.js) остаётся как был — бесплатно и как запасной путь, если сервер недоступен.
  */
 var BSBot = (function () {
-    var URLS = ['https://sunic.stream/bot/tv.php', 'http://sunic.stream/bot/tv.php'];   // https; старый ТВ без нового корня — http
+    // Только https: ключ ТВ (X-Sunic-Key) даёт управление ботом этого ТВ — открытым текстом его не шлём никогда, даже
+    // если https не ответил (иначе хватило бы сорвать https, чтобы ТВ сам отдал ключ по http). Старый ТВ, где https
+    // не работает, общим ботом не пользуется — свой бот с токеном у него работает как раньше.
+    var URLS = ['https://sunic.stream/bot/tv.php'];
     var POLL = 5000, POLL_IDLE = 30000, PAIR_WAIT = 10 * 60000;
     var C = 'bs_update';
 
@@ -35,7 +38,7 @@ var BSBot = (function () {
     }
     function tvName() { try { return window.BSTelegram && BSTelegram.tvName ? BSTelegram.tvName() : ''; } catch (e) { return ''; } }
 
-    /** Запрос к серверу: https, не ответил — http. cb(ответ | null). */
+    /** Запрос к серверу (только https). cb(ответ | null). */
     function api(action, cb) {
         var me = ident(), qs = '?a=' + action + '&tv=' + me.id + (action === 'hello' ? '&name=' + encodeURIComponent(tvName()) : '');
         (function next(i) {
