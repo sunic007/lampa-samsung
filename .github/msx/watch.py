@@ -15,7 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ALLOWED_SRC = {'http://lampa.byskaz.ru/lampainit.js', 'polyfills.js', 'update.js'}
 ALLOWED_SRC_PREFIX = ('./vender/',)
 # встроенные скрипты: наш из index.php (плеер, «Script error», история, обновление) и защита Smart Hub из index.html
-INLINE_MARKS = ['bs_player_default', 'launchAppControl']
+INLINE_MARKS = ['bs_player_default', 'launchAppControl', 'BS_INIT_AT']   # BS_INIT_AT — загрузчик lampainit.js (2.3.36), адрес проверяем ниже
 
 
 def get(path):
@@ -101,6 +101,9 @@ def main():
         for body in re.findall(r'<script(?![^>]*\ssrc=)[^>]*>(.*?)</script>', page, re.S):
             if body.strip() and not any(m in body for m in INLINE_MARKS):
                 bad.append('/lampa/: чужой встроенный скрипт: %s' % body.strip()[:120])
+            # встроенный загрузчик lampainit.js может звать только его, никакого другого адреса
+            elif 'BS_INIT_AT' in body and set(re.findall(r"https?://[^'\"\s]+", body)) - {'http://lampa.byskaz.ru/lampainit.js'}:
+                bad.append('/lampa/: загрузчик lampainit.js зовёт чужой адрес')
         if re.search(r'<(iframe|object|embed)\b', page, re.I):
             bad.append('/lampa/: iframe/object/embed на странице')
     except Exception as e:
