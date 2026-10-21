@@ -83,7 +83,7 @@ TEXTS = {
         'added': 'Спасибо, добавил к {link}.',
         'done': '✅ Готово: {title}.',
         'in_release': 'Вошло в версию {version}: {url}',
-        'next_release': 'Выйдет в следующей версии — новости в @sunicapps_uzb.',
+        'next_release': 'Выйдет в следующей версии — о новой версии напишем в этой группе.',
         'rate_ask': 'Проверьте, пожалуйста, и оцените:',
         'not_planned_suggestion': 'Спасибо за предложение! Пока не планируем{reason}. ({link})',
         'not_planned': 'Спасибо за сообщение! Пока не планируем это делать{reason}. ({link})',
@@ -101,7 +101,7 @@ TEXTS = {
         'added': "Rahmat, {link} ga qo'shildi.",
         'done': '✅ Tayyor: {title}.',
         'in_release': '{version} versiyaga kirdi: {url}',
-        'next_release': 'Keyingi versiyada chiqadi — yangiliklar @sunicapps_uzb kanalida.',
+        'next_release': 'Keyingi versiyada chiqadi — yangi versiya haqida shu guruhda yozamiz.',
         'rate_ask': "Iltimos, tekshirib ko'ring va baholang:",
         'not_planned_suggestion': 'Taklif uchun rahmat! Hozircha rejalashtirmayapmiz{reason}. ({link})',
         'not_planned': 'Xabar uchun rahmat! Hozircha buni qilishni rejalashtirmayapmiz{reason}. ({link})',
@@ -119,7 +119,7 @@ TEXTS = {
         'added': 'Thanks, added to {link}.',
         'done': '✅ Done: {title}.',
         'in_release': 'Included in version {version}: {url}',
-        'next_release': 'Coming in the next version — news in @sunicapps_uzb.',
+        'next_release': 'Coming in the next version — we will post it in this group.',
         'rate_ask': 'Please check it and rate:',
         'not_planned_suggestion': 'Thanks for the suggestion! Not planned for now{reason}. ({link})',
         'not_planned': 'Thanks for the report! Not planned for now{reason}. ({link})',
@@ -342,7 +342,7 @@ QUICK = """### БЫСТРЫЕ ОТВЕТЫ (где скачать, как пос
   • Компьютер, телефон, планшет — в браузере: https://sunic.stream/lampa/ (источники Skaz там не открываются).
 - Sunic Apps для Lampa на Android (product=android) — плагин для Lampa на телефоне или приставке (например, Lampa BS).
   Lampa → Настройки → Расширения → Добавить плагин → адрес https://sunic.stream/sunic.js
-- Новости и новые версии — канал @sunicapps_uzb, вопросы — эта группа @sunicapps. Всё бесплатно.
+- Вопросы, новости и новые версии — эта группа @sunicapps. Всё бесплатно.
 """
 
 

@@ -713,9 +713,9 @@ var BSTelegram = (function () {
                 "\n\nYana bir televizor: uning Lampa'sida Настройки → Sunic Apps → Telegram-бот → «Подключить через бота» ga kiring va ekrandagi kodni shu yerga yuboring."), rows);
     }
     function supportText() {
-        return L('💬 Вопросы и помощь: https://t.me/sunicapps\n📣 Новости: https://t.me/sunicapps_uzb\n\n❤️ Lampa для Samsung и TV Installer бесплатны.\nПоддержать проект: https://github.com/sponsors/sunic007',
-            '💬 Questions and help: https://t.me/sunicapps\n📣 News: https://t.me/sunicapps_uzb\n\n❤️ Lampa for Samsung and TV Installer are free.\nSupport the project: https://github.com/sponsors/sunic007',
-            "💬 Savollar va yordam: https://t.me/sunicapps\n📣 Yangiliklar: https://t.me/sunicapps_uzb\n\n❤️ Samsung uchun Lampa va TV Installer bepul.\nLoyihani qo'llab-quvvatlash: https://github.com/sponsors/sunic007");
+        return L('💬 Вопросы, помощь и новости: https://t.me/sunicapps\n\n❤️ Lampa для Samsung и TV Installer бесплатны.\nПоддержать проект: https://github.com/sponsors/sunic007',
+            '💬 Questions, help and news: https://t.me/sunicapps\n\n❤️ Lampa for Samsung and TV Installer are free.\nSupport the project: https://github.com/sponsors/sunic007',
+            "💬 Savollar, yordam va yangiliklar: https://t.me/sunicapps\n\n❤️ Samsung uchun Lampa va TV Installer bepul.\nLoyihani qo'llab-quvvatlash: https://github.com/sponsors/sunic007");
     }
     /* ---------- «⚙️ Настройки» в боте: язык, ИИ-поиск (ключи), телевизоры, люди ----------
      * Экраны — одно сообщение: кнопки меняют его на месте (editMessageText), чат не растёт. */

@@ -1,10 +1,10 @@
 name: Telegram post
 
-# Новый релиз — пост в канал новостей (@sunicapps_uzb): название, раздел «что нового» на русском и ссылка.
+# Новый релиз — пост в группу @sunicapps (канал новостей удалён): название, раздел «что нового» на русском и ссылка.
 # Нужен секрет TELEGRAM_BOT_TOKEN — бот-публикатор, админ канала с правом «Публикация сообщений».
 # Релиз, созданный человеком (gh, сайт), сам запускает этот пост (событие release). Ручной запуск — для релизов от
 # GITHUB_TOKEN (lampa-watch: такие события release не дают); для релиза человека ручной запуск пропускается, иначе
-# пост выходит дважды (так было с 2.2.0–2.2.2). delete — убрать посты канала по номерам (t.me/sunicapps_uzb/<номер>).
+# пост выходит дважды (так было с 2.2.0–2.2.2). delete — убрать посты канала по номерам (t.me/sunicapps/<номер>).
 on:
   release:
     types: [published]
@@ -30,7 +30,7 @@ jobs:
       - name: Post to Telegram
         env:
           TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          CHANNEL: '@sunicapps_uzb'
+          CHANNEL: '@sunicapps'
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
