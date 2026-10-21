@@ -28,7 +28,7 @@
  * возвращаются (bs_player_forced хранит прежние, если приложение закрыли посреди просмотра).
  */
 var BSGuard = (function () {
-    var cfg = { BUFFER_GRACE: 60000, START_LIMIT: 25000, PLAY_LIMIT: 20000, ERROR_GRACE: 6000, START_ERROR_GRACE: 2000, CLOSE_DELAY: 4000, TICK: 1000, RESUME_GRACE: 25000 };
+    var cfg = { NUDGE: 8000, RESTART_AGAIN: 10 * 60000, BUFFER_GRACE: 60000, START_LIMIT: 25000, PLAY_LIMIT: 20000, ERROR_GRACE: 6000, START_ERROR_GRACE: 2000, CLOSE_DELAY: 4000, TICK: 1000, RESUME_GRACE: 25000 };
     var s = null;          // текущий сеанс просмотра
     var timer = null;
     var HLS_START_LIMIT = 10000, HLS_QUIET = 6000, HLS_HINT = 3000, HLS_LEARN = 30 * 24 * 3600 * 1000, LEARN_KEY = 'bs_hls_inner', FORCED_KEY = 'bs_player_forced';
@@ -77,10 +77,20 @@ var BSGuard = (function () {
     }
 
     /** Следующее качество ниже текущего, которое ещё не пробовали. */
+    /** Качество, которое играет сейчас: по ширине кадра (2,39:1 у кино — высота меньше «своей»). 0 — не знаем. */
+    function playingQuality() {
+        var w = 0;
+        try { var el = document.querySelector('video'); w = el && el.videoWidth || 0; } catch (e) {}
+        if (!(w > 0)) return 0;
+        return w >= 3200 ? 2160 : w >= 2200 ? 1440 : w >= 1700 ? 1080 : w >= 1100 ? 720 : w >= 760 ? 480 : 360;
+    }
     function nextQuality(work) {
         var list = qualities(work), cur = work.url, curN = null;
         for (var i = 0; i < list.length; i++) if (list[i].url === cur) curN = list[i].n;
         if (curN === null && work.quality_switched) curN = qualityNum(work.quality_switched);
+        // Поток HLS «авто»: его общего плейлиста нет в списке качеств — без этого брали первое, то есть самое высокое
+        // (опыт 2026-10-21: «Переключаю качество на 2160p» после сбоя). Качество — по ширине кадра; не знаем — 1080p.
+        if (curN === null) curN = playingQuality() || 1080;
         for (var j = 0; j < list.length; j++) {
             var q = list[j];
             if (s.tried.indexOf(q.url) >= 0 || q.url === cur) continue;
@@ -226,8 +236,25 @@ var BSGuard = (function () {
         s = null;
     }
 
+    /* Видео шло и встало (круг крутится). Перемотка на то же место заставляет плеер (hls.js, плеер ТВ) заново
+     * запросить кусок — чаще всего этого хватает, без перезапуска потока. Не помогло — дальше как раньше (PLAY_LIMIT). */
+    /** На паузе ли видео на самом деле. После перемотки hls.js шлёт 'pause', а видео не на паузе — опыт 2026-10-21:
+     *  сторож считал фильм на паузе и не перезапускал зависший поток 1,5 минуты. Не узнать — верим сигналу. */
+    function reallyPaused() {
+        try { var v = Lampa.PlayerVideo.video(); if (v && typeof v.paused === 'boolean') return v.paused; } catch (e) {}
+        return true;
+    }
+    function nudgeEcho() { return !!(s && s.nudgeAt && Date.now() - s.nudgeAt < 15000); }
+    function nudge() {
+        var t = s.lastTime;
+        if (!(t > 1)) return;
+        log('видео встало — подталкиваю на', t.toFixed(1));
+        s.nudgeT = t; s.nudgeAt = Date.now();
+        try { Lampa.PlayerVideo.to(t + 0.1); } catch (e) {}
+    }
     function progress() {
         if (!s) return;
+        s.nudged = false;
         s.lastProgressAt = Date.now();
         s.errorAt = 0;                        // видео идёт — прошлая ошибка была разовой
         if (s.closing) {
@@ -250,6 +277,10 @@ var BSGuard = (function () {
             try { Lampa.PlayerVideo.to(to); } catch (err) {}
             return;
         }
+        // после подталкивания плеер на миг сообщает время 0 или то же место — это не «пошло» (опыт 2026-10-21:
+        // так сторож подталкивал по кругу и не доходил до перезапуска). Пошло — когда ушло дальше места остановки.
+        if (s.nudgeAt && t < s.nudgeT + 1 && Date.now() - s.nudgeAt < 15000) return;
+        s.nudgeAt = 0;
         if (t > s.lastTime + 0.2 || t < s.lastTime - 2) {
             s.bufPct = -1; s.bufSince = 0;
             if (s.lastTime >= 0 || t > 0.2) {
@@ -261,7 +292,13 @@ var BSGuard = (function () {
             }
             s.lastTime = t;
             progress();
+            spinnerOff();
         }
+    }
+    /* Lampa показывает круг по 'waiting' и прячет по 'playing'. После подгрузки посреди фильма 'playing' иногда не
+     * приходит (hls.js, плеер ТВ) — видео идёт, а круг крутится, будто всё зависло. Время пошло — круг прячем. */
+    function spinnerOff() {
+        try { var el = document.querySelector('.player-video.video--load'); if (el) el.className = el.className.replace(/\s*\bvideo--load\b/g, ''); } catch (e) {}
     }
 
     /* Подгрузка буфера. Картинка стоит, но AVPlay сообщает «буфер 10%… 40%… 70%» — данные идут, поток жив.
@@ -280,6 +317,7 @@ var BSGuard = (function () {
     function tick() {
         if (!s) return;
         if (!playerOpen()) return stop();
+        if (s.paused && !reallyPaused()) s.paused = false;   // сигнал «пауза» без паузы (перемотка в hls.js) — не верим
         if (s.paused || s.ended || document.hidden || s.closing) return;
         if (s.searching) return;              // ищем другой источник (sourceInPlayer)
         if (inGrace(s, Date.now())) return;   // Lampa восстанавливает плеер после Smart Hub
@@ -294,6 +332,7 @@ var BSGuard = (function () {
             s.hinted = true;
             noty('Подключаюсь к потоку…', HLS_START_LIMIT - HLS_HINT);
         }
+        if (s.played && !s.avplay && !s.nudged && Date.now() - s.lastProgressAt > cfg.NUDGE) { s.nudged = true; nudge(); }
         var limit = s.played ? cfg.PLAY_LIMIT : hlsWait ? (s.avSignal ? HLS_START_LIMIT : HLS_QUIET) : cfg.START_LIMIT;
         if (Date.now() - s.lastProgressAt > limit) escalate(s.played ? 'остановился' : 'не запускается');
     }
@@ -351,7 +390,7 @@ var BSGuard = (function () {
         }
 
         // Шаг 0: видео шло и встало — сначала тот же поток с того же места.
-        if (!s.restarted && s.played && s.lastTime > 5 && work && work.url) return restartSame(why === 'выдал ошибку' ? 'Ошибка потока' : 'Поток ' + why);
+        if ((!s.restarted || Date.now() - s.restartedAt > cfg.RESTART_AGAIN) && s.played && s.lastTime > 5 && work && work.url) return restartSame(why === 'выдал ошибку' ? 'Ошибка потока' : 'Поток ' + why);
 
         var next = work ? nextQuality(work) : null;
         if (next && s.steps <= 3) {
@@ -374,7 +413,7 @@ var BSGuard = (function () {
         try { work = Lampa.Player.playdata(); } catch (e) {}
         if (!s || !work || !work.url) return;
         var pos = s.lastTime;
-        s.restarted = true;
+        s.restarted = true; s.restartedAt = Date.now();
         noty(reason + ' — перезапускаю с ' + fmtPos(pos) + '…', 5000);
         switchTo({ name: work.quality_switched || 'auto', url: work.url });
         s.resumeAt = pos;
@@ -484,9 +523,10 @@ var BSGuard = (function () {
             var v = Lampa.PlayerVideo.listener;
             v.follow('timeupdate', onTime);
             v.follow('progress', onBuffer);
-            v.follow('play', function () { if (s) { s.paused = false; s.ended = false; progress(); } });
+            // сигналы «играю» и «перемотал» сразу после нашего подталкивания — от самой перемотки, не движение фильма
+            v.follow('play', function () { if (s) { s.paused = false; s.ended = false; if (!nudgeEcho()) progress(); } });
             v.follow('pause', function () { if (s) s.paused = true; });
-            v.follow('rewind', function () { if (s) { s.ended = false; progress(); } });
+            v.follow('rewind', function () { if (s) { s.ended = false; if (!nudgeEcho()) progress(); } });
             // досмотрели до конца: время больше не идёт — это не зависание (иначе через PLAY_LIMIT перезапуск)
             v.follow('ended', function () { if (s) { s.ended = true; s.lastProgressAt = Date.now(); } });
             v.follow('error', function (e) {

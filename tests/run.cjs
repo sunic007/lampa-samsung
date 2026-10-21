@@ -663,8 +663,8 @@ function guardEnv(opt) {
     const ls = {}, store = { player: 'tizen', player_hls_method: 'application' }, plays = [];
     const w = { localStorage: opt.tizen ? { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); }, removeItem: k => { delete ls[k]; } } : { getItem: () => null, setItem() {} },
         addEventListener() {}, webapis: { avplay: av } };
-    const Lampa = { Noty: { show: t => notes.push(t) }, Player: { listener: { follow: follow('player') }, opened: () => true, playdata: () => ({ url: 'http://cdn/1080.m3u8', quality: { '1080p': 'http://cdn/1080.m3u8', '720p': 'http://cdn/720.m3u8' } }), close() { events.push('close'); } },
-        PlayerVideo: { listener: { follow: follow('video') }, video: () => ({}), to() {} }, PlayerPanel: { listener: { follow: follow('panel'), send: (ev, d) => { if (opt.tizen) events.push(ev + ' ' + d.url); else throw new Error('нет'); } } }, SettingsApi: null };
+    const Lampa = { Noty: { show: t => notes.push(t) }, Player: { listener: { follow: follow('player') }, opened: () => true, playdata: () => (opt.playdata || { url: 'http://cdn/1080.m3u8', quality: { '1080p': 'http://cdn/1080.m3u8', '720p': 'http://cdn/720.m3u8' } }), close() { events.push('close'); } },
+        PlayerVideo: { listener: { follow: follow('video') }, video: () => ({}), to: t2 => events.push('to ' + t2) }, PlayerPanel: { listener: { follow: follow('panel'), send: (ev, d) => { if (opt.tizen) events.push(ev + ' ' + d.url); else throw new Error('нет'); } } }, SettingsApi: null };
     if (opt.tizen) {
         Lampa.Platform = { is: n => n === 'tizen' };
         Lampa.Storage = { field: k => store[k], set: (k, v) => { store[k] = v; } };
@@ -683,6 +683,42 @@ function guardEnv(opt) {
     const fire = (k, d) => (H[k] || []).forEach(f => f(d));
     return { M: ctx.M, clock, fire, notes, events, av, store, plays, ls, doc, w, ctx };
 }
+{
+    // Видео шло и встало посреди фильма: сначала подталкиваем на то же место, потом — перезапуск того же потока
+    // встроенный плеер: подталкивание помогает (перемотка заново запрашивает кусок)
+    const gi = guardEnv({ tizen: true }); gi.store.player = 'inner'; gi.ls.bs_player_auto = 'false';
+    gi.fire('player:start', { url: 'http://cdn/film.mp4' });
+    for (let k = 1; k <= 30; k++) { gi.clock.run(1000); gi.fire('video:timeupdate', { current: k }); }
+    gi.clock.run(9000);
+    t('зависание: встроенный плеер — через ~8 с без движения подталкивание на то же место', gi.events.indexOf('to 30.1') >= 0 && !gi.events.some(e => /^quality/.test(e)));
+    gi.ctx.Lampa.PlayerVideo.video = () => ({ paused: false });
+    gi.fire('video:pause'); gi.fire('video:rewind'); gi.fire('video:play');   // перемотка: «пауза», «перемотал», «играю» — видео стоит
+    gi.fire('video:timeupdate', { current: 0 }); gi.clock.run(500); gi.fire('video:timeupdate', { current: 30.1 });   // эхо перемотки
+    gi.clock.run(13000);
+    t('зависание: эхо перемотки (0, то же место, ложная «пауза») — не «пошло», перезапуск всё равно вовремя', gi.events.filter(e => /^quality/.test(e)).length === 1 && gi.events.filter(e => /^to /.test(e)).length === 1);
+    // плеер ТВ: подталкивание ему не помогает (опыт на ТВ) — сразу перезапуск
+    const g = guardEnv({ tizen: true });
+    g.fire('player:start', { url: 'http://cdn/film.mp4' });
+    for (let k = 1; k <= 30; k++) { g.clock.run(1000); g.fire('video:timeupdate', { current: k }); }
+    g.clock.run(22000);
+    t('зависание: плеер ТВ — без подталкивания, через ~20 с перезапуск того же потока', !g.events.some(e => /^to /.test(e)) && g.events.filter(e => /^quality/.test(e)).length === 1);
+    for (let k = 31; k <= 40; k++) { g.clock.run(1000); g.fire('video:timeupdate', { current: k }); }
+    for (let k = 41; k <= 700; k++) { g.clock.run(1000); g.fire('video:timeupdate', { current: k }); }   // 11 минут фильм шёл без помех
+    g.clock.run(22000);
+    const q = g.events.filter(e => /^quality/.test(e));
+    t('зависание: снова через 10+ минут — опять перезапуск того же потока, а не сразу хуже качество', q.length === 2 && q[1] === q[0]);
+}
+{
+    // Поток HLS «авто» (общего плейлиста нет в списке качеств): после неудачного перезапуска качество — ВНИЗ, не 2160p
+    const g = guardEnv({ tizen: true, playdata: { url: 'http://cdn/master.m3u8', quality: { '2160p': 'http://cdn/2160.m3u8', '1080p': 'http://cdn/1080.m3u8', '720p': 'http://cdn/720.m3u8' } } });
+    g.fire('player:start', { url: 'http://cdn/master.m3u8' });
+    for (let k = 1; k <= 30; k++) { g.clock.run(1000); g.fire('video:timeupdate', { current: k }); }
+    g.clock.run(22000);                                             // встало: подталкивание, перезапуск того же
+    g.clock.run(30000);                                             // и после перезапуска не пошло — смена качества
+    const q = g.events.filter(e => /^quality/.test(e));
+    t('качество: поток «авто» встал — сначала тот же поток, потом ниже (720p), а не 2160p', q.length >= 2 && q[0] === 'quality http://cdn/master.m3u8' && q[1] === 'quality http://cdn/720.m3u8');
+}
+
 {
     // Lampa ставит свой слушатель AVPlay; его onerror до сторожа не доходит — сторож берёт ошибку у AVPlay сам
     const g = guardEnv(), lampaSeen = [];
