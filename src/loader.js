@@ -797,6 +797,24 @@ function bsRouteSettings() {
             bsSectionBack(e);
         });
     } catch (e) {}
+    bsSettingsLayerClose();
+}
+
+/* Мышь и касание (браузер, телефон): щелчок мимо панели настроек Lampa считает «Назад» на один уровень. Из нашего
+ * подраздела «Назад» ведёт в «Sunic Apps», потом в общие настройки — закрыть панель удавалось только с третьего
+ * щелчка, казалось, что окно зависло. Щелчок мимо панели закрывает настройки сразу; «Назад» пультом — как было. */
+function bsSettingsLayerClose() {
+    try {
+        document.addEventListener('click', function (ev) {
+            var t = ev.target;
+            if (!t || !t.className || String(t.className).indexOf('settings__layer') < 0) return;
+            var name = '';
+            try { name = Lampa.Controller.enabled().name; } catch (e) {}
+            if (name !== 'settings_component') return;          // главный список — Lampa сама закроет
+            ev.stopPropagation();
+            try { Lampa.Controller.toggle('settings'); Lampa.Controller.back(); } catch (e) {}
+        }, true);
+    } catch (e) {}
 }
 
 /* ПИН родительского контроля Lampa перед «Telegram-бот» и «Онлайн-источники» (Lampa.ParentalControl.add/personal):
