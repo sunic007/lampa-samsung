@@ -75,6 +75,14 @@ x2 = decide2({}, res({}, DEAD_DIRECT)); t('источники: прямые ме
     m = load('skazauto.js', 'BSSkaz', { bs_srv_lastuse: String(now - 3600000), bs_srv_auto: 'false' });
     t('серверы: автовыбор выключен — не меряем', m.M._dueWatch(now) === false);
 }
+{   /* bsplayer: кнопки панели плеера — каждый выбирает, какие показывать */
+    const store = {};
+    const P = load('bsplayer.js', 'BSPlayer', store);
+    t('кнопки плеера: по умолчанию все на месте', P.M._panelCss([]) === '');
+    t('кнопки плеера: спрятали «Сон» — прячется только он', P.M._togglePanelBtn('sleep') === true && JSON.parse(store.bs_pbtn_hide).join() === 'sleep' && P.M._panelCss(['sleep']) === '.player-panel .bs-btn-sleep{display:none!important}');
+    t('кнопки плеера: ещё раз — снова показан', P.M._togglePanelBtn('sleep') === false && JSON.parse(store.bs_pbtn_hide).length === 0);
+    t('кнопки плеера: кнопки Lampa тоже (качество, картинка в картинке)', /player-panel__quality/.test(P.M._panelCss(['quality'])) && /player-panel__pip/.test(P.M._panelCss(['pip'])) && !/settings/.test(P.M._panelCss(['quality', 'pip', 'tracks', 'subs', 'flow', 'volume', 'fullscreen', 'sleep', 'day', 'night'])));
+}
 {   /* bsplayer: дорожку, которую hls.js не разбирает (AC3 под видом AAC), — назад на прежнюю */
     const P = load('bsplayer.js', 'BSPlayer', {});
     const notes = []; P.w.Lampa = undefined;

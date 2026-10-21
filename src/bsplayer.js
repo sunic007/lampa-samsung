@@ -380,8 +380,58 @@ var BSPlayer = (function () {
         }
     }
 
+    /* ---------- какие кнопки показывать в плеере ----------
+     * Кнопок на панели много, кому-то лишние. Каждый выбирает сам («Sunic Apps → Плеер → Кнопки в плеере»), выбор —
+     * на этом устройстве (bs_pbtn_hide). Прячем стилем, а не классом hide: свой hide Lampa сама снимает (дорожки,
+     * субтитры), и кнопка вернулась бы. Значок настроек плеера не прячется: через него и качество, и дорожки. */
+    var PANEL_BTNS = [
+        ['sleep', 'Сон (таймер)', '.bs-btn-sleep'], ['day', 'День (громче)', '.bs-btn-day'], ['night', 'Ночь (тише)', '.bs-btn-night'],
+        ['quality', 'Качество (AUTO)', '.player-panel__quality'], ['tracks', 'Звуковые дорожки', '.player-panel__tracks'],
+        ['subs', 'Субтитры', '.player-panel__subs'], ['flow', 'Поток', '.player-panel__flow'], ['pip', 'Картинка в картинке', '.player-panel__pip'],
+        ['volume', 'Громкость', '.player-panel__volume'], ['fullscreen', 'Во весь экран', '.player-panel__fullscreen']
+    ];
+    function hiddenBtns() {
+        var l = null;
+        try { l = JSON.parse(lsGet('bs_pbtn_hide') || '[]'); } catch (e) {}
+        return Object.prototype.toString.call(l) === '[object Array]' ? l : [];
+    }
+    function panelCss(hidden) {
+        var rules = [];
+        for (var i = 0; i < PANEL_BTNS.length; i++) if (hidden.indexOf(PANEL_BTNS[i][0]) >= 0) rules.push('.player-panel ' + PANEL_BTNS[i][2] + '{display:none!important}');
+        return rules.join('');
+    }
+    function applyPanelBtns() {
+        try {
+            var st = document.getElementById('bs-pbtn-style');
+            if (!st) { st = document.createElement('style'); st.id = 'bs-pbtn-style'; document.head.appendChild(st); }
+            st.textContent = panelCss(hiddenBtns());
+        } catch (e) {}
+    }
+    function togglePanelBtn(key) {
+        var h = hiddenBtns(), i = h.indexOf(key);
+        if (i >= 0) h.splice(i, 1); else h.push(key);
+        lsSet('bs_pbtn_hide', JSON.stringify(h));
+        applyPanelBtns();
+        return i < 0;                                           // true — спрятали
+    }
+    function choosePanelBtns() {
+        var h = hiddenBtns(), ctrl = 'settings_component';
+        try { ctrl = Lampa.Controller.enabled().name; } catch (e) {}
+        Lampa.Select.show({
+            title: 'Кнопки в плеере',
+            items: PANEL_BTNS.map(function (b) { return { title: (h.indexOf(b[0]) < 0 ? '✓ ' : '    ') + b[1], key: b[0] }; }),
+            onSelect: function (a) { togglePanelBtn(a.key); choosePanelBtns(); },
+            onBack: function () { try { Lampa.Controller.toggle(ctrl); } catch (e) {} }
+        });
+    }
+
     function addSettings() {
         var C = 'bs_update', api = Lampa.SettingsApi;
+        api.addParam({
+            component: C, param: { name: 'bs_pbtn', type: 'button' },
+            field: { name: 'Кнопки в плеере', description: 'Какие кнопки показывать на панели плеера — ✓ показана' },
+            onChange: choosePanelBtns
+        });
         api.addParam({
             component: C, param: { name: 'bs_segments', type: 'trigger', 'default': true },
             field: { name: 'Пропуск заставки и титров', description: 'Где у источника есть метки' },
@@ -450,10 +500,11 @@ var BSPlayer = (function () {
             setInterval(function () { if (s) rememberTrack(); }, 15000);
         } catch (e) { log('не подключился', e.message); }
         try { hookHls(); } catch (e) {}
+        applyPanelBtns();
         try { addSettings(); } catch (e) {}
     }
 
     function hasEndMark() { return !!(s && s.endMark); }
 
-    return { start: start, hasEndMark: hasEndMark, _toLampa: toLampa, _parseChapters: parseChapters, _feedLampa: feedLampa, _state: function () { return s; }, _trimTracks: trimTracks, _night: nightNext, _bwUsable: bwUsable, _audioGuard: audioGuard };
+    return { start: start, hasEndMark: hasEndMark, _toLampa: toLampa, _parseChapters: parseChapters, _feedLampa: feedLampa, _state: function () { return s; }, _trimTracks: trimTracks, _night: nightNext, _bwUsable: bwUsable, _audioGuard: audioGuard, _panelCss: panelCss, _togglePanelBtn: togglePanelBtn };
 })();
