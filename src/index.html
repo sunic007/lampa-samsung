@@ -48,7 +48,11 @@
     
      <!-- свои модули (bs*.js, loader.js) — из пакета или, если на GitHub новее, с GitHub: update.js -->
      <script src="update.js"></script>
-	 <script src="http://lampa.byskaz.ru/lampainit.js"></script>
+	 <!-- lampainit.js сервера byskaz (умолчания Lampa и плагины Skaz) — не блокирующим тегом: сервер молчит — страница
+	      не стоит. Lampa ждёт его не дольше 8 с (loader.js, bsInitWait), потом стартует со своими умолчаниями. -->
+	 <script>(function () { var s = document.createElement('script'); window.BS_INIT_AT = Date.now();
+	     s.onload = function () { window.BS_INIT_DONE = 1; }; s.onerror = function () { window.BS_INIT_DONE = -1; };
+	     s.src = 'http://lampa.byskaz.ru/lampainit.js'; document.body.appendChild(s); })();</script>
 
 </body>
 </html>

@@ -256,12 +256,22 @@ function createScript(src,error){
     document.getElementsByTagName("body")[0].appendChild(script);
 }
 
+/* lampainit.js byskaz грузится не блокирующим тегом (index.html): Lampa должна стартовать после него — он ставит
+ * window.lampa_settings до запуска. Ждём, пока он выполнится или не загрузится, но не дольше BS_INIT_WAIT. */
+var BS_INIT_WAIT = 8000;
+function bsInitWait() {
+    if (window.BS_INIT_DONE || !window.BS_INIT_AT) return false;      // готов, сорвался или старая страница (тег был обычным)
+    if (Date.now() - window.BS_INIT_AT >= BS_INIT_WAIT) { console.log('lampainit.js не ответил за 8 с — запускаю без него'); return false; }
+    return true;
+}
+
 function startAppWithDeepLink(){
     if (bsStarted) return;
     if (!bsSrvReady) {
         bsSrvWaiting = startAppWithDeepLink;
         return;
     }
+    if (bsInitWait()) { setTimeout(startAppWithDeepLink, 200); return; }
     bsStarted = true;
     var localFirst = true;
     try { localFirst = window.localStorage.getItem('bs_local_first') !== 'false'; } catch (e) {}
