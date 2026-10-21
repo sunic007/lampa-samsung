@@ -30,6 +30,7 @@ const T = [
         'old' => 'Поиск устарел — напишите название ещё раз.',
         'slow' => 'Слишком часто — подождите минуту и напишите ещё раз.',
         'refunded' => 'Оплата Sunic Apps Plus возвращена — подписка отменена.',
+        'paysupport' => "Вопросы по оплате Sunic Apps Plus — напишите в группу https://t.me/sunicapps. Если Plus не включился или нужен возврат Stars — поможем.",
         'tv_off' => 'Телевизор не на связи — откройте на нём Lampa, и кнопка заработает.',
         'which' => 'На каком ТВ включить?',
         'menu_off' => "Меню, закладки и подписки работают, когда на телевизоре открыта Lampa.
@@ -52,6 +53,7 @@ const T = [
         'old' => 'This search is outdated — send the title again.',
         'slow' => 'Too many requests — wait a minute and try again.',
         'refunded' => 'The Sunic Apps Plus payment was refunded — the subscription is cancelled.',
+        'paysupport' => "Questions about paying for Sunic Apps Plus — write to the group https://t.me/sunicapps. If Plus didn't turn on or you need your Stars back — we'll help.",
         'tv_off' => 'The TV is offline — open Lampa on it and the button will work.',
         'which' => 'Which TV should it play on?',
         'menu_off' => "The menu, bookmarks and subscriptions work while Lampa is open on the TV.
@@ -74,6 +76,7 @@ The TV is offline now. Send a movie title — I'll find it and it will start whe
         'old' => "Qidiruv eskirgan — nomini qayta yozing.",
         'slow' => "Juda tez-tez — bir daqiqa kuting va qayta yozing.",
         'refunded' => "Sunic Apps Plus to'lovi qaytarildi — obuna bekor qilindi.",
+        'paysupport' => "Sunic Apps Plus to'lovi bo'yicha savollar — https://t.me/sunicapps guruhiga yozing. Plus yoqilmagan bo'lsa yoki Stars'ni qaytarish kerak bo'lsa — yordam beramiz.",
         'tv_off' => "Televizor aloqada emas — unda Lampa ni oching, tugma ishlaydi.",
         'which' => "Qaysi televizorda yoqay?",
         'menu_off' => "Menyu, xatcho'plar va obunalar televizorda Lampa ochiq bo'lganda ishlaydi.
@@ -103,8 +106,8 @@ function server_own($u) {
     if (isset($u['pre_checkout_query'])) return true;
     if (isset($u['callback_query'])) return (bool) preg_match('/^([swtu]:|noop$)/', (string) ($u['callback_query']['data'] ?? ''));
     $m = $u['message'] ?? null;
-    if (!$m || isset($m['successful_payment'])) return true;
-    return (bool) preg_match('/^\/(start\s+tv[A-Z0-9]{10}|plus|tv)\b/', trim((string) ($m['text'] ?? '')));
+    if (!$m || isset($m['successful_payment']) || isset($m['refunded_payment'])) return true;
+    return (bool) preg_match('/^\/(start\s+tv[A-Z0-9]{10}|plus|tv|paysupport|plustest)\b/', trim((string) ($m['text'] ?? '')));
 }
 if (!server_own($u) && isset($u['update_id'])) {
     $c = (int) ($u['callback_query']['message']['chat']['id'] ?? ($u['message']['chat']['id'] ?? 0));
@@ -235,6 +238,8 @@ if (isset($msg['successful_payment'])) {
         $from = max(time(), plus_until($chat));
         if (!q('SELECT 1 FROM users WHERE chat_id = ?', [$chat])->fetch()) q('INSERT INTO users (chat_id, trial_until, paid_until, lang) VALUES (?, 0, 0, ?)', [$chat, $l]);
         q('UPDATE users SET paid_until = ? WHERE chat_id = ?', [$from + PLUS_DAYS * 86400, $chat]);
+        // номер платежа — чтобы вернуть Stars по просьбе (/paysupport) и при споре
+        q('INSERT INTO payments (chat_id, charge_id, stars, at) VALUES (?, ?, ?, ?)', [$chat, (string) ($p['telegram_payment_charge_id'] ?? ''), (int) ($p['total_amount'] ?? 0), time()]);
         say($chat, sprintf(t($l, 'paid'), day($from + PLUS_DAYS * 86400)));
     }
     exit;
@@ -244,6 +249,31 @@ $text = trim((string) ($msg['text'] ?? ''));
 if ($text === '') exit;
 if (preg_match('/^\/start(?:\s+tv([A-Z0-9]{10}))?$/', $text, $m)) { empty($m[1]) ? say($chat, t($l, 'hello')) : link_tv($chat, $l, $m[1]); exit; }
 if ($text === '/plus') { plus_info($chat, $l); exit; }
+// правило Telegram для оплаты Stars: у бота должна быть /paysupport — куда писать по оплате
+if ($text === '/paysupport') { say($chat, t($l, 'paysupport')); exit; }
+/* Проверка оплаты владельцем: работает, только пока на хостинге лежит private/plus-test-allow (кладём на время
+ * теста и убираем). «end» — пробный месяц и оплата этого чата закончились (прежний срок запоминается);
+ * «refund» — вернуть Stars последнего платежа этого чата; «back» — вернуть прежний срок. */
+if (preg_match('/^\/plustest\s+(end|refund|back)$/', $text, $m) && is_file(PRIVATE_DIR . '/plus-test-allow')) {
+    $u0 = q('SELECT trial_until, paid_until FROM users WHERE chat_id = ?', [$chat])->fetch();
+    if (!$u0) { say($chat, 'plustest: чат не привязан'); exit; }
+    if ($m[1] === 'end') {
+        q('INSERT OR REPLACE INTO rate (k, n, until) VALUES (?, ?, ?)', ['plustest:' . $chat, 0, (int) $u0['trial_until']]);
+        q('UPDATE users SET trial_until = 1, paid_until = 0 WHERE chat_id = ?', [$chat]);
+        say($chat, 'plustest: Plus закончился — теперь /plus');
+    } elseif ($m[1] === 'refund') {
+        $pay = q('SELECT charge_id FROM payments WHERE chat_id = ? ORDER BY id DESC LIMIT 1', [$chat])->fetch();
+        if (!$pay || $pay['charge_id'] === '') { say($chat, 'plustest: платежей нет'); exit; }
+        $r = tg('refundStarPayment', ['user_id' => $chat, 'telegram_payment_charge_id' => $pay['charge_id']]);
+        say($chat, 'plustest: возврат — ' . (!empty($r['ok']) ? 'ok' : (string) ($r['description'] ?? 'ошибка')));
+    } else {
+        $old = q('SELECT until FROM rate WHERE k = ?', ['plustest:' . $chat])->fetch();
+        if ($old) q('UPDATE users SET trial_until = ? WHERE chat_id = ?', [(int) $old['until'], $chat]);
+        q('DELETE FROM rate WHERE k = ?', ['plustest:' . $chat]);
+        say($chat, 'plustest: срок вернул — ' . day(plus_until($chat)));
+    }
+    exit;
+}
 if ($text === '/tv') {
     $tvs = q('SELECT id, name FROM tvs WHERE chat_id = ?', [$chat])->fetchAll();
     if (!$tvs) { say($chat, t($l, 'no_tv')); exit; }
