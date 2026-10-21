@@ -186,3 +186,19 @@ body.bs-kb-hidden .search__keypad { display: none; }
     border-radius: 50%; background: #ff7b6e; }
 .bs-boot-err__text { margin-top: 0.4em; font-family: monospace; font-size: 0.85em; color: rgba(255, 255, 255, 0.62);
     white-space: pre-wrap; word-break: break-all; }
+
+/*
+ * Планшет (Lampa в режиме касания, ширина от 768 px): панель «Назад / Главная / Поиск / Настройки» у Lampa сделана под
+ * телефон — крупная, с подписями; в альбомной ориентации она стоит сбоку и закрывала карточки. На планшете — узкая,
+ * только значки: Lampa сама освобождает под неё место (сбоку — по её ширине, внизу — по высоте), карточки видны.
+ */
+@media (min-width: 768px) {
+  html body.true--mobile .navigation-bar { padding: 0 0 0.6em 0 !important; }
+  html body.true--mobile.orientation--landscape .navigation-bar { padding: 0.6em 0.6em 0.6em 0 !important; -webkit-box-align: center; -webkit-align-items: center; align-items: center; }
+  html body.true--mobile .navigation-bar .navigation-bar__body { padding: 0.35em 0.5em !important; border-radius: 2em !important; background: rgba(38, 40, 41, 0.92) !important; }
+  html body.true--mobile:not(.orientation--landscape) .navigation-bar .navigation-bar__body { max-width: 22em; margin: 0 auto; -webkit-justify-content: space-around; justify-content: space-around; }
+  html body.true--mobile.orientation--landscape .navigation-bar .navigation-bar__body { height: auto !important; -webkit-justify-content: center !important; justify-content: center !important; }
+  html body.true--mobile .navigation-bar .navigation-bar__item { padding: 0.75em 0.8em !important; margin: 0 !important; }
+  html body.true--mobile .navigation-bar .navigation-bar__icon { width: 1.35em !important; height: 1.35em !important; }
+  html body.true--mobile .navigation-bar .navigation-bar__label { display: none !important; }
+}
