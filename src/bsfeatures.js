@@ -410,17 +410,22 @@ var BSFeatures = (function () {
         try { Lampa.Storage.set('iptv_playlist_custom', list); } catch (e) {}
         lsSet('bs_iptv_src', src);
     }
-    /** Наш сервер отвечает? Нет — переходим на оригиналы (дальше за сессию не проверяем). */
-    function iptvProbe() {
-        if (lsGet('bs_iptv_probe')) return;
+    /* Наш сервер отвечает? Проверяем раз в 6 часов (bs_iptv_probe — время проверки; старое «1» — давно): ответил —
+     * возвращаемся на зеркало, нет — повторяем через 30–90 с (у каждого ТВ своё время) и только тогда переходим на
+     * оригиналы. Иначе один короткий сбой зеркала разом уводил бы все ТВ на github — и навсегда. */
+    var IPTV_PROBE_EVERY = 6 * 3600 * 1000;
+    function iptvProbe(retry) {
+        var last = +lsGet('bs_iptv_probe') || 0;
+        if (!retry && last && Date.now() - last < IPTV_PROBE_EVERY && last <= Date.now()) return;
         var req;
         try { req = new Lampa.Reguest(); } catch (e) { return; }
         var done = false;
         var finish = function (ok) {
             if (done) return;
             done = true;
-            lsSet('bs_iptv_probe', '1');
-            if (!ok) iptvSourceSet('orig');
+            if (!ok && !retry) { setTimeout(function () { iptvProbe(true); }, 30000 + Math.floor(Math.random() * 60000)); return; }
+            lsSet('bs_iptv_probe', String(Date.now()));
+            iptvSourceSet(ok ? 'mirror' : 'orig');
         };
         try {
             req.timeout(8000);
