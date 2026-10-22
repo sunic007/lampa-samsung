@@ -154,3 +154,11 @@ html:not(.ready) main { visibility:hidden; animation:bs-show 0s 2s forwards; }  
 .plat-ico.ico svg { width:22px; height:22px; }
 .feat:hover .ico, .plat:hover .ico { transform:translateY(-1px) scale(1.04); }
 .ico { transition:transform .18s ease; }
+
+/* «Где работает» — знакомые логотипы площадок (Simple Icons, CC0), белые, одной высоты; товарные знаки — их владельцев */
+.plat-logo { display:flex; align-items:center; height:38px; margin-bottom:12px; color:#fff; }
+.plat-logo svg { height:36px; width:auto; max-width:100%; opacity:.95; filter:drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
+.plat-logo.wide svg { height:24px; }
+.plat-logo.lg svg { height:28px; }
+@media (prefers-color-scheme: light) { .plat-logo { color:#121722; } .plat-logo svg { filter:none; } }
+.plat:hover .plat-logo svg { opacity:1; }
