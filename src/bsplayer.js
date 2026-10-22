@@ -551,7 +551,10 @@ var BSPlayer = (function () {
     }
     function iptvArrows() {
         var css = document.createElement('style');
-        css.textContent = '.player-panel-iptv__arrow-up,.player-panel-iptv__arrow-down{cursor:pointer}';
+        // ТВ-плеер Lampa (TV Skaz, IPTV): пока видна панель канала, Lampa затемняла всё видео (до 80%) — первые секунды
+        // канал казался тёмным. Оставляем тень только внизу, под названием канала
+        css.textContent = '.player-panel-iptv__arrow-up,.player-panel-iptv__arrow-down{cursor:pointer}' +
+            '.player.iptv .player-video__overlay{background:linear-gradient(to top,rgba(0,0,0,.8),rgba(0,0,0,.35) 22%,transparent 45%)!important}';
         document.head.appendChild(css);
         document.addEventListener('click', function (e) {
             var dir = iptvArrowDir(e.target);

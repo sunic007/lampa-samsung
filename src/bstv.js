@@ -373,6 +373,8 @@ var BSTv = (function () {
         var s = document.createElement('style');
         s.textContent =
             '.player.bstv-on .player-panel,.player.bstv-on .player-info,.player.bstv-on .player-footer{display:none!important}' +
+            // затемнение Lampa на всё видео (пока её панель «видна», первые секунды) — у нас своя плашка внизу
+            '.player.bstv-on .player-video__overlay{display:none!important}' +
             '.bstv{position:absolute;left:0;top:0;right:0;bottom:0;z-index:20;pointer-events:none;color:#fff;font-size:1em}' +
             '.bstv>*{pointer-events:auto}' +
             '.bstv-info{position:absolute;left:0;right:0;bottom:0;padding:4em 3em 1.6em;background:linear-gradient(to top,rgba(0,0,0,.92),rgba(0,0,0,.55) 65%,transparent);transition:opacity .25s}' +
