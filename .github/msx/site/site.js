@@ -4,7 +4,7 @@
       cta_install: 'O\'rnatish', eyebrow: 'Bepul · ro\'yxatdan o\'tmasdan',
       h1: 'Barcha filmlar va seriallar — televizoringizda',
       sub: 'Keyingi qism o\'zi yoqiladi, film barcha manbalardan qidiriladi. Bepul.',
-      cta_tv: 'Televizorga o\'rnatish', cta_web: 'Brauzerda ko\'rish',
+      cta_tv: 'Televizorga o\'rnatish', cta_web: 'Brauzerda ko\'rish', launch: 'Lampa ishga tushmoqda…',
       tb_free: 'Bepul', tb_reg: 'Ro\'yxatdan o\'tmasdan', tb_src: 'Ochiq kod', tb_ver: 'Versiya',
       dv_h: 'Qayerda ko\'rasiz?', dv_phone: 'Android telefon', dv_web: 'Kompyuter, iPhone',
       op_msx: 'Oson — Media Station X', op_msx_s: 'tavsiya etamiz · dasturchi rejimisiz',
@@ -36,7 +36,7 @@
       cta_install: 'Install', eyebrow: 'Free · no sign-up',
       h1: 'All movies and series — on your TV',
       sub: 'The next episode starts by itself, and movies are searched across all sources. Free.',
-      cta_tv: 'Install on a TV', cta_web: 'Watch in the browser',
+      cta_tv: 'Install on a TV', cta_web: 'Watch in the browser', launch: 'Starting Lampa…',
       tb_free: 'Free', tb_reg: 'No sign-up', tb_src: 'Open source', tb_ver: 'Version',
       dv_h: 'Where will you watch?', dv_phone: 'Android phone', dv_web: 'Computer, iPhone',
       op_msx: 'Easy — Media Station X', op_msx_s: 'recommended · no developer mode',
@@ -64,7 +64,7 @@
       credits: 'Screenshots and posters show Blender Foundation films (CC BY), blender.org',
       st_ok: 'works', st_slow: 'slow', st_bad: 'not responding', st_cub: 'Catalog (CUB)', st_skaz_api: 'Skaz servers', st_github: 'Updates (GitHub)'
     },
-    ru: { copied: 'Скопировано', st_ok: 'работает', st_slow: 'медленно', st_bad: 'не отвечает' }
+    ru: { launch: 'Запускаю Lampa…', copied: 'Скопировано', st_ok: 'работает', st_slow: 'медленно', st_bad: 'не отвечает' }
   };
   var ru = {};
   document.querySelectorAll('[data-t]').forEach(function (e) { ru[e.getAttribute('data-t')] = e.innerHTML; });
@@ -176,6 +176,23 @@
     verData = { v: m.version };
     version();
   });
+  // «Смотреть в браузере»: сразу http (Lampa по умолчанию по http — без перехода через https) и экран «Запускаю Lampa…»,
+  // пока браузер грузит Lampa: без него казалось, что нажатие не сработало. Ctrl/Shift/средняя кнопка — как обычно
+  document.querySelectorAll('a[href="/lampa/"]').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button) return;
+      e.preventDefault();
+      var o = document.createElement('div');
+      o.className = 'launch';
+      o.innerHTML = '<div class="launch-ring"></div><div class="launch-text"></div>';
+      o.lastChild.textContent = t('launch');
+      document.body.appendChild(o);
+      setTimeout(function () { o.classList.add('on'); }, 16);
+      setTimeout(function () { location.href = 'http://' + location.host + '/lampa/'; }, 280);
+    });
+  });
+  // «Назад» из Lampa: браузер достаёт страницу из памяти вместе с экраном запуска — убираем его
+  window.addEventListener('pageshow', function () { document.querySelectorAll('.launch').forEach(function (o) { o.remove(); }); });
   setLang(lang);
   document.documentElement.className += ' ready';
 })();

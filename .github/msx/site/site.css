@@ -302,3 +302,10 @@ a.store:hover { border-color:color-mix(in srgb, var(--accent) 50%, var(--glass-l
   font-weight:700; font-size:14px; color:#fff; background:linear-gradient(140deg, #4f8dff, #7c3aed); }
 .msx-side .addr { margin-top:16px; } .msx-side .stores { margin-top:12px; }
 @media (max-width: 720px) { .msx-grid { grid-template-columns:1fr; } .msx-vid { max-width:240px; margin:0 auto; } }
+/* «Запускаю Lampa…» — после «Смотреть в браузере», пока грузится Lampa; тёмный, как её заставка, чтобы переход был плавным */
+.launch { position:fixed; inset:0; z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; background:#17181b; color:#eef1f6; opacity:0; transition:opacity .28s ease; }
+.launch.on { opacity:1; }
+.launch-ring { width:46px; height:46px; border-radius:50%; border:4px solid rgba(255,255,255,.18); border-top-color:#fff; animation:launch-spin .9s linear infinite; }
+.launch-text { font-size:1.15rem; letter-spacing:.01em; }
+@keyframes launch-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .launch { transition:none; } .launch-ring { animation-duration:2.4s; } }

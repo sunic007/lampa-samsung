@@ -91,14 +91,35 @@ var BSTv = (function () {
         } catch (e) { end(fail); }
     }
 
+    /** Значение атрибута #EXTINF: name="…", name='…' или name=слово (у провайдеров встречается всё). */
     function attr(line, name) {
-        var m = new RegExp(name + '="(.*?)"', 'i').exec(line);
-        return m && m[1] ? m[1] : '';
+        var m = new RegExp('(?:^|[\\s:])' + name + '=(?:"([^"]*)"|\'([^\']*)\'|([^\\s,"\']+))', 'i').exec(line);
+        return m ? m[1] || m[2] || m[3] || '' : '';
+    }
+    /** Имя канала — после запятой, что идёт за атрибутами (в самих атрибутах тоже бывают запятые). */
+    function infName(line) {
+        var q = line.lastIndexOf('"'), c = line.indexOf(',', q > 0 ? q : 0);
+        if (c < 0) c = line.indexOf(',');
+        return c < 0 ? '' : line.slice(c + 1).replace(/^\s+|\s+$/g, '');
+    }
+    /* Разделы в плейлистах пишут по-разному — понимаем всё распространённое:
+     *   group-title="…" (и в одинарных кавычках, и без них), tvg-group="…" — у канала;
+     *   #EXTGRP:… после #EXTINF — у этого канала; #EXTGRP:… до #EXTINF — у всех следующих, пока не сменится;
+     *   TXT-списки «Раздел,#genre#» и «Канал,ссылка» (без #EXTM3U). */
+    function parseTxt(lines) {
+        var out = [], grp = '', i, line, m;
+        for (i = 0; i < lines.length; i++) {
+            line = String(lines[i]).replace(/^\s+|\s+$/g, '');
+            if (/,\s*#genre#$/i.test(line)) { grp = line.replace(/,\s*#genre#$/i, '').replace(/^\s+|\s+$/g, ''); continue; }
+            m = /^([^,]+),\s*(https?:\/\/\S+)/i.exec(line);
+            if (m) out.push({ name: m[1].replace(/^\s+|\s+$/g, ''), logo: '', group: grp, tid: '', url: m[2].split('|')[0].split('#')[0], num: out.length + 1 });
+        }
+        return out.length ? out : null;
     }
     /** Разбор m3u кусками (step строк за такт): каналы {num, name, logo, group, url, tid}. */
     function parse(text, done) {
-        var lines = String(text || '').split('\n'), i = 0, cur = null, out = [];
-        if (!/^\s*#EXTM3U/i.test(lines[0] || '')) return done(null);
+        var lines = String(text || '').replace(/^\uFEFF/, '').split('\n'), i = 0, cur = null, out = [], sticky = '';
+        if (!/^\s*#EXTM3U/i.test(lines[0] || '')) return done(parseTxt(lines));
         // архив: catchup="…" catchup-days="…" catchup-source="…" у канала, а по умолчанию — в строке #EXTM3U
         var head = lines[0], hType = attr(head, 'catchup'), hDays = attr(head, 'catchup-days'), hSrc = attr(head, 'catchup-source');
         var catchup = function (line) {
@@ -111,18 +132,18 @@ var BSTv = (function () {
             for (; i < end; i++) {
                 line = String(lines[i]).replace(/^\s+|\s+$/g, '');
                 if (line.indexOf('#EXTINF') === 0) {
-                    cur = { name: (line.split(',').pop() || '').replace(/^\s+|\s+$/g, ''), logo: attr(line, 'tvg-logo'), group: attr(line, 'group-title'), tid: attr(line, 'tvg-id') };
+                    cur = { name: infName(line), logo: attr(line, 'tvg-logo') || attr(line, 'logo'), group: attr(line, 'group-title') || attr(line, 'tvg-group'), tid: attr(line, 'tvg-id') };
                     g = catchup(line);
                     if (g) cur.arc = g;
                 } else if (line.indexOf('#EXTGRP:') === 0) {
                     g = line.slice(8).replace(/^\s+|\s+$/g, '');
-                    if (cur && g) cur.group = g;
+                    if (cur) { if (g) cur.group = g; } else sticky = g;     // до #EXTINF — раздел для всех следующих
                 } else if (line && line.charAt(0) !== '#') {
                     u = line.split('|')[0];
                     if (cur && /^https?:\/\/\S+$/i.test(u)) {
                         cur.url = u;
                         cur.name = cur.name || u;
-                        cur.group = (cur.group || '').split(';')[0];
+                        cur.group = (cur.group || sticky || '').split(';')[0].replace(/^\s+|\s+$/g, '');
                         if (!/^https?:/i.test(cur.logo)) cur.logo = '';
                         cur.num = out.length + 1;
                         out.push(cur);

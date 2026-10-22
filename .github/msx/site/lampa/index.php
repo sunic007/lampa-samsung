@@ -30,10 +30,15 @@ function ok_ver($v) { return is_string($v) && preg_match('/^\d+\.\d+\.\d+$/', $v
 
 $cache = __DIR__ . '/.cache';
 $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
-// «Открыть по http» с главной (/lampa/?http=1): человек сам выбрал страницу без защиты ради Skaz — браузер, который
-// поднял адрес до https, отправляем обратно на http (Chrome и Vivaldi один раз спросят, открыть ли сайт без защиты)
-if ($https && isset($_GET['http'])) {
-    header('Location: http://' . preg_replace('/[^A-Za-z0-9.-]/', '', $_SERVER['HTTP_HOST'] ?? 'sunic.stream') . '/lampa/?http=1', true, 302);
+// По умолчанию Lampa — по http (владелец, 2026-10-22): источники Skaz и почти половина открытых каналов умеют только
+// http, а страница по https их не загрузит. Кто хочет https — /lampa/?https=1 (cookie bs_https на год), обратно —
+// ?http=1. Адрес (карточка, #bstv=… канала) сохраняем. Chrome и Vivaldi один раз спросят, открыть ли сайт без защиты.
+if (isset($_GET['https'])) setcookie('bs_https', '1', time() + 365 * 86400, '/lampa/');
+if (isset($_GET['http']) && !empty($_COOKIE['bs_https'])) { setcookie('bs_https', '', time() - 3600, '/lampa/'); unset($_COOKIE['bs_https']); }
+if ($https && !isset($_GET['https']) && empty($_COOKIE['bs_https'])) {
+    $uri = (string) ($_SERVER['REQUEST_URI'] ?? '/lampa/');
+    if (strpos($uri, '/lampa/') !== 0 || preg_match('/[\r\n]/', $uri)) $uri = '/lampa/';
+    header('Location: http://' . preg_replace('/[^A-Za-z0-9.-]/', '', $_SERVER['HTTP_HOST'] ?? 'sunic.stream') . $uri, true, 302);
     header('Cache-Control: no-store');
     exit;
 }
@@ -156,9 +161,10 @@ $own = '';                                             // своя копия �
 if ($serve) {
     $html = (string) @file_get_contents("$store/$serve/index.html");
     $own = '/lampa/v/' . $serve . '/';
-    // своя копия уже скачана — выпуску минуты, jsDelivr его отдаёт. У этого браузера jsDelivr недавно не ответил
-    // (cookie bs_cdn_bad, сутки) — сразу своя копия
-    $base = empty($_COOKIE['bs_cdn_bad']) ? CDN . $serve . '/src/' : $own;
+    // jsDelivr — только когда сервер его прогрел (метка .cdn-ok, warm_cdn ниже): холодный jsDelivr свежий выпуск
+    // отдаёт секундами (app.js 2 МБ — 6 с из Ташкента), страница не успевала за 20 с и перезагружалась на свою копию.
+    // До прогрева и у браузера, где jsDelivr недавно не ответил (cookie bs_cdn_bad, сутки), — своя копия
+    $base = empty($_COOKIE['bs_cdn_bad']) && is_file("$store/$serve/.cdn-ok") ? CDN . $serve . '/src/' : $own;
 } else {                                               // своей копии ещё нет — с jsDelivr
     $pf = $cache . '/page-' . $v . '.html';
     $html = is_file($pf) ? file_get_contents($pf) : '';
@@ -221,9 +227,47 @@ header('Cache-Control: no-cache');
 header('Content-Length: ' . strlen($html));
 header('Connection: close');
 echo $html;
-if ($serve === $v) exit;
+// jsDelivr ещё не прогрет и последняя попытка была больше 5 минут назад — прогреваем после ответа
+$need_warm = $serve === $v && !is_file("$store/$v/.cdn-ok") && (!is_file("$cache/warm-$v") || time() - filemtime("$cache/warm-$v") > 300);
+if ($serve === $v && !$need_warm) exit;
 ignore_user_abort(true);
 @set_time_limit(900);
-if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+if (function_exists('litespeed_finish_request')) litespeed_finish_request();
+elseif (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
 else { @ob_end_flush(); flush(); }
-sync_release($store, $cache, $v);
+if ($serve !== $v) sync_release($store, $cache, $v);
+if (ready($store, $v) && !is_file("$store/$v/.cdn-ok")) warm_cdn($store, $cache, $v);
+
+/** Прогреть jsDelivr: запросить у него все файлы выпуска (пачками по 24, ~25 с — столько хостинг даёт PHP).
+ *  Все ответили 200 — метка .cdn-ok, с неё страница берёт файлы с jsDelivr. Не успели — следующий запрос через 5 мин
+ *  (метка .cache/warm-<версия>) догреет: что уже в кеше jsDelivr, отвечает быстро. */
+function warm_cdn($store, $cache, $ver) {
+    $lock = fopen($cache . '/warm.lock', 'c');
+    if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) return;
+    @touch("$cache/warm-$ver");
+    // только то, без чего Lampa не стартует: скрипты, стили, html, json. Картинки jsDelivr отдаёт по запросу —
+    // иконки отвечали ему по 15 с и съедали всё время прогрева
+    $files = array_values(array_filter(array_keys(release_files($ver)), function ($p) { return preg_match('/\.(js|css|html|json)$/i', $p); }));
+    if (count($files) < 15) return;
+    $t0 = microtime(true); $ok = 0; $bad = [];
+    foreach (array_chunk($files, 24) as $chunk) {
+        if (microtime(true) - $t0 > 22) break;
+        $mh = curl_multi_init(); $hs = [];
+        foreach ($chunk as $p) {
+            $h = curl_init(CDN . $ver . '/src/' . str_replace('%2F', '/', rawurlencode($p)));
+            curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_TIMEOUT => 15,
+                CURLOPT_USERAGENT => 'sunic.stream warm', CURLOPT_ENCODING => '']);
+            curl_multi_add_handle($mh, $h); $hs[] = $h;
+        }
+        do { $st = curl_multi_exec($mh, $run); if ($run) curl_multi_select($mh, 1); } while ($run && $st === CURLM_OK);
+        foreach ($hs as $i => $h) {
+            $code = curl_getinfo($h, CURLINFO_HTTP_CODE);
+            if ($code === 200) $ok++; elseif (count($bad) < 20) $bad[] = $code . ' ' . $chunk[$i];
+            curl_multi_remove_handle($mh, $h); curl_close($h);
+        }
+        curl_multi_close($mh);
+    }
+    if ($ok === count($files)) @file_put_contents("$store/$ver/.cdn-ok", date('c'));
+    // журнал для разбора (в .cache, наружу не отдаётся): сколько ответило и какие нет
+    @file_put_contents("$cache/warm-$ver", json_encode(['ok' => $ok, 'all' => count($files), 'bad' => $bad, 's' => round(microtime(true) - $t0)]));
+}

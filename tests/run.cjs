@@ -4233,6 +4233,16 @@ async function serviceTests() {
     t('ТВ: что идёт сейчас и дальше', (n => n && n.cur[2] === 'B' && n.next[2] === 'C')(T._epgNow(P)));
     T._parse('#EXTM3U catchup="shift" catchup-days="5"\n#EXTINF:-1,A\nhttps://x/a.m3u8\n#EXTINF:-1 catchup-days="0",B\nhttps://x/b.m3u8\n', r => { got = r; });
     t('ТВ: catchup из строки #EXTM3U, catchup-days="0" — без архива', got[0].arc && got[0].arc.t === 'shift' && got[0].arc.d === 5 && !got[1].arc);
+    // разделы в своих плейлистах пишут по-разному — все варианты должны дать раздел, а не «всё в одном»
+    T._parse('﻿#EXTM3U\n#EXTINF:-1 group-title=\'Кино\',A\nhttps://x/a\n#EXTINF:-1 group-title=Спорт tvg-id=s,B\nhttps://x/b\n' +
+        '#EXTINF:-1 tvg-group="Новости" tvg-name="Мир, 24",Мир, 24\nhttps://x/c\n' +
+        '#EXTGRP:Детские\n#EXTINF:-1,D\nhttps://x/d\n#EXTINF:-1,E\nhttps://x/e\n#EXTINF:-1 group-title="Музыка",F\nhttps://x/f\n', r => { got = r; });
+    t('ТВ: разделы — кавычки одинарные и без кавычек, tvg-group, запятая в имени', got.length === 6 && got[0].group === 'Кино' &&
+        got[1].group === 'Спорт' && got[1].tid === 's' && got[2].group === 'Новости' && got[2].name === 'Мир, 24');
+    t('ТВ: #EXTGRP до #EXTINF — раздел у всех следующих, свой group-title важнее', got[3].group === 'Детские' && got[4].group === 'Детские' && got[5].group === 'Музыка');
+    T._parse('Федеральные,#genre#\nПервый,http://x/1.m3u8\nРоссия 1,https://x/2.m3u8#https://y/2.m3u8\nДетские,#genre#\nКарусель,http://x/3\n', r => { got = r; });
+    t('ТВ: TXT-список «Раздел,#genre#» — каналы по разделам', got && got.length === 3 && got[0].group === 'Федеральные' &&
+        got[1].url === 'https://x/2.m3u8' && got[2].group === 'Детские' && got[2].name === 'Карусель');
 }
 serviceTests().catch(e => { fail++; console.log('FAIL служба: исключение', e && e.stack); }).then(() => {
     console.log(pass + ' passed, ' + fail + ' failed');
