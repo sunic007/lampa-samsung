@@ -12,14 +12,14 @@
       op_plugin: 'Lampa uchun plagin', op_plugin_s: 'Lampa o‘rnatilgan bo‘lsa',
       m1: 'Televizor do‘konidan <b>Media Station X</b> ni o‘rnating', m2: '<b>Settings</b> → <b>Start Parameter</b> → <b>Setup</b> (so‘rasa — <b>Continue</b>)',
       m3: 'Manzilni tering va <b>✓</b> ni bosing', m4: '<b>Yes</b> ni bosing — tayyor',
-      addr_l: 'Manzil:', st_where: 'Media Station X qayerdan olinadi:', st_play: 'Android TV, Fire TV, telefon', st_sam: 'televizorda: «Ilovalar» → qidiruv', st_lg: 'televizorda: «Media Station X» qidiruvi', copy: 'Nusxalash', copied: 'Nusxalandi',
+      addr_l: 'Manzil:', st_where: 'Media Station X qayerdan olinadi:', st_play: 'Android TV', st_amz: 'Fire TV', op_web: 'Darhol brauzerda', op_web_s: 'o‘rnatmasdan', st_sam: 'televizorda: «Ilovalar» → qidiruv', st_lg: 'televizorda: «Media Station X» qidiruvi', copy: 'Nusxalash', copied: 'Nusxalandi',
       fix_h: 'Ochilmadimi?', fix_1: 'Manzil — kichik harflar bilan, bo‘shliqsiz: <code>sunic.stream</code>', fix_2: 'Klaviaturadagi qulf belgisini bosing va takrorlang',
       fix_3: 'Yordam bermadimi — <a href="https://t.me/sunicapps">t.me/sunicapps</a> guruhiga yozing',
       m_vid: 'Videoni ko\'rish: 40 soniyada sozlash',
       ph_1: '<b>TV Installer</b> ni Android telefonga yuklab oling', ph_2: 'Telefon va televizor — bitta Wi-Fi tarmog‘ida',
       ph_3: '<b>Lampa</b> ni tanlang — bir necha daqiqada u televizorda', ph_hint: 'Televizorda nimani yoqishni TV Installer o‘zi ko‘rsatadi', ph_vid: 'Qanday ko‘rinishini ko‘rish', ph_btn: 'TV Installer ni yuklab olish', ph_qr: 'Telefon kamerasini qarating',
       an_1: 'Lampa → Sozlamalar → Kengaytmalar → Plagin qo‘shish', an_2: 'Manzilni qo‘ying:', an_3: 'Lampa ni qayta ishga tushiring — «Sunic Apps» paydo bo‘ladi', lp_h: 'Lampa yo‘qmi?', lp_btn: 'Android uchun Lampa ni yuklab olish', lp_s: 'Rasmiy, Lampa muallifining GitHub sahifasidan · 11 MB',
-      web_p: 'Lampa shu yerning o‘zida ochiladi — kompyuter, iPhone yoki planshetda.',
+      web_p: 'Lampa shu yerning o‘zida, brauzerda ochiladi — hech narsa o‘rnatish shart emas.',
       f_h: 'Sunic Apps nimalar qiladi', f1: 'Keyingi qism — o‘zi', f1d: 'Hatto yangi fasl ham', f2: 'Filmni topadi', f2d: 'Barcha manbalardan',
       f3: 'Telefon — pult', f3d: 'Telegramda topdingiz — televizorda yoqiladi', f5: 'Qotib qolmaydi', f5d: 'Sifat yoki manbani o‘zi almashtiradi',
       f_more: '+ to‘xtagan joydan davom etish, uyqu taymeri',
@@ -44,14 +44,14 @@
       op_plugin: 'Plugin for Lampa', op_plugin_s: 'if Lampa is already installed',
       m1: 'Install <b>Media Station X</b> from the TV app store', m2: '<b>Settings</b> → <b>Start Parameter</b> → <b>Setup</b> (if asked — <b>Continue</b>)',
       m3: 'Type the address and press <b>✓</b>', m4: 'Press <b>Yes</b> — done',
-      addr_l: 'Address:', st_where: 'Where to get Media Station X:', st_play: 'Android TV, Fire TV, phone', st_sam: 'on the TV: «Apps» → search', st_lg: 'on the TV: search «Media Station X»', copy: 'Copy', copied: 'Copied',
+      addr_l: 'Address:', st_where: 'Where to get Media Station X:', st_play: 'Android TV', st_amz: 'Fire TV', op_web: 'Right in the browser', op_web_s: 'nothing to install', st_sam: 'on the TV: «Apps» → search', st_lg: 'on the TV: search «Media Station X»', copy: 'Copy', copied: 'Copied',
       fix_h: 'It did not open?', fix_1: 'The address — small letters, no spaces: <code>sunic.stream</code>', fix_2: 'Press the lock icon on the keyboard and try again',
       fix_3: 'Still not working — write to the group <a href="https://t.me/sunicapps">t.me/sunicapps</a>',
       m_vid: 'Watch the video: set up in 40 seconds',
       ph_1: 'Download <b>TV Installer</b> to your Android phone', ph_2: 'Phone and TV on the same Wi-Fi',
       ph_3: 'Choose <b>Lampa</b> — in a couple of minutes it is on the TV', ph_hint: 'TV Installer itself shows what to turn on on the TV', ph_vid: 'See how it looks', ph_btn: 'Download TV Installer', ph_qr: 'Point your phone camera',
       an_1: 'Lampa → Settings → Extensions → Add plugin', an_2: 'Paste the address:', an_3: 'Restart Lampa — «Sunic Apps» appears', lp_h: 'No Lampa yet?', lp_btn: 'Download Lampa for Android', lp_s: 'Official, from the Lampa author’s GitHub · 11 MB',
-      web_p: 'Lampa opens right here — on a computer, iPhone or tablet.',
+      web_p: 'Lampa opens right here in the browser — nothing to install.',
       f_h: 'What Sunic Apps does', f1: 'Next episode — by itself', f1d: 'Even a new season', f2: 'Finds the movie', f2d: 'In every source',
       f3: 'Phone as a remote', f3d: 'Found in Telegram — plays on the TV', f5: 'Does not freeze', f5d: 'Changes quality or source by itself',
       f_more: '+ continue where you stopped, sleep timer',
@@ -93,7 +93,7 @@
 
   /* «Где будете смотреть?»: одна сетка устройств. У устройства — способы (первый — по умолчанию); два способа —
    * переключатель над инструкцией, один — сразу инструкция. Устройство угадываем по браузеру. */
-  var WAYS = { samsung: ['msx', 'app'], lg: ['msx'], atv: ['msx', 'plugin'], fire: ['msx'], phone: ['plugin'], web: ['web'] };
+  var WAYS = { samsung: ['msx', 'app'], lg: ['msx'], atv: ['msx', 'plugin'], fire: ['msx'], phone: ['web', 'plugin'], web: ['web'] };
   var curDev = '';
   function way(id) {
     document.querySelectorAll('[data-opt]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-opt') === id); });
@@ -106,7 +106,7 @@
     document.querySelectorAll('[data-opt]').forEach(function (b) { b.hidden = ways.indexOf(b.getAttribute('data-opt')) < 0; });
     document.getElementById('opts').hidden = ways.length < 2;
     way(ways[0]);
-    var mine = id === 'samsung' ? 'samsung' : id === 'lg' ? 'lg' : 'play';
+    var mine = id === 'samsung' ? 'samsung' : id === 'lg' ? 'lg' : id === 'fire' ? 'amazon' : 'play';
     document.querySelectorAll('[data-store]').forEach(function (e) { var on = e.getAttribute('data-store') === mine; e.classList.toggle('on', on); e.style.order = on ? '-1' : ''; });
   }
   document.querySelectorAll('[data-dev]').forEach(function (b) {
