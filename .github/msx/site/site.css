@@ -22,6 +22,8 @@ a { color:var(--accent); }
 /* фон первого экрана — стена постеров открытых фильмов Blender (CC BY): наклонно, тёмно, чуть размыто, внизу гаснет */
 .hero { position:relative; overflow:hidden; }
 .hero > .wrap { position:relative; z-index:1; }
+/* низ первого экрана плавно переходит в цвет страницы — без ровной границы на широком экране */
+.hero::after { content:''; position:absolute; z-index:0; left:0; right:0; bottom:0; height:45%; background:linear-gradient(to bottom, transparent, var(--bg)); pointer-events:none; }
 .hero-bg { position:absolute; z-index:0; top:-12%; left:-8%; right:-8%; bottom:-12%; display:grid; grid-template-columns:repeat(8, 1fr); gap:14px; align-content:start;
   transform:rotate(-7deg); opacity:.24; filter:blur(1.5px) saturate(.85); pointer-events:none;
   -webkit-mask-image:linear-gradient(to bottom, #000 55%, transparent 100%); mask-image:linear-gradient(to bottom, #000 55%, transparent 100%); }
