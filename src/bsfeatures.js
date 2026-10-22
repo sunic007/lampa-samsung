@@ -267,7 +267,7 @@ var BSFeatures = (function () {
         });
         api.addParam({
             component: C, param: { name: 'bs_iptv_lists', type: 'button' },
-            field: { name: 'IPTV: открытые плейлисты', description: 'Каналы для расширения IPTV — выбрать и добавить' },
+            field: { name: 'IPTV: открытые плейлисты', description: tvOn() ? 'Списки каналов для «Телеканалов» — выбрать и добавить' : 'Каналы для расширения IPTV — выбрать и добавить' },
             onChange: iptvChoose
         });
     }
@@ -680,12 +680,34 @@ var BSFeatures = (function () {
             if (book && typeof book === 'object' && !book.playlist) { book.playlist = 'sunic-iptv-rus'; Lampa.Storage.set('iptv_pilot_book', book); }
         } catch (e) {}
         iptvFresh();
-        if (!iptvInstalled()) {
+        if (!iptvInstalled() && !tvOn()) {                         // есть свои «Телеканалы» — расширение IPTV не ставим
             var dom = 'cub.red';
             try { dom = Lampa.Manifest.cub_domain || dom; } catch (e) {}
             try { Lampa.Plugins.add({ url: 'https://' + dom + '/plugin/iptv', status: 1, name: 'IPTV', author: '@lampa' }); } catch (e) { return; }
         }
         lsSet('bs_iptv_auto', '1');
+    }
+    /* «Телеканалы» (bstv.js) — свой IPTV-плеер; где он включён (то же условие, что в loader.js), расширение IPTV новым
+     * не ставим, а у кого стоит — прячем его пункт «IPTV» из меню (как «Редактировать меню»: menu_hide), «Телеканалы»
+     * ставим на его место. Один раз (метка bs_iptv_menu_off): вернёт человек «IPTV» в меню сам — не прячем снова.
+     * Само расширение и его данные не трогаем: свои плейлисты человека видны и в «Телеканалах». */
+    function tvOn() { try { return !!window.BS_SITE_VERSION || localStorage.getItem('bs_tv_beta') === 'true'; } catch (e) { return false; } }
+    function iptvMenuOff() {
+        if (!tvOn() || lsGet('bs_iptv_menu_off')) return;
+        try {
+            var hide = Lampa.Storage.get('menu_hide', '[]'), sort = Lampa.Storage.get('menu_sort', '[]'), at, tv;
+            hide = Object.prototype.toString.call(hide) === '[object Array]' ? hide.slice() : [];
+            if (hide.indexOf('IPTV') < 0) { hide.push('IPTV'); Lampa.Storage.set('menu_hide', hide); }
+            if (Object.prototype.toString.call(sort) === '[object Array]' && (at = sort.indexOf('IPTV')) >= 0) {
+                sort = sort.slice();
+                tv = sort.indexOf('Телеканалы');
+                if (tv >= 0) sort.splice(tv, 1);
+                sort.splice(sort.indexOf('IPTV'), 0, 'Телеканалы');
+                Lampa.Storage.set('menu_sort', sort);
+            }
+            $('.menu .menu__item').each(function () { if ($(this).find('.menu__text').text().replace(/^\s+|\s+$/g, '') === 'IPTV') $(this).addClass('hidden'); });
+        } catch (e) { return; }
+        lsSet('bs_iptv_menu_off', '1');
     }
     /* ---------- IPTV: вид ----------
      * Экраны расширения IPTV сделаны под ссылки провайдеров: адреса m3u, «Метод загрузки CUB», совет зайти на cub.best,
@@ -868,7 +890,7 @@ var BSFeatures = (function () {
             items: items,
             onSelect: function (a) {
                 var added = iptvToggle(a.key);
-                noty(added ? 'Добавлен: ' + a.title.replace(/^✓ /, '') + (iptvInstalled() ? ' — откройте IPTV' : ' — установите расширение IPTV (Настройки → Расширения)')
+                noty(added ? 'Добавлен: ' + a.title.replace(/^✓ /, '') + (tvOn() ? ' — откройте «Телеканалы»' : iptvInstalled() ? ' — откройте IPTV' : ' — установите расширение IPTV (Настройки → Расширения)')
                     : 'Убран: ' + a.title.replace(/^✓ /, ''), 5000);
                 iptvChoose();                                           // список снова, с новыми отметками
             },
@@ -999,7 +1021,7 @@ var BSFeatures = (function () {
         try { installFastStart(); } catch (e) { console.log('BS fast start', e.message); }
         try { addSettings(); } catch (e) { console.log('BS features settings', e.message); }
         iptvLook();
-        setTimeout(function () { try { iptvAuto(); iptvUrlsFix(); iptvFresh(); iptvProbe(); iptvSeed(); } catch (e) {} }, 8000);   // IPTV по умолчанию: два списка, зеркало, подсадка
+        setTimeout(function () { try { iptvAuto(); iptvMenuOff(); iptvUrlsFix(); iptvFresh(); iptvProbe(); iptvSeed(); } catch (e) {} }, 8000);   // IPTV по умолчанию: два списка, зеркало, подсадка
         registerColorKeys();
         document.addEventListener('keydown', onColorKey, true);
         try {
@@ -1015,7 +1037,7 @@ var BSFeatures = (function () {
     }
 
     return {
-        _iptvToggle: iptvToggle, _iptvLists: IPTV_LISTS, _iptvFix: iptvFix, _iptvInstalled: iptvInstalled, _iptvAuto: iptvAuto, _iptvGroup: iptvGroup, _iptvChannel: iptvChannel, _iptvLook: iptvLook,
+        _iptvToggle: iptvToggle, _iptvLists: IPTV_LISTS, _iptvFix: iptvFix, _iptvInstalled: iptvInstalled, _iptvAuto: iptvAuto, _iptvMenuOff: iptvMenuOff, _iptvGroup: iptvGroup, _iptvChannel: iptvChannel, _iptvLook: iptvLook,
         _iptvSource: iptvSourceSet, _iptvDefault: IPTV_DEFAULT, _iptvUrl: iptvUrl, _iptvParse: iptvParse, _iptvParseRun: iptvParseRun, _iptvAlt: iptvAlt, _iptvAltIndex: iptvAltIndex, _iptvNormName: iptvNormName,
         start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
 })();

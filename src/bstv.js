@@ -898,14 +898,58 @@ var BSTv = (function () {
             }
         });
     }
+    /* Свои плейлисты (от провайдера и т. п.) — в тот же список, что у расширения IPTV (iptv_playlist_custom): расширение
+     * у нас больше не главное, добавить ссылку теперь можно и здесь. Убрать можно только свой, наши «sunic-iptv-…» —
+     * в «Sunic Apps → IPTV: открытые плейлисты». */
+    function customList() {
+        var l = [];
+        try { l = Lampa.Storage.get('iptv_playlist_custom', '[]'); } catch (e) {}
+        return isArr(l) ? l.slice() : [];
+    }
+    function addPlaylist(back) {
+        var ask = function (title, value, done) {
+            try { Lampa.Input.edit({ title: title, value: value, free: true, nosave: true }, done); } catch (e) { Lampa.Controller.toggle(back); }
+        };
+        ask('Ссылка на плейлист (m3u)', '', function (url) {
+            url = String(url || '').replace(/^\s+|\s+$/g, '');
+            if (!/^https?:\/\/\S+$/i.test(url)) { if (url) noty('Нужна ссылка, начинается с http:// или https://'); return Lampa.Controller.toggle(back); }
+            var host = (/^https?:\/\/([^\/?#]+)/i.exec(url) || [])[1] || 'Плейлист';
+            ask('Название', host, function (name) {
+                var l = customList(), id = '', i;
+                for (i = 0; i < l.length; i++) if (l[i] && l[i].url === url) id = String(l[i].id || url);   // уже есть — просто включаем
+                if (!id) {
+                    id = 'bstv-' + new Date().getTime();
+                    l.push({ id: id, custom: true, url: url, name: String(name || '').replace(/^\s+|\s+$/g, '') || host });
+                    try { Lampa.Storage.set('iptv_playlist_custom', l); } catch (e) {}
+                }
+                Lampa.Controller.toggle(back);
+                switchPlaylist(id);
+            });
+        });
+    }
+    function mine(id) { var l = customList(), i; for (i = 0; i < l.length; i++) if (l[i] && String(l[i].id || l[i].url) === id) return true; return false; }
+    function removePlaylist(pl, back) {
+        var l = customList(), out = [], i;
+        for (i = 0; i < l.length; i++) if (!(l[i] && String(l[i].id || l[i].url) === pl.id)) out.push(l[i]);
+        try { Lampa.Storage.set('iptv_playlist_custom', out); } catch (e) {}
+        noty('Плейлист «' + pl.name + '» убран');
+        Lampa.Controller.toggle(back);
+        switchPlaylist(playlists()[0].id);
+    }
     function choosePlaylist(back) {
         var pls = playlists(), items = [], i;
         for (i = 0; i < pls.length; i++) items.push({ title: pls[i].name, id: pls[i].id, selected: pls[i].id === S.pl.id });
+        items.push({ title: '+ Добавить свой плейлист', act: 'add' });
+        if (!S.pl.key && mine(S.pl.id)) items.push({ title: 'Убрать «' + S.pl.name + '»', act: 'del' });
         Lampa.Select.show({
             title: 'Плейлист',
             items: items,
             onBack: function () { Lampa.Controller.toggle(back); },
-            onSelect: function (a) { Lampa.Controller.toggle(back); switchPlaylist(a.id); }
+            onSelect: function (a) {
+                if (a.act === 'add') return addPlaylist(back);
+                if (a.act === 'del') return removePlaylist(S.pl, back);
+                Lampa.Controller.toggle(back); switchPlaylist(a.id);
+            }
         });
     }
     function switchPlaylist(id) {
