@@ -45,6 +45,17 @@ function fetch_upstream($url) {
     return null;
 }
 
+/* Сначала наш чистый список — ветка `iptv` (tools/iptv_build.py, раз в день: без закрытых и мёртвых каналов, с
+ * логотипами): raw.githubusercontent, затем jsDelivr. Списка нет или он старше 3 дней (сборка сломалась, метка
+ * x-sunic-at в #EXTM3U) — оригинал iptv-org / Free-TV, как раньше (правило «запас в обе стороны»). */
+function fetch_list($l, $orig) {
+    foreach (['https://raw.githubusercontent.com/sunic007/lampa-samsung/iptv/', 'https://cdn.jsdelivr.net/gh/sunic007/lampa-samsung@iptv/'] as $base) {
+        $b = fetch_upstream($base . $l . '.m3u');
+        if ($b !== null && preg_match('/x-sunic-at="(\d+)"/', substr($b, 0, 400), $m) && time() - (int)$m[1] < 3 * 86400) return $b;
+    }
+    return fetch_upstream($orig);
+}
+
 /** Запись без битых файлов: во временный рядом, потом rename (атомарно в одной папке). */
 function put_atomic($path, $data) {
     $dir = dirname($path);
@@ -132,7 +143,7 @@ if (!is_file($cache) || time() - filemtime($cache) >= LIFE) {
         if ($lock && flock($lock, LOCK_EX)) {
             clearstatcache();
             if (!is_file($cache)) {
-                $b = fetch_upstream($LISTS[$l]);
+                $b = fetch_list($l, $LISTS[$l]);
                 if ($b !== null) { store($base, $b); $fetched = $b; }
             }
             flock($lock, LOCK_UN);
@@ -140,7 +151,7 @@ if (!is_file($cache) || time() - filemtime($cache) >= LIFE) {
         } else {
             if ($lock) @fclose($lock);
             // замок не открылся — как раньше: качаем сами, атомарная запись не даст испортить кеш
-            $b = fetch_upstream($LISTS[$l]);
+            $b = fetch_list($l, $LISTS[$l]);
             if ($b !== null) { store($base, $b); $fetched = $b; }
         }
     } elseif ($lock && flock($lock, LOCK_EX | LOCK_NB)) {
@@ -205,7 +216,7 @@ if ($refresh) {
     elseif (function_exists('lsapi_finish_request')) lsapi_finish_request();
     elseif (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
     else { while (ob_get_level() > 0) { if (!@ob_end_flush()) break; } @flush(); }
-    $b = fetch_upstream($LISTS[$l]);
+    $b = fetch_list($l, $LISTS[$l]);
     if ($b !== null) {
         if (!store($base, $b)) @touch($cache);           // не записалось — старый ещё 6 часов
     } else {

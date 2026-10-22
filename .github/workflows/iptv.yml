@@ -1,0 +1,42 @@
+# Чистые IPTV-списки для зеркала sunic.stream/iptv/ (iptv.php) и «Телеканалов»: раз в день tools/iptv_build.py
+# убирает закрытые (iptv-org/database) и точно мёртвые 3 дня подряд каналы, дорисовывает логотипы и кладёт списки
+# в ветку `iptv` без истории. iptv.php берёт их оттуда (не старше 3 дней), иначе — оригинал iptv-org / Free-TV.
+name: iptv
+
+on:
+  schedule:
+    - cron: '41 0 * * *'      # 05:41 в Ташкенте — до вечернего пика
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: iptv
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build
+        run: python3 tools/iptv_build.py out
+      - name: Summary
+        run: python3 -c "import json; r=json.load(open('out/report.json')); print('checked', r['checked']); [print(k, v) for k, v in r['lists'].items()]" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Publish branch iptv
+        run: |
+          cd out
+          git init -q -b iptv
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -q -m "IPTV $(date -u +%F)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" iptv
+      - name: Refresh jsDelivr
+        run: |
+          for f in uz rus ru kz tr movies series kids animation documentary sports music news freetv state; do
+            ext=m3u; [ "$f" = state ] && ext=json
+            curl -s -m 30 "https://purge.jsdelivr.net/gh/${{ github.repository }}@iptv/$f.$ext" > /dev/null || true
+          done
