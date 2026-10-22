@@ -56,12 +56,10 @@ RedirectMatch 404 /\.(?!well-known/)
     <FilesMatch "^(?!iptv\.php$).*\.(json|html|php)$">
         Header set Cache-Control "no-cache"
     </FilesMatch>
-    # зеркало IPTV-плейлистов: Cache-Control только отсюда (iptv.php свой не шлёт). Хостинг у PHP-ответов дописывает
-    # ещё свой «no-cache» (как и свой HSTS) — отсюда его не снять; тогда клиенты сверяют ETag и получают 304
+    # зеркало IPTV-плейлистов: Cache-Control ставит iptv.php (только у 200/304). Хостинг у PHP-ответов дописывает свой
+    # «no-cache» — с ним клиенты качали бы каждый раз; снимаем его (у ошибок тогда кеша нет вовсе — так и надо)
     <If "%{REQUEST_URI} =~ m#^/iptv/#">
-        Header unset Cache-Control
         Header always unset Cache-Control
-        Header set Cache-Control "public, max-age=3600"
     </If>
 </IfModule>
 
