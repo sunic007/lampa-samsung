@@ -291,3 +291,14 @@ html:not(.ready) main { visibility:hidden; animation:bs-show 0s 2s forwards; }  
 .store b { font-size:14px; } .store small { color:var(--muted); font-size:12.5px; }
 a.store:hover { border-color:color-mix(in srgb, var(--accent) 50%, var(--glass-line)); }
 .store.on { border-color:var(--accent); background:color-mix(in srgb, var(--accent) 12%, transparent); }
+
+/* Media Station X: слева видео настройки (42 с), справа коротко — шаги, адрес, магазины, «Не открылось?» */
+.msx-grid { display:grid; grid-template-columns:230px 1fr; gap:26px; align-items:start; }
+.msx-vid { display:block; width:100%; height:auto; aspect-ratio:9/16; border-radius:16px; background:#000; box-shadow:0 18px 40px -18px #000; }
+.msx-side { min-width:0; }
+.steps-n { list-style:none; counter-reset:sn; margin:0; padding:0; display:grid; gap:10px; }
+.steps-n li { counter-increment:sn; position:relative; padding:2px 0 2px 40px; line-height:1.45; }
+.steps-n li:before { content:counter(sn); position:absolute; left:0; top:0; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:14px; color:#fff; background:linear-gradient(140deg, #4f8dff, #7c3aed); }
+.msx-side .addr { margin-top:16px; } .msx-side .stores { margin-top:12px; }
+@media (max-width: 720px) { .msx-grid { grid-template-columns:1fr; } .msx-vid { max-width:240px; margin:0 auto; } }
