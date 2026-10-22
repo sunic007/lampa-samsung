@@ -1,6 +1,11 @@
 {
   "name": "Lampa · Sunic Apps",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "parameter": "content:http://sunic.stream/msx/start.json",
-  "action": "link:http://sunic.stream/lampa/"
+  "action": "link:http://sunic.stream/lampa/",
+  "launcher": {
+    "icon": "blank",
+    "image": "http://sunic.stream/media/logo-264.png",
+    "color": "msx-black-soft"
+  }
 }
