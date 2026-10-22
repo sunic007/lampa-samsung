@@ -188,7 +188,7 @@ No. It is a player; it does not host, store or distribute any media.
 
 <div align="justify">
 
-This package adds no ads or analytics, and the developer receives none of your data. The Telegram bot runs on your TV: its token, the people you approved and your lists are stored only on the TV. Pairing a phone goes through the ntfy.sh relay, encrypted. Movie data comes from TMDB. AI search sends your description or screenshot only to the AI service whose key you added (Groq, Gemini or OpenRouter). Third-party online sources you turn on in Lampa run inside the app — enable only the ones you trust.
+This package adds no ads, and the developer receives none of your personal data. The only statistic is an anonymous counter for sunic.stream (how many people watch now and this month): while Lampa is open, every 10 minutes it sends a random device number created on the device and the device type (Samsung, TV, Android, browser) — no IP address, name or what you watch is stored, and records older than 30 days are deleted. The Telegram bot runs on your TV: its token, the people you approved and your lists are stored only on the TV. Pairing a phone goes through the ntfy.sh relay, encrypted. Movie data comes from TMDB. AI search sends your description or screenshot only to the AI service whose key you added (Groq, Gemini or OpenRouter). Third-party online sources you turn on in Lampa run inside the app — enable only the ones you trust.
 
 </div>
 

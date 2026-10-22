@@ -188,7 +188,7 @@ Yo'q. Bu pleyer: u hech qanday media kontentni saqlamaydi va tarqatmaydi.
 
 <div align="justify">
 
-Paket reklama va analitika qo'shmaydi, dasturchi sizning ma'lumotlaringizni olmaydi. Telegram-bot televizoringizda ishlaydi: uning tokeni, siz tasdiqlagan odamlar va ro'yxatlaringiz faqat televizorda saqlanadi. Telefonni ulash ntfy.sh xizmati orqali shifrlangan holda o'tadi. Filmlar haqidagi ma'lumotlar — TMDB'dan. Sun'iy intellekt qidiruvi tavsif yoki skrinshotni faqat kalitini qo'shgan xizmatingizga yuboradi (Groq, Gemini yoki OpenRouter). Lampa'da yoqadigan uchinchi tomon onlayn manbalari ilova ichida ishlaydi — faqat ishonganlaringizni yoqing.
+Paket reklama qo'shmaydi, dasturchi sizning shaxsiy ma'lumotlaringizni olmaydi. Yagona statistika — sunic.stream uchun anonim hisoblagich («hozir ko'ryapti» va «bir oyda»): Lampa ochiq ekan, u har 10 daqiqada qurilmaning o'zida yaratilgan tasodifiy raqamni va qurilma turini (Samsung, televizor, Android, brauzer) yuboradi — IP-manzil, ism va nima ko'rayotganingiz saqlanmaydi, 30 kundan eski yozuvlar o'chiriladi. Telegram-bot televizoringizda ishlaydi: uning tokeni, siz tasdiqlagan odamlar va ro'yxatlaringiz faqat televizorda saqlanadi. Telefonni ulash ntfy.sh xizmati orqali shifrlangan holda o'tadi. Filmlar haqidagi ma'lumotlar — TMDB'dan. Sun'iy intellekt qidiruvi tavsif yoki skrinshotni faqat kalitini qo'shgan xizmatingizga yuboradi (Groq, Gemini yoki OpenRouter). Lampa'da yoqadigan uchinchi tomon onlayn manbalari ilova ichida ishlaydi — faqat ishonganlaringizni yoqing.
 
 </div>
 

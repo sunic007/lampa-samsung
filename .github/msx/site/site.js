@@ -4,7 +4,7 @@
       cta_install: 'O\'rnatish', eyebrow: 'Bepul · ro\'yxatdan o\'tmasdan',
       h1: 'Barcha filmlar va seriallar — televizoringizda',
       sub: 'Keyingi qism o\'zi yoqiladi, film barcha manbalardan qidiriladi. Bepul.',
-      cta_tv: 'Televizorga o\'rnatish', cta_web: 'Brauzerda ko\'rish', launch: 'Lampa ishga tushmoqda…',
+      cta_tv: 'Televizorga o\'rnatish', cta_web: 'Brauzerda ko\'rish', launch: 'Lampa ishga tushmoqda…', live_now: 'Hozir ko\'ryapti', live_month: 'Bir oyda',
       tb_free: 'Bepul', tb_reg: 'Ro\'yxatdan o\'tmasdan', tb_src: 'Ochiq kod', tb_ver: 'Versiya',
       dv_h: 'Qayerda ko\'rasiz?', dv_phone: 'Android telefon', dv_web: 'Kompyuter, iPhone',
       op_msx: 'Oson — Media Station X', op_msx_s: 'tavsiya etamiz · dasturchi rejimisiz',
@@ -36,7 +36,7 @@
       cta_install: 'Install', eyebrow: 'Free · no sign-up',
       h1: 'All movies and series — on your TV',
       sub: 'The next episode starts by itself, and movies are searched across all sources. Free.',
-      cta_tv: 'Install on a TV', cta_web: 'Watch in the browser', launch: 'Starting Lampa…',
+      cta_tv: 'Install on a TV', cta_web: 'Watch in the browser', launch: 'Starting Lampa…', live_now: 'Watching now', live_month: 'This month',
       tb_free: 'Free', tb_reg: 'No sign-up', tb_src: 'Open source', tb_ver: 'Version',
       dv_h: 'Where will you watch?', dv_phone: 'Android phone', dv_web: 'Computer, iPhone',
       op_msx: 'Easy — Media Station X', op_msx_s: 'recommended · no developer mode',
@@ -191,6 +191,21 @@
       setTimeout(function () { location.href = 'http://' + location.host + '/lampa/'; }, 280);
     });
   });
+  // Сколько людей с нами: «сейчас смотрят» (15 минут) и «за месяц» — /stat.php (анонимные сигналы Lampa), раз в минуту.
+  // Пока за месяц меньше LIVE_MIN устройств — строку не показываем (первые дни считает только сайт)
+  var LIVE_MIN = 20;
+  function live() {
+    getJSON(['/stat.php'], function (j) {
+      var el = document.getElementById('live');
+      if (!el || !j || typeof j.month !== 'number' || j.month < LIVE_MIN) return;
+      var f = function (n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
+      document.getElementById('live-now').textContent = f(Math.max(1, j.now));
+      document.getElementById('live-month').textContent = f(j.month);
+      el.hidden = false;
+    });
+  }
+  live();
+  setInterval(live, 60000);
   // «Назад» из Lampa: браузер достаёт страницу из памяти вместе с экраном запуска — убираем его
   window.addEventListener('pageshow', function () { document.querySelectorAll('.launch').forEach(function (o) { o.remove(); }); });
   setLang(lang);

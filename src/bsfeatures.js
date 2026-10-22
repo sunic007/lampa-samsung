@@ -898,6 +898,27 @@ var BSFeatures = (function () {
         });
     }
 
+    /* Сколько людей пользуется Sunic Apps — цифры на главной sunic.stream (владелец, 2026-10-22). При запуске и раз
+     * в 10 минут, пока Lampa открыта, — анонимный сигнал на sunic.stream/stat.php: случайный номер этого устройства
+     * (создаётся здесь, bs_uid) и его тип. Ни IP, ни того, что смотрят, сервер не хранит. Картинкой — без CORS, на любом
+     * ТВ; по http (у старых ТВ нет нужного TLS), со страницы по https — по https. Не ответил — не важно, повторов нет. */
+    function statKind() {
+        if (dev('samsungApp')) return 'samsung';
+        if (window.BS_ANDROID) return 'android';
+        return dev('tv') ? 'tv' : 'web';
+    }
+    function statPing() {
+        var id = lsGet('bs_uid');
+        if (!/^[a-f0-9]{16}$/.test(id || '')) {
+            id = '';
+            for (var i = 0; i < 16; i++) id += '0123456789abcdef'.charAt(Math.floor(Math.random() * 16));
+            lsSet('bs_uid', id);
+        }
+        var proto = 'http:';
+        try { if (window.location.protocol === 'https:') proto = 'https:'; } catch (e) {}
+        try { new Image().src = proto + '//sunic.stream/stat.php?d=' + id + '&p=' + statKind() + '&t=' + new Date().getTime(); } catch (e) {}
+    }
+
     /* YouTube IFrame API. Раньше грузилась на каждом старте (и дважды); Lampa 3.3.5 играет трейлеры своим мостом и
      * её не использует, плагины byskaz/Skaz тоже. Остался только старый Lampa.YouTube.play — для него подгружаем
      * API по требованию. */
@@ -1019,6 +1040,8 @@ var BSFeatures = (function () {
         try { noticesAbovePanel(); } catch (e) {}
         try { lazyYouTube(); } catch (e) {}
         try { installFastStart(); } catch (e) { console.log('BS fast start', e.message); }
+        setTimeout(statPing, 15000);                                // после запуска, чтобы не мешать ему
+        setInterval(function () { try { if (!document.hidden) statPing(); } catch (e) {} }, 600000);
         try { addSettings(); } catch (e) { console.log('BS features settings', e.message); }
         iptvLook();
         setTimeout(function () { try { iptvAuto(); iptvMenuOff(); iptvUrlsFix(); iptvFresh(); iptvProbe(); iptvSeed(); } catch (e) {} }, 8000);   // IPTV по умолчанию: два списка, зеркало, подсадка
