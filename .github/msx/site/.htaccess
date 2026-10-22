@@ -27,6 +27,14 @@ RedirectMatch 404 /\.(?!well-known/)
     RewriteRule ^iptv/s/([a-z]+)\.m3u$ iptv.php?l=$1&s=1 [L]
 </IfModule>
 
+# PHP2Shell (CVE-2026-109618/109619, 2026-10): PHP 7.4 у хостинга исправления не получит — выключаем то, через что
+# идёт атака (загрузка файлов, прогресс загрузки сессии). PHP здесь — через mod_lsapi (.user.ini он не читает)
+<IfModule lsapi_module>
+    php_flag session.upload_progress.enabled off
+    php_flag file_uploads off
+    php_value post_max_size 64K
+</IfModule>
+
 # только чтение: сайт ничего не принимает (кроме GET/HEAD/OPTIONS)
 <LimitExcept GET HEAD OPTIONS>
     Require all denied

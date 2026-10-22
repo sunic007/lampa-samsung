@@ -1,9 +1,4 @@
-# общий бот: lib.php — только для своих скриптов; POST — только hook.php (от Telegram) и api.php (бот на ТВ; сайт в целом — только чтение)
+# общий бот закрыт (2026-10-21): POST больше не нужен никому — весь сайт только читает (см. ../.htaccess)
 <Files "lib.php">
     Require all denied
 </Files>
-<FilesMatch "^(hook|api)\.php$">
-    <Limit POST>
-        Require all granted
-    </Limit>
-</FilesMatch>
