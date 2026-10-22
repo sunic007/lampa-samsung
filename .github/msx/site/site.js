@@ -12,7 +12,7 @@
       op_plugin: 'Lampa uchun plagin', op_plugin_s: 'Lampa o‘rnatilgan bo‘lsa',
       m1: 'Televizor do‘konidan <b>Media Station X</b> ni o‘rnating', m2: '<b>Settings</b> → <b>Start Parameter</b> → <b>Setup</b> (so‘rasa — <b>Continue</b>)',
       m3: 'Manzilni tering va <b>✓</b> ni bosing', m4: '<b>Yes</b> ni bosing — tayyor',
-      addr_l: 'Manzil:', copy: 'Nusxalash', copied: 'Nusxalandi',
+      addr_l: 'Manzil:', st_where: 'Media Station X qayerdan olinadi:', st_play: 'Android TV, Fire TV, telefon', st_sam: 'televizorda: «Ilovalar» → qidiruv', st_lg: 'televizorda: «Media Station X» qidiruvi', copy: 'Nusxalash', copied: 'Nusxalandi',
       fix_h: 'Ochilmadimi?', fix_1: 'Manzil — kichik harflar bilan, bo‘shliqsiz: <code>sunic.stream</code>', fix_2: 'Klaviaturadagi qulf belgisini bosing va takrorlang',
       fix_3: 'Yordam bermadimi — <a href="https://t.me/sunicapps">t.me/sunicapps</a> guruhiga yozing',
       ph_1: '<b>TV Installer</b> ni Android telefonga yuklab oling', ph_2: 'Telefon va televizor — bitta Wi-Fi tarmog‘ida',
@@ -43,7 +43,7 @@
       op_plugin: 'Plugin for Lampa', op_plugin_s: 'if Lampa is already installed',
       m1: 'Install <b>Media Station X</b> from the TV app store', m2: '<b>Settings</b> → <b>Start Parameter</b> → <b>Setup</b> (if asked — <b>Continue</b>)',
       m3: 'Type the address and press <b>✓</b>', m4: 'Press <b>Yes</b> — done',
-      addr_l: 'Address:', copy: 'Copy', copied: 'Copied',
+      addr_l: 'Address:', st_where: 'Where to get Media Station X:', st_play: 'Android TV, Fire TV, phone', st_sam: 'on the TV: «Apps» → search', st_lg: 'on the TV: search «Media Station X»', copy: 'Copy', copied: 'Copied',
       fix_h: 'It did not open?', fix_1: 'The address — small letters, no spaces: <code>sunic.stream</code>', fix_2: 'Press the lock icon on the keyboard and try again',
       fix_3: 'Still not working — write to the group <a href="https://t.me/sunicapps">t.me/sunicapps</a>',
       ph_1: 'Download <b>TV Installer</b> to your Android phone', ph_2: 'Phone and TV on the same Wi-Fi',
@@ -97,6 +97,8 @@
     document.querySelectorAll('[data-opt]').forEach(function (b) { b.hidden = ways.indexOf(b.getAttribute('data-opt')) < 0; });
     document.getElementById('opts').hidden = ways.length < 2;
     way(ways[0]);
+    var mine = id === 'samsung' ? 'samsung' : id === 'lg' ? 'lg' : 'play';
+    document.querySelectorAll('[data-store]').forEach(function (e) { var on = e.getAttribute('data-store') === mine; e.classList.toggle('on', on); e.style.order = on ? '-1' : ''; });
   }
   document.querySelectorAll('[data-dev]').forEach(function (b) {
     b.onclick = function () {
