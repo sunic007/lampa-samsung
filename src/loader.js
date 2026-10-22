@@ -681,6 +681,14 @@ function bsIsTv() {
                 }
                 ls.setItem('bs_touch_web', '1');
             }
+            // Заставка «Aerial» (по умолчанию) — видео Apple с sylvan.apple.com: его сертификат выдан внутренним центром
+            // Apple, браузеры ему не доверяют — видео не грузится, на экране только колесо загрузки. В браузере один раз
+            // (bs_ss_web) — «Природа» (картинки picsum.photos); выбрал потом другое — не трогаем.
+            if (ls.getItem('bs_ss_web') !== '1') {
+                var ss = ls.getItem('screensaver_type');
+                if (!ss || ss === 'aerial') ls.setItem('screensaver_type', 'nature');
+                ls.setItem('bs_ss_web', '1');
+            }
             return;
         }
         if (ls.getItem('bs_kb_lampa2') !== '1') {

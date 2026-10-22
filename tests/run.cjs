@@ -1004,6 +1004,12 @@ kb = kbStart({ ua: UA_TAB, touch: true, store: { navigation_type: 'mouse' } });
 t('планшет: выбрали управление сами — не трогаем', kb.navigation_type === 'mouse' && kb.bs_touch_web === '1');
 kb = kbStart({ ua: UA_PC, touch: true });
 t('компьютер с сенсорным экраном — управление не трогаем', !kb.navigation_type);
+kb = kbStart({ ua: UA_PC });
+t('браузер: заставка «Природа» вместо «Aerial» (видео Apple браузеры не грузят)', kb.screensaver_type === 'nature' && kb.bs_ss_web === '1');
+kb = kbStart({ ua: UA_PC, store: { screensaver_type: 'cub' } });
+t('браузер: свою заставку не трогаем', kb.screensaver_type === 'cub');
+kb = kbStart({ tizen: true, ua: 'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0)' });
+t('ТВ: заставку не трогаем', !kb.screensaver_type);
 
 /* ---- loader.js: «Проверить и обновить» — «что нового» в окно, согласие даёт «плохой» версии ещё шанс ---- */
 function ghCheck(v, m, store) {
