@@ -277,7 +277,11 @@ var BSSources = (function () {
         var who = compOwner(comp) || search.current;
         if (!triedHas(who)) search.tried.push(who);
         var cur = labelOf(who), id = search.id, s = search;
-        noty((why === 'denied' ? 'В «' + cur + '» нет доступа' : why === 'noanswer' ? '«' + cur + '» не отвечает' : 'В «' + cur + '» нет') +
+        // Skaz — по подписке Skaz (к входу в CUB не относится): нет подписки — он пишет «Нет доступа». Человек должен
+        // просто смотреть: идём к бесплатному источнику и делаем его главным, чтобы в следующий раз без этого крюка
+        var skazOff = why === 'denied' && who === 'skaz' && mainId() === 'skaz';
+        noty(skazOff ? 'Skaz — по подписке, её нет. Включаю бесплатный источник' :
+            (why === 'denied' ? 'В «' + cur + '» нет доступа' : why === 'noanswer' ? '«' + cur + '» не отвечает' : 'В «' + cur + '» нет') +
             ' — ищу в других источниках');
         log('поиск: ' + who + ' сдался', why);
         try { Lampa.Activity.backward(); } catch (e) {}
@@ -298,7 +302,11 @@ var BSSources = (function () {
                 }
                 s.tried.push(list[0].key);
                 s.current = list[0].key;
-                noty('Ищу в «' + labelOf(list[0].key) + '»');
+                if (skazOff && byId(list[0].key)) {
+                    lsSet('bs_src_main', list[0].key);
+                    try { Lampa.Storage.set('bs_src_main', list[0].key); } catch (e) {}
+                    noty('Главный источник теперь «' + labelOf(list[0].key) + '». Вернуть Skaz: Sunic Apps → Онлайн-источники');
+                } else noty('Ищу в «' + labelOf(list[0].key) + '»');
                 list[0].btn.trigger('hover:enter');
             }, 300);
         })();

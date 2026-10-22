@@ -4286,9 +4286,15 @@ var BSTelegram = (function () {
         if (subscribed(id)) return true;
         return people().some(function (p) { var on = false; as(p.who, function () { on = subscribed(id); }); return on; });
     }
+    /* Кнопка — значок-колокольчик, как остальные кнопки плеера (надписью она была широкой и на узком экране налезала
+     * на паузу); подписан — колокольчик залит. Надпись — в подсказке. */
+    var BELL = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 3a6 6 0 0 0-6 6v3.6L4.2 16h15.6L18 12.6V9a6 6 0 0 0-6-6z" ' +
+        'fill="FILL" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
     function panelPaint(box, card) {
         var on = anySub(card.id), many = !!chat() && people().length > 0;
-        box.find('.bs-sub__btn').toggleClass('bs-sub__btn--on', on).text(on ? (many ? 'Подписка ✓' : 'Вы подписаны ✓') : 'Подписаться');
+        var title = on ? (many ? 'Подписка ✓' : 'Вы подписаны ✓') : 'Подписаться на новые серии';
+        box.find('.bs-sub__btn').toggleClass('bs-sub__btn--on', on).attr('title', title)
+            .html(BELL.replace('FILL', on ? 'currentColor' : 'none') + '<div class="tooltip">' + title + '</div>');
     }
 
     /* Кнопка «Подписаться» в панели плеера — на любой серии идущего сериала. Нажали — кнопка остаётся той же (не

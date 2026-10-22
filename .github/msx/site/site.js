@@ -10,7 +10,7 @@
       op_msx: 'Oson — Media Station X', op_msx_s: 'tavsiya etamiz · dasturchi rejimisiz',
       op_app: 'To\'liq versiya — ilova', op_app_s: 'Android telefon kerak',
       op_plugin: 'Lampa uchun plagin', op_plugin_s: 'Lampa o\'rnatilgan bo\'lsa',
-      m1: 'Televizor do\'konidan <b>Media Station X</b> ilovasini o\'rnating', m2: '<b>Settings</b> → <b>Start Parameter</b> → <b>Setup</b> (so\'rasa — <b>Continue</b>)',
+      m1: 'Televizor yoki telefon do\'konidan <b>Media Station X</b> ilovasini o\'rnating (iPhone — App Store)', m2: '<b>Settings</b> → <b>Start Parameter</b> → <b>Setup</b> (so\'rasa — <b>Continue</b>)',
       m3: 'Manzilni tering va <b>✓</b> tugmasini bosing', m4: '<b>Yes</b> tugmasini bosing — tayyor',
       addr_l: 'Manzil:', st_where: 'Media Station X qayerdan olinadi:', st_play: 'Android TV', st_amz: 'Fire TV', op_web: 'Darhol brauzerda', op_web_s: 'o\'rnatmasdan', st_sam: 'televizorda: «Ilovalar» → qidiruv', st_lg: 'televizorda: «Media Station X» deb qidiring', copy: 'Nusxalash', copied: 'Nusxalandi',
       fix_h: 'Ochilmadimi?', fix_1: 'Manzil — kichik harflar bilan, bo\'shliqsiz: <code>sunic.stream</code>', fix_2: 'Klaviaturadagi qulf belgisini bosing va qayta urinib ko\'ring',
@@ -25,7 +25,7 @@
       f_more: '+ to\'xtagan joydan davom etish, uyqu taymeri',
       faq_h: 'Savollar', q0: 'Bu bepulmi?', a0: 'Ha. Ro\'yxatdan o\'tmasdan va obunasiz.', q1: 'Dasturchi rejimi kerakmi?', a1: 'Media Station X uchun — yo\'q.',
       q2: 'Film yo\'qmi yoki «kirish yo\'q»?', a2: 'Sunic Apps boshqa manbalardan o\'zi qidiradi. Hech qayerda yo\'q bo\'lsa — film hali yaxshi sifatda chiqmagan.',
-      q3: 'Skaz manbasi yo\'qmi?', a3: 'Skaz CUB akkauntiga kirgandan keyin ishlaydi (Sozlamalar → Akkaunt). Brauzerda Skaz faqat http orqali ochiladi — o\'z tavakkalingizga, brauzer «himoyalanmagan» deb ogohlantiradi; u yerda parol kiritmang.',
+      q3: 'Skaz «Ruxsat yo\'q» deyaptimi?', a3: 'Skaz — Skaz obunasi bilan ishlaydigan manba (skaz.tv), CUB\'ga kirishga aloqasi yo\'q. Obuna bo\'lmasa, Lampa o\'zi bepul manbalarni yoqadi — filmlar baribir ko\'rinadi.',
       web_http_btn: 'http orqali ochish — Skaz bilan', q4: 'Media Station X avvalgi holiga qanday qaytariladi?', a4: 'Settings → Start Parameter → <b>Reset</b> → Yes.',
       faq_tg: '💬 Telegramda yordam', fin_h: 'Bugun kechqurun ko\'rishni boshlang', fin_btn: 'Qurilmani tanlash',
       foot: 'Savollar', notsam: 'televizor ishlab chiqaruvchilari va Media Station X bilan bog\'liq emas; logotiplar — egalarining tovar belgilari',
@@ -42,7 +42,7 @@
       op_msx: 'Easy — Media Station X', op_msx_s: 'recommended · no developer mode',
       op_app: 'Full version — the app', op_app_s: 'needs an Android phone',
       op_plugin: 'Plugin for Lampa', op_plugin_s: 'if Lampa is already installed',
-      m1: 'Install <b>Media Station X</b> from the TV app store', m2: '<b>Settings</b> → <b>Start Parameter</b> → <b>Setup</b> (if asked — <b>Continue</b>)',
+      m1: 'Install <b>Media Station X</b> from the TV or phone app store (iPhone — App Store)', m2: '<b>Settings</b> → <b>Start Parameter</b> → <b>Setup</b> (if asked — <b>Continue</b>)',
       m3: 'Type the address and press <b>✓</b>', m4: 'Press <b>Yes</b> — done',
       addr_l: 'Address:', st_where: 'Where to get Media Station X:', st_play: 'Android TV', st_amz: 'Fire TV', op_web: 'Right in the browser', op_web_s: 'nothing to install', st_sam: 'on the TV: “Apps” → search', st_lg: 'on the TV: search for “Media Station X”', copy: 'Copy', copied: 'Copied',
       fix_h: 'Didn’t open?', fix_1: 'Type the address in lowercase, no spaces: <code>sunic.stream</code>', fix_2: 'Press the lock icon on the keyboard and try again',
@@ -57,7 +57,7 @@
       f_more: '+ resume where you left off, sleep timer',
       faq_h: 'Questions', q0: 'Is it free?', a0: 'Yes. No sign-up, no subscription.', q1: 'Do I need developer mode?', a1: 'For Media Station X — no.',
       q2: 'No movie or “no access”?', a2: 'Sunic Apps searches other sources by itself. If it’s nowhere, the movie isn’t out in good quality yet.',
-      q3: 'No Skaz source?', a3: 'Skaz works after signing in to CUB (Settings → Account). In the browser Skaz opens only over http — at your own risk, the browser will warn “not secure”; do not enter passwords there.',
+      q3: 'Skaz says “No access”?', a3: 'Skaz is a source by subscription to Skaz (skaz.tv); it has nothing to do with signing in to CUB. Without a subscription Lampa switches to free sources by itself — movies play anyway.',
       web_http_btn: 'Open over http — with Skaz', q4: 'How do I reset Media Station X?', a4: 'Settings → Start Parameter → <b>Reset</b> → Yes.',
       faq_tg: '💬 Help in Telegram', fin_h: 'Start watching tonight', fin_btn: 'Choose your device',
       foot: 'Questions', notsam: 'not affiliated with TV makers or Media Station X; logos are trademarks of their owners',
@@ -96,7 +96,8 @@
 
   /* «Где будете смотреть?»: одна сетка устройств. У устройства — способы (первый — по умолчанию); два способа —
    * переключатель над инструкцией, один — сразу инструкция. Устройство угадываем по браузеру. */
-  var WAYS = { samsung: ['msx', 'app'], lg: ['msx'], atv: ['msx', 'plugin'], fire: ['msx'], phone: ['web', 'plugin'], web: ['web'] };
+  // Media Station X есть и на телефонах: Google Play (Android) и App Store (iPhone, iPad)
+  var WAYS = { samsung: ['msx', 'app'], lg: ['msx'], atv: ['msx', 'plugin'], fire: ['msx'], phone: ['web', 'msx', 'plugin'], web: ['web', 'msx'] };
   var curDev = '';
   function way(id) {
     document.querySelectorAll('[data-opt]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-opt') === id); });
@@ -109,7 +110,8 @@
     document.querySelectorAll('[data-opt]').forEach(function (b) { b.hidden = ways.indexOf(b.getAttribute('data-opt')) < 0; });
     document.getElementById('opts').hidden = ways.length < 2;
     way(ways[0]);
-    var mine = id === 'samsung' ? 'samsung' : id === 'lg' ? 'lg' : id === 'fire' ? 'amazon' : 'play';
+    var apple = /iPhone|iPad/.test(navigator.userAgent || '');
+    var mine = id === 'samsung' ? 'samsung' : id === 'lg' ? 'lg' : id === 'fire' ? 'amazon' : id === 'web' && apple ? 'apple' : 'play';
     document.querySelectorAll('[data-store]').forEach(function (e) { var on = e.getAttribute('data-store') === mine; e.classList.toggle('on', on); e.style.order = on ? '-1' : ''; });
   }
   document.querySelectorAll('[data-dev]').forEach(function (b) {

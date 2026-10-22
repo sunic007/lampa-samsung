@@ -86,10 +86,12 @@ html body.bs-panel-up .bs-toast {
 .player-panel__center .bs-btn-prev svg { -webkit-transform: scaleX(-1); transform: scaleX(-1); }
 
 /* Подписка в плеере (bstg.js), как в YouTube: кнопка и когда выйдет следующая серия — слева в панели */
-.bs-sub { display: flex; align-items: center; margin-left: 0.6em; }
-.bs-sub__btn { width: auto !important; padding: 0 1.1em; border-radius: 2em; font-size: 0.95em; white-space: nowrap; background: rgba(255, 255, 255, 0.92); color: #000; }
-.bs-sub__btn--on { background: rgba(255, 255, 255, 0.18); color: #fff; }
-.bs-sub__next { margin-left: 0.9em; font-size: 0.85em; opacity: 0.8; white-space: nowrap; }
+.bs-sub { display: flex; align-items: center; margin-left: 0.6em; min-width: 0; }
+/* кнопка — квадратный значок-колокольчик, как соседние; подписан — залит; дата — сколько влезет, на узком экране скрыта */
+.bs-sub__btn svg { width: 1.6em; height: 1.6em; }
+.bs-sub__btn--on { color: #ffd54f; }
+.bs-sub__next { margin-left: 0.9em; font-size: 0.85em; opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 22em; min-width: 0; }
+@media (max-width: 900px) { .bs-sub__next { display: none; } }
 
 /* Своя «следующая серия» у Lampa (справа в панели) дублирует ⏭ у пуска/паузы — прячем; «Плейлист» остаётся */
 .player-panel__playlist-buttons .player-panel__next { display: none !important; }
