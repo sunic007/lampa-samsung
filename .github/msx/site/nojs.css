@@ -1,1 +1,2 @@
 main { visibility:visible !important; }
+.pane, [data-pane] { display:block !important; } .opts, .sticky-cta { display:none !important; }

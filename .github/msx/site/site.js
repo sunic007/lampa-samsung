@@ -1,148 +1,68 @@
 (function () {
   var T = {
     uz: {
+      cta_install: 'O‘rnatish', eyebrow: 'Bepul · ro‘yxatdan o‘tmasdan',
       h1: 'Barcha filmlar va seriallar — televizoringizda',
-      sub: 'Sunic Apps bilan Lampa: keyingi qismni o\'zi yoqadi, filmni barcha manbalardan topadi, qidirishni esa telefondan Telegram orqali qilish mumkin.',
-      cta_tv: 'Televizorga qanday o‘rnatiladi', cta_web: 'Ko‘rish',
-      tab_tv: 'Har qanday Smart TV', tab_tv_s: 'Samsung, LG, Android TV — Media Station X', tab_phone: 'Samsung uchun ilova', tab_phone_s: 'telefondan — TV Installer',
-      tab_android: 'Android TV / pristavka', tab_android_s: 'Lampa uchun plagin', tab_web: 'Brauzerda', tab_web_s: 'kompyuter yoki telefon',
-      tv_h: 'Har qanday Smart TV — Media Station X', tv_1: 'Televizorning ilovalar do\'konidan <b>Media Station X</b> ni o\'rnating (Samsung, LG, Android TV, Fire TV va boshqalarda bor) va uni oching.',
-      tv_2: 'Chapda <b>Settings</b> ni, keyin <b>Start Parameter</b> plitkasini va <b>Setup</b> tugmasini tanlang.', tv_3: '<b>Disclaimer</b> oynasida <b>Continue</b> ni bosing.',
-      tv_4: 'Pult bilan ekran klaviaturasida manzilni tering va ✓ belgili tugmani bosing:', tv_5: '«Lampa · Sunic Apps» chiqadi — <b>Yes</b> ni bosing. Media Station X o\'zi qayta ishga tushadi.',
-      tv_6: 'Tayyor: endi Media Station X har ochilganda Sunic Apps bilan Lampa darhol ishga tushadi.', tv_fix_h: 'Ochilmadimi?',
-      tv_fix_1: 'Manzilni tekshiring: kichik harflar bilan, nuqta bilan, bo\'shliqsiz — <code>sunic.stream</code>. «Start Error» chiqsa, 2–5-qadamlarni takrorlang.',
-      tv_fix_2: 'Klaviaturadagi qulf belgisi himoyalangan ulanishni (https) yoqadi. U bilan ochilmasa — qulfni o\'chirib, yana urinib ko\'ring (yoki aksincha).',
-      tv_fix_3: 'Televizorda internet borligini tekshiring va telefon brauzerida <b>sunic.stream</b> ni oching: sayt ochilsa, gap manzilda.',
-      tv_fix_4: 'Media Station X ni avvalgi holiga qaytarish: Settings → Start Parameter → <b>Reset</b> → Yes.',
-      tv_fix_5: 'Yordam bermadimi — <a href="https://t.me/sunicapps">t.me/sunicapps</a> guruhiga yozing.',
-      tv_note: 'Dasturchi rejimi va kompyuter kerak emas. Skaz manbalari CUB ga kirgandan keyin ishlaydi (Sozlamalar → Akkaunt); kirmasdan — Online Mod va Z01.',
-      ph_h: 'Samsung: televizorga o‘z ilovasi — TV Installer', ph_1: 'TV Installer ni Android telefonga yuklab oling (QR-kod yoki pastdagi tugma).',
-      ph_2: 'Telefon va televizor bitta Wi-Fi tarmog‘ida; televizorda bir marta dasturchi rejimini yoqing (TV Installer ko‘rsatadi).', ph_3: 'Lampa ni tanlang — bir necha daqiqada u televizorda. Bu eng to‘liq versiya: televizor ovozi, Smart Hub paneli, «Uyqu» ilovani yopadi.',
-      ph_btn: 'TV Installer ni yuklab olish', ph_qr: 'Telefon kamerasini qarating',
-      an_h: 'Android TV, pristavka yoki telefon — Lampa uchun plagin', an_1: 'Lampa ni oching → Sozlamalar → Kengaytmalar → Plagin qo‘shish.', an_2: 'Manzilni qo‘ying:',
-      an_3: 'Lampa ni qayta ishga tushiring — «Sunic Apps» bo‘limi paydo bo‘ladi.', copy: 'Nusxalash', copied: 'Nusxalandi',
-      web_h: 'Brauzerda', web_p: 'Lampa shu saytning o‘zida ochiladi — kompyuter yoki telefonda.',
-      web_http_btn: 'http orqali ochish — Skaz bilan', web_http_note: '⚠️ O‘z xavfingizga: ulanish himoyalanmagan (http) — brauzer sayt «himoyalanmagan» deb ogohlantiradi. Faqat Skaz manbalari uchun kerak; u yerda parol va karta ma’lumotlarini kiritmang. http va https uchun sozlamalar va tarix alohida.',
-      web_note: 'Himoyalangan ulanishda (https) Online Mod va Z01 ishlaydi; Skaz — televizorda, Media Station X da yoki http orqali (yuqoridagi tugma): uning serverlari https ni qo‘llamaydi.',
-      trust_h: 'Nega ishonsa bo‘ladi', trust_ver: 'oxirgi versiya', trust_src: 'Ochiq kod', trust_reg: 'Ro‘yxatdan o‘tmasdan', trust_reg_s: 'va bizdan reklamasiz',
-      trust_chk: 'Sayt tekshiriladi', trust_chk_s: 'har 30 daqiqada: fayllar GitHub bilan bir xil',
-      faq_tg: '💬 Telegram’da yordam', faq_tg_s: 'Sunic Apps guruhi: savollar, yordam va yangi versiyalar',
-      faq_h: 'Savollar', q1: 'Dasturchi rejimi kerakmi?', a1: 'Media Station X uchun — yo‘q. TV Installer orqali o‘rnatish uchun — bir marta, ilova ko‘rsatadi.',
-      q2: 'Nega manbalar yo‘q yoki «kirish yo‘q»?', a2: 'Skaz manbalariga CUB ga kirish kerak (Sozlamalar → Akkaunt, cub.red da kod). Kirmasdan «Ko‘rish» filmni Online Mod va Z01 dan o‘zi qidiradi.',
-      q3: '«Video topilmadi» — nima qilish kerak?', a3: 'Sunic Apps boshqa balanserlar va manbalarni o‘zi sinab ko‘radi. Film hech qayerda bo‘lmasa — hali yaxshi sifatda chiqmagan, keyinroq urinib ko‘ring.',
-      q4: 'Bu xavfsizmi?', a4: 'Ha: kod ochiq, biz shaxsiy ma’lumotlarni yig‘maymiz. Lampa va manbalar — uchinchi tomon xizmatlari; filmlarni biz saqlamaymiz va tarqatmaymiz.',
-      q5: 'Ishlamayapti — qayerga yozish kerak?', a5: 't.me/sunicapps guruhiga yoki Sunic Apps sozlamalaridagi «Muammo haqida xabar berish» tugmasi orqali — hisobot o‘zi yuboriladi.',
-      foot: 'Savollar', notsam: 'televizor ishlab chiqaruvchilari va Media Station X bilan bog‘liq emas; logotiplar — egalarining tovar belgilari', st_ok: 'ishlaydi', st_slow: 'sekin', st_bad: 'javob bermayapti', news: 'Yangi:',
-      st_cub: 'Katalog (CUB)', st_skaz_api: 'Skaz serverlari', st_github: 'Yangilanishlar (GitHub)',
-      nav_f: 'Imkoniyatlar',
-      nav_s: 'Boshlash',
-      nav_q: 'Savollar',
-      eyebrow: 'Bepul · ro\'yxatdan o\'tmasdan · bizdan reklamasiz',
-      cta_start: '2 daqiqada boshlash',
-      pl_line: 'Samsung · LG · Android TV · telefon · kompyuter',
-      art_next: 'Keyingi qism 5 dan keyin',
-      art_q: 'Dyuna',
-      art_found: 'Topildi ✓',
-      art_play: '▶ Televizorda ko\'rish',
-      f_h: 'Sunic Apps nimalar qiladi',
-      f1: 'Keyingi qism — o\'zi',
-      f1d: 'Tugadi — keyingi qism, fasl tugagach — yangi fasl yoqiladi.',
-      f2: 'Barcha manbalardan qidiradi',
-      f2d: 'Bitta manbada yo\'q bo\'lsa — boshqasidan, hatto siz qo\'shganlaridan ham topadi.',
-      f3: 'Telefon — pult o\'rnida',
-      f3d: 'Telegram-botda filmni topdingiz — «Ko\'rish»ni bosdingiz, u allaqachon televizorda.',
-      f4: 'To\'xtagan joydan',
-      f4d: 'To\'xtagan joyingizdan, o\'sha ovoz bilan davom etadi.',
-      f5: 'Qotib qolmaydi',
-      f5d: 'Video to\'xtadi — o\'zi qayta ishga tushiradi, sifat yoki manbani almashtiradi.',
-      f6: 'Kechqurun qulay',
-      f6d: '«Hali ko\'ryapsizmi?», qismdan keyin uyqu, tunda ovoz baland emas.',
-      s_h: 'Boshlash — 3 qadam',
-      s1: 'Quyida qurilmangizni tanlang',
-      s2: 'Manzilni kiriting yoki ilovani o\'rnating',
-      s3: 'Ko\'ring — qolganini Sunic Apps o\'zi qiladi',
-      pl_h: 'Siz ko\'radigan joyda ishlaydi',
-      pl_phone: 'Android telefon',
-      pl_web: 'Kompyuter va iPhone',
-      pl_s_sam: 'O‘z ilovasi — to‘liq versiya', pl_s_msx: 'Media Station X orqali', pl_s_msx2: 'Media Station X orqali',
-      pl_s_atv: 'Media Station X yoki plagin', pl_s_phone: 'Lampa uchun plagin', pl_s_web: 'To‘g‘ridan-to‘g‘ri brauzerda',
-      fin_h: 'Bugun kechqurun ko\'rishni boshlang',
-      fin_p: 'O\'rnatishga ikki daqiqa — va hammasi o\'zi ishlaydi.',
-      fin_tg: 'Telegramda so\'rash',
-      credits: 'Rasmlar va posterlarda — Blender Foundation filmlari (CC BY), blender.org'
+      sub: 'Keyingi qism o‘zi yoqiladi, film barcha manbalardan qidiriladi. Bepul.',
+      cta_tv: 'Televizorga o‘rnatish', cta_web: 'Brauzerda ko‘rish',
+      tb_free: 'Bepul', tb_reg: 'Ro‘yxatdan o‘tmasdan', tb_src: 'Ochiq kod', tb_ver: 'Versiya',
+      dv_h: 'Qayerda ko‘rasiz?', dv_phone: 'Android telefon', dv_web: 'Kompyuter, iPhone',
+      op_msx: 'Oson — Media Station X', op_msx_s: 'tavsiya etamiz · dasturchi rejimisiz',
+      op_app: 'To‘liq versiya — ilova', op_app_s: 'Android telefon kerak',
+      op_plugin: 'Lampa uchun plagin', op_plugin_s: 'Lampa o‘rnatilgan bo‘lsa',
+      m1: 'Televizor do‘konidan <b>Media Station X</b> ni o‘rnating', m2: '<b>Settings</b> → <b>Start Parameter</b> → <b>Setup</b> (so‘rasa — <b>Continue</b>)',
+      m3: 'Manzilni tering va <b>✓</b> ni bosing', m4: '<b>Yes</b> ni bosing — tayyor',
+      addr_l: 'Manzil:', copy: 'Nusxalash', copied: 'Nusxalandi',
+      fix_h: 'Ochilmadimi?', fix_1: 'Manzil — kichik harflar bilan, bo‘shliqsiz: <code>sunic.stream</code>', fix_2: 'Klaviaturadagi qulf belgisini bosing va takrorlang',
+      fix_3: 'Yordam bermadimi — <a href="https://t.me/sunicapps">t.me/sunicapps</a> guruhiga yozing',
+      ph_1: 'TV Installer ni Android telefonga yuklab oling', ph_2: 'Telefon va televizor — bitta Wi-Fi tarmog‘ida; televizorda nimani yoqishni TV Installer ko‘rsatadi',
+      ph_3: 'Lampa ni tanlang — bir necha daqiqada u televizorda', ph_btn: 'TV Installer ni yuklab olish', ph_qr: 'Telefon kamerasini qarating',
+      an_1: 'Lampa → Sozlamalar → Kengaytmalar → Plagin qo‘shish', an_2: 'Manzilni qo‘ying:', an_3: 'Lampa ni qayta ishga tushiring — «Sunic Apps» paydo bo‘ladi',
+      web_p: 'Lampa shu yerning o‘zida ochiladi — kompyuter, iPhone yoki planshetda.',
+      f_h: 'Sunic Apps nimalar qiladi', f1: 'Keyingi qism — o‘zi', f1d: 'Hatto yangi fasl ham', f2: 'Filmni topadi', f2d: 'Barcha manbalardan',
+      f3: 'Telefon — pult', f3d: 'Telegramda topdingiz — televizorda yoqiladi', f5: 'Qotib qolmaydi', f5d: 'Sifat yoki manbani o‘zi almashtiradi',
+      f_more: '+ to‘xtagan joydan davom etish, uyqu taymeri',
+      faq_h: 'Savollar', q0: 'Bu bepulmi?', a0: 'Ha. Ro‘yxatdan o‘tmasdan va obunasiz.', q1: 'Dasturchi rejimi kerakmi?', a1: 'Media Station X uchun — yo‘q.',
+      q2: 'Film yo‘qmi yoki «kirish yo‘q»?', a2: 'Sunic Apps boshqa manbalardan o‘zi qidiradi. Hech qayerda yo‘q bo‘lsa — film hali yaxshi sifatda chiqmagan.',
+      q3: 'Skaz manbasi yo‘qmi?', a3: 'Skaz CUB ga kirgandan keyin ishlaydi (Sozlamalar → Akkaunt). Brauzerda Skaz faqat http orqali ochiladi — o‘z xavfingizga, brauzer «himoyalanmagan» deb ogohlantiradi; u yerda parol kiritmang.',
+      web_http_btn: 'http orqali ochish — Skaz bilan', q4: 'Media Station X ni avvalgi holiga qaytarish?', a4: 'Settings → Start Parameter → <b>Reset</b> → Yes.',
+      faq_tg: '💬 Telegram’da yordam', fin_h: 'Bugun kechqurun ko‘rishni boshlang', fin_btn: 'Qurilmani tanlash',
+      foot: 'Savollar', notsam: 'televizor ishlab chiqaruvchilari va Media Station X bilan bog‘liq emas; logotiplar — egalarining tovar belgilari',
+      credits: 'Rasmlar va posterlarda — Blender Foundation filmlari (CC BY), blender.org',
+      st_ok: 'ishlaydi', st_slow: 'sekin', st_bad: 'javob bermayapti', st_cub: 'Katalog (CUB)', st_skaz_api: 'Skaz serverlari', st_github: 'Yangilanishlar (GitHub)'
     },
     en: {
+      cta_install: 'Install', eyebrow: 'Free · no sign-up',
       h1: 'All movies and series — on your TV',
-      sub: 'Lampa with Sunic Apps: plays the next episode by itself, finds a movie in every source, and you can search from your phone in Telegram.',
-      cta_tv: 'How to install on a TV', cta_web: 'Watch',
-      tab_tv: 'Any Smart TV', tab_tv_s: 'Samsung, LG, Android TV — Media Station X', tab_phone: 'App for Samsung', tab_phone_s: 'from your phone — TV Installer',
-      tab_android: 'Android TV / box', tab_android_s: 'plugin for Lampa', tab_web: 'In the browser', tab_web_s: 'computer or phone',
-      tv_h: 'Any Smart TV — Media Station X', tv_1: 'Install <b>Media Station X</b> from your TV app store (it is on Samsung, LG, Android TV, Fire TV and others) and open it.',
-      tv_2: 'On the left choose <b>Settings</b>, then the <b>Start Parameter</b> tile and the <b>Setup</b> button.', tv_3: 'In the <b>Disclaimer</b> window press <b>Continue</b>.',
-      tv_4: 'Type the address with the remote on the on-screen keyboard and press the button with the ✓ tick:', tv_5: '«Lampa · Sunic Apps» appears — press <b>Yes</b>. Media Station X restarts by itself.',
-      tv_6: 'Done: now every time you open Media Station X, Lampa with Sunic Apps starts right away.', tv_fix_h: 'It did not open?',
-      tv_fix_1: 'Check the address: small letters, with the dot, no spaces — <code>sunic.stream</code>. If you see «Start Error», repeat steps 2–5.',
-      tv_fix_2: 'The lock icon on the keyboard turns on a secure connection (https). If it does not open with it — turn the lock off and try again (or the other way round).',
-      tv_fix_3: 'Check the internet on the TV and open <b>sunic.stream</b> in your phone browser: if the site opens, the problem is the address.',
-      tv_fix_4: 'To put Media Station X back as it was: Settings → Start Parameter → <b>Reset</b> → Yes.',
-      tv_fix_5: 'Still not working — write to the group <a href="https://t.me/sunicapps">t.me/sunicapps</a>.',
-      tv_note: 'No developer mode or computer needed. Skaz sources work after signing in to CUB (Settings → Account); without it — Online Mod and Z01.',
-      ph_h: 'Samsung: its own app on the TV — TV Installer', ph_1: 'Download TV Installer to your Android phone (QR code or the button below).',
-      ph_2: 'Phone and TV on the same Wi-Fi; turn on developer mode on the TV once (TV Installer shows how).', ph_3: 'Choose Lampa — in a couple of minutes it is on the TV. This is the fullest version: TV volume, Smart Hub panel, «Sleep» closes the app.',
-      ph_btn: 'Download TV Installer', ph_qr: 'Point your phone camera',
-      an_h: 'Android TV, box or phone — plugin for Lampa', an_1: 'Open Lampa (Lampa BS or another build) → Settings → Extensions → Add plugin.', an_2: 'Paste the address:',
-      an_3: 'Restart Lampa — the «Sunic Apps» section appears.', copy: 'Copy', copied: 'Copied',
-      web_h: 'In the browser', web_p: 'Lampa opens right on this site — on a computer or phone.',
-      web_http_btn: 'Open over http — with Skaz', web_http_note: '⚠️ At your own risk: the connection is not protected (http) — the browser will warn that the site is «not secure». Only needed for Skaz sources; do not enter passwords or card details there. Settings and history are separate for http and https.',
-      web_note: 'Over a secure connection (https) Online Mod and Z01 work; Skaz — on TVs, in Media Station X or over http (button above): its servers do not support https.',
-      trust_h: 'Why you can trust it', trust_ver: 'latest version', trust_src: 'Open source', trust_reg: 'No sign-up', trust_reg_s: 'and no ads from us',
-      trust_chk: 'The site is checked', trust_chk_s: 'every 30 minutes: files match GitHub',
-      faq_tg: '💬 Help in Telegram', faq_tg_s: 'The Sunic Apps group: questions, help and new versions',
-      faq_h: 'Questions', q1: 'Do I need developer mode?', a1: 'For Media Station X — no. For installing via TV Installer — once, the app shows how.',
-      q2: 'Why no sources or «no access»?', a2: 'Skaz sources need a CUB sign-in (Settings → Account, code at cub.red). Without it «Watch» looks for the movie in Online Mod and Z01 by itself.',
-      q3: '«Video not found» — what to do?', a3: 'Sunic Apps tries other balancers and sources by itself. If the movie is nowhere — it is not out in good quality yet, try later.',
-      q4: 'Is it safe?', a4: 'Yes: the code is open, we do not collect personal data. Lampa and the sources are third-party services; we do not store or share movies.',
-      q5: 'Not working — where to write?', a5: 'To the t.me/sunicapps group or with «Report a problem» in Sunic Apps settings — the report is sent by itself.',
-      foot: 'Questions', notsam: 'not affiliated with TV makers or Media Station X; logos are trademarks of their owners', st_ok: 'works', st_slow: 'slow', st_bad: 'not responding', news: 'New:',
-      st_cub: 'Catalog (CUB)', st_skaz_api: 'Skaz servers', st_github: 'Updates (GitHub)',
-      nav_f: 'Features',
-      nav_s: 'Get started',
-      nav_q: 'FAQ',
-      eyebrow: 'Free · no sign-up · no ads from us',
-      cta_start: 'Start in 2 minutes',
-      pl_line: 'Samsung · LG · Android TV · phone · computer',
-      art_next: 'Next episode in 5',
-      art_q: 'Dune',
-      art_found: 'Found ✓',
-      art_play: '▶ Watch on TV',
-      f_h: 'What Sunic Apps does',
-      f1: 'Next episode — by itself',
-      f1d: 'Finished — the next episode starts, and after the season — the new season.',
-      f2: 'Searches every source',
-      f2d: 'Not in one source — it finds it in another, even in the ones you added.',
-      f3: 'Your phone as a remote',
-      f3d: 'Found a movie in the Telegram bot — tap «Watch» and it is already on the TV.',
-      f4: 'Right where you stopped',
-      f4d: 'Continues where you left off, with the same dub.',
-      f5: 'Does not freeze',
-      f5d: 'Video stalled — it restarts, changes quality or source by itself.',
-      f6: 'Made for evenings',
-      f6d: '«Are you still watching?», sleep after the episode, no louder at night.',
-      s_h: 'Get started — 3 steps',
-      s1: 'Choose your device below',
-      s2: 'Enter the address or install the app',
-      s3: 'Watch — Sunic Apps does the rest',
-      pl_h: 'Works wherever you watch',
-      pl_phone: 'Android phone',
-      pl_web: 'Computer and iPhone',
-      pl_s_sam: 'Own app — the full version', pl_s_msx: 'Via Media Station X', pl_s_msx2: 'Via Media Station X',
-      pl_s_atv: 'Media Station X or a plugin', pl_s_phone: 'A plugin for Lampa', pl_s_web: 'Right in the browser',
-      fin_h: 'Start watching tonight',
-      fin_p: 'Two minutes to set up — and everything works by itself.',
-      fin_tg: 'Ask in Telegram',
-      credits: 'Screenshots and posters show Blender Foundation films (CC BY), blender.org'
+      sub: 'The next episode plays by itself, a movie is found in every source. Free.',
+      cta_tv: 'Install on a TV', cta_web: 'Watch in the browser',
+      tb_free: 'Free', tb_reg: 'No sign-up', tb_src: 'Open source', tb_ver: 'Version',
+      dv_h: 'Where will you watch?', dv_phone: 'Android phone', dv_web: 'Computer, iPhone',
+      op_msx: 'Easy — Media Station X', op_msx_s: 'recommended · no developer mode',
+      op_app: 'Full version — the app', op_app_s: 'needs an Android phone',
+      op_plugin: 'Plugin for Lampa', op_plugin_s: 'if Lampa is already installed',
+      m1: 'Install <b>Media Station X</b> from the TV app store', m2: '<b>Settings</b> → <b>Start Parameter</b> → <b>Setup</b> (if asked — <b>Continue</b>)',
+      m3: 'Type the address and press <b>✓</b>', m4: 'Press <b>Yes</b> — done',
+      addr_l: 'Address:', copy: 'Copy', copied: 'Copied',
+      fix_h: 'It did not open?', fix_1: 'The address — small letters, no spaces: <code>sunic.stream</code>', fix_2: 'Press the lock icon on the keyboard and try again',
+      fix_3: 'Still not working — write to the group <a href="https://t.me/sunicapps">t.me/sunicapps</a>',
+      ph_1: 'Download TV Installer to your Android phone', ph_2: 'Phone and TV on the same Wi-Fi; TV Installer shows what to turn on on the TV',
+      ph_3: 'Choose Lampa — in a couple of minutes it is on the TV', ph_btn: 'Download TV Installer', ph_qr: 'Point your phone camera',
+      an_1: 'Lampa → Settings → Extensions → Add plugin', an_2: 'Paste the address:', an_3: 'Restart Lampa — «Sunic Apps» appears',
+      web_p: 'Lampa opens right here — on a computer, iPhone or tablet.',
+      f_h: 'What Sunic Apps does', f1: 'Next episode — by itself', f1d: 'Even a new season', f2: 'Finds the movie', f2d: 'In every source',
+      f3: 'Phone as a remote', f3d: 'Found in Telegram — plays on the TV', f5: 'Does not freeze', f5d: 'Changes quality or source by itself',
+      f_more: '+ continue where you stopped, sleep timer',
+      faq_h: 'Questions', q0: 'Is it free?', a0: 'Yes. No sign-up, no subscription.', q1: 'Do I need developer mode?', a1: 'For Media Station X — no.',
+      q2: 'No movie or «no access»?', a2: 'Sunic Apps searches other sources by itself. If it is nowhere — the movie is not out in good quality yet.',
+      q3: 'No Skaz source?', a3: 'Skaz works after signing in to CUB (Settings → Account). In the browser Skaz opens only over http — at your own risk, the browser will warn «not secure»; do not enter passwords there.',
+      web_http_btn: 'Open over http — with Skaz', q4: 'Put Media Station X back as it was?', a4: 'Settings → Start Parameter → <b>Reset</b> → Yes.',
+      faq_tg: '💬 Help in Telegram', fin_h: 'Start watching tonight', fin_btn: 'Choose your device',
+      foot: 'Questions', notsam: 'not affiliated with TV makers or Media Station X; logos are trademarks of their owners',
+      credits: 'Screenshots and posters show Blender Foundation films (CC BY), blender.org',
+      st_ok: 'works', st_slow: 'slow', st_bad: 'not responding', st_cub: 'Catalog (CUB)', st_skaz_api: 'Skaz servers', st_github: 'Updates (GitHub)'
     },
-    ru: { news: 'Что нового:', copied: 'Скопировано', st_ok: 'работает', st_slow: 'медленно', st_bad: 'не отвечает' }
+    ru: { copied: 'Скопировано', st_ok: 'работает', st_slow: 'медленно', st_bad: 'не отвечает' }
   };
   var ru = {};
   document.querySelectorAll('[data-t]').forEach(function (e) { ru[e.getAttribute('data-t')] = e.innerHTML; });
@@ -162,27 +82,34 @@
   }
   document.querySelectorAll('[data-lang]').forEach(function (b) { b.onclick = function () { setLang(b.getAttribute('data-lang')); }; });
 
-  // какое устройство — тот способ первым
-  var ua = navigator.userAgent || '';
-  var dev = /SMART-TV|Tizen|Web0S|SmartTV/i.test(ua) ? 'tv' : /Android/i.test(ua) ? (/Mobile/i.test(ua) ? 'phone' : 'android') : /iPhone|iPad/i.test(ua) ? 'web' : 'web';
-  function tab(id) {
-    document.querySelectorAll('[data-tab]').forEach(function (b) { var on = b.getAttribute('data-tab') === id; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+  /* «Где будете смотреть?»: одна сетка устройств. У устройства — способы (первый — по умолчанию); два способа —
+   * переключатель над инструкцией, один — сразу инструкция. Устройство угадываем по браузеру. */
+  var WAYS = { samsung: ['msx', 'app'], lg: ['msx'], atv: ['msx', 'plugin'], fire: ['msx'], phone: ['plugin'], web: ['web'] };
+  var curDev = '';
+  function way(id) {
+    document.querySelectorAll('[data-opt]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-opt') === id); });
     document.querySelectorAll('[data-pane]').forEach(function (p) { p.classList.toggle('on', p.getAttribute('data-pane') === id); });
   }
-  document.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { tab(b.getAttribute('data-tab')); }; });
-  tab(dev === 'web' ? 'tv' : dev);
-  // плитка «Где работает» — сразу нужная вкладка «Как начать» и плавно к ней (а не просто наверх к шагам)
-  document.querySelectorAll('[data-go]').forEach(function (a) {
-    a.onclick = function (e) {
-      e.preventDefault();
-      var id = a.getAttribute('data-go'), tabs = document.querySelector('.tabs');
-      tab(id);
-      if (tabs) tabs.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      var pane = document.querySelector('[data-pane="' + id + '"]');
-      if (pane) { pane.classList.remove('flash'); void pane.offsetWidth; pane.classList.add('flash'); }
-      a.blur();
+  function device(id) {
+    curDev = id;
+    var ways = WAYS[id] || ['msx'];
+    document.querySelectorAll('[data-dev]').forEach(function (b) { var on = b.getAttribute('data-dev') === id; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+    document.querySelectorAll('[data-opt]').forEach(function (b) { b.hidden = ways.indexOf(b.getAttribute('data-opt')) < 0; });
+    document.getElementById('opts').hidden = ways.length < 2;
+    way(ways[0]);
+  }
+  document.querySelectorAll('[data-dev]').forEach(function (b) {
+    b.onclick = function () {
+      device(b.getAttribute('data-dev'));
+      var h = document.getElementById('howto');
+      if (h && h.getBoundingClientRect().top > window.innerHeight * 0.75) h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (h) { h.classList.remove('flash'); void h.offsetWidth; h.classList.add('flash'); }
     };
   });
+  document.querySelectorAll('[data-opt]').forEach(function (b) { b.onclick = function () { way(b.getAttribute('data-opt')); }; });
+  var ua = navigator.userAgent || '';
+  device(/Tizen|SMART-TV/i.test(ua) ? 'samsung' : /Web0S|webOS|NetCast/i.test(ua) ? 'lg' : /AFT[A-Z]/.test(ua) ? 'fire'
+    : /Android/i.test(ua) ? (/Mobile/i.test(ua) ? 'phone' : 'atv') : /iPhone|iPad|Macintosh|Windows|Linux/i.test(ua) ? 'web' : 'samsung');
 
   document.querySelectorAll('[data-copy]').forEach(function (b) {
     b.onclick = function () {
@@ -192,10 +119,16 @@
     };
   });
 
+  // кнопка «Установить» внизу телефона: прячется, когда выбор устройства уже на экране
+  var sticky = document.querySelector('.sticky-cta'), dv = document.getElementById('devices');
+  if (sticky && dv && 'IntersectionObserver' in window) {
+    new IntersectionObserver(function (es) { sticky.classList.toggle('away', es[0].isIntersecting); }, { threshold: 0.15 }).observe(dv);
+  }
+
   var stData = null;
   function status() {
     var box = document.getElementById('status');
-    if (!stData) return;
+    if (!stData || !box) return;
     box.innerHTML = '';
     stData.items.forEach(function (i) {
       var s = document.createElement('span');
@@ -212,15 +145,8 @@
   var verData = null;
   function version() {
     if (!verData) return;
-    var d = verData.date ? new Date(verData.date) : null;
-    var mon = lang === 'en' ? ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-      : lang === 'uz' ? ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr']
-      : ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-    document.getElementById('ver').textContent = verData.v + (d ? ' · ' + (lang === 'en' ? mon[d.getMonth()] + ' ' + d.getDate() : d.getDate() + ' ' + mon[d.getMonth()]) : '');
-    var n = verData.notes;
-    document.getElementById('news').innerHTML = n && n.title ? t('news') + ' <b>' + esc(n.title) + '</b>' : '';
+    document.getElementById('ver').textContent = verData.v;
   }
-  function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
   function getJSON(urls, cb) {
     (function next(i) {
       if (i >= urls.length) return cb(null);
@@ -233,9 +159,8 @@
   }
   getJSON(['https://raw.githubusercontent.com/sunic007/lampa-samsung/main/version.json', 'https://cdn.jsdelivr.net/gh/sunic007/lampa-samsung@main/version.json'], function (m) {
     if (!m) return;
-    verData = { v: m.version, notes: m.notes };
+    verData = { v: m.version };
     version();
-    getJSON(['https://api.github.com/repos/sunic007/lampa-samsung/releases/latest'], function (r) { if (r && r.published_at) { verData.date = r.published_at; version(); } });
   });
   setLang(lang);
   document.documentElement.className += ' ready';
