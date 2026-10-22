@@ -13,7 +13,7 @@
 const REPO = 'sunic007/lampa-samsung';
 const GH = 'https://raw.githubusercontent.com/' . REPO . '/main/version.json';
 const CDN = 'https://cdn.jsdelivr.net/gh/' . REPO . '@v';
-const PIN = '2.3.63';   // если GitHub не ответил и ничего не запомнено
+const PIN = '2.3.64';   // если GitHub не ответил и ничего не запомнено
 const LIFE = 600;       // версию проверяем раз в 10 минут
 const KEEP = 2;         // версий на хостинге
 

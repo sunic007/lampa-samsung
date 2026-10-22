@@ -370,7 +370,13 @@ X._patch(gf); let thrown = false; try { gf.find(); } catch (e) { thrown = true; 
 t('поиск: падение плагина не выходит наружу', !thrown && gf.n === 1);
 
 /* ---- bsmenu.js: турецкие сериалы ---- */
-const MN = load('bsmenu.js', 'BSMenu').M;
+const MNL = load('bsmenu.js', 'BSMenu'), MN = MNL.M;
+{   // «Турецкие сериалы → Поиск по названию» — основной поиск Lampa (как в главном меню)
+    let opened = 0; MNL.ctx.Lampa = { Search: { open: () => opened++ } };
+    MN.search();
+    t('турецкие: поиск по названию открывает основной поиск Lampa', opened === 1);
+    delete MNL.ctx.Lampa;
+}
 /* ---- bsmenu.js: «Смотреть» ничего не спрашивает (Skaz — по подписке, к CUB не относится; без неё — бесплатный источник) ---- */
 t('Смотреть: окна «Источникам Skaz нужен вход в CUB» больше нет', MN._cubChoice === undefined && MN._needCubChoice === undefined);
 t('турецкие: по языку или стране', MN._isTurkish({ original_language: 'tr' }) && MN._isTurkish({ original_language: 'en', origin_country: ['TR'] }) && !MN._isTurkish({ original_language: 'ru', origin_country: ['RU'] }));

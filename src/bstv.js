@@ -418,6 +418,7 @@ var BSTv = (function () {
             '.bstv-num{position:absolute;right:3em;top:2em;font-size:3em;font-weight:700;background:rgba(0,0,0,.6);border-radius:.3em;padding:.1em .5em}' +
             '.bstv-load{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:1.3em;background:rgba(0,0,0,.6);padding:.8em 1.4em;border-radius:.6em}' +
             '.bstv-load.hide{display:none}' +
+            'body.bstv-input .settings-input{z-index:90!important}' +
             // витрина: как магазин приложений — плитки сеткой, выбранная светлая (как кнопки Lampa)
             '.bstv-shop{position:fixed;left:0;top:0;right:0;bottom:0;z-index:60;background:#141518;color:#fff;overflow-y:auto;padding:2.2em 3em 3em}' +
             '.bstv-shop__head{font-size:2.2em;font-weight:700;margin-bottom:.6em}' +
@@ -853,7 +854,7 @@ var BSTv = (function () {
         if (!c) return;
         if (c.t === 'search') {
             try {
-                Lampa.Input.edit({ title: 'Поиск канала', value: '', free: true, nosave: true }, function (q) {
+                input('Поиск канала', '', function (q) {
                     q = String(q || '').replace(/^\s+|\s+$/g, '');
                     if (q) setView(viewOf('search', '', q));
                     openList();
@@ -958,6 +959,16 @@ var BSTv = (function () {
     /* Свои плейлисты (от провайдера и т. п.) — в тот же список, что у расширения IPTV (iptv_playlist_custom): расширение
      * у нас больше не главное, добавить ссылку теперь можно и здесь. Убрать можно только свой, наши «sunic-iptv-…» —
      * в «Sunic Apps → IPTV: открытые плейлисты». */
+    /* Ввод текста (ссылка, название, поиск канала) — экранная клавиатура Lampa. Её слой (.settings-input, z-index 21)
+     * ниже плеера (50) и витрины (60): на ТВ клавиатура открывалась под «Телеканалами» — не видно, а пульт уже у неё,
+     * казалось, что всё зависло. Пока она открыта — поднимаем её над всем (класс bstv-input у body). */
+    function input(title, value, done) {
+        $('body').addClass('bstv-input');
+        Lampa.Input.edit({ title: title, value: value, free: true, nosave: true }, function (v) {
+            $('body').removeClass('bstv-input');
+            done(v);
+        });
+    }
     function customList() {
         var l = [];
         try { l = Lampa.Storage.get('iptv_playlist_custom', '[]'); } catch (e) {}
@@ -965,7 +976,7 @@ var BSTv = (function () {
     }
     function addPlaylist(back, done) {
         var ask = function (title, value, done) {
-            try { Lampa.Input.edit({ title: title, value: value, free: true, nosave: true }, done); } catch (e) { Lampa.Controller.toggle(back); }
+            try { input(title, value, done); } catch (e) { Lampa.Controller.toggle(back); }
         };
         ask('Ссылка на плейлист (m3u)', '', function (url) {
             url = String(url || '').replace(/^\s+|\s+$/g, '');
