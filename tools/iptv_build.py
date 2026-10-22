@@ -41,6 +41,13 @@ LISTS = {
     'news': ORG + 'categories/news.m3u', 'freetv': 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8',
 }
 DB = 'https://raw.githubusercontent.com/iptv-org/database/master/data/'
+# Free-TV: разделы — страны; эти (СНГ и бывший Союз, смотрят по-русски) добавляем в «На русском» с русским названием.
+# Узбекистана, Киргизии, Таджикистана у Free-TV пока нет — появятся, добавим строку. Прибалтика — не СНГ, не берём
+FREETV_RU = {
+    'Russia': 'Россия', 'Ukraine': 'Украина', 'Belarus': 'Беларусь', 'Kazakhstan': 'Казахстан', 'Uzbekistan': 'Узбекистан',
+    'Kyrgyzstan': 'Кыргызстан', 'Tajikistan': 'Таджикистан', 'Turkmenistan': 'Туркменистан', 'Armenia': 'Армения',
+    'Azerbaijan': 'Азербайджан', 'Georgia': 'Грузия', 'Moldova': 'Молдова',
+}
 STRIKES = 3                 # дней подряд «точно мёртв» — тогда убираем
 TIMEOUT = 12
 WORKERS = 48
@@ -164,10 +171,9 @@ def main():
             dead[url] = [(old.get(url) or [0])[0] + 1, v[5:]]
     gone = {u for u, (n, _) in dead.items() if n >= STRIKES}
 
-    report = {}
+    clean = {}
     for k, (head, items) in lists.items():
-        # метка времени: iptv.php не берёт список старше 3 дней (сборка сломалась — лучше оригинал)
-        out, why = [head + ' x-sunic-at="%d"' % time.time()], {'closed': 0, 'dead': 0, 'logo': 0}
+        kept, why = [], {'closed': 0, 'dead': 0, 'logo': 0}
         for info, url in items:
             cid = tvg_id(info)
             if cid.split('@')[0] in closed:
@@ -185,16 +191,38 @@ def main():
                     info[ext[0]] = re.sub(r'tvg-logo="[^"]*"', 'tvg-logo="%s"' % logo, l) if 'tvg-logo=' in l \
                         else l.replace('#EXTINF:-1 ', '#EXTINF:-1 tvg-logo="%s" ' % logo, 1)
                     why['logo'] += 1
+            kept.append((info, url))
+        clean[k] = (head, kept, why, len(items))
+
+    # «На русском» — общий список по умолчанию: добавляем каналы Free-TV (только официальные бесплатные) из стран СНГ и
+    # бывшего Союза, где смотрят по-русски; раздел — страна по-русски. Тот же адрес уже есть в списке — не дублируем.
+    if 'rus' in clean and 'freetv' in clean:
+        head, kept, why, was = clean['rus']
+        have = {u for _, u in kept}
+        why['freetv'] = 0
+        for info, url in clean['freetv'][1]:
+            m = re.search(r'group-title="([^"]*)"', ' '.join(info))
+            country = FREETV_RU.get(m.group(1)) if m else None
+            if not country or url in have:
+                continue
+            have.add(url)
+            kept.append(([re.sub(r'group-title="[^"]*"', 'group-title="%s"' % country, l) for l in info], url))
+            why['freetv'] += 1
+
+    report = {}
+    for k, (head, kept, why, was) in clean.items():
+        # защита: источник или проверка сломались и выкинули больше половины — такой список не публикуем
+        if len(kept) < was * 0.5:
+            print('список', k, 'похудел подозрительно (%d из %d) — не публикую' % (len(kept), was))
+            continue
+        # метка времени: iptv.php не берёт список старше 3 дней (сборка сломалась — лучше оригинал)
+        out = [head + ' x-sunic-at="%d"' % time.time()]
+        for info, url in kept:
             out.extend(info)
             out.append(url)
-        kept = (len(out) - 1) and sum(1 for l in out if l.startswith('#EXTINF'))
-        # защита: источник или проверка сломались и выкинули больше половины — такой список не публикуем
-        if kept < len(items) * 0.5:
-            print('список', k, 'похудел подозрительно (%d из %d) — не публикую' % (kept, len(items)))
-            continue
         with open(os.path.join(OUT, k + '.m3u'), 'w', encoding='utf-8', newline='\n') as f:
             f.write('\n'.join(out) + '\n')
-        report[k] = dict(was=len(items), kept=kept, **why)
+        report[k] = dict(was=was, kept=len(kept), **why)
         print(k, report[k])
 
     with open(os.path.join(OUT, 'state.json'), 'w', encoding='utf-8') as f:
