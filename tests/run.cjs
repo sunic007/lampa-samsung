@@ -4175,7 +4175,7 @@ async function serviceTests() {
         list = list.slice(0, 2); added.length = 0; c2.M._iptvAuto();
         t('IPTV по умолчанию: открывается сразу со списком «На русском»', JSON.stringify(book) === '{"playlist":"sunic-iptv-rus"}');
         t('IPTV по умолчанию: только один раз — убранное человеком не возвращаем', added.length === 0 && list.length === 2);
-        // где включены свои «Телеканалы» (сайт: BS_SITE_VERSION) — расширение не ставим, пункт «IPTV» прячем один раз
+        // где загружены свои «Телеканалы» (window.BSTv) — расширение не ставим, пункт «IPTV» прячем один раз
         delete ls.bs_iptv_auto; list = []; added.length = 0;
         let hide = ['Лента'], sort = ['Главная', 'IPTV', 'Фильмы', 'Телеканалы'];
         const get0 = c2.Lampa.Storage.get, set0 = c2.Lampa.Storage.set;
@@ -4183,14 +4183,14 @@ async function serviceTests() {
         c2.Lampa.Storage.set = (k, v) => { if (k === 'menu_hide') hide = v; else if (k === 'menu_sort') sort = v; else set0(k, v); };
         c2.$ = () => ({ each() {} });
         c2.M._iptvMenuOff();
-        t('Телеканалы выключены (ТВ): меню IPTV не трогаем', JSON.stringify(hide) === '["Лента"]' && !ls.bs_iptv_menu_off);
-        c2.BS_SITE_VERSION = '2.3.55'; c2.M._iptvAuto(); c2.M._iptvMenuOff();
-        t('Телеканалы на сайте: расширение IPTV не ставим, наши списки всё равно кладём', added.length === 0 && list.length === c2.M._iptvDefault.length);
-        t('Телеканалы на сайте: «IPTV» спрятан, «Телеканалы» на его месте', JSON.stringify(hide) === '["Лента","IPTV"]' &&
+        t('Телеканалов нет (старый пакет без bstv.js): меню IPTV не трогаем', JSON.stringify(hide) === '["Лента"]' && !ls.bs_iptv_menu_off);
+        c2.BSTv = {}; c2.M._iptvAuto(); c2.M._iptvMenuOff();
+        t('Телеканалы есть: расширение IPTV не ставим, наши списки всё равно кладём', added.length === 0 && list.length === c2.M._iptvDefault.length);
+        t('Телеканалы есть: «IPTV» спрятан, «Телеканалы» на его месте', JSON.stringify(hide) === '["Лента","IPTV"]' &&
             JSON.stringify(sort) === '["Главная","Телеканалы","IPTV","Фильмы"]' && ls.bs_iptv_menu_off === '1');
         hide = ['Лента']; c2.M._iptvMenuOff();
-        t('Телеканалы на сайте: вернул «IPTV» в меню сам — снова не прячем', JSON.stringify(hide) === '["Лента"]');
-        delete c2.BS_SITE_VERSION;
+        t('Телеканалы есть: вернул «IPTV» в меню сам — снова не прячем', JSON.stringify(hide) === '["Лента"]');
+        delete c2.BSTv;
     }
     t('IPTV: выбрали ещё раз — убран только наш', F._iptvToggle('uz') === false && saved.length === 1 && saved[0].id === 'mine');
     t('IPTV: неизвестный — ничего не меняет', F._iptvToggle('xx') === false && saved.length === 1);

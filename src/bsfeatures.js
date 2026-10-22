@@ -687,11 +687,11 @@ var BSFeatures = (function () {
         }
         lsSet('bs_iptv_auto', '1');
     }
-    /* «Телеканалы» (bstv.js) — свой IPTV-плеер; где он включён (то же условие, что в loader.js), расширение IPTV новым
+    /* «Телеканалы» (bstv.js) — свой IPTV-плеер; где он есть (bstv.js загружен), расширение IPTV новым
      * не ставим, а у кого стоит — прячем его пункт «IPTV» из меню (как «Редактировать меню»: menu_hide), «Телеканалы»
      * ставим на его место. Один раз (метка bs_iptv_menu_off): вернёт человек «IPTV» в меню сам — не прячем снова.
      * Само расширение и его данные не трогаем: свои плейлисты человека видны и в «Телеканалах». */
-    function tvOn() { try { return !!window.BS_SITE_VERSION || localStorage.getItem('bs_tv_beta') === 'true'; } catch (e) { return false; } }
+    function tvOn() { try { return !!window.BSTv; } catch (e) { return false; } }      // «Телеканалы» есть везде, где загружен bstv.js (с 2.3.63)
     function iptvMenuOff() {
         if (!tvOn() || lsGet('bs_iptv_menu_off')) return;
         try {
