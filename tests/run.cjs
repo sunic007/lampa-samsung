@@ -84,7 +84,16 @@ x2 = decide2({}, res({}, DEAD_DIRECT)); t('источники: прямые ме
     t('кнопки плеера: ещё раз — снова показан', P.M._togglePanelBtn('sleep') === false && JSON.parse(store.bs_pbtn_hide).indexOf('sleep') < 0);
     P.ctx.Lampa = { Player: { opened: () => true } };
     const gear = { items: [{ method: 'size' }, { method: 'speed' }, { method: 'share' }] };
-    t('шестерёнка: меню настроек плеера узнаём, чужие списки — нет', P.M._isGearMenu(gear) === true && P.M._isGearMenu({ items: [{ title: 'x' }] }) === false);
+    {   // экран ошибки по-человечески и стрелки ▲▼ панели IPTV
+        const e1 = P.M._errorText('details [manifestLoadError] fatal [true]', true), e2 = P.M._errorText('details [bufferAppendError] fatal [true]', false),
+            e3 = P.M._errorText('code [4] details [x]', false), e4 = P.M._errorText('Не удалось декодировать видео', false);
+        t('ошибка видео: канал не отвечает — по-русски и что нажать', e1.main === 'Канал сейчас не показывает' && /▲ ▼/.test(e1.hint));
+        t('ошибка видео: не декодируется — другой плеер; не загрузилось — другой источник', /не открывается/.test(e2.main) && /плеер/.test(e2.hint) && e3.main === 'Видео не загрузилось' && /не открывается/.test(e4.main));
+        const svg = { className: { baseVal: '' }, parentNode: { className: 'player-panel-iptv__arrow-down', parentNode: null } };
+        t('стрелки IPTV: ▼ под svg узнаём, ▲ тоже, чужое — нет', P.M._iptvArrowDir(svg) === 1 &&
+            P.M._iptvArrowDir({ className: 'player-panel-iptv__arrow-up' }) === -1 && P.M._iptvArrowDir({ className: 'x', parentNode: null }) === 0);
+    }
+    t('шестерёнка: меню настроек плеера узнаём, чужие списки — нет',P.M._isGearMenu(gear) === true && P.M._isGearMenu({ items: [{ title: 'x' }] }) === false);
     const gi = P.M._gearItems().map(i => i.bs || '#').join();
     t('шестерёнка: «Сон», «День», «Ночь» и выбор кнопок панели', gi === '#,sleep,day,night,btns');
     t('кнопки плеера: кнопки Lampa тоже (качество, картинка в картинке)', /player-panel__quality/.test(P.M._panelCss(['quality'])) && /player-panel__pip/.test(P.M._panelCss(['pip'])) && !/settings/.test(P.M._panelCss(['quality', 'pip', 'tracks', 'subs', 'flow', 'volume', 'fullscreen', 'sleep', 'day', 'night'])));

@@ -735,10 +735,25 @@ var BSTv = (function () {
     function cats() {
         var out = [{ t: 'search', title: 'Поиск', sub: '' }, { t: 'fav', title: 'Избранное', sub: favs().length + '' },
             { t: 'recent', title: 'Недавние', sub: recents().length + '' }, { t: 'all', title: 'Все каналы', sub: S.data.channels.length + '' }], i, g, pls;
-        for (i = 0; i < S.data.groups.length; i++) { g = S.data.groups[i]; out.push({ t: 'group', name: g.name, title: g.name, sub: g.count + '' }); }
+        // плейлисты — сразу под «Все каналы»: внизу, под десятками разделов, их не найти
         pls = playlists();
         if (pls.length > 1) for (i = 0; i < pls.length; i++) out.push({ t: 'pl', id: pls[i].id, title: (pls[i].id === S.pl.id ? '● ' : '') + pls[i].name, sub: 'плейлист' });
+        if (skazItem().length) out.push({ t: 'skaz', title: 'TV Skaz', sub: 'каналы Skaz' });
+        out.push({ t: 'addpl', title: '+ Добавить свой плейлист', sub: '' });
+        for (i = 0; i < S.data.groups.length; i++) { g = S.data.groups[i]; out.push({ t: 'group', name: g.name, title: g.name, sub: g.count + '' }); }
         return out;
+    }
+    /* TV Skaz — телеканалы сборки Skaz (свой плеер, их VIP и реклама). Каналы у них не берём: даём переход на их экран —
+     * тот же пункт меню «TV Skaz» (есть он — значит, их плагин загружен). */
+    function skazItem() {
+        try { return $('.menu .menu__item').filter(function () { return $(this).find('.menu__text').text().replace(/^\s+|\s+$/g, '') === 'TV Skaz'; }).first(); }
+        catch (e) { return { length: 0 }; }
+    }
+    function openSkaz() {
+        var it = skazItem();
+        if (!it.length) return noty('TV Skaz сейчас недоступен');
+        exit();
+        setTimeout(function () { try { it.trigger('hover:enter'); } catch (e) {} }, 300);
     }
     function drawCats() {
         var c = S.cats, w = windowOf(c.length, S.cfocus), html = '', i, on;
@@ -790,7 +805,7 @@ var BSTv = (function () {
     /** Раздел под фокусом сразу показываем в списке каналов — без OK (поиск и плейлисты — только по OK). */
     function catPreview() {
         var c = S.cats[S.cfocus];
-        if (c && c.t !== 'search' && c.t !== 'pl') { setView(viewOf(c.t, c.name)); drawList(); }
+        if (c && c.t !== 'search' && c.t !== 'pl' && c.t !== 'skaz' && c.t !== 'addpl') { setView(viewOf(c.t, c.name)); drawList(); }
         drawCats();
     }
     function openCat() {
@@ -807,6 +822,8 @@ var BSTv = (function () {
             return;
         }
         if (c.t === 'pl') return switchPlaylist(c.id);
+        if (c.t === 'skaz') return openSkaz();
+        if (c.t === 'addpl') return addPlaylist('bstv_cats');
         setView(viewOf(c.t, c.name));
         openList();
     }
@@ -939,6 +956,7 @@ var BSTv = (function () {
     function choosePlaylist(back) {
         var pls = playlists(), items = [], i;
         for (i = 0; i < pls.length; i++) items.push({ title: pls[i].name, id: pls[i].id, selected: pls[i].id === S.pl.id });
+        if (skazItem().length) items.push({ title: 'TV Skaz', act: 'skaz' });
         items.push({ title: '+ Добавить свой плейлист', act: 'add' });
         if (!S.pl.key && mine(S.pl.id)) items.push({ title: 'Убрать «' + S.pl.name + '»', act: 'del' });
         Lampa.Select.show({
@@ -947,6 +965,7 @@ var BSTv = (function () {
             onBack: function () { Lampa.Controller.toggle(back); },
             onSelect: function (a) {
                 if (a.act === 'add') return addPlaylist(back);
+                if (a.act === 'skaz') return openSkaz();
                 if (a.act === 'del') return removePlaylist(S.pl, back);
                 Lampa.Controller.toggle(back); switchPlaylist(a.id);
             }

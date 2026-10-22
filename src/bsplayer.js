@@ -537,7 +537,60 @@ var BSPlayer = (function () {
         H.prototype.trigger.__bs = true;
     }
 
+    /* Панель IPTV-плеера Lampa (TV Skaz, расширение IPTV): стрелки ▲▼ у номера канала — только картинка, мышью и
+     * пальцем не нажимались. Нажатие — как стрелка пульта (соседний канал в панели), через секунду он включается, как
+     * по OK; нажал несколько раз подряд — включится последний. */
+    var iptvArrowTimer = 0;
+    function iptvArrowDir(t) {
+        for (; t && t !== document; t = t.parentNode) {
+            var c = typeof t.className === 'string' ? t.className : '';
+            if (c.indexOf('player-panel-iptv__arrow-up') >= 0) return -1;
+            if (c.indexOf('player-panel-iptv__arrow-down') >= 0) return 1;
+        }
+        return 0;
+    }
+    function iptvArrows() {
+        var css = document.createElement('style');
+        css.textContent = '.player-panel-iptv__arrow-up,.player-panel-iptv__arrow-down{cursor:pointer}';
+        document.head.appendChild(css);
+        document.addEventListener('click', function (e) {
+            var dir = iptvArrowDir(e.target);
+            if (!dir) return;
+            try { if (dir < 0) Lampa.PlayerIPTV.prevChannel(); else Lampa.PlayerIPTV.nextChannel(); } catch (x) { return; }
+            clearTimeout(iptvArrowTimer);
+            iptvArrowTimer = setTimeout(function () { try { Lampa.PlayerIPTV.play(); } catch (x) {} }, 1000);
+        }, true);
+    }
+
+    /* Ошибка видео: Lampa показывает помехи и «details [manifestLoadError] fatal [true]» — человеку это ничего не говорит.
+     * Пишем по-русски, что случилось и что нажать; вместо помех — спокойный тёмный фон. Техническая строка остаётся
+     * в подсказке (title) — для «Сообщить о проблеме». */
+    function errorText(raw, iptv) {
+        raw = String(raw || '');
+        var decode = /decod|codec|bufferAppend|MEDIA_ERR_DECODE|code \[3\]|декодир/i.test(raw);   // «Не удалось декодировать видео» — player_error_one
+        if (decode) return { main: 'Это видео не открывается в этом плеере', hint: iptv ? '▲ ▼ — другой канал' : 'Назад — другой источник или плеер (Настройки → Плеер)' };
+        return iptv ? { main: 'Канал сейчас не показывает', hint: 'Источник канала не отвечает. ▲ ▼ — другой канал' }
+            : { main: 'Видео не загрузилось', hint: 'Источник не отдал видео. Назад — выбрать другой источник' };
+    }
+    function friendlyError() {
+        var css = document.createElement('style');
+        css.textContent = '.player-video__noise-canvas{display:none!important}.player-video__noise{background:#0d0e10}' +
+            '.bs-err-hint{opacity:.7;font-size:.8em;margin-top:.5em}';
+        document.head.appendChild(css);
+        Lampa.PlayerVideo.listener.follow('error', function (e) {
+            if (!e || !e.fatal) return;
+            setTimeout(function () {
+                var box = $('.player-video__noise-text');
+                if (!box.length) return;
+                var t = errorText(e.error, $('.player').hasClass('iptv'));
+                box.attr('title', String(e.error || '')).empty().append($('<div>').text(t.main)).append($('<div class="bs-err-hint">').text(t.hint));
+            }, 0);
+        });
+    }
+
     function start() {
+        try { iptvArrows(); } catch (e) {}
+        try { friendlyError(); } catch (e) {}
         try {
             Lampa.Player.listener.follow('start', function () { try { hookHls(); } catch (e) {} });
             Lampa.Player.listener.follow('start', begin);
@@ -555,5 +608,5 @@ var BSPlayer = (function () {
 
     function hasEndMark() { return !!(s && s.endMark); }
 
-    return { start: start, hasEndMark: hasEndMark, _toLampa: toLampa, _parseChapters: parseChapters, _feedLampa: feedLampa, _state: function () { return s; }, _trimTracks: trimTracks, _night: nightNext, _bwUsable: bwUsable, _audioGuard: audioGuard, _panelCss: panelCss, _togglePanelBtn: togglePanelBtn, _hiddenBtns: hiddenBtns, _isGearMenu: isGearMenu, _gearItems: gearItems };
+    return { start: start, hasEndMark: hasEndMark, _toLampa: toLampa, _parseChapters: parseChapters, _feedLampa: feedLampa, _state: function () { return s; }, _trimTracks: trimTracks, _night: nightNext, _bwUsable: bwUsable, _audioGuard: audioGuard, _panelCss: panelCss, _togglePanelBtn: togglePanelBtn, _hiddenBtns: hiddenBtns, _isGearMenu: isGearMenu, _gearItems: gearItems, _iptvArrowDir: iptvArrowDir, _errorText: errorText };
 })();
