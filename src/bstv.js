@@ -102,6 +102,12 @@ var BSTv = (function () {
         if (c < 0) c = line.indexOf(',');
         return c < 0 ? '' : line.slice(c + 1).replace(/^\s+|\s+$/g, '');
     }
+    /** Раздел по-русски: у iptv-org они английские (Kids, Movies, General) — тот же словарь, что для расширения IPTV
+     *  (BSFeatures.iptvGroup); свои названия (по-русски, страны Free-TV) остаются как есть. */
+    function groupRu(g) {
+        if (!g) return g;
+        try { return window.BSFeatures._iptvGroup(g) || g; } catch (e) { return g; }
+    }
     /* Разделы в плейлистах пишут по-разному — понимаем всё распространённое:
      *   group-title="…" (и в одинарных кавычках, и без них), tvg-group="…" — у канала;
      *   #EXTGRP:… после #EXTINF — у этого канала; #EXTGRP:… до #EXTINF — у всех следующих, пока не сменится;
@@ -143,7 +149,7 @@ var BSTv = (function () {
                     if (cur && /^https?:\/\/\S+$/i.test(u)) {
                         cur.url = u;
                         cur.name = cur.name || u;
-                        cur.group = (cur.group || sticky || '').split(';')[0].replace(/^\s+|\s+$/g, '');
+                        cur.group = groupRu((cur.group || sticky || '').split(';')[0].replace(/^\s+|\s+$/g, ''));
                         if (!/^https?:/i.test(cur.logo)) cur.logo = '';
                         cur.num = out.length + 1;
                         out.push(cur);
@@ -766,12 +772,13 @@ var BSTv = (function () {
     function cats() {
         var out = [{ t: 'search', title: 'Поиск', sub: '' }, { t: 'fav', title: 'Избранное', sub: favs().length + '' },
             { t: 'recent', title: 'Недавние', sub: recents().length + '' }, { t: 'all', title: 'Все каналы', sub: S.data.channels.length + '' }], i, g, pls;
-        // плейлисты — сразу под «Все каналы»: внизу, под десятками разделов, их не найти
+        // сначала разделы (Фильмы, Новости…) — за ними сюда и приходят; плейлисты, TV Skaz и «Добавить» — в конце
+        // (их удобнее менять на витрине, при открытии «Телеканалов»)
+        for (i = 0; i < S.data.groups.length; i++) { g = S.data.groups[i]; out.push({ t: 'group', name: g.name, title: g.name, sub: g.count + '' }); }
         pls = playlists();
         if (pls.length > 1) for (i = 0; i < pls.length; i++) out.push({ t: 'pl', id: pls[i].id, title: (pls[i].id === S.pl.id ? '● ' : '') + pls[i].name, sub: 'плейлист' });
         if (skazItem().length) out.push({ t: 'skaz', title: 'TV Skaz', sub: 'каналы Skaz' });
         out.push({ t: 'addpl', title: '+ Добавить свой плейлист', sub: '' });
-        for (i = 0; i < S.data.groups.length; i++) { g = S.data.groups[i]; out.push({ t: 'group', name: g.name, title: g.name, sub: g.count + '' }); }
         return out;
     }
     /* TV Skaz — телеканалы сборки Skaz (свой плеер, их VIP и реклама). Каналы у них не берём: даём переход на их экран —
