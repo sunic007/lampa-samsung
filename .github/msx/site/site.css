@@ -310,9 +310,9 @@ a.store:hover { border-color:color-mix(in srgb, var(--accent) 50%, var(--glass-l
 @keyframes launch-spin { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .launch { transition:none; } .launch-ring { animation-duration:2.4s; } }
 /* «Сейчас смотрят · За месяц» под кнопками главной */
-.live { display:flex; align-items:center; gap:8px; margin:14px 0 0; color:var(--muted); font-size:.95rem; }
+.live { margin:14px 0 0; color:var(--muted); font-size:.95rem; }
 .live[hidden] { display:none; }
 .live b { color:var(--text); font-weight:700; }
-.live-dot { width:9px; height:9px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); animation:live-pulse 2s infinite; }
+.live-dot { display:inline-block; vertical-align:middle; margin:-2px 8px 0 0; width:9px; height:9px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); animation:live-pulse 2s infinite; }
 @keyframes live-pulse { 70% { box-shadow:0 0 0 8px transparent; } 100% { box-shadow:0 0 0 0 transparent; } }
 @media (prefers-reduced-motion: reduce) { .live-dot { animation:none; } }
