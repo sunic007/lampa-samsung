@@ -358,6 +358,7 @@ var BSTelegram = (function () {
         var go = function () {
             if (svc.store === 'ok') { svcSync(h.has || {}); svcMove(); }
             if (svcTg() && !svc.d) svcDerive();
+            if (svcTg()) svcCmds();
             if (!was && svcBot()) setTimeout(poll, 500);        // Lampa открыла служба (кнопка «на ТВ») — очередь сразу
         };
         // «Отключить Telegram», пока служба не отвечала: стереть и в ней — раньше, чем переносить новое
@@ -1796,7 +1797,9 @@ var BSTelegram = (function () {
             var extra = count[d.name] > 1 ? ' · ' + (d.model && list.filter(function (o) { return o.name === d.name && o.model === d.model; }).length === 1 ? d.model : d.id.slice(0, 3).toUpperCase()) : '';
             // старая Lampa (до 1.7.18) не присылает адрес — не умеет пульт и переименование, пусть будет видно
             var old = d.id !== tvId && (!d.ip || (d.v && verNum(d.v) < verNum(appVer())));
-            return { id: d.id, ip: d.ip, old: old, text: '📺 ' + d.name + extra + (old ? L(' (старая Lampa)', ' (old Lampa)', ' (eski Lampa)') : '') };
+            // Lampa там закрыта (ответила служба): откроется по команде; экран выключен — картинки не будет, пока не включат
+            var closed = d.svc ? (d.pw === 'standby' ? L(' (экран выключен)', ' (screen off)', " (ekran o'chiq)") : L(' (Lampa закрыта)', ' (Lampa closed)', ' (Lampa yopiq)')) : '';
+            return { id: d.id, ip: d.ip, old: old, text: '📺 ' + d.name + extra + (old ? L(' (старая Lampa)', ' (old Lampa)', ' (eski Lampa)') : closed) };
         });
     }
     function myIp() { try { return String(webapis.network.getIp() || ''); } catch (e) { return ''; } }
@@ -1933,6 +1936,12 @@ var BSTelegram = (function () {
      * дольше LEADER_ALIVE» (пропали «я здесь» в ntfy) бота не отнимает. */
     var WATCH_EVERY = 30000, WATCH_SPAN = 45000, WATCH_RANK_GAP = 60000, WATCH_ZERO = 2 * 60000;
     var watch = { at: 0, since: 0, zeroAt: 0, busy: false, n: 0 };
+    var RECLAIM_EVERY = 3 * 60000, reclaimAt = 0;
+    /** Главный — живой ТВ с Lampa на экране (его «я здесь» с fg, не служба). */
+    function leaderOnScreen() {
+        var d = leader.id ? devices[leader.id] : null;
+        return !!d && !d.svc && !!d.fg && Date.now() - leader.at < LEADER_ALIVE;
+    }
     function watchRank() {
         var now = Date.now(), rank = 0, k;
         for (k in devices) if (devices.hasOwnProperty(k) && k !== leader.id && devices[k].fg && now - devices[k].at < LEADER_ALIVE && k < tvId) rank++;
@@ -1942,6 +1951,15 @@ var BSTelegram = (function () {
         if (watch.busy) return;
         if (!held() || polling || pair || svc.away || !hasToken() || !chat()) { watch.since = 0; return; }
         var now = Date.now();
+        // мы на экране, а главный — нет (его Lampa закрыта и бота держит его служба, или о нём ничего не слышно): бот
+        // должен быть у того, кто на экране. Раз в RECLAIM_EVERY берём сами — служба на «занято» сразу уступает; живой
+        // главный на экране (его «я здесь» с fg) не трогаем. Иначе служба спящего ТВ держала бота часами (2026-10-22)
+        if (onScreen() && !leaderOnScreen() && now - lastConflictAt > RECLAIM_EVERY && now - reclaimAt > RECLAIM_EVERY) {
+            reclaimAt = now; watch.since = 0;
+            log('главный не на экране — беру бота', leader.id || '?');
+            yieldHold = false; conflictUntil = 0;
+            return setTimeout(poll, 300 + Math.floor(Math.random() * 1500));
+        }
         if (now - watch.at < WATCH_EVERY - 1000) return;                 // не чаще 2 раз в минуту
         watch.at = now; watch.busy = true; watch.n++;
         call('getWebhookInfo', {}, function (w) {
@@ -2019,7 +2037,9 @@ var BSTelegram = (function () {
         if (m.name) {
             tvsNote(m.from);
             var dv = devices[m.from] || {};
-            devices[m.from] = { name: cleanName(m.name), at: now, model: m.model || dv.model || '', ip: m.ip || dv.ip || '', v: m.v || dv.v || '' };
+            // svc — за ТВ отвечает его служба (Lampa там закрыта), pw — его экран (on / standby); их несёт только «я здесь»
+            devices[m.from] = { name: cleanName(m.name), at: now, model: m.model || dv.model || '', ip: m.ip || dv.ip || '', v: m.v || dv.v || '',
+                svc: m.t === 'hello' ? !!m.svc : !!dv.svc, pw: m.t === 'hello' ? String(m.pw || '') : dv.pw || '' };
             if (m.t === 'hello') oldWarn(m.from);
         }
         if (m.t === 'hello') {
@@ -2075,7 +2095,7 @@ var BSTelegram = (function () {
     function newerOnline() {
         var mine = verNum(appVer()), now = Date.now(), k;
         if (!mine) return false;
-        for (k in devices) if (devices.hasOwnProperty(k) && now - devices[k].at < 30 * 60000 && verNum(devices[k].v) > mine) return true;
+        for (k in devices) if (devices.hasOwnProperty(k) && !devices[k].svc && now - devices[k].at < 30 * 60000 && verNum(devices[k].v) > mine) return true;
         return false;
     }
     function oldWarn(id) {
@@ -2096,7 +2116,7 @@ var BSTelegram = (function () {
     /** Другие включённые ТВ (отзывались за последний час). */
     function otherTvs() {
         var out = [], now = Date.now(), k;
-        for (k in devices) if (devices.hasOwnProperty(k) && now - devices[k].at < DEVICE_ALIVE) out.push({ id: k, name: devices[k].name, model: devices[k].model, ip: devices[k].ip, v: devices[k].v });
+        for (k in devices) if (devices.hasOwnProperty(k) && now - devices[k].at < DEVICE_ALIVE) out.push({ id: k, name: devices[k].name, model: devices[k].model, ip: devices[k].ip, v: devices[k].v, svc: devices[k].svc, pw: devices[k].pw });
         out.sort(function (a, b) { return a.name < b.name ? -1 : 1; });
         return out;
     }
@@ -2601,7 +2621,9 @@ var BSTelegram = (function () {
         // сколько ещё ждать (мс), а не «до скольких»: часы службы — свои
         if (typeFor && typeFor.tv === tvId && Date.now() - typeFor.at < TYPE_WAIT) typing[typeFor.chat] = typeFor.at + TYPE_WAIT - Date.now();
         r.typing = typing;
-        return { leader: !!lead, peers: peersOnScreen(), others: othersKnown(), allowed: tv, known: known, texts: texts, tv: r };
+        // me — этот ТВ в канале ТВ: служба (v5) говорит за него, пока Lampa закрыта (см. service.js, «канал ТВ»)
+        return { leader: !!lead, peers: peersOnScreen(), others: othersKnown(), allowed: tv, known: known, texts: texts, tv: r,
+            me: { id: tvId, name: tvName(), model: lsGet('bs_tv_model') || '', v: appVer(), relay: busRelay() } };
     }
     /** «Я здесь» (или away — ухожу) и правила. cb(сколько апдейтов ждёт в очереди службы). */
     function svcAlive(away, cb, lead) {
@@ -2655,7 +2677,21 @@ var BSTelegram = (function () {
         }, 3000);
     }
     /** Lampa снова на экране: 409 на брошенный при уходе опрос — от своей же службы, не от другого ТВ. */
-    function svcBack() { svc.away = false; svc.aliveAt = 0; conflictUntil = 0; yieldHold = false; }
+    function svcBack() { svc.away = false; svc.aliveAt = 0; conflictUntil = 0; yieldHold = false; svcCmds(); }
+    /** Команды этому ТВ, которые служба (v5) приняла из канала ТВ, пока Lampa была закрыта, — выполнить как обычно.
+     *  Служба уже проверила, что они свежие, и открыла ради них Lampa: время — «сейчас» (иначе open/type устарели бы). */
+    function svcCmds() {
+        if (!(svc.up && (svc.v | 0) >= 5)) return;
+        svcAsk('GET', '/bus/cmds', undefined, function (st, j) {
+            if (!(st === 200 && j && j.ok && j.items && j.items.length)) return;
+            j.items.forEach(function (m) {
+                if (!m || typeof m !== 'object' || m.to !== tvId) return;
+                m.ts = Date.now();
+                log('команда, пока Lampa была закрыта', m.t);
+                try { onBus(m); } catch (e) { log('канал', e.message); }
+            });
+        }, 5000);
+    }
 
     function reply(text, buttons) { send(text, null, null, null, buttons); }
 
@@ -4161,6 +4197,8 @@ var BSTelegram = (function () {
         'не получилось': ["didn't work", "bo'lmadi"],
         'не получилось открыть поиск': ["couldn't open search", "qidiruvni ochib bo'lmadi"],
         'нет связи с Telegram': ['no connection to Telegram', "Telegram bilan aloqa yo'q"],
+        'Lampa была закрыта — открываю': ['Lampa was closed — opening it', "Lampa yopiq edi — ochyapman"],
+        'экран выключен — включите ТВ: Lampa уже открывается': ['the screen is off — turn the TV on: Lampa is already opening', "ekran o'chiq — televizorni yoqing: Lampa allaqachon ochilmoqda"],
         'Telegram не ответил': ["Telegram didn't answer", 'Telegram javob bermadi']
     };
     function whyText(w) { var t = WHY[w]; return t ? L(w, t[0], t[1]) : w; }
@@ -4592,7 +4630,7 @@ var BSTelegram = (function () {
         /** 'own' — свой бот подключён, 'none' — не подключено. */
         state: state, refresh: function () { try { refreshSettings(); } catch (e) {} },
         tvName: tvName,
-        _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _join4: { code: join4Code, show: join4Show, topic: join4Topic, hellos: join4Hellos, box: join4Box, open: join4Open, send: join4Send, BASE9: BASE9 }, _joinTopic: joinTopic, _joinShow: joinShow, _joinKeys: joinKeys, _aiForget: aiForget, _relaySet: relaySet, _svcSync: svcSync, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _lateCommand: lateCommand, _botDesc: function (l, s) { return [botDesc(l || 'ru', s), botShort(l || 'ru', s)]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _tmdbGet: tmdbGet, _blockParse: blockParse, _blockReset: function () { blockIds = null; blockAt = 0; }, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow,
+        _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _join4: { code: join4Code, show: join4Show, topic: join4Topic, hellos: join4Hellos, box: join4Box, open: join4Open, send: join4Send, BASE9: BASE9 }, _joinTopic: joinTopic, _joinShow: joinShow, _joinKeys: joinKeys, _aiForget: aiForget, _relaySet: relaySet, _svcSync: svcSync, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _leaderOnScreen: leaderOnScreen, _watchTick: watchTick, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _lateCommand: lateCommand, _botDesc: function (l, s) { return [botDesc(l || 'ru', s), botShort(l || 'ru', s)]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _tmdbGet: tmdbGet, _blockParse: blockParse, _blockReset: function () { blockIds = null; blockAt = 0; }, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow,
         _call: call, _check: check, _remind: remind, _joinCode: joinCode, _randomTopic: randomTopic,
         _busTopic: busTopic, _svc: svc, _svcKey: function (k) { if (window.BS_TEST_HOOKS !== true) return undefined; if (typeof k === 'string') svcKey = k; return svcKey; },
         _svcStart: svcStart, _svcMove: svcMove, _svcCheck: svcCheck, _svcForget: svcForget, _tgOff: tgOff, _tgOffAsk: tgOffAsk, _svcSeen: svcSeen, _tvRules: tvRules, _addSettings: addSettings, _aiRun: aiRun, _aiSlot: aiSlot, _setAiKey: setAiKey,

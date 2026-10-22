@@ -1091,6 +1091,17 @@ t('обновления: непроверенная версия функций 
     const sealed = JSON.stringify(C.seal(k, JSON.stringify(msg)));
     t('канал ТВ: своё зашифрованное сообщение читается', T._busOpen(sealed).name === 'Зал');
     t('канал ТВ: повтор того же сообщения — отброшен', T._busOpen(sealed) === null);
+    {   // канал ТВ: служба (Lampa закрыта) и страница — один шифр
+        const SVx = require(path.join(SRC, 'service', 'service.js'))._test, kb = Buffer.from(T._busKey());
+        const fromSvc = SVx.seal(kb, JSON.stringify({ t: 'hello', from: 'svc1', name: 'Офис', svc: 1, ts: Date.now() }));
+        t('канал ТВ: «я здесь» от службы читает страница', (m => !!m && m.svc === 1 && m.name === 'Офис')(T._busOpen(JSON.stringify(fromSvc))));
+        t('канал ТВ: команду страницы читает служба', JSON.parse(SVx.unseal(kb, C.seal(T._busKey(), JSON.stringify({ t: 'open', to: 'x' })))).t === 'open');
+        t('канал ТВ: служба — чужой ключ не читает', SVx.unseal(Buffer.from(C.key('other')), C.seal(T._busKey(), 'x')) === null);
+        T._onBus({ t: 'hello', from: 'lead1', name: 'Зал', leader: true, fg: true });
+        t('бот: главный на экране — его не отнимаем', T._leaderOnScreen() === true);
+        T._onBus({ t: 'hello', from: 'lead1', name: 'Зал', fg: false, svc: 1, pw: 'standby' });
+        t('бот: у главного Lampa закрыта (ответила служба) — бот забирает ТВ на экране', T._leaderOnScreen() === false);
+    }
     t('канал ТВ: чужой ключ (без токена) — отброшено', T._busOpen(JSON.stringify(C.seal(C.key('other'), JSON.stringify(msg)))) === null);
     const tampered = C.seal(k, JSON.stringify(msg)); tampered.c = tampered.c.slice(0, -4) + (tampered.c.slice(-4) === 'AAAA' ? 'BBBB' : 'AAAA');
     t('канал ТВ: изменённое сообщение — отброшено', T._busOpen(JSON.stringify(tampered)) === null);
@@ -1795,6 +1806,8 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     const lb = T._tvLabels([{ id: 'aaa1', name: 'Samsung TV', model: 'QE55', ip: '1' }, { id: 'bbb2', name: 'Samsung TV', model: 'UE43', ip: '1' }, { id: 'ccc3', name: 'Зал', ip: '1' }]);
     t('имя ТВ: одинаковые различаются моделью', lb[0].text === '📺 Samsung TV · QE55' && lb[1].text === '📺 Samsung TV · UE43' && lb[2].text === '📺 Зал');
     const lb2 = T._tvLabels([{ id: 'aaa1', name: 'Samsung TV', model: 'QE55', ip: '1' }, { id: 'bbb2', name: 'Samsung TV', model: 'QE55', ip: '1' }]);
+    t('имя ТВ: за ТВ отвечает служба — «Lampa закрыта» / «экран выключен»', (l => l[0].text === '📺 Офис (экран выключен)' && l[1].text === '📺 Зал (Lampa закрыта)')(
+        T._tvLabels([{ id: 'svc1', name: 'Офис', ip: '1', svc: true, pw: 'standby' }, { id: 'svc2', name: 'Зал', ip: '1', svc: true, pw: 'on' }])));
     t('имя ТВ: другой ТВ без адреса — помечен «старая Lampa»', T._tvLabels([{ id: 'zzz9', name: 'ТВ PIW' }])[0].text === '📺 ТВ PIW (старая Lampa)');
     t('имя ТВ: и модель одинаковая — кусочек id', lb2[0].text === '📺 Samsung TV · AAA' && lb2[1].text === '📺 Samsung TV · BBB');
     t('поиск: просто название — без года и студии', (p => p.title === 'солдаты' && !p.year && !p.studio)(pq('Солдаты')));
@@ -2562,7 +2575,7 @@ async function serviceTests() {
         r.on('error', e => res({ st: 0, e })); r.end(b || undefined);
     });
     let r = await ask('GET', '/health');
-    t('служба /health: ok, версия, Node, секретов нет, файл секретов в порядке', r.st === 200 && r.j.ok && r.j.v === 4 && r.j.auth === true && r.j.store === 'ok' && /^v\d+/.test(r.j.node) && r.j.has.tg === false && r.j.has.ai.length === 0 && r.h['access-control-allow-origin'] === '*');
+    t('служба /health: ok, версия, Node, секретов нет, файл секретов в порядке', r.st === 200 && r.j.ok && r.j.v === 5 && r.j.auth === true && r.j.store === 'ok' && /^v\d+/.test(r.j.node) && r.j.has.tg === false && r.j.has.ai.length === 0 && r.h['access-control-allow-origin'] === '*');
     // ключ доступа: в svc.key папки данных (страница читает его как wgt-private/svc.key), без ключа — только /health
     const KEY = SV._test.key();
     t('ключ доступа: 32 байта hex, в svc.key папки данных', /^[0-9a-f]{64}$/.test(KEY) && fs.readFileSync(path.join(dir, 'svc.key'), 'utf8') === KEY);
@@ -3612,7 +3625,7 @@ async function serviceTests() {
     });
     const SEC = 'abcdefghjkmnpqrstuvw23';
     t('по Wi-Fi: по умолчанию — 0.0.0.0, порты 8898..8901, 15 минут, 10 неверных', SV._test.PAIR.host === '0.0.0.0' && SV._test.PAIR.ports.join() === '8898,8899,8900,8901' && SV._test.PAIR.ttl === 15 * 60000 && SV._test.PAIR.tries === 10);
-    t('по Wi-Fi: /health — версия 4', (await ask('GET', '/health')).j.v === 4);
+    t('по Wi-Fi: /health — версия 5', (await ask('GET', '/health')).j.v === 5);
     t('по Wi-Fi: /pair/start без ключа — 401', (await ask('POST', '/pair/start', { secret: SEC }, { 'X-Lampa-Key': '' })).st === 401);
     t('по Wi-Fi: /pair/start — секрет короткий или не [a-z0-9] — 400', (await ask('POST', '/pair/start', { secret: 'abc' })).st === 400 && (await ask('POST', '/pair/start', { secret: 'ABCDEFGHIJKLMNOPQRS' })).st === 400);
     t('по Wi-Fi: до /pair/start сервера для телефона нет', (await lan('GET', '/p/' + SEC)).st === 0 && (await ask('GET', '/pair/status')).j.open === false);
@@ -3700,7 +3713,7 @@ async function serviceTests() {
     await ask('POST', '/forget', {});
     const xl = [], stP = { bs_tv_id: 'tvP', bs_tg_offset: '777' };
     const P1 = pageP(stP, xl);
-    P1._svcStart(); await until(() => P1._svc.up && P1._svc.v === 4);
+    P1._svcStart(); await until(() => P1._svc.up && P1._svc.v === 5);
     P1._pairPhone(); await until(() => modals.length === 4);
     const lanUrl = qrs[3], lanM = /^http:\/\/127\.0\.0\.1:(\d+)\/p\/([a-z0-9]{22})$/.exec(lanUrl || ''), dl = dollars[dollars.length - 1];
     t('страница: служба v3 — QR на http://<ip ТВ>:<порт>/p/<секрет>, под QR — «Телефон — в той же Wi-Fi, что и телевизор»', !!lanM && +lanM[1] === PP && /Телефон — в той же Wi-Fi, что и телевизор/.test(dl.html) && SV._test.pair().open);

@@ -35,6 +35,7 @@
  *  POST /alive {away, offset, cfg}  страница на связи (или уходит: away) и правила для службы -> {ok, pending, next, polling}
  *  GET  /pending                -> {ok, next, more, items: [{u: апдейт, at: когда получен (часы Telegram; 0 — неизвестно), tv}]}
  *  POST /pending/ack {upTo}     страница разобрала апдейты до upTo включительно — из очереди убрать
+ *  GET  /bus/cmds               (v5) команды этому ТВ из канала ТВ, принятые, пока Lampa была закрыта -> {ok, items}
  *
  *  Подключение с телефона по Wi-Fi (v3; подробно — «подключение с телефона по Wi-Fi» ниже):
  *  POST /pair/start {secret}    открыть второй сервер — на 0.0.0.0:8898 (занят — 8899..8901), только для телефона в той же
@@ -48,7 +49,7 @@
 'use strict';
 var http = require('http'), https = require('https'), fs = require('fs'), urlm = require('url'), crypto = require('crypto'), os = require('os');
 
-var VERSION = 4, PORT = 8897, HOST = '127.0.0.1';
+var VERSION = 5, PORT = 8897, HOST = '127.0.0.1';
 var AI = ['groq', 'gemini', 'openrouter'];
 // адреса внешних служб; тесты подменяют их своими (cfg.up)
 var UP = {
@@ -884,6 +885,7 @@ function botReset() {
     botHalt();
     tgGen++;
     bot = botBlank(); typing = {}; pg.max = -1; pg.off = 0; loop.yielded = false; loop.takeover = false; loop.wSince = 0;
+    busStop(); bus.cmds = []; bus.heard = false; bus.since = {};
     botSave();
 }
 
@@ -916,7 +918,10 @@ function setCfg(c) {
     var tv = c.tv && typeof c.tv === 'object' ? c.tv : {}, k, cnt = 0;
     var n = { leader: c.leader === true, peers: Math.max(0, num(c.peers, 100)), others: num(c.others, 100), allowed: idList(c.allowed), known: idList(c.known),
         tv: { cbp: strList(tv.cbp, 20, 40), cbx: strList(tv.cbx, 20, 40), cmd: strList(tv.cmd, 10, 32).map(function (x) { return x.toLowerCase(); }),
-            words: strList(tv.words, 20, 60).map(norm) }, texts: {} };
+            words: strList(tv.words, 20, 60).map(norm) }, texts: {}, me: null };
+    // этот ТВ в канале ТВ (v5): номер, имя, модель, версия, запомненный сервер — служба говорит за него, пока Lampa закрыта
+    var me = c.me && typeof c.me === 'object' ? c.me : null;
+    if (me && /^[A-Za-z0-9]{4,16}$/.test(String(me.id))) n.me = { id: String(me.id), name: txt(me.name).slice(0, 40) || 'TV', model: txt(me.model).slice(0, 40), v: txt(me.v).slice(0, 20), relay: Math.max(0, num(me.relay, 9)) };
     if (tv.typing && typeof tv.typing === 'object') {
         typing = {};
         for (k in tv.typing) if (tv.typing.hasOwnProperty(k) && okId(k) && typeof tv.typing[k] === 'number' && tv.typing[k] > 0 && cnt++ < 20) typing[k] = mono() + Math.min(tv.typing[k], 10 * 60000);
@@ -931,21 +936,23 @@ function setCfg(c) {
 }
 
 /* страница на связи / ушла */
-function pageHere() { pg.at = mono(); pg.away = false; loop.yielded = false; loop.c409 = 0; loop.wait = 0; loop.takeover = false; loop.wSince = 0; botHalt(); botFlush(); }
+function pageHere() { pg.at = mono(); pg.away = false; loop.yielded = false; loop.c409 = 0; loop.wait = 0; loop.takeover = false; loop.wSince = 0; botHalt(); botFlush(); busStop(); }
 function pageGone() { return pg.away || (pg.busy === 0 && mono() - pg.at > B('gone')); }
 /** Опрашивать самим? Только главный ТВ без других на экране; после запуска службы (перезагрузка ТВ, auto-restart) —
  *  только когда своя страница с тех пор хоть раз прислала /alive: сохранённым правилам «главный» уже не верим (бота
  *  мог взять другой ТВ). Кроме одного ТВ на боте (others = 0) — у большинства так, и бот работает сразу после перезагрузки. */
 function shouldPoll() {
     var b = BT(), c = b.cfg;
-    var lead = !!c && ((c.leader && !(c.peers > 0) && (pg.seen || c.others === 0)) || loop.takeover);
+    // «ТВ один» — со слов страницы (others = 0) и если в канале ТВ (v5) мы никого не слышали: иначе после перезагрузки ТВ
+    // служба отнимала бы бота у живого главного (он — «занято», уступал), и бот отвечал «Lampa закрыта» с этого ТВ
+    var lead = !!c && ((c.leader && !(c.peers > 0) && (pg.seen || (c.others === 0 && !bus.heard))) || loop.takeover);
     return !!server && !!S().tg && lead && pageGone() && !loop.yielded && b.q.length < B('qMax');
 }
-/** Смотреть в Telegram, не пропал ли главный: ТВ на боте не один, своя страница ушла, сами не опрашиваем, после 409 —
+/** Смотреть в Telegram, не пропал ли главный: ТВ на боте не один (или бота у нас взяли — 409), своя страница ушла, сами не опрашиваем, после 409 —
  *  не раньше takeCool. ТВ один — не нужно (бота и так ведёт эта служба, см. shouldPoll). */
 function watchWanted() {
     var b = BT(), c = b.cfg;
-    return !!server && !!S().tg && !!c && (c.others > 0 || c.peers > 0) && pageGone() && !loop.takeover && !loop.on && !shouldPoll() &&
+    return !!server && !!S().tg && !!c && (c.others > 0 || c.peers > 0 || bus.heard || loop.yielded) && pageGone() && !loop.takeover && !loop.on && !shouldPoll() &&
         mono() >= loop.coolUntil && b.q.length < B('qMax');
 }
 function botWatch() {
@@ -974,6 +981,7 @@ function botHalt() {
 }
 function botTick() {
     try {
+        busTick();
         if (!loop.on && mono() >= loop.wait && shouldPoll()) return botFetch();
         botWatch();
     } catch (e) { log('опрос', e.message); loop.on = false; }
@@ -1032,7 +1040,9 @@ function botAnswer(x, text) {
         // Вели бота за пропавшего главного (takeover) — он вернулся (или взял другой ТВ): уступаем сразу.
         var c9 = BT().cfg || {};
         loop.c409 = (loop.c409 | 0) + 1;
-        if (!loop.takeover && !(c9.peers > 0) && c9.others === 0 && loop.c409 < 5) { log('бот занят (409) — повтор через минуту', ''); return botWait(60000); }
+        // «занято» от своей страницы бывает только сразу после её ухода (её длинный запрос — до 35 с); позже — это другой ТВ
+        var tail = mono() - pg.at < 90000;
+        if (!loop.takeover && !(c9.peers > 0) && c9.others === 0 && !bus.heard && tail && loop.c409 < 5) { log('бот занят (409) — повтор через минуту', ''); return botWait(60000); }
         loop.yielded = true; loop.takeover = false; loop.wSince = 0; loop.coolUntil = mono() + B('takeCool');
         log('бота опрашивает другой — уступаю до возвращения страницы', ''); return;
     }
@@ -1283,6 +1293,151 @@ function pageGot(text, gen, off) {
     pollOk(tgNow());
 }
 
+/* ---------- канал ТВ, пока Lampa закрыта (v5) ----------
+ * Несколько ТВ на одном боте говорят друг с другом через ntfy (bstg.js, «общий канал ntfy.sh»): «я здесь» (hello),
+ * «открыть на ТВ» (open), «набрать» (type)… Lampa закрыта — её страница молчит: главный ТВ через час убирал этот ТВ из
+ * списка, а «открыть на этом ТВ» уходило в пустоту и бот писал «не ответил». Теперь, пока Lampa закрыта (pageGone),
+ * канал слушает служба — от имени своего ТВ (имя, модель, номер — от страницы, cfg.me):
+ *  • «кто здесь» (hello с ask, who) — отвечает «я здесь» с пометками svc (Lampa закрыта) и pw (экран: on / standby);
+ *    ещё раз в BUS.every, если ТВ на боте не один (главный держит ТВ в списке DEVICE_ALIVE — час с лишним);
+ *  • команда этому ТВ (open, type, rename) — в очередь (GET /bus/cmds — заберёт страница), открыть Lampa и ответить
+ *    главному «⏳ открываю Lampa» (ack с wait) — окончательный ответ даст сама страница, когда выполнит.
+ * Вернулась своя страница — канал снова её (служба замолкает). Сообщения — тем же шифром, что у страницы (seal/unseal).
+ */
+var BUS = { every: 20 * 60000, first: 8000, cmdAge: 5 * 60000, cmdMax: 20, reconnect: 15000, life: 30 * 60000, idle: 120000 };
+var bus = { on: false, gen: 0, reqs: [], since: {}, seen: {}, seenN: 0, helloAt: 0, firstAt: 0, heard: false, cmds: [], topic: '', k: null };
+function busMe() { var c = BT().cfg; return c && c.me && c.me.id ? c.me : null; }
+function busWanted() { return !!server && !!S().tg && pageGone() && !!busMe(); }
+/** Crypt.open из bstg.js: подпись не сошлась (чужое, изменённое) — null. */
+function unseal(k, m) {
+    try {
+        if (!m || m.z !== 2) return null;
+        var n = buf(String(m.n), 'base64'), ct = buf(String(m.c), 'base64'), tag = buf(String(m.s), 'base64'), i, j, diff = 0;
+        if (n.length !== 16 || tag.length !== 16) return null;
+        var want = hmac(hmac(k, buf('mac', 'utf8')), Buffer.concat([n, ct])).slice(0, 16);
+        for (i = 0; i < 16; i++) diff |= want[i] ^ tag[i];
+        if (diff) return null;
+        var ek = hmac(k, buf('enc', 'utf8')), out = zeros(ct.length);
+        for (i = 0; i < ct.length; i += 32) {
+            var ks = hmac(ek, Buffer.concat([n, ctr(i)]));
+            for (j = 0; j < 32 && i + j < ct.length; j++) out[i + j] = ct[i + j] ^ ks[j];
+        }
+        return out.toString('utf8');
+    } catch (e) { return null; }
+}
+/** Серверы канала: запомненный страницей (cfg.me.relay) первым, потом остальные. */
+function busOrder() {
+    var list = relays(), r = (busMe() || {}).relay | 0, out = [], i;
+    if (r > 0 && r < list.length) out.push(r);
+    for (i = 0; i < list.length; i++) if (out.indexOf(i) < 0) out.push(i);
+    return out;
+}
+function busStart() {
+    if (bus.on) return;
+    var d = derive('');
+    bus.topic = d.topic; bus.k = buf(d.key, 'hex'); bus.on = true; bus.gen++; bus.helloAt = 0; bus.firstAt = mono() + BUS.first;
+    // слушаем, как страница: ntfy.sh и запомненный сервер (туда публикуют ТВ этого дома)
+    var r = (busMe() || {}).relay | 0;
+    [0].concat(r > 0 && r < relays().length ? [r] : []).forEach(busListen);
+    log('канал ТВ: Lampa закрыта — слушаю за неё', '');
+}
+function busStop() {
+    if (!bus.on) return;
+    bus.on = false; bus.gen++;
+    bus.reqs.forEach(function (r) { try { r.abort(); } catch (e) {} });
+    bus.reqs = [];
+}
+function busListen(i) {
+    var base = relays()[i], gen = bus.gen, again = false, r = null;
+    if (!bus.on || !base) return;
+    var retry = function () {
+        if (again) return;
+        again = true;
+        bus.reqs = bus.reqs.filter(function (x) { return x !== r; });
+        if (bus.on && gen === bus.gen) setTimeout(function () { if (bus.on && gen === bus.gen) busListen(i); }, BUS.reconnect);
+    };
+    r = upstream('GET', base + bus.topic + '/json?since=' + encodeURIComponent(bus.since[i] || 'now'), {}, null, BUS.idle, function (e, x) {
+        if (e || !x || x.statusCode !== 200) { if (x) try { x.resume(); } catch (er) {} return retry(); }
+        var rest = '';
+        x.setEncoding('utf8');
+        x.on('data', function (d) {
+            var nl;
+            rest += d;
+            while ((nl = rest.indexOf('\n')) >= 0) { busLine(i, rest.slice(0, nl)); rest = rest.slice(nl + 1); }
+            if (rest.length > 65536) rest = '';
+        });
+        x.on('end', retry); x.on('aborted', retry); x.on('error', retry);
+    }) || null;
+    if (!r) return retry();
+    bus.reqs.push(r);
+    setTimeout(function () { if (!again) try { r.abort(); } catch (e) {} }, BUS.life);   // раз в полчаса — заново (как страница)
+}
+function busLine(i, line) {
+    var ev = null, m = null, t;
+    try { ev = JSON.parse(line); } catch (e) { return; }
+    if (!ev || ev.event !== 'message') return;
+    if (ev.id) bus.since[i] = String(ev.id).slice(0, 40);
+    try { m = JSON.parse(ev.message); } catch (e) { return; }
+    if (!m || m.z !== 2 || bus.seen[m.n]) return;
+    t = unseal(bus.k, m);
+    if (!t) return;
+    if (++bus.seenN > 500) { bus.seen = {}; bus.seenN = 0; }
+    bus.seen[m.n] = 1;
+    try { m = JSON.parse(t); } catch (e) { return; }
+    if (!m || !m.t || !m.from || (m.ts && Math.abs(Date.now() - m.ts) > 86400000)) return;
+    try { busOn(m); } catch (e) { log('канал ТВ', e.message); }
+}
+function busOn(m) {
+    var me = busMe();
+    if (!me || m.from === me.id || !busWanted()) return;
+    if (m.t === 'hello' || m.t === 'who') bus.heard = true;                     // на боте есть и другие ТВ
+    if ((m.t === 'hello' && m.ask) || m.t === 'who') return busHello();
+    if (m.to !== me.id) return;
+    if ((m.t === 'open' || m.t === 'type') && Date.now() - (m.ts || 0) < 60000) {
+        busCmd(m);
+        return power(function (st) {
+            if (m.ref) busSend({ t: 'ack', ref: m.ref, wait: true, name: me.name,
+                why: st === 'standby' ? 'экран выключен — включите ТВ: Lampa уже открывается' : 'Lampa была закрыта — открываю' });
+            if (!launchAt || mono() - launchAt >= B('launchGap')) { launchAt = mono(); launchedWall = Date.now(); launchApp(); }
+        });
+    }
+    if (m.t === 'rename') busCmd(m);
+}
+function busCmd(m) {
+    bus.cmds.push({ m: m, at: mono() });
+    if (bus.cmds.length > BUS.cmdMax) bus.cmds.shift();
+}
+function busHello() {
+    var me = busMe();
+    if (!me) return;
+    bus.helloAt = mono();
+    power(function (st) {
+        busSend({ t: 'hello', v: me.v, name: me.name, model: me.model, ip: lanIp(), leader: false, fg: false, svc: 1, pw: st || '' });
+    });
+}
+function busSend(obj) {
+    var me = busMe();
+    if (!me || !bus.k || !bus.topic) return;
+    obj.from = me.id; obj.ts = Date.now();
+    var body = buf(JSON.stringify(seal(bus.k, JSON.stringify(obj))), 'utf8'), list = relays(), order = busOrder();
+    (function next(n) {
+        if (n >= order.length) return log('канал ТВ: ни один сервер не принял', obj.t);
+        upstream('POST', list[order[n]] + bus.topic, {}, body, NTFY_WAIT, function (e, x) {
+            if (x) try { x.resume(); } catch (er) {}
+            if (e || !x || x.statusCode !== 200) next(n + 1);
+        });
+    })(0);
+}
+/** Раз в BOT.idle: Lampa закрыта — слушать канал; ушла только что — «я здесь, Lampa закрыта», потом раз в BUS.every. */
+function busTick() {
+    if (!busWanted()) return busStop();
+    if (!bus.on) return busStart();
+    var c = BT().cfg || {}, many = c.others > 0 || c.peers > 0 || bus.heard;
+    if (!many) return;
+    if (bus.firstAt && mono() >= bus.firstAt) { bus.firstAt = 0; return busHello(); }   // страница сказала «bye» — список у главного без нас
+    if (!bus.firstAt && mono() - bus.helloAt >= BUS.every) busHello();
+}
+
 function alive(req, res) {
     readBody(req, LIMIT_CFG, function (err, b) {
         if (err) return json(res, err, { ok: false });
@@ -1319,7 +1474,7 @@ function handle(req, res) {
             leader: dc ? !!dc.leader : null, peers: dc ? dc.peers : null, others: dc ? dc.others : null,
             seen: !!pg.seen, gone: pageGone(), away: !!pg.away, busy: pg.busy, sincePage: Math.round((mono() - pg.at) / 1000),
             yielded: !!loop.yielded, on: !!loop.on, takeover: !!loop.takeover, coolS: Math.max(0, Math.round((loop.coolUntil - mono()) / 1000)), watchN: loop.wN, waitS: Math.max(0, Math.round((loop.wait - mono()) / 1000)),
-            backoff: loop.backoff, q: db.q.length };
+            backoff: loop.backoff, q: db.q.length, bus: bus.on, busHeard: bus.heard, busCmds: bus.cmds.length, me: !!(dc && dc.me) };
         if (authed) { dj.offset = db.offset; dj.pageOff = pg.off; dj.trusted = pgTrusted(); }
         return json(res, 200, dj);
     }
@@ -1332,6 +1487,12 @@ function handle(req, res) {
         if (botClean()) botSaveSoon();
         var pq = BT().q, give = B('give');
         return json(res, 200, { ok: true, next: BT().offset, more: pq.length > give, items: pq.slice(0, give) });
+    }
+    // команды этому ТВ, принятые службой из канала ТВ, пока Lampa была закрыта (свежие — не старше BUS.cmdAge)
+    if (p === '/bus/cmds' && req.method === 'GET') {
+        var bn = mono(), items = bus.cmds.filter(function (c) { return bn - c.at < BUS.cmdAge; }).map(function (c) { return c.m; });
+        bus.cmds = [];
+        return json(res, 200, { ok: true, items: items });
     }
     // экран ТВ: on / standby (выключен пультом) / '' — не узнали; странице, чтобы бот не писал «включаю» в тёмный экран
     if (p === '/power' && req.method === 'GET') return power(function (st) { json(res, 200, { ok: true, state: st }); });
@@ -1410,6 +1571,7 @@ function stop(cb) {
     server = null;
     clearInterval(loop.timer); loop.timer = null;
     botHalt();
+    busStop();
     if (bot) botFlush();
     pairClose();
     if (!s) { if (cb) cb(); return; }
@@ -1437,10 +1599,12 @@ module.exports._test = {
         loop = { on: false, gen: 0, req: null, wait: 0, backoff: 0, yielded: false, timer: null, okM: 0, lost: false, more: false, c409: 0,
             takeover: false, coolUntil: 0, wAt: 0, wSince: 0, wBusy: false, wN: 0 };
         launchAt = 0; launchedWall = 0; closedMsg = {}; closedAt = {}; offWaitAt = {}; offAt = {}; okSaved = 0;
+        busStop(); bus = { on: false, gen: 0, reqs: [], since: {}, seen: {}, seenN: 0, helloAt: 0, firstAt: 0, heard: false, cmds: [], topic: '', k: null };
     },
     start: function (cb) { load(); keyInit(); botLoad(); listen(cb); },
     stop: stop, key: function () { return accessKey; },
-    tick: botTick, state: function () { return { bot: BT(), pg: pg, loop: loop, typing: typing }; },
+    tick: botTick, state: function () { return { bot: BT(), pg: pg, loop: loop, typing: typing, bus: bus }; },
+    unseal: unseal, seal: seal, busOn: busOn, BUS: BUS,
     tvMatch: function (s, isCb) { var c = BT().cfg || {}; return isCb ? tvCb(c.tv || {}, s) : isTv(c, { message: { text: s } }, ''); },
     looksKey: looksKey, mono: mono,
     fnv: fnv, derive: derive, joinTopic: joinTopic, codes: function () { return joinCodes; }, PORT: PORT, VERSION: VERSION,
