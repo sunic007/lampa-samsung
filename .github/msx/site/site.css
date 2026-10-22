@@ -108,3 +108,14 @@ summary { cursor:pointer; font-weight:600; } details p { margin:8px 0 0; color:v
 /* главная видна, когда site.js расставил язык и вкладку (без сдвига); без JS — nojs.css */
 html:not(.ready) main { visibility:hidden; animation:bs-show 0s 2s forwards; }   /* site.js не пришёл — всё равно через 2 с */
 @keyframes bs-show { to { visibility:visible; } }
+
+/* «Стекло», как в iPhone: карточки полупрозрачные, фон из постеров за ними размыт; рамка — тонкий светлый край */
+:root { --glass:rgba(21,26,36,.5); --glass-line:rgba(255,255,255,.09); --glass-hi:rgba(255,255,255,.06); }
+@media (prefers-color-scheme: light) { :root { --glass:rgba(255,255,255,.58); --glass-line:rgba(0,0,0,.07); --glass-hi:rgba(255,255,255,.5); } }
+.feat, .steps li, .tabs button, .card, .trust div, .eyebrow {
+  background:linear-gradient(180deg, var(--glass-hi), transparent 40%), var(--glass); border-color:var(--glass-line);
+  -webkit-backdrop-filter:blur(18px) saturate(1.5); backdrop-filter:blur(18px) saturate(1.5); }
+.plat { background:linear-gradient(160deg, color-mix(in srgb, var(--btn) 18%, transparent), var(--glass) 60%); border-color:var(--glass-line);
+  -webkit-backdrop-filter:blur(18px) saturate(1.5); backdrop-filter:blur(18px) saturate(1.5); }
+.feat .ico, .trust i { background:rgba(255,255,255,.07); }
+@media (prefers-color-scheme: light) { .feat .ico, .trust i { background:rgba(0,0,0,.05); } }
