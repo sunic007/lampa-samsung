@@ -80,12 +80,15 @@
     try { localStorage.setItem('lang', l); } catch (e) {}
     document.querySelectorAll('[data-t]').forEach(function (e) { var k = e.getAttribute('data-t'); e.innerHTML = l === 'ru' ? ru[k] : (T[l][k] || ru[k]); });
     document.querySelectorAll('[data-lang]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-lang') === l); });
-    // videos voiced in several languages: /media/<name>-<lang>.mp4 (+ -300.jpg poster); Russian = no suffix
+    // videos voiced in several languages: /media/<name>-<lang>.mp4 (+ -300.jpg poster); Russian = no suffix.
+    // ?v=<data-ver> — bump it when a video is replaced (media is cached for 30 days);
+    // load() — Safari and in-app browsers keep showing the old video and poster without it
     document.querySelectorAll('video[data-v]').forEach(function (v) {
       var suf = (',' + v.getAttribute('data-langs') + ',').indexOf(',' + l + ',') >= 0 ? '-' + l : '';
-      var src = '/media/' + v.getAttribute('data-v') + suf + '.mp4';
-      if (v.getAttribute('src') === src) return;
-      v.pause(); v.setAttribute('src', src); v.setAttribute('poster', '/media/' + v.getAttribute('data-v') + suf + '-300.jpg');
+      var q = '?v=' + (v.getAttribute('data-ver') || '1'), base = '/media/' + v.getAttribute('data-v') + suf;
+      if (v.getAttribute('src') === base + '.mp4' + q) return;
+      v.pause(); v.setAttribute('poster', base + '-300.jpg' + q); v.setAttribute('src', base + '.mp4' + q);
+      try { v.load(); } catch (e) {}
     });
     status(); version();
   }
