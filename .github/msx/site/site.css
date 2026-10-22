@@ -71,7 +71,8 @@ h1 { font-size:clamp(32px, 5vw, 52px); line-height:1.08; margin:0 0 16px; letter
 .tabs button small { display:block; color:var(--muted); font-size:13px; }
 .tabs button.on { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
 .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; margin-bottom:16px; }
-.card ol { margin:0; padding-left:22px; } .card li { margin:6px 0; }
+.card ol, .card ul { margin:0; padding-left:22px; } .card li { margin:6px 0; }
+.h4 { font-size:16px; margin:16px 0 6px; }
 code, .copy { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:2px 8px; font:15px ui-monospace,Consolas,monospace; }
 .copyrow { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0; }
 .copyrow button { background:var(--btn); color:#fff; border:0; border-radius:8px; padding:6px 12px; cursor:pointer; font:inherit; font-size:14px; }
@@ -162,3 +163,22 @@ html:not(.ready) main { visibility:hidden; animation:bs-show 0s 2s forwards; }  
 .plat-logo.lg svg { height:28px; }
 @media (prefers-color-scheme: light) { .plat-logo { color:#121722; } .plat-logo svg { filter:none; } }
 .plat:hover .plat-logo svg { opacity:1; }
+
+/* «Где работает» — всё по центру: логотип в одинаковой рамке (разные знаки — одного зрительного размера), под ним площадка
+ * и способ; плитки одной высоты */
+.plat { align-items:center; text-align:center; justify-content:flex-start; padding:22px 14px 18px; }
+.plat-logo { justify-content:center; width:100%; height:44px !important; margin-bottom:14px; }
+.plat-logo svg { height:34px !important; width:auto; }
+.plat-logo.wide svg { height:auto !important; width:118px; max-width:100%; }
+.plat-logo.lg svg { height:auto !important; width:70px; }
+.plat b { font-size:15px; line-height:1.3; }
+.plat small { margin-top:2px; }
+
+/* вкладки «Как начать»: линейный значок слева, как в карточках, вместо эмодзи */
+.tabs button { display:grid; grid-template-columns:auto 1fr; column-gap:10px; align-items:center; }
+.tabs button > span[data-t] { font-weight:600; }
+.tabs button small { grid-column:2; }
+.tab-ico { grid-row:span 2; display:inline-flex; width:36px; height:36px; align-items:center; justify-content:center; border-radius:11px;
+  color:#fff; background:linear-gradient(140deg, #4f8dff, #7c3aed); box-shadow:inset 0 1px 0 rgba(255,255,255,.3); }
+.tab-ico svg { width:19px; height:19px; }
+.tabs button.on .tab-ico { box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent), inset 0 1px 0 rgba(255,255,255,.3); }

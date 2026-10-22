@@ -17,9 +17,9 @@
 <link rel="icon" type="image/svg+xml" href="/media/logo.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/media/favicon-32.png">
 <link rel="apple-touch-icon" href="/media/logo-180.png">
-<link rel="stylesheet" href="/site.css?v=36896bdc">
+<link rel="stylesheet" href="/site.css?v=6ccc6931">
 <link rel="preload" as="image" type="image/webp" imagesrcset="/media/shot-catalog-640.webp 640w, /media/shot-catalog-960.webp 960w, /media/shot-catalog-1280.webp 1280w" imagesizes="(max-width: 860px) 92vw, 520px" fetchpriority="high">
-<link rel="preload" href="/site.js?v=da16d9b1" as="script">
+<link rel="preload" href="/site.js?v=5677f589" as="script">
 <noscript><link rel="stylesheet" href="/nojs.css"></noscript>
 </head>
 <body>
@@ -70,20 +70,30 @@
     </ol>
 
     <div class="tabs" role="tablist">
-      <button role="tab" aria-selected="true" class="on" data-tab="tv"><span data-t="tab_tv">📺 Любой Smart TV</span><small data-t="tab_tv_s">Samsung, LG, Android TV — Media Station X</small></button>
-      <button role="tab" aria-selected="false" data-tab="phone"><span data-t="tab_phone">📱 Приложение на Samsung</span><small data-t="tab_phone_s">с телефона — TV Installer</small></button>
-      <button role="tab" aria-selected="false" data-tab="android"><span data-t="tab_android">🤖 Android ТВ / приставка</span><small data-t="tab_android_s">плагин для Lampa</small></button>
-      <button role="tab" aria-selected="false" data-tab="web"><span data-t="tab_web">💻 В браузере</span><small data-t="tab_web_s">компьютер или телефон</small></button>
+      <button role="tab" aria-selected="true" class="on" data-tab="tv"><span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span><span data-t="tab_tv">Любой Smart TV</span><small data-t="tab_tv_s">Samsung, LG, Android TV — Media Station X</small></button>
+      <button role="tab" aria-selected="false" data-tab="phone"><span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.8"/><path d="M10.5 18h3"/></svg></span><span data-t="tab_phone">Приложение на Samsung</span><small data-t="tab_phone_s">с телефона — TV Installer</small></button>
+      <button role="tab" aria-selected="false" data-tab="android"><span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M10 8l5 2.5-5 2.5z"/><path d="M8 21h8"/></svg></span><span data-t="tab_android">Android ТВ / приставка</span><small data-t="tab_android_s">плагин для Lampa</small></button>
+      <button role="tab" aria-selected="false" data-tab="web"><span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19"/><path d="M12 2.5a14.5 14.5 0 0 1 0 19a14.5 14.5 0 0 1 0-19z"/></svg></span><span data-t="tab_web">В браузере</span><small data-t="tab_web_s">компьютер или телефон</small></button>
     </div>
 
     <section class="card on" role="tabpanel" data-pane="tv" id="tv">
       <h3 class="h3" data-t="tv_h">Любой Smart TV — Media Station X</h3>
       <ol>
-        <li data-t="tv_1">Установите <b>Media Station X</b> из магазина приложений телевизора — есть на Samsung, LG, Android TV и других.</li>
-        <li data-t="tv_2">Откройте её: <b>Settings → Start Parameter → Setup</b>.</li>
-        <li><span data-t="tv_3">Введите адрес и подтвердите:</span> <code>sunic.stream</code></li>
-        <li data-t="tv_4">Готово: при каждом открытии Media Station X сразу запускается Lampa с функциями Sunic Apps.</li>
+        <li data-t="tv_1">Установите <b>Media Station X</b> из магазина приложений телевизора (есть на Samsung, LG, Android TV, Fire TV и других) и откройте её.</li>
+        <li data-t="tv_2">Слева выберите <b>Settings</b>, затем плитку <b>Start Parameter</b> и кнопку <b>Setup</b>.</li>
+        <li data-t="tv_3">В окне <b>Disclaimer</b> нажмите <b>Continue</b>.</li>
+        <li><span data-t="tv_4">Наберите пультом на экранной клавиатуре адрес и нажмите кнопку с галочкой ✓:</span> <code>sunic.stream</code></li>
+        <li data-t="tv_5">Появится «Lampa · Sunic Apps» — нажмите <b>Yes</b>. Media Station X перезапустится сама.</li>
+        <li data-t="tv_6">Готово: теперь при каждом открытии Media Station X сразу запускается Lampa с функциями Sunic Apps.</li>
       </ol>
+      <h4 class="h4" data-t="tv_fix_h">Не открылось?</h4>
+      <ul>
+        <li data-t="tv_fix_1">Проверьте адрес: маленькими буквами, с точкой, без пробелов — <code>sunic.stream</code>. Если появилось «Start Error», повторите шаги 2–5.</li>
+        <li data-t="tv_fix_2">Значок замка на клавиатуре включает защищённое соединение (https). Не открылось с ним — выключите замок и попробуйте ещё раз (или наоборот).</li>
+        <li data-t="tv_fix_3">Проверьте интернет на телевизоре и откройте <b>sunic.stream</b> в браузере телефона: если сайт открывается, дело в адресе.</li>
+        <li data-t="tv_fix_4">Вернуть Media Station X как было: Settings → Start Parameter → <b>Reset</b> → Yes.</li>
+        <li data-t="tv_fix_5">Не помогло — напишите в группу <a href="https://t.me/sunicapps">t.me/sunicapps</a>.</li>
+      </ul>
       <p class="muted" data-t="tv_note">Режим разработчика и компьютер не нужны. Источники Skaz работают после входа в CUB (Настройки → Аккаунт); без входа — Online Mod и Z01.</p>
     </section>
 
@@ -160,6 +170,6 @@
   </section>
 </main>
 <footer class="wrap foot"><span data-t="foot">Вопросы</span> — <a href="https://t.me/sunicapps">t.me/sunicapps</a> · Sunic Apps · <span data-t="notsam">не связан с производителями ТВ и Media Station X; логотипы — товарные знаки их владельцев</span><br><span data-t="credits">На снимках и постерах — фильмы Blender Foundation (CC BY), blender.org</span></footer>
-<script src="/site.js?v=da16d9b1"></script>
+<script src="/site.js?v=5677f589"></script>
 </body>
 </html>
