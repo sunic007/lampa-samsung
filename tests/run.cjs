@@ -4174,6 +4174,41 @@ async function serviceTests() {
     t('IPTV: выбрали ещё раз — убран только наш', F._iptvToggle('uz') === false && saved.length === 1 && saved[0].id === 'mine');
     t('IPTV: неизвестный — ничего не меняет', F._iptvToggle('xx') === false && saved.length === 1);
 }
+{
+    // «Телеканалы»: разбор m3u и плейлисты по умолчанию
+    let list = [];
+    const ctx = { console: { log() {} }, JSON, Math, Date, String, Object, Array, RegExp, parseInt, setTimeout, clearTimeout,
+        Lampa: { Storage: { get: () => JSON.parse(JSON.stringify(list)) } } };
+    ctx.window = ctx; ctx.location = { protocol: 'http:' }; ctx.localStorage = { getItem: () => null, setItem() {} };
+    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstv.js'), 'utf8') + ';this.M=BSTv;', ctx);
+    const T = ctx.M, m3u = '#EXTM3U\n#EXTINF:-1 tvg-id="a" tvg-logo="http://l/a.png" group-title="News;Kids",Первый\nhttp://x/1.m3u8|User-Agent=1\n' +
+        '#EXTINF:-1,Без ссылки\n#EXTVLCOPT:x\n#EXTINF:-1 group-title="Kids",Второй\n#EXTGRP:Детские\nhttps://x/2.m3u8\n';
+    let got = null; T._parse(m3u, r => { got = r; });
+    t('ТВ: разбор m3u — ссылки, номера, первая группа, #EXTGRP, хвост |… отрезан',
+        got && got.length === 2 && got[0].url === 'http://x/1.m3u8' && got[0].group === 'News' && got[0].num === 1 && got[1].group === 'Детские' && got[1].num === 2);
+    T._parse('<html>', r => { got = r; });
+    t('ТВ: не m3u — null', got === null);
+    ctx.location.protocol = 'https:'; T._parse(m3u, r => { got = r; });
+    t('ТВ: страница по https — http-каналы не берём', got.length === 1 && got[0].name === 'Второй');
+    t('ТВ: нет плейлистов — наши «На русском» и «Узбекистан» (https — без http-каналов)',
+        (p => p.length === 2 && p[0].id === 'sunic-iptv-rus' && p[0].url === 'https://sunic.stream/iptv/s/rus.m3u')(T._playlists()));
+    list = [{ id: 'mine', url: 'http://my/list.m3u', name: 'Мой' }, { id: 'bad', url: 'ftp://x' }];
+    t('ТВ: плейлисты из IPTV — свои, без битых', (p => p.length === 1 && p[0].name === 'Мой')(T._playlists()));
+    // имя для программы — как в tools/epg_build.py norm() (значения оттуда)
+    const NORM = { 'Россия 1 (-1)': 'rossya1minus1', 'Россия 1 HD': 'rossya1', 'Первый канал (+4)': 'pervyplus4', "O'zbekiston 24 (1080p)": 'ozbekiston24',
+        'Ўзбекистон 24': 'ozbekiston24', 'MTV-Hits': 'mtvhits', 'НТВ HD': 'ntv', 'ТВ-3': 'tv3', '2x2 (576i)': '2h2', 'Кинохит HD orig': 'kinohit', 'Первый канал': 'pervy' };
+    t('ТВ: имена каналов сравниваются так же, как у сборщика программы', Object.keys(NORM).every(n => T._norm(n) === NORM[n]));
+    const pr = [Math.floor(Date.now() / 60000) - 90, Math.floor(Date.now() / 60000) - 30, 'X', ''], st = pr[0] * 60, dur = 3600;
+    t('ТВ: архив shift', T._arcUrl({ url: 'http://a/1.m3u8', arc: { t: 'shift', d: 3 } }, pr).indexOf('http://a/1.m3u8?utc=' + st + '&lutc=') === 0);
+    t('ТВ: архив append с шаблоном', T._arcUrl({ url: 'http://a/1.m3u8', arc: { t: 'append', d: 3, s: '?b=${start}&d=${duration}' } }, pr) === 'http://a/1.m3u8?b=' + st + '&d=' + dur);
+    t('ТВ: архив flussonic', T._arcUrl({ url: 'http://a/ch/index.m3u8?token=1', arc: { t: 'flussonic', d: 3 } }, pr) === 'http://a/ch/index-' + st + '-' + dur + '.m3u8?token=1');
+    t('ТВ: архив xc', /^http:\/\/h:80\/timeshift\/u\/p\/60\/\d{4}-\d\d-\d\d:\d\d-\d\d\/77\.ts$/.test(T._arcUrl({ url: 'http://h:80/u/p/77', arc: { t: 'xc', d: 3 } }, pr)));
+    t('ТВ: без catchup — архива нет', T._arcUrl({ url: 'http://a/1.m3u8' }, pr) === '');
+    const now = Math.floor(Date.now() / 60000), P = [[now - 60, now - 5, 'A', ''], [now - 5, now + 25, 'B', ''], [now + 25, now + 60, 'C', '']];
+    t('ТВ: что идёт сейчас и дальше', (n => n && n.cur[2] === 'B' && n.next[2] === 'C')(T._epgNow(P)));
+    T._parse('#EXTM3U catchup="shift" catchup-days="5"\n#EXTINF:-1,A\nhttps://x/a.m3u8\n#EXTINF:-1 catchup-days="0",B\nhttps://x/b.m3u8\n', r => { got = r; });
+    t('ТВ: catchup из строки #EXTM3U, catchup-days="0" — без архива', got[0].arc && got[0].arc.t === 'shift' && got[0].arc.d === 5 && !got[1].arc);
+}
 serviceTests().catch(e => { fail++; console.log('FAIL служба: исключение', e && e.stack); }).then(() => {
     console.log(pass + ' passed, ' + fail + ' failed');
     process.exit(fail ? 1 : 0);

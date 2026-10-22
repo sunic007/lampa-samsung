@@ -1121,6 +1121,8 @@ var bsReadyTimer = setInterval(function () {
     try { BSHub.start(); } catch (e) { console.log('BS hub', e); }
     try { BSTelegram.start(); } catch (e) { console.log('BS telegram', e); }
     try { BSVolume.start(); } catch (e) { console.log('BS volume', e); }
+    // «Телеканалы» пока только на сайте (браузер, MSX); на ТВ и в Android — после проверки (или bs_tv_beta=true для теста)
+    try { if (window.BS_SITE_VERSION || localStorage.getItem('bs_tv_beta') === 'true') BSTv.start(); } catch (e) { console.log('BS tv', e); }
     try { bsFlushSettings(); } catch (e) { console.log('BS settings flush', e); }
     try { bsStartAutoUpdate(); } catch (e) { console.log('BS autoupdate', e); }
     setTimeout(bsAnnounce, 2500);
