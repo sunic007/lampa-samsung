@@ -1,0 +1,36 @@
+# Программа передач для «Телеканалов» (src/bstv.js): раз в день собираем открытые XMLTV в маленькие JSON
+# (tools/epg_build.py) и кладём в ветку `epg` без истории. Её файлы ТВ берёт с raw.githubusercontent, jsDelivr
+# или sunic.stream/gh/ — что ответит.
+name: epg
+
+on:
+  schedule:
+    - cron: '17 1 * * *'      # 04:17 по Москве, 06:17 в Ташкенте
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: epg
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: python3 tools/epg_build.py out
+      - name: Publish branch epg
+        run: |
+          cd out
+          git init -q -b epg
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -q -m "EPG $(date -u +%F)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" epg
+      - name: Refresh jsDelivr index
+        run: curl -s -m 30 "https://purge.jsdelivr.net/gh/${{ github.repository }}@epg/index.json" > /dev/null || true
