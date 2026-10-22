@@ -3,15 +3,19 @@
  * Запасное зеркало обновлений: sunic.stream/gh/sunic007/<репо>@<v1.2.3|main>/<путь> — те же адреса, что у jsDelivr.
  * ТВ и Android-плагин идут сюда последними, когда у человека закрыты GitHub и jsDelivr (сервер в Узбекистане их видит).
  * Выпуск Lampa для Samsung, уже скачанный на хостинг (lampa/v/X.Y.Z/), отдаём с диска; остальное — с jsDelivr
+ * Ветка epg — программа передач «Телеканалов» (index.json, c/<канал>.json): в кеше на час.
  * или GitHub (ветку main — в кеше на 10 минут). Только наши два репозитория, только version.json, src/ и docs/sunic.js.
  */
 const REPOS = ['lampa-samsung' => 1, 'lampa-android' => 1];
 const LIFE_MAIN = 600;              // @main меняется — 10 минут; @vX.Y.Z не меняется никогда
+const LIFE_EPG = 3600;              // @epg — раз в день, час в кеше хватает
 const MAX = 3 * 1024 * 1024;
 
 $repo = $_GET['repo'] ?? ''; $ref = $_GET['ref'] ?? ''; $path = $_GET['path'] ?? '';
-if (!isset(REPOS[$repo]) || !preg_match('/^(v\d+\.\d+\.\d+|main)$/', $ref)
-    || !preg_match('#^(version\.json|docs/sunic\.js|src/[A-Za-z0-9_./-]{1,200})$#', $path) || strpos($path, '..') !== false) {
+$epg = $ref === 'epg';
+if (!isset(REPOS[$repo]) || !preg_match('/^(v\d+\.\d+\.\d+|main|epg)$/', $ref)
+    || ($epg ? $repo !== 'lampa-samsung' || !preg_match('#^(index\.json|c/[A-Za-z0-9_-]{1,70}\.json)$#', $path)
+        : !preg_match('#^(version\.json|docs/sunic\.js|src/[A-Za-z0-9_./-]{1,200})$#', $path)) || strpos($path, '..') !== false) {
     http_response_code(404); exit;
 }
 $types = ['js' => 'application/javascript', 'json' => 'application/json', 'css' => 'text/css', 'html' => 'text/html',
@@ -22,7 +26,7 @@ $type = $types[$ext] ?? 'application/octet-stream';
 function send($body, $type, $ref) {
     header('Content-Type: ' . $type . (strpos($type, 'image/') === 0 || strpos($type, 'font/') === 0 ? '' : '; charset=utf-8'));
     header('Access-Control-Allow-Origin: *');
-    header($ref === 'main' ? 'Cache-Control: no-cache' : 'Cache-Control: public, max-age=31536000, immutable');
+    header($ref === 'main' || $ref === 'epg' ? 'Cache-Control: no-cache' : 'Cache-Control: public, max-age=31536000, immutable');
     header('Content-Length: ' . strlen($body));
     echo $body;
     exit;
@@ -50,14 +54,14 @@ function fetch_from($repo, $ref, $path) {
     return null;
 }
 
-if ($ref !== 'main') {
+if ($ref !== 'main' && !$epg) {
     $b = fetch_from($repo, $ref, $path);
     if ($b === null) { http_response_code(404); exit; }
     send($b, $type, $ref);
 }
 
-$cache = __DIR__ . '/lampa/.cache/gh/' . $repo . '@main/' . $path;
-if (!is_file($cache) || time() - filemtime($cache) >= LIFE_MAIN) {
+$cache = __DIR__ . '/lampa/.cache/gh/' . $repo . '@' . $ref . '/' . $path;
+if (!is_file($cache) || time() - filemtime($cache) >= ($epg ? LIFE_EPG : LIFE_MAIN)) {
     $b = fetch_from($repo, $ref, $path);
     if ($b !== null) {
         @mkdir(dirname($cache), 0755, true);

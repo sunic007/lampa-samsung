@@ -44,19 +44,23 @@ TR = dict(zip('абвгдеёжзийклмнопрстуфхцчшщъыьэю�
 DROP = re.compile(r'\b(hd|fhd|uhd|sd|4k|8k|orig|original|hevc|h265|tv|тв|телеканал|канал)\b')
 
 
-def norm(s):
+def norm(s, drop=True):
     """Имя для сравнения: без (1080p)/[…], без HD/TV, кириллица латиницей, только буквы и цифры."""
+    raw = s
     s = (s or '').lower()
     # «+4», «(-1)» — другой часовой пояс, то есть другой канал: сдвиг оставляем словом, скобки вокруг него снимаем
     s = re.sub(r'[(\[]\s*([+-]\s*\d+)\s*[)\]]', r' \1 ', s)
     s = re.sub(r'\+\s*(\d)', r' plus\1', s)
     s = re.sub(r'(^|\s)-\s*(\d)', r'\1 minus\2', s)
     s = re.sub(r'\(.*?\)|\[.*?\]', ' ', s)
-    s = DROP.sub(' ', s)
+    if drop:
+        s = DROP.sub(' ', s)
     s = ''.join(TR.get(c, c) for c in s)
     s = re.sub(r'[^a-z0-9]', '', s)
     for a, b in (('iy', 'y'), ('yy', 'y'), ('ii', 'y'), ('yi', 'y'), ('ij', 'y'), ('j', 'y'), ('kh', 'h'), ('x', 'h')):
         s = s.replace(a, b)
+    if drop and (not s or s.isdigit()):
+        return norm(raw, False)              # «ТВ-3» — без «ТВ» осталась бы одна цифра
     return s
 
 
