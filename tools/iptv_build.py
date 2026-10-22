@@ -41,12 +41,13 @@ LISTS = {
     'news': ORG + 'categories/news.m3u', 'freetv': 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8',
 }
 DB = 'https://raw.githubusercontent.com/iptv-org/database/master/data/'
-# Free-TV: разделы — страны; эти (СНГ и бывший Союз, смотрят по-русски) добавляем в «На русском» с русским названием.
+# Free-TV: разделы — страны; эти (СНГ и бывший Союз, смотрят по-русски, и Турция) добавляем в «На русском» по-русски.
 # Узбекистана, Киргизии, Таджикистана у Free-TV пока нет — появятся, добавим строку. Прибалтика — не СНГ, не берём
 FREETV_RU = {
     'Russia': 'Россия', 'Ukraine': 'Украина', 'Belarus': 'Беларусь', 'Kazakhstan': 'Казахстан', 'Uzbekistan': 'Узбекистан',
     'Kyrgyzstan': 'Кыргызстан', 'Tajikistan': 'Таджикистан', 'Turkmenistan': 'Туркменистан', 'Armenia': 'Армения',
     'Azerbaijan': 'Азербайджан', 'Georgia': 'Грузия', 'Moldova': 'Молдова',
+    'Turkey': 'Турция',           # владелец: турецкие каналы тоже в общем списке (турецкие сериалы смотрят многие)
 }
 STRIKES = 3                 # дней подряд «точно мёртв» — тогда убираем
 TIMEOUT = 12
