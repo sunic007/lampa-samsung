@@ -119,3 +119,20 @@ html:not(.ready) main { visibility:hidden; animation:bs-show 0s 2s forwards; }  
   -webkit-backdrop-filter:blur(18px) saturate(1.5); backdrop-filter:blur(18px) saturate(1.5); }
 .feat .ico, .trust i { background:rgba(255,255,255,.07); }
 @media (prefers-color-scheme: light) { .feat .ico, .trust i { background:rgba(0,0,0,.05); } }
+
+/* кнопка группы Telegram под вопросами */
+.faq-help { display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; margin:16px 0 0; color:var(--muted); font-size:14px; }
+.cta.tg { background:linear-gradient(135deg, #2aabee, #1f8fd6); box-shadow:0 10px 26px -12px rgba(42,171,238,.8); }
+
+/* «Стекло» без лишней нагрузки: на телефоне размытие слабее (быстрее прокрутка); браузер без размытия или человек
+ * попросил «меньше прозрачности» — обычные плотные карточки */
+@media (max-width: 860px) {
+  .feat, .steps li, .tabs button, .card, .trust div, .eyebrow, .plat { -webkit-backdrop-filter:blur(10px) saturate(1.3); backdrop-filter:blur(10px) saturate(1.3); }
+}
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .feat, .steps li, .tabs button, .card, .trust div, .eyebrow, .plat { background:var(--card); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .feat, .steps li, .tabs button, .card, .trust div, .eyebrow, .plat { background:var(--card); -webkit-backdrop-filter:none; backdrop-filter:none; }
+  .page-bg { opacity:.06; }
+}
