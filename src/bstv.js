@@ -410,6 +410,16 @@ var BSTv = (function () {
             '.bstv-num{position:absolute;right:3em;top:2em;font-size:3em;font-weight:700;background:rgba(0,0,0,.6);border-radius:.3em;padding:.1em .5em}' +
             '.bstv-load{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:1.3em;background:rgba(0,0,0,.6);padding:.8em 1.4em;border-radius:.6em}' +
             '.bstv-load.hide{display:none}' +
+            // витрина: как магазин приложений — плитки сеткой, выбранная светлая (как кнопки Lampa)
+            '.bstv-shop{position:fixed;left:0;top:0;right:0;bottom:0;z-index:60;background:#141518;color:#fff;overflow-y:auto;padding:2.2em 3em 3em}' +
+            '.bstv-shop__head{font-size:2.2em;font-weight:700;margin-bottom:.6em}' +
+            '.bstv-shop__title{font-size:1.15em;opacity:.6;margin:1.4em 0 .8em}' +
+            '.bstv-shop__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(15em,1fr));grid-gap:1em}' +
+            '.bstv-tile{background:rgba(255,255,255,.07);border-radius:1em;padding:1.2em 1.3em;min-height:5.2em;cursor:pointer;display:flex;flex-direction:column;justify-content:center}' +
+            '.bstv-tile__t{font-size:1.3em;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+            '.bstv-tile__s{opacity:.55;margin-top:.35em;font-size:.95em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+            '.bstv-tile--go{background:rgba(76,217,100,.18)}.bstv-tile--add{border:2px dashed rgba(255,255,255,.25);background:transparent}' +
+            '.bstv-tile.focus,.bstv-tile:hover{background:#fff;color:#000}.bstv-tile.focus .bstv-tile__s,.bstv-tile:hover .bstv-tile__s{opacity:.7}' +
             '.bstv-tap{position:absolute;left:0;top:0;right:0;bottom:0}' +
             '.bstv-touch,.bstv-x{display:none}' +
             '.bstv--touch .bstv-touch{display:flex;flex-wrap:wrap;margin-top:1em}' +
@@ -773,7 +783,7 @@ var BSTv = (function () {
     function openSkaz() {
         var it = skazItem();
         if (!it.length) return noty('TV Skaz сейчас недоступен');
-        exit();
+        if (S) exit();
         setTimeout(function () { try { it.trigger('hover:enter'); } catch (e) {} }, 300);
     }
     function drawCats() {
@@ -944,7 +954,7 @@ var BSTv = (function () {
         try { l = Lampa.Storage.get('iptv_playlist_custom', '[]'); } catch (e) {}
         return isArr(l) ? l.slice() : [];
     }
-    function addPlaylist(back) {
+    function addPlaylist(back, done) {
         var ask = function (title, value, done) {
             try { Lampa.Input.edit({ title: title, value: value, free: true, nosave: true }, done); } catch (e) { Lampa.Controller.toggle(back); }
         };
@@ -961,7 +971,7 @@ var BSTv = (function () {
                     try { Lampa.Storage.set('iptv_playlist_custom', l); } catch (e) {}
                 }
                 Lampa.Controller.toggle(back);
-                switchPlaylist(id);
+                if (done) done(id); else switchPlaylist(id);
             });
         });
     }
@@ -1160,9 +1170,90 @@ var BSTv = (function () {
         info(true);
     }
 
+    /* ---------- витрина ----------
+     * «Телеканалы» открываются витриной, как магазин приложений: «▶ Продолжить» (последний канал), ваши плейлисты,
+     * TV Skaz, «+ Добавить свой» и каталог Sunic Apps (выбрали — добавляется к вашим и включается). Плитки — кнопки
+     * Lampa (selector, hover:enter): пульт, мышь и палец — как везде в Lampa. Пришли с https-страницы с каналом
+     * (#bstv=…) — сразу канал, без витрины. */
+    var shop = null;
+    /** Каталог — тот же, что «Sunic Apps → IPTV: открытые плейлисты» (BSFeatures); без него — два списка по умолчанию. */
+    function catalog() {
+        var out = [], l = [], i;
+        try { l = window.BSFeatures._iptvLists || []; } catch (e) {}
+        for (i = 0; i < l.length; i++) if (l[i] && l[i][0]) out.push({ key: l[i][0], name: l[i][1], sub: l[i][3] || '' });
+        if (!out.length) for (i = 0; i < DEFAULT.length; i++) out.push({ key: DEFAULT[i][0], name: DEFAULT[i][1], sub: '' });
+        return out;
+    }
+    /** Наш список из каталога — к плейлистам человека (как кнопка в настройках Sunic Apps). */
+    function addOur(c) {
+        var l = customList(), i, has = false;
+        if (!l.length) for (i = 0; i < DEFAULT.length; i++) l.push({ id: 'sunic-iptv-' + DEFAULT[i][0], custom: true, url: ourUrl(DEFAULT[i][0]), name: DEFAULT[i][1] });
+        for (i = 0; i < l.length; i++) if (l[i] && l[i].id === 'sunic-iptv-' + c.key) has = true;
+        if (!has) l.push({ id: 'sunic-iptv-' + c.key, custom: true, url: ourUrl(c.key), name: c.name });
+        try { Lampa.Storage.set('iptv_playlist_custom', l); } catch (e) {}
+    }
+    function shopTile(cls, title, sub) {
+        return $('<div class="bstv-tile selector ' + cls + '"><div class="bstv-tile__t">' + esc(title) + '</div><div class="bstv-tile__s">' + esc(sub || '') + '</div></div>');
+    }
+    function closeShop(keep) {
+        if (!shop) return;
+        var prev = shop.prev;
+        shop.root.remove();
+        shop = null;
+        if (!keep) try { Lampa.Controller.toggle(prev); } catch (e) {}
+    }
     function open() {
+        if (S || shop) return;
+        css();
+        var prev = 'content';
+        try { prev = Lampa.Controller.enabled().name || prev; } catch (e) {}
+        var root = $('<div class="bstv-shop"><div class="bstv-shop__head">Телеканалы</div><div class="bstv-shop__body"></div></div>'), body = root.find('.bstv-shop__body');
+        shop = { root: root, prev: prev };
+        var grid = function (title) {
+            var s = $('<div class="bstv-shop__sec"><div class="bstv-shop__title">' + esc(title) + '</div><div class="bstv-shop__grid"></div></div>');
+            body.append(s);
+            return s.find('.bstv-shop__grid');
+        };
+        var tile = function (g, cls, title, sub, fn) {
+            var t = shopTile(cls, title, sub);
+            t.on('hover:enter', fn).on('hover:focus', function () { try { t[0].scrollIntoView({ block: 'nearest' }); } catch (e) {} });
+            g.append(t);
+        };
+        var last = lsJson('bs_tv_last', null), pls = playlists(), have = {}, cat = catalog(), g, i;
+        for (i = 0; i < pls.length; i++) have[pls[i].id] = 1;
+        g = grid('Смотреть');
+        if (last && last.ch && last.ch.name && last.pl) {
+            tile(g, 'bstv-tile--go', '▶ ' + last.ch.name, 'Продолжить · ' + playlistById(last.pl).name, function () { closeShop(true); openPlaylist(last.pl); });
+        }
+        for (i = 0; i < pls.length; i++) (function (p) {
+            tile(g, '', p.name, p.key ? 'Sunic Apps' : 'ваш плейлист', function () { closeShop(true); openPlaylist(p.id); });
+        })(pls[i]);
+        if (skazItem().length) tile(g, 'bstv-tile--skaz', 'TV Skaz', 'каналы Skaz', function () { closeShop(true); openSkaz(); });
+        tile(g, 'bstv-tile--add', '+ Добавить свой', 'ссылка на плейлист m3u', function () {
+            addPlaylist('bstv_shop', function (id) { closeShop(true); openPlaylist(id); });
+        });
+        var more = [];
+        for (i = 0; i < cat.length; i++) if (!have['sunic-iptv-' + cat[i].key]) more.push(cat[i]);
+        if (more.length) {
+            g = grid('Каталог Sunic Apps — выбрать и добавить');
+            for (i = 0; i < more.length; i++) (function (c) {
+                tile(g, '', c.name, c.sub, function () { addOur(c); closeShop(true); openPlaylist('sunic-iptv-' + c.key); });
+            })(more[i]);
+        }
+        $('body').append(root);
+        var move = function (d) { return function () { try { if (Navigator.canmove(d)) Navigator.move(d); } catch (e) {} }; };
+        Lampa.Controller.add('bstv_shop', {
+            toggle: function () { Lampa.Controller.collectionSet(root); Lampa.Controller.collectionFocus(false, root); },
+            up: move('up'), down: move('down'), left: move('left'), right: move('right'),
+            back: function () { closeShop(); }
+        });
+        Lampa.Controller.toggle('bstv_shop');
+    }
+
+    function openPlaylist(id) {
         if (S) return;
-        var pls = playlists(), pl = playlistById(lsGet('bs_tv_pl') || pls[0].id);
+        var pls = playlists(), pl = playlistById(id || lsGet('bs_tv_pl') || pls[0].id);
+        lsSet('bs_tv_pl', pl.id);
         S = { root: build(), panel: '', num: '', zap: -1, info: false, focus: 0, cfocus: 0, playing: false };
         try { Lampa.Loading.start(function () { S = null; Lampa.Loading.stop(); }); } catch (e) {}
         var tryLoad = function (list, n) {
@@ -1204,7 +1295,7 @@ var BSTv = (function () {
     function start() {
         if (!window.Lampa || !Lampa.Menu || !Lampa.Player || !Lampa.Player.iptv) return;
         try { Lampa.Menu.addButton(ICON, 'Телеканалы', open); } catch (e) { log('menu', e && e.message); }
-        if (fromHash()) setTimeout(open, 800);
+        if (fromHash()) setTimeout(function () { openPlaylist(); }, 800);   // с канала из ссылки — сразу канал, без витрины
     }
 
     return { start: start, open: open, _parse: parse, _playlists: playlists, _norm: tvNorm, _arcUrl: arcUrl, _epgNow: epgNow };
