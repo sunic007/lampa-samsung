@@ -52,6 +52,17 @@ if (!is_file($cache) || time() - filemtime($cache) >= LIFE) {
 if (!is_file($cache)) { http_response_code(502); exit; } // и копии нет, и источник молчит
 
 $body = file_get_contents($cache);
+// /iptv/s/<ключ>.m3u — для страницы по https (браузер): без каналов с адресом http:// — такая страница их не загрузит
+if (!empty($_GET['s'])) {
+    $out = []; $hold = [];
+    foreach (preg_split('/\r?\n/', $body) as $line) {
+        $t = trim($line);
+        if ($t === '' || $t[0] === '#') { if (strpos($t, '#EXTM3U') === 0) $out[] = $line; else $hold[] = $line; continue; }
+        if (stripos($t, 'http://') !== 0) { foreach ($hold as $h) $out[] = $h; $out[] = $line; }
+        $hold = [];
+    }
+    $body = implode("\n", $out) . "\n";
+}
 $etag = '"' . md5($body) . '"';
 header('Content-Type: audio/x-mpegurl; charset=utf-8');
 header('Cache-Control: public, max-age=3600');

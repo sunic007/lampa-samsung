@@ -309,7 +309,25 @@ var BSFeatures = (function () {
      * Остальные 12 — кнопкой в настройках: лишнее не качает трафик и не засоряет список. */
     var IPTV_DEFAULT = ['uz', 'rus'];
     var IPTV_DAY = 24 * 3600 * 1000;
-    function iptvUrl(it, orig) { return orig ? it[4] : it[2]; }
+    /* Браузер по https (сайт sunic.stream/lampa): канал с адресом http:// страница не загрузит (браузер запрещает
+     * незащищённое видео на защищённой странице), а такие — почти половина iptv-org. Там берём списки без них
+     * (зеркало /iptv/s/…) и при разборе тоже выкидываем http-каналы: в списке только то, что включится. ТВ, MSX и
+     * страница по http — все каналы, как раньше. */
+    function iptvSecure() { try { return window.location.protocol === 'https:' && !window.tizen; } catch (e) { return false; } }
+    function iptvUrl(it, orig) { return orig ? it[4] : iptvSecure() ? IPTV_MIRROR + 's/' + it[0] + '.m3u' : it[2]; }
+    /** Адреса наших плейлистов — под эту страницу (https/http) и источник (зеркало/оригинал); меняем только наши. */
+    function iptvUrlsFix() {
+        var list = iptvList(), i, at, it, url, changed = false, orig = lsGet('bs_iptv_src') === 'orig';
+        for (i = 0; i < list.length; i++) {
+            if (!list[i] || !/^sunic-iptv-/.test(String(list[i].id))) continue;
+            at = iptvByKey(String(list[i].id).replace(/^sunic-iptv-/, ''));
+            it = at >= 0 ? IPTV_LISTS[at] : null;
+            url = it ? iptvUrl(it, orig) : '';
+            if (url && list[i].url !== url) { list[i].url = url; changed = true; }
+        }
+        if (changed) try { Lampa.Storage.set('iptv_playlist_custom', list); } catch (e) {}
+        return changed;
+    }
     function iptvList() {
         var l = [];
         try { l = Lampa.Storage.get('iptv_playlist_custom', '[]'); } catch (e) {}
@@ -437,7 +455,7 @@ var BSFeatures = (function () {
         return { type: t, days: d, source: iptvAttr(line, 'catchup-source') };
     }
     function iptvParseInit(text) {
-        return { lines: String(text == null ? '' : text).split('\n'), i: 1, head: '', out: [], cur: null };
+        return { lines: String(text == null ? '' : text).split('\n'), i: 1, head: '', out: [], cur: null, secure: iptvSecure() };
     }
     /** Одна строка для парсера. После каждой — st.i++; строки можно давать кусками (см. iptvParseRun). */
     function iptvParseLine(st) {
@@ -460,7 +478,7 @@ var BSFeatures = (function () {
             if (g && st.cur) { st.cur.group = g; st.cur.raw += '\n' + line; }
         } else if (line.charAt(0) !== '#') {
             u = line.split('|')[0];                                // хвост |User-Agent=… расширение отрезает
-            if (u && iptvValidUrl(u)) { if (st.cur) { st.cur.url = u; st.out.push(st.cur); } st.cur = null; }
+            if (u && iptvValidUrl(u)) { if (st.cur && !(st.secure && /^http:\/\//i.test(u))) { st.cur.url = u; st.out.push(st.cur); } st.cur = null; }
             else if (st.cur) st.cur.raw += '\n' + line;            // не ссылка — служебная строка внутри канала
         } else if (st.cur) {
             st.cur.raw += '\n' + line;
@@ -523,7 +541,8 @@ var BSFeatures = (function () {
                     try {
                         var rec = op.result, par = oq.result;
                         fresh = !!(rec && rec.value && par && par.value && par.value.update_time &&
-                            Date.now() - par.value.update_time < IPTV_DAY * 0.85);   // расширение само переиспользует такую запись
+                            Date.now() - par.value.update_time < IPTV_DAY * 0.85 &&   // расширение само переиспользует такую запись
+                            !!par.value.secure === iptvSecure());                        // собрана для этой же страницы (https без http-каналов)
                     } catch (e) {}
                     if (fresh) return cb(db.close());
                     db.close();
@@ -551,7 +570,7 @@ var BSFeatures = (function () {
                 if (!db.objectStoreNames.contains('playlist') || !db.objectStoreNames.contains('params')) return cb(db.close());
                 var tx = db.transaction(['playlist', 'params'], 'readwrite'), now = Date.now();
                 tx.objectStore('playlist').put({ key: id, value: rec, time: now });
-                tx.objectStore('params').put({ key: id, value: { update: 'day', update_time: now, sunic: 1 }, time: now });
+                tx.objectStore('params').put({ key: id, value: { update: 'day', update_time: now, sunic: 1, secure: iptvSecure() ? 1 : 0 }, time: now });
                 tx.oncomplete = function () { try { db.close(); } catch (e) {} iptvAltOff(); cb(); };
                 tx.onerror = tx.onabort = function () { try { db.close(); } catch (e) {} cb(); };
             } catch (e) { cb(); try { db.close(); } catch (e2) {} }
@@ -687,7 +706,7 @@ var BSFeatures = (function () {
         return String(t || '').replace(/\s*\[(Not 24\/7|Geo-blocked)\]/gi, '').replace(/\s*\((\d{3,4}[pi]|\d+K)\)/gi, '').replace(/^\s+|\s+$/g, '') || t;
     }
     function iptvByUrl(url) {
-        for (var i = 0; i < IPTV_LISTS.length; i++) if (IPTV_LISTS[i][2] === url || IPTV_LISTS[i][4] === url) return i;
+        for (var i = 0; i < IPTV_LISTS.length; i++) if (IPTV_LISTS[i][2] === url || IPTV_LISTS[i][4] === url || IPTV_MIRROR + 's/' + IPTV_LISTS[i][0] + '.m3u' === url) return i;
         return -1;
     }
     function iptvByKey(key) {
@@ -962,7 +981,7 @@ var BSFeatures = (function () {
         try { installFastStart(); } catch (e) { console.log('BS fast start', e.message); }
         try { addSettings(); } catch (e) { console.log('BS features settings', e.message); }
         iptvLook();
-        setTimeout(function () { try { iptvAuto(); iptvFresh(); iptvProbe(); iptvSeed(); } catch (e) {} }, 8000);   // IPTV по умолчанию: два списка, зеркало, подсадка
+        setTimeout(function () { try { iptvAuto(); iptvUrlsFix(); iptvFresh(); iptvProbe(); iptvSeed(); } catch (e) {} }, 8000);   // IPTV по умолчанию: два списка, зеркало, подсадка
         registerColorKeys();
         document.addEventListener('keydown', onColorKey, true);
         try {

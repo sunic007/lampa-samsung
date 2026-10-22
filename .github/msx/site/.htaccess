@@ -23,6 +23,8 @@ RedirectMatch 404 /\.(?!well-known/)
     RewriteRule ^gh/sunic007/(lampa-samsung|lampa-android)@(v[0-9]+\.[0-9]+\.[0-9]+|main)/(.+)$ gh.php?repo=$1&ref=$2&path=$3 [L,QSA]
     # зеркало IPTV-плейлистов (iptv-org, Free-TV) с диск-кешем, см. iptv.php
     RewriteRule ^iptv/([a-z]+)\.m3u$ iptv.php?l=$1 [L]
+    # то же без http-каналов — для страницы по https (браузер их не загрузит)
+    RewriteRule ^iptv/s/([a-z]+)\.m3u$ iptv.php?l=$1&s=1 [L]
 </IfModule>
 
 # только чтение: сайт ничего не принимает (кроме GET/HEAD/OPTIONS)

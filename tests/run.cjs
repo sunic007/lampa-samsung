@@ -4125,6 +4125,18 @@ async function serviceTests() {
         p.playlist.channels.length === 3 && p.playlist.channels[2].url === undefined &&
         p.playlist.menu.some(m => m.name === 'Uzbekistan' && m.count === 2) && p.playlist.menu.some(m => m.name === 'Новости' && m.count === 1));
     t('IPTV: разбор — не m3u не подсылаем', F._iptvParse('мусор') === null && F._iptvParse('') === null);
+    // браузер по https: http-каналы страница не загрузит — их нет в списке, а адрес плейлиста — зеркало без них
+    {
+        const sec = '#EXTM3U\n#EXTINF:-1,Защищённый\nhttps://a/1.m3u8\n#EXTINF:-1,Открытый\nhttp://b/2.m3u8\n';
+        ctx.location = { protocol: 'https:' };
+        const ps = F._iptvParse(sec), u = F._iptvUrl(F._iptvLists[0], false);
+        ctx.location = { protocol: 'http:' };
+        const ph = F._iptvParse(sec);
+        t('IPTV: на странице https — только https-каналы и список /iptv/s/, на http и ТВ — все',
+            ps.playlist.channels.length === 1 && ps.playlist.channels[0].url === 'https://a/1.m3u8' && /\/iptv\/s\/uz\.m3u$/.test(u) &&
+            ph.playlist.channels.length === 2 && !/\/s\//.test(F._iptvUrl(F._iptvLists[0], false)));
+        delete ctx.location;
+    }
     /* Запасные адреса канала — для сторожа плеера (переподключение → другой адрес → закрытие). */
     F._iptvAltIndex({ 'tashkent hd': ['http://a/1.m3u8', 'http://a/2.m3u8'], 'solo': ['http://b/1.m3u8'] });
     t('IPTV: запасной адрес — другой адрес того же канала (название без учёта регистра и пробелов)',
