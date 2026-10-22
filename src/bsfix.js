@@ -438,7 +438,18 @@ var BSFix = (function () {
      * только последний, прежний висит навсегда, в том числе поверх фильма, и пульт остаётся у слоя загрузки. Так было при
      * параллельном запросе Rezka (HDRezka молчит 6 с — второй getFileUrl плагина, ТВ 2026-10-11). Перед новым start
      * убираем прежний слой. */
-    var loadingOn = false;
+    var loadingOn = false, slowTimer = null, SLOW_MS = 5000;
+    /* Источник молчит дольше 5 с — под «Загрузка» подсказка, что это ждём источник и как отменить: пульт на это время у
+     * слоя загрузки (стрелки и «Назад» отменяют, OK — нет), и казалось, что ТВ завис. */
+    function slowHint() {
+        try {
+            var tv = Lampa.Platform && Lampa.Platform.tv && Lampa.Platform.tv();
+            var how = tv ? 'Назад — отменить' : 'нажмите, чтобы отменить';
+            var box = $('.loading-layer .loading-layer__text').last();
+            if (!box.length || box.find('.bs-load-hint').length) return;
+            box.append($('<span class="bs-load-hint"></span>').text('Источник отвечает долго · ' + how));
+        } catch (e) {}
+    }
     function hookLoading() {
         var L = Lampa.Loading, st = L.start, sp = L.stop;
         if (st.__bs) return;
@@ -447,10 +458,12 @@ var BSFix = (function () {
             if (typeof onCancel === 'function') args[0] = function () { lastCancel = Date.now(); return onCancel.apply(this, arguments); };
             if (loadingOn) { try { sp.call(L); } catch (e) {} }
             loadingOn = true;
+            clearTimeout(slowTimer);
+            slowTimer = setTimeout(function () { if (loadingOn) slowHint(); }, SLOW_MS);
             return st.apply(this, args);
         };
         L.start.__bs = true;
-        L.stop = function () { loadingOn = false; return sp.apply(this, arguments); };
+        L.stop = function () { loadingOn = false; clearTimeout(slowTimer); return sp.apply(this, arguments); };
     }
 
     /* ---------- источник текущего видео и автоподбор рабочего ----------

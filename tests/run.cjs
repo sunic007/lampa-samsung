@@ -1671,7 +1671,8 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
 /* ---- bsprobe.js: вердикт потока и поиск серии ---- */
 {
     const B = load('bsprobe.js', 'BSProbe').M;
-    t('поток: 404/410/5xx — мёртвый', B._verdict(404, '', true) === 'dead' && B._verdict(410, '', false) === 'dead' && B._verdict(503, '', true) === 'dead');
+    t('поток: 404/410/500 — мёртвый', B._verdict(404, '', true) === 'dead' && B._verdict(410, '', false) === 'dead' && B._verdict(500, '', true) === 'dead');
+    t('поток: 502/503/504 (сервер занят) — не мёртвый, решает плеер', B._verdict(503, '', true) === 'unknown' && B._verdict(502, '', false) === 'unknown' && B._verdict(504, '', true) === 'unknown');
     t('поток: плейлист с #EXTM3U — живой', B._verdict(200, '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nx.m3u8', true) === 'ok');
     t('поток: видеофайл 200/206 — живой', B._verdict(200, '', false) === 'ok' && B._verdict(206, '', false) === 'ok');
     t('поток: 403, нет ответа, странная страница — «не знаем», решает плеер', B._verdict(403, '', true) === 'unknown' && B._verdict(0, '', true) === 'unknown' && B._verdict(200, '<html>captcha', true) === 'unknown');

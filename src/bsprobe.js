@@ -31,8 +31,11 @@ var BSProbe = (function () {
     function firstUrl(u) { return String(u || '').split(' or ')[0].replace(/^\s+|\s+$/g, ''); }
     function isPlaylist(url, type) { return /\.m3u8(\?|#|$)/i.test(url) || /mpegurl/i.test(type || ''); }
 
-    /** Вердикт по ответу: 'ok' — поток жив, 'dead' — ссылка мёртвая, 'unknown' — не знаем (решает плеер). */
+    /** Вердикт по ответу: 'ok' — поток жив, 'dead' — ссылка мёртвая, 'unknown' — не знаем (решает плеер).
+     *  502/503/504 — сервер занят или его прокси на минуту потерял связь: это не «ссылки нет», такой источник не
+     *  вычёркиваем — пусть решает плеер (он и повторит). Мёртвые — 404/410 и прочие 5xx (ошибка самого сервера). */
     function verdict(status, body, playlist) {
+        if (status === 502 || status === 503 || status === 504) return 'unknown';
         if (status === 404 || status === 410 || (status >= 500 && status < 600)) return 'dead';
         if (status === 200 || status === 206) {
             if (!playlist) return 'ok';

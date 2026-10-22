@@ -202,3 +202,6 @@ body.bs-kb-hidden .search__keypad { display: none; }
   html body.true--mobile .navigation-bar .navigation-bar__icon { width: 1.35em !important; height: 1.35em !important; }
   html body.true--mobile .navigation-bar .navigation-bar__label { display: none !important; }
 }
+
+/* «Загрузка» дольше 5 с (bsfix.js slowHint): под ней — «Источник отвечает долго · Назад — отменить» */
+.loading-layer__text .bs-load-hint { display:block; margin-top:0.35em; font-size:0.72em; opacity:0.75; white-space:nowrap; }
