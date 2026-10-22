@@ -116,6 +116,16 @@ def update_modules():
 def write_manifest(version):
     """version.json в корне репозитория: ТВ сверяют с ним свою версию (update.js), модули берут с jsDelivr по тегу v<версия>."""
     import json
+    # выпуск только для сайта (браузер, MSX): "site" = версия пакета, "version" — прежняя для ТВ. Такой version.json
+    # оставляем как есть: ТВ и Android обновляются по "version", сайт — по большей из двух (site/lampa/index.php)
+    path = os.path.join(ROOT, 'version.json')
+    try:
+        old = json.load(open(path, encoding='utf-8'))
+    except Exception:
+        old = {}
+    if old.get('site') == version and old.get('version') and old['version'] != version:
+        print('version.json: выпуск только для сайта', version, '— для ТВ остаётся', old['version'])
+        return
     data = {'version': version, 'files': update_modules()}
     notes = changelog_notes(version)
     if notes:

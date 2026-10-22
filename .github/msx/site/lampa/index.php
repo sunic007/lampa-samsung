@@ -11,9 +11,7 @@
 const REPO = 'sunic007/lampa-samsung';
 const GH = 'https://raw.githubusercontent.com/' . REPO . '/main/version.json';
 const CDN = 'https://cdn.jsdelivr.net/gh/' . REPO . '@v';
-const PIN = '2.3.52';   // если GitHub не ответил и ничего не запомнено
-// выпуск только для сайта: новее, чем version.json для ТВ (на ТВ его нет) — сайт берёт его; ТВ догонят — не мешает
-const SITE_ONLY = '2.3.52';
+const PIN = '2.3.53';   // если GitHub не ответил и ничего не запомнено
 const LIFE = 600;       // версию проверяем раз в 10 минут
 const KEEP = 2;         // версий на хостинге
 
@@ -48,11 +46,16 @@ $v = is_file($vf) ? trim(file_get_contents($vf)) : '';
 if (!ok_ver($v) || time() - filemtime($vf) > LIFE) {
     $j = json_decode((string) fetch_url(GH . '?t=' . time()), true);
     if (!is_array($j)) $j = json_decode((string) fetch_url('https://cdn.jsdelivr.net/gh/' . REPO . '@main/version.json'), true);
-    if (is_array($j) && ok_ver($j['version'] ?? '')) { $v = $j['version']; @file_put_contents($vf, $v); }
+    if (is_array($j) && ok_ver($j['version'] ?? '')) {
+        $v = $j['version'];
+        // «site» — выпуск только для сайта (браузер, MSX), новее, чем у ТВ: ТВ его не видят, сайт берёт; этот файл для
+        // таких выпусков больше трогать не нужно
+        if (ok_ver($j['site'] ?? '') && version_compare($j['site'], $v, '>')) $v = $j['site'];
+        @file_put_contents($vf, $v);
+    }
     elseif (ok_ver($v)) @touch($vf);    // GitHub не ответил — прежняя версия ещё на 10 минут
 }
 if (!ok_ver($v)) $v = PIN;
-if (ok_ver(SITE_ONLY) && version_compare(SITE_ONLY, $v, '>')) $v = SITE_ONLY;
 
 /* ---------- своя копия выпуска ---------- */
 function ready($store, $ver) { return ok_ver($ver) && is_file("$store/$ver/.complete"); }
