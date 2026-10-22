@@ -42,9 +42,12 @@ var BSTv = (function () {
 
     /* ---------- плейлисты ---------- */
 
-    // Страница по https (браузер) не загрузит http-видео: там берём наши списки без таких каналов (зеркало /iptv/s/…)
+    /* Страница по https (браузер) не загрузит видео по http — а это почти половина открытых каналов. Списки берём
+     * полные: http-канал на такой странице помечаем, а выбрали его — предлагаем открыть Lampa по http (тот же сайт,
+     * http://…/lampa/?http=1), канал и плейлист передаём в адресе (#bstv=…) — там он включается сразу. */
     function secure() { try { return window.location.protocol === 'https:' && !window.tizen; } catch (e) { return false; } }
-    function ourUrl(key) { return MIRROR + (secure() ? 's/' : '') + key + '.m3u'; }
+    function blocked(ch) { return !!ch && secure() && /^http:\/\//i.test(ch.url); }
+    function ourUrl(key) { return MIRROR + key + '.m3u'; }
     function playlists() {
         var out = [], l = [], i, it, key;
         try { l = Lampa.Storage.get('iptv_playlist_custom', '[]'); } catch (e) {}
@@ -56,6 +59,12 @@ var BSTv = (function () {
             out.push({ id: String(it.id || it.url), name: String(it.name || it.url), url: String(it.url), key: key ? key[1] : '' });
         }
         if (!out.length) for (i = 0; i < DEFAULT.length; i++) out.push({ id: 'sunic-iptv-' + DEFAULT[i][0], name: DEFAULT[i][1], url: ourUrl(DEFAULT[i][0]), key: DEFAULT[i][0] });
+        // плейлист, с которым пришли со страницы по https (#bstv=…), если его тут нет
+        var ex = lsJson('bs_tv_extra', null), has = false;
+        if (ex && ex.id && /^https?:\/\//i.test(String(ex.url || ''))) {
+            for (i = 0; i < out.length; i++) if (out[i].id === ex.id) has = true;
+            if (!has) out.push({ id: String(ex.id), name: String(ex.name || 'Плейлист'), url: String(ex.url), key: ex.key || '' });
+        }
         return out;
     }
     function playlistById(id) {
@@ -65,7 +74,8 @@ var BSTv = (function () {
     }
     /** Адреса списка по порядку: основной, а для наших — ещё оригинал iptv-org. */
     function urlsOf(pl) {
-        var u = [pl.url];
+        // наши — всегда полный список с зеркала (у IPTV на https адрес /iptv/s/… — без http-каналов), запасной — iptv-org
+        var u = pl.key && pl.url.indexOf(MIRROR) === 0 ? [ourUrl(pl.key)] : [pl.url];
         if (pl.key && ORG_PATH[pl.key] && pl.url.indexOf(MIRROR) === 0) u.push(ORG + ORG_PATH[pl.key] + '.m3u');
         return u;
     }
@@ -87,7 +97,7 @@ var BSTv = (function () {
     }
     /** Разбор m3u кусками (step строк за такт): каналы {num, name, logo, group, url, tid}. */
     function parse(text, done) {
-        var lines = String(text || '').split('\n'), i = 0, cur = null, out = [], https = secure();
+        var lines = String(text || '').split('\n'), i = 0, cur = null, out = [];
         if (!/^\s*#EXTM3U/i.test(lines[0] || '')) return done(null);
         // архив: catchup="…" catchup-days="…" catchup-source="…" у канала, а по умолчанию — в строке #EXTM3U
         var head = lines[0], hType = attr(head, 'catchup'), hDays = attr(head, 'catchup-days'), hSrc = attr(head, 'catchup-source');
@@ -109,7 +119,7 @@ var BSTv = (function () {
                     if (cur && g) cur.group = g;
                 } else if (line && line.charAt(0) !== '#') {
                     u = line.split('|')[0];
-                    if (cur && /^https?:\/\/\S+$/i.test(u) && !(https && /^http:\/\//i.test(u))) {
+                    if (cur && /^https?:\/\/\S+$/i.test(u)) {
                         cur.url = u;
                         cur.name = cur.name || u;
                         cur.group = (cur.group || '').split(';')[0];
@@ -373,6 +383,7 @@ var BSTv = (function () {
             '.bstv-row__name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:1.1em}' +
             '.bstv-row__sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.5;font-size:.9em;margin-top:.15em}' +
             '.bstv-row__fav{color:#ffcc00;margin-left:.5em}' +
+            '.bstv-row__http{font-size:.7em;border:1px solid rgba(255,255,255,.35);border-radius:.3em;padding:0 .35em;margin-left:.5em;opacity:.6;vertical-align:middle}' +
             '.bstv-row__count{opacity:.5;margin-left:auto;padding-left:.6em}' +
             '.bstv-empty{opacity:.5;padding:1.2em}' +
             '.bstv-num{position:absolute;right:3em;top:2em;font-size:3em;font-weight:700;background:rgba(0,0,0,.6);border-radius:.3em;padding:.1em .5em}' +
@@ -515,8 +526,10 @@ var BSTv = (function () {
     function drawInfo(note) {
         var zap = S.zap >= 0, ch = zap ? S.view.list[S.zap] : S.cur, num = (zap ? S.zap : S.pos) + 1;
         if (!ch) return;
-        var arc = !zap && S.arc, p = progCached(ch), n = arc ? null : epgNow(p);
+        var arc = !zap && S.arc, p = progCached(ch), n = arc ? null : epgNow(p), bl = blocked(ch);
+        if (bl) note = 'Этот канал идёт по http — на защищённой странице (https) браузер его не включит. OK — открыть Lampa по http';
         var keys = arc ? [['◄►', 'Перемотка'], ['OK', 'Пауза'], ['Назад', 'В эфир'], ['▲▼', 'Каналы']]
+            : bl ? [['OK', 'Открыть по http'], ['▲▼', 'Другой канал'], ['◄', 'Каналы']]
             : [['◄', 'Каналы'], ['►', 'Программа'], ['▲▼', 'Переключить'], ['OK', 'Скрыть']];
         var k = '', i;
         for (i = 0; i < keys.length; i++) k += '<div class="bstv-key"><b>' + keys[i][0] + '</b>' + keys[i][1] + '</div>';
@@ -529,7 +542,7 @@ var BSTv = (function () {
             (arc ? progHtml(arc, null, true) : n ? progHtml(n.cur, n.next) : '') +
             (note ? '<div class="bstv-state">' + esc(note) + '</div>' : '') +
             '<div class="bstv-keys">' + k + '</div>' +
-            '<div class="bstv-touch"><div data-act="list">Каналы</div><div data-act="epg">Программа</div><div data-act="prev">▲</div><div data-act="next">▼</div>' +
+            '<div class="bstv-touch">' + (bl ? '<div data-act="http">Открыть по http</div>' : '') + '<div data-act="list">Каналы</div><div data-act="epg">Программа</div><div data-act="prev">▲</div><div data-act="next">▼</div>' +
                 '<div data-act="menu">Действия</div><div data-act="exit">Выйти</div></div>');
         if (!p) progLoad(ch, function () {
             var now = S.zap >= 0 ? S.view.list[S.zap] : S.cur;
@@ -564,7 +577,7 @@ var BSTv = (function () {
             n = epgNow(p);
             html += '<div class="bstv-row' + (i === S.focus ? ' focus' : '') + (chKey(ch) === playing ? ' play' : '') + '" data-i="' + i + '">' +
                 '<div class="bstv-row__num">' + (chKey(ch) === playing ? '● ' : '') + (i + 1) + '</div>' + logoHtml(ch) +
-                '<div class="bstv-row__body"><div class="bstv-row__name">' + esc(ch.name) + (isFav(ch) >= 0 ? '<span class="bstv-row__fav">★</span>' : '') + '</div>' +
+                '<div class="bstv-row__body"><div class="bstv-row__name">' + esc(ch.name) + (isFav(ch) >= 0 ? '<span class="bstv-row__fav">★</span>' : '') + (blocked(ch) ? '<span class="bstv-row__http">http</span>' : '') + '</div>' +
                 '<div class="bstv-row__sub">' + esc(n ? n.cur[2] : ch.group || '') + '</div></div>' +
                 (n ? '<div class="bstv-row__time">' + hm(n.cur[0]) + '</div>' : '') + '</div>';
         }
@@ -817,6 +830,12 @@ var BSTv = (function () {
         S.cur = ch;
         S.arc = null;
         S.failed = false;
+        S.playAt = Date.now();
+        if (blocked(ch)) {                                           // не включится — стоп и подсказка «открыть по http»
+            try { Lampa.PlayerVideo.pause(); } catch (e) {}
+            if (!S.panel) info(true, '', true);
+            return;
+        }
         addRecent(ch);
         lsSet('bs_tv_last', JSON.stringify({ pl: S.pl.id, ch: short(ch) }));
         try { Lampa.PlayerIPTV.listener.send('play', { channel: { name: ch.name, url: ch.url, group: ch.group, logo: ch.logo }, position: 0 }); }
@@ -925,6 +944,7 @@ var BSTv = (function () {
         else if (a === 'menu') actions();
         else if (a === 'epg') openEpg();
         else if (a === 'cats') openCats();
+        else if (a === 'http') goHttp(S.cur);
         else if (a === 'close') { if (S.panel === 'epg') closeEpg(); else if (S.panel === 'cats') openList(); else closeSide(); }
         else if (a === 'exit') exit();
     }
@@ -940,7 +960,7 @@ var BSTv = (function () {
             // в архиве ◄► — перемотка, OK — пауза; в эфире ◄ — каналы, ► — программа
             left: function () { if (S.arc) { Lampa.PlayerVideo.rewind(false); info(true); } else openList(); },
             right: function () { if (S.arc) { Lampa.PlayerVideo.rewind(true); info(true); } else openEpg(); },
-            enter: function () { if (S.zap >= 0) zapNow(); else if (S.arc) { Lampa.PlayerVideo.playpause(); info(true); } else info(!S.info); },
+            enter: function () { if (S.zap >= 0) zapNow(); else if (blocked(S.cur)) goHttp(S.cur); else if (S.arc) { Lampa.PlayerVideo.playpause(); info(true); } else info(!S.info); },
             back: function () {
                 if (S.zap >= 0) { zapCancel(); info(true); }
                 else if (S.arc) play(S.pos);                                // из архива — обратно в эфир
@@ -989,11 +1009,14 @@ var BSTv = (function () {
         });
         Lampa.Player.listener.follow('destroy', function () { if (S && S.playing) end(); });
         Lampa.PlayerVideo.listener.follow('error', function () {
-            if (!S || !S.playing || S.failed) return;
+            // ошибка прошлого канала, пока включается новый, — не про него
+            if (!S || !S.playing || S.failed || blocked(S.cur) || Date.now() - (S.playAt || 0) < 2500) return;
             S.failed = true;
             if (!S.panel) info(true, S.arc ? 'Архив не открылся — Назад, в эфир' : 'Канал не отвечает — ▲▼ другой канал', true);
         });
-        Lampa.PlayerVideo.listener.follow('canplay', function () { if (S && S.failed) { S.failed = false; if (S.info) drawInfo(); } });
+        var ok = function () { if (S && S.failed) { S.failed = false; if (S.info) info(true); } };
+        Lampa.PlayerVideo.listener.follow('canplay', ok);
+        Lampa.PlayerVideo.listener.follow('play', ok);
         Lampa.Keypad.listener.follow('keydown', function (e) {
             if (!S || !S.playing || S.panel === 'cats' || S.panel === 'epg') return;
             var c = e.code, d = -1;
@@ -1024,6 +1047,8 @@ var BSTv = (function () {
         S.view = viewOf(saved && saved.type !== 'search' ? saved.type : 'all', saved && saved.name);
         if (!S.view.list.length) S.view = viewOf('all');
         if (last && last.ch) { at = indexIn(S.view.list, last.ch); if (at >= 0) pos = at; }
+        // на https первый канал должен включиться: http-канал — заменяем ближайшим, который включится
+        for (at = 0; blocked(S.view.list[pos]) && at < S.view.list.length; at++) pos = (pos + 1) % S.view.list.length;
         var first = S.view.list[pos];
         S.pos = pos;
         S.cur = first;
@@ -1072,9 +1097,30 @@ var BSTv = (function () {
         tryLoad(order, 0);
     }
 
+    /** Открыть этот канал в Lampa по http: тот же адрес страницы, http и ?http=1, канал — в #bstv=… */
+    function goHttp(ch) {
+        if (!ch || !S) return;
+        var pl = S.pl, data = { pl: pl.id, name: pl.name, url: pl.key ? ourUrl(pl.key) : pl.url, key: pl.key || '', ch: short(ch) };
+        try { window.location.href = 'http://' + window.location.host + window.location.pathname + '?http=1#bstv=' + encodeURIComponent(JSON.stringify(data)); }
+        catch (e) { log('http', e && e.message); }
+    }
+    /** Пришли со страницы по https с каналом (#bstv=…): запоминаем плейлист и канал и сразу открываем. */
+    function fromHash() {
+        var m = /[#&]bstv=([^&]+)/.exec(String(window.location.hash || '')), d = null;
+        if (!m) return false;
+        try { d = JSON.parse(decodeURIComponent(m[1])); } catch (e) {}
+        try { window.history.replaceState(null, '', window.location.pathname + window.location.search); } catch (e) {}
+        if (!d || !d.pl || !d.ch || !/^https?:\/\//i.test(String(d.url || '')) || !/^https?:\/\//i.test(String(d.ch.url || ''))) return false;
+        lsSet('bs_tv_extra', JSON.stringify({ id: d.pl, name: d.name, url: d.url, key: /^\w+$/.test(String(d.key || '')) ? d.key : '' }));
+        lsSet('bs_tv_pl', String(d.pl));
+        lsSet('bs_tv_last', JSON.stringify({ pl: d.pl, ch: d.ch }));
+        lsSet('bs_tv_view', JSON.stringify({ type: 'all', name: '' }));
+        return true;
+    }
     function start() {
         if (!window.Lampa || !Lampa.Menu || !Lampa.Player || !Lampa.Player.iptv) return;
         try { Lampa.Menu.addButton(ICON, 'Телеканалы', open); } catch (e) { log('menu', e && e.message); }
+        if (fromHash()) setTimeout(open, 800);
     }
 
     return { start: start, open: open, _parse: parse, _playlists: playlists, _norm: tvNorm, _arcUrl: arcUrl, _epgNow: epgNow };

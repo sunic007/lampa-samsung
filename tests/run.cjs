@@ -4189,9 +4189,9 @@ async function serviceTests() {
     T._parse('<html>', r => { got = r; });
     t('ТВ: не m3u — null', got === null);
     ctx.location.protocol = 'https:'; T._parse(m3u, r => { got = r; });
-    t('ТВ: страница по https — http-каналы не берём', got.length === 1 && got[0].name === 'Второй');
-    t('ТВ: нет плейлистов — наши «На русском» и «Узбекистан» (https — без http-каналов)',
-        (p => p.length === 2 && p[0].id === 'sunic-iptv-rus' && p[0].url === 'https://sunic.stream/iptv/s/rus.m3u')(T._playlists()));
+    t('ТВ: страница по https — http-каналы в списке (включаются через «открыть по http»)', got.length === 2);
+    t('ТВ: нет плейлистов — наши «На русском» и «Узбекистан», полные списки',
+        (p => p.length === 2 && p[0].id === 'sunic-iptv-rus' && p[0].url === 'https://sunic.stream/iptv/rus.m3u')(T._playlists()));
     list = [{ id: 'mine', url: 'http://my/list.m3u', name: 'Мой' }, { id: 'bad', url: 'ftp://x' }];
     t('ТВ: плейлисты из IPTV — свои, без битых', (p => p.length === 1 && p[0].name === 'Мой')(T._playlists()));
     // имя для программы — как в tools/epg_build.py norm() (значения оттуда)
