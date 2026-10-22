@@ -3,7 +3,7 @@
 
 Телевизор не может скачать и разобрать XMLTV на 100+ МБ, поэтому раз в день (workflow epg.yml) готовим:
   index.json      {"v":1, "at":<unix>, "ids":{tvg-id: key}, "names":{имя: key}} — как найти канал любого плейлиста
-  c/<key>.json    {"n": имя, "p": [[начало, конец, название, описание], …]} — время в минутах unix, окно −7…+3 дня
+  c/<key>.json    {"n": имя, "p": [[начало, конец, название, описание], …]} — время в минутах unix, окно −2…+2 дня
 Ветка `epg` (без истории, перезаписывается): raw.githubusercontent, jsDelivr и sunic.stream/gh/ отдают её файлы.
 
 Источники по порядку (первый, где у канала есть передачи, — главный):
@@ -33,8 +33,10 @@ SOURCES = [
     {'key': 'x', 'name': 'iptvx', 'url': 'https://iptvx.one/epg/epg_noarch.xml.gz', 'map': 'epg.iptvx.one/epg.iptvx.one.channels.xml'},
     {'key': 'p', 'name': 'epg.pw', 'url': 'https://epg.pw/xmltv/epg_RU.xml.gz', 'map': None},
 ]
-BACK, AHEAD = 7 * 86400, 3 * 86400
-DESC_MAX = 300
+# окно: позавчера … послезавтра (архив и «что будет»); описание — только у ближайших передач, иначе ветка весит сотни МБ
+BACK, AHEAD = 2 * 86400, 2 * 86400
+DESC_FROM, DESC_TO = 3 * 3600, 30 * 3600
+DESC_MAX = 220
 
 TR = dict(zip('абвгдеёжзийклмнопрстуфхцчшщъыьэюяўқғҳі',
               ['a', 'b', 'v', 'g', 'd', 'e', 'e', 'zh', 'z', 'i', 'y', 'k', 'l', 'm', 'n', 'o', 'p', 'r', 's', 't', 'u', 'f', 'h', 'ts',
@@ -118,7 +120,7 @@ def read_source(src, now):
             a, b = unix(el.get('start')), unix(el.get('stop'))
             if a is not None and b is not None and b > lo and a < hi:
                 t = el.findtext('title') or ''
-                d = (el.findtext('desc') or '').strip()
+                d = (el.findtext('desc') or '').strip() if b > now - DESC_FROM and a < now + DESC_TO else ''
                 if len(d) > DESC_MAX:
                     d = d[:DESC_MAX].rsplit(' ', 1)[0] + '…'
                 chans.setdefault(el.get('channel'), {'names': [], 'p': []})['p'].append([a // 60, b // 60, t.strip(), d])
