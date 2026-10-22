@@ -176,6 +176,8 @@ var BSGuard = (function () {
         stop();
         if (!enabled() || !data) return;
         if (isTorrent(data)) { log('torrent — не следим'); return; }
+        // «Телеканалы» (bstv.js) переключают каналы сами, мимо playdata — сторож чинил бы первый канал и закрывал плеер
+        if (data.bstv) { log('Телеканалы — следят сами'); return; }
         s = {
             iptv: isChannel(data),
             startedAt: Date.now(),

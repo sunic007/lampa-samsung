@@ -1060,7 +1060,7 @@ var BSTv = (function () {
         var stub = { name: first.name, url: first.url };
         // total: 1 — переключение каналов самого плеера Lampa выключено (номера и CH ведём сами, см. hooks)
         Lampa.Player.iptv({
-            title: first.name, url: first.url, position: 0, total: 1,
+            title: first.name, url: first.url, position: 0, total: 1, bstv: true,
             onGetChannel: function () { return stub; },
             onGetProgram: function () {},
             onPlay: function () {}
