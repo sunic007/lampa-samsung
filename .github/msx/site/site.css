@@ -182,3 +182,8 @@ html:not(.ready) main { visibility:hidden; animation:bs-show 0s 2s forwards; }  
   color:#fff; background:linear-gradient(140deg, #4f8dff, #7c3aed); box-shadow:inset 0 1px 0 rgba(255,255,255,.3); }
 .tab-ico svg { width:19px; height:19px; }
 .tabs button.on .tab-ico { box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent), inset 0 1px 0 rgba(255,255,255,.3); }
+
+/* переход с плитки «Где работает»: вкладки не прячутся под шапкой, открытая инструкция коротко подсвечивается */
+.tabs { scroll-margin-top:84px; }
+@keyframes bs-flash { 0% { box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 80%, transparent); } 100% { box-shadow:0 0 0 2px transparent; } }
+[data-pane].flash { animation:bs-flash 1.6s ease-out; }

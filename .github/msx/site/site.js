@@ -171,6 +171,18 @@
   }
   document.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { tab(b.getAttribute('data-tab')); }; });
   tab(dev === 'web' ? 'tv' : dev);
+  // плитка «Где работает» — сразу нужная вкладка «Как начать» и плавно к ней (а не просто наверх к шагам)
+  document.querySelectorAll('[data-go]').forEach(function (a) {
+    a.onclick = function (e) {
+      e.preventDefault();
+      var id = a.getAttribute('data-go'), tabs = document.querySelector('.tabs');
+      tab(id);
+      if (tabs) tabs.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      var pane = document.querySelector('[data-pane="' + id + '"]');
+      if (pane) { pane.classList.remove('flash'); void pane.offsetWidth; pane.classList.add('flash'); }
+      a.blur();
+    };
+  });
 
   document.querySelectorAll('[data-copy]').forEach(function (b) {
     b.onclick = function () {
