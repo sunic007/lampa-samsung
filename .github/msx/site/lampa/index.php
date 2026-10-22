@@ -3,9 +3,11 @@
  * Lampa «Sunic Apps» для Media Station X и браузера (sunic.stream — хостинг в Узбекистане, не Cloudflare: его диапазоны у
  * провайдеров блокируют). MSX открывает эту страницу сразу при старте (msx/start.json → "action": "link:…").
  *
- * Файлы — на этом же хостинге: lampa/v/<версия>/ — копия src последнего выпуска (без службы Tizen). Раз в 10 минут —
- * version.json на GitHub (или jsDelivr); вышла новая — сервер сам докачивает её после ответа (в фоне), а пока работает
- * прежняя. Держим две версии (новая и прошлая). Своей копии ещё нет (первый запуск) — файлы с jsDelivr (<base>).
+ * Файлы Lampa браузер берёт с jsDelivr (по тегу выпуска) — хостинг отдаёт только эту страницу. Запас — своя копия на
+ * этом же хостинге: lampa/v/<версия>/ — копия src выпуска (без службы Tizen). jsDelivr не ответил (ошибка файла или
+ * страница 20 с не загрузилась) — страница один раз перезагружается со своей копии и сутки берёт её (cookie bs_cdn_bad).
+ * Раз в 10 минут — version.json на GitHub (или jsDelivr); вышла новая — сервер сам докачивает её после ответа (в фоне),
+ * а пока работает прежняя. Держим две версии (новая и прошлая). Своей копии ещё нет (первый запуск) — только jsDelivr.
  * Обновлять этот файл не нужно. По http и https: источники Skaz — только по http (их серверы https не умеют).
  */
 const REPO = 'sunic007/lampa-samsung';
@@ -150,9 +152,13 @@ else {
     if ($vers) $serve = end($vers);                    // пока новая качается — прежняя своя
 }
 
+$own = '';                                             // своя копия — запасной адрес файлов
 if ($serve) {
     $html = (string) @file_get_contents("$store/$serve/index.html");
-    $base = '/lampa/v/' . $serve . '/';
+    $own = '/lampa/v/' . $serve . '/';
+    // своя копия уже скачана — выпуску минуты, jsDelivr его отдаёт. У этого браузера jsDelivr недавно не ответил
+    // (cookie bs_cdn_bad, сутки) — сразу своя копия
+    $base = empty($_COOKIE['bs_cdn_bad']) ? CDN . $serve . '/src/' : $own;
 } else {                                               // своей копии ещё нет — с jsDelivr
     $pf = $cache . '/page-' . $v . '.html';
     $html = is_file($pf) ? file_get_contents($pf) : '';
@@ -167,7 +173,7 @@ if (!$html) {
 }
 
 // В MSX нет API Samsung (window.tizen): плеер «Tizen» (AVPlay) не запустится — встроенный плеер Lampa (loader.js на
-// первом запуске ставит «tizen», если bs_player_default нет — ставим раньше). Файлы с jsDelivr (первый запуск): их ошибки
+// первом запуске ставит «tizen», если bs_player_default нет — ставим раньше). Файлы с jsDelivr: их ошибки
 // браузер отдаёт без текста («Script error.») — Lampa показывала бы их уведомлением, понять по нему нечего: глушим такие.
 // referrer — в самой странице: хостинг дописывает свой, слабее нашего из .htaccess, и браузер берёт последний заголовок
 // «На экран «Домой»» (iPhone, Android): открывается как приложение, без панелей браузера — так на iPhone и весь экран
@@ -175,6 +181,13 @@ $app = '<link rel="manifest" href="/lampa/manifest.json"><meta name="apple-mobil
     . '<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black">'
     . '<meta name="apple-mobile-web-app-title" content="Lampa"><link rel="apple-touch-icon" href="/media/logo-180.png">';
 $head = '<meta name="referrer" content="no-referrer">' . $app . "\n    " . '<base href="' . $base . '">' . "\n    <script>"
+    // файлы — с jsDelivr; не ответил — cookie на сутки и одна перезагрузка: сервер отдаст страницу со своей копией
+    . (!$own || $base === $own ? '' : '(function () { var c = ' . json_encode($base) . ', o = ' . json_encode($own) . ';'
+    . ' window.BS_SITE_OWN = o; var t0 = Date.now(), gone = false, fall = function () { if (gone) return; gone = true;'
+    . ' document.cookie = "bs_cdn_bad=1; max-age=86400; path=/lampa/"; location.reload(); };'
+    . ' window.addEventListener("error", function (e) { var el = e.target, u = el && /^(SCRIPT|LINK)$/.test(el.tagName) && (el.src || el.href);'
+    . ' if (typeof u === "string" && u.indexOf(c) === 0 && Date.now() - t0 < 60000) fall(); }, true);'
+    . ' setTimeout(function () { if (document.readyState === "loading") fall(); }, 20000); })();')
     // страница и так всегда последнего выпуска — своё обновление модулей (update.js: окно «Вышло обновление») не нужно
     . '(function () { try { localStorage.setItem("bs_gh_update", "false"); } catch (x) {} })();'
     // версия Sunic Apps этой страницы — для «Обновление» (на сайте нет пакета .wgt, откуда её берёт ТВ)

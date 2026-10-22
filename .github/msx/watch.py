@@ -81,14 +81,18 @@ def main():
         page = get('/lampa/')
         base = re.search(r'<base href="([^"]+)"', page)
         local = base and re.fullmatch(r'/lampa/v/(\d+\.\d+\.\d+)/', base.group(1))
-        if not base or not (local or re.fullmatch(r'https://cdn\.jsdelivr\.net/gh/sunic007/lampa-samsung@v\d+\.\d+\.\d+/src/', base.group(1))):
+        # файлы — с jsDelivr, своя копия — запасная (window.BS_SITE_OWN): сверяем и её
+        own = re.search(r', o = "(\\/lampa\\/v\\/[0-9.]+\\/)"', page)
+        own_path = own.group(1).replace('\\/', '/') if own else (base.group(1) if local else '')
+        local = re.fullmatch(r'/lampa/v/(\d+\.\d+\.\d+)/', own_path)
+        if not base or not ((local and base.group(1) == own_path) or re.fullmatch(r'https://cdn\.jsdelivr\.net/gh/sunic007/lampa-samsung@v\d+\.\d+\.\d+/src/', base.group(1))):
             bad.append('/lampa/: <base> не на свою копию и не на наш jsDelivr: %s' % (base.group(1) if base else 'нет'))
         if local:
             # своя копия выпуска на хостинге — байт в байт как выпуск на GitHub (подмену файла видно сразу)
             ver = local.group(1)
             for f in ['index.html', 'update.js', 'loader.js', 'bsfix.js', 'bssources.js', 'bstg.js', 'app.js', 'bs.css']:
                 try:
-                    mine = get(base.group(1) + f)
+                    mine = get(own_path + f)
                     with urllib.request.urlopen('https://raw.githubusercontent.com/sunic007/lampa-samsung/v%s/src/%s' % (ver, f), timeout=60) as r:
                         orig = r.read().decode('utf-8', 'replace')
                     if mine != orig:
