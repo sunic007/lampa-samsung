@@ -768,6 +768,16 @@ var BSFeatures = (function () {
             try { at = iptvByKey(String(Lampa.Storage.get('iptv_pilot_book', '{}').playlist || '').replace(/^sunic-iptv-/, '')); } catch (e) { at = -1; }
             if (at >= 0) iptvText(el, iptvConst(IPTV_LISTS[at][1]));
         }
+        // мышь и касание (браузер, телефон): к выбору списка ведёт только «Назад» — о нём не догадаться. Рядом с названием
+        // списка — кнопка «Сменить список» (на ТВ не нужна: «Назад» на пульте)
+        el = root.querySelector('.iptv-menu__head');
+        if (el && el.parentNode && !el.parentNode.querySelector('.bs-iptv-switch') && !iptvRemote()) {
+            var sw = document.createElement('div');
+            sw.className = 'bs-iptv-switch';
+            sw.textContent = 'Сменить список';
+            sw.onclick = function (ev) { try { ev.stopPropagation(); Lampa.Controller.back(); } catch (x) {} };
+            el.parentNode.insertBefore(sw, el.nextSibling);           // под названием: само название не сжимается
+        }
         q = root.querySelectorAll('.iptv-details__play span:last-child, .iptv-hud-menu-info__group');
         for (i = 0; i < q.length; i++) iptvText(q[i], iptvGroup);
         q = root.querySelectorAll('.iptv-channel__name, .iptv-details__title, .iptv-hud-menu-info__name');
@@ -791,6 +801,7 @@ var BSFeatures = (function () {
             })(q[i]), 4000);
         }
     }
+    function iptvRemote() { try { return !!(Lampa.Platform.tv && Lampa.Platform.tv()); } catch (e) { return false; } }
     function iptvTilesOn() {
         try { return Lampa.Activity.active().component === 'iptv' && !!document.querySelector('.activity--active .iptv-list__items'); } catch (e) { return false; }
     }
@@ -806,6 +817,8 @@ var BSFeatures = (function () {
     }
     var IPTV_CSS = '.iptv-list__ico{display:none}.iptv-list__title{font-size:2.2em;font-weight:600;margin-bottom:.4em}' +
         '.iptv-menu .iptv-menu__head .iptv-menu__title{font-size:1.9em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+        '.bs-iptv-switch{display:inline-block;margin:-.4em 0 1em;padding:.45em 1.1em;border-radius:2em;font-size:.95em;white-space:nowrap;cursor:pointer;' +
+        'background:rgba(255,255,255,.12)}.bs-iptv-switch:hover{background:rgba(255,255,255,.22)}' +
         '.iptv-list__text{opacity:.6;margin-bottom:1.2em}.iptv-list__items{width:92%}.iptv-list__items .scroll{height:28em}' +
         '.iptv-list__items .scroll__body{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap}' +
         '.iptv-list__items .iptv-playlist-item{width:30%;width:calc(33.333% - 2em);box-sizing:border-box;margin:1em;padding:1.3em 1.4em;border-radius:1em}' +
