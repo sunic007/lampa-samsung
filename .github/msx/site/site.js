@@ -3,7 +3,7 @@
     uz: {
       h1: 'Barcha filmlar va seriallar — televizoringizda',
       sub: 'Sunic Apps bilan Lampa: keyingi qismni o\'zi yoqadi, filmni barcha manbalardan topadi, qidirishni esa telefondan Telegram orqali qilish mumkin.',
-      cta_tv: 'Televizorga qanday o‘rnatiladi', cta_web: 'Brauzerda ochish',
+      cta_tv: 'Televizorga qanday o‘rnatiladi', cta_web: 'Ko‘rish',
       tab_tv: '📺 Har qanday Smart TV', tab_tv_s: 'Samsung, LG, Android TV — Media Station X', tab_phone: '📱 Samsung uchun ilova', tab_phone_s: 'telefondan — TV Installer',
       tab_android: '🤖 Android TV / pristavka', tab_android_s: 'Lampa uchun plagin', tab_web: '💻 Brauzerda', tab_web_s: 'kompyuter yoki telefon',
       tv_h: 'Har qanday Smart TV — Media Station X', tv_1: 'Televizorning ilovalar do‘konidan Media Station X ni o‘rnating — Samsung, LG, Android TV va boshqalarda bor.',
@@ -64,7 +64,7 @@
     en: {
       h1: 'All movies and series — on your TV',
       sub: 'Lampa with Sunic Apps: plays the next episode by itself, finds a movie in every source, and you can search from your phone in Telegram.',
-      cta_tv: 'How to install on a TV', cta_web: 'Open in the browser',
+      cta_tv: 'How to install on a TV', cta_web: 'Watch',
       tab_tv: '📺 Any Smart TV', tab_tv_s: 'Samsung, LG, Android TV — Media Station X', tab_phone: '📱 App for Samsung', tab_phone_s: 'from your phone — TV Installer',
       tab_android: '🤖 Android TV / box', tab_android_s: 'plugin for Lampa', tab_web: '💻 In the browser', tab_web_s: 'computer or phone',
       tv_h: 'Any Smart TV — Media Station X', tv_1: 'Install <b>Media Station X</b> from your TV app store — it is on Samsung, LG, Android TV and others.',
