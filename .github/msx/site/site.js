@@ -59,7 +59,7 @@
       fin_h: 'Bugun kechqurun ko\'rishni boshlang',
       fin_p: 'O\'rnatishga ikki daqiqa — va hammasi o\'zi ishlaydi.',
       fin_tg: 'Telegramda so\'rash',
-      credits: 'Rasmlarda — Blender Foundation filmlari (CC BY 4.0), blender.org'
+      credits: 'Rasmlar va posterlarda — Blender Foundation filmlari (CC BY), blender.org'
     },
     en: {
       h1: 'All movies and series — on your TV',
@@ -120,7 +120,7 @@
       fin_h: 'Start watching tonight',
       fin_p: 'Two minutes to set up — and everything works by itself.',
       fin_tg: 'Ask in Telegram',
-      credits: 'Screenshots show Blender Foundation films (CC BY 4.0), blender.org'
+      credits: 'Screenshots and posters show Blender Foundation films (CC BY), blender.org'
     },
     ru: { news: 'Что нового:', copied: 'Скопировано', st_ok: 'работает', st_slow: 'медленно', st_bad: 'не отвечает' }
   };
