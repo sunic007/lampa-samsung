@@ -295,7 +295,15 @@ var BSContinue = (function () {
      * следующая), фильм — с места (onDraw). Не начатое — экран источников как обычно. */
     function autoResume(o) {
         if (pending || o.lampac_continue_episode || !o.movie || !(o.movie.id > 0)) return;
-        var list = load(), i = find(list, o.movie);
+        var list = load(), i = find(list, o.movie), bot = window.BS_BOT_PLAY;
+        // «▶️ Смотреть» из бота на сериале, который ещё не смотрели: сразу 1-я серия, а не список серий
+        if (i < 0 && isTv(o.movie) && bot && bot.id == o.movie.id && Date.now() < bot.until && !skazAsksContinue()) {
+            window.BS_BOT_PLAY = null;
+            o.lampac_continue_episode = 1;
+            quiet('Включаю: сезон 1, серия 1', 3000);
+            log('из бота — сериал с 1-й серии', o.movie.id);
+            return;
+        }
         if (i < 0) {
             // фильм ещё не смотрели — «Смотреть» сразу включает русскую озвучку (bs_ru_auto), если в Skaz не выбрано иное
             if (!isTv(o.movie) && on('bs_ru_auto', true) && !skazWantsOriginal()) {

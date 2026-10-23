@@ -2144,7 +2144,9 @@ var BSTelegram = (function () {
         if (w && Date.now() - w.at < AFTER_VIDEO_MAX) setTimeout(keep(function () { w.run(); }), 1500);
     }
     function pushCard(card, kind, play) {
-        watchFor = play ? { id: card.id, until: Date.now() + 30000 } : null;
+        // карточка у нас грузится и по 30–60 с (TMDB через прокси, Lampa только открылась): ждём её дольше — иначе на ТВ
+        // оставалось кольцо загрузки, а «Смотреть» никто не нажимал (2026-10-23)
+        watchFor = play ? { id: card.id, until: Date.now() + 90000 } : null;
         Lampa.Activity.push({ url: '', component: 'full', id: card.id, method: kind === 't' ? 'tv' : 'movie', card: card, source: 'tmdb' });
     }
     function onFullWatch(e) {
@@ -2159,8 +2161,12 @@ var BSTelegram = (function () {
                 var x = $(this);
                 if (!b.length && (x.hasClass('lampac--button') || /^(Онлайн|Online)$/i.test($.trim(x.text())))) b = x;
             });
-            if (b.length) { log('смотреть сразу', card.id); return b.trigger('hover:enter'); }
-            if (++tries < 20) setTimeout(click, 300);
+            if (b.length) {
+                log('смотреть сразу', card.id);
+                window.BS_BOT_PLAY = { id: card.id, until: Date.now() + 60000 };   // сериал без памяти — с 1-й серии (bscontinue)
+                return b.trigger('hover:enter');
+            }
+            if (++tries < 40) setTimeout(click, 300);
             else noty('Нажмите «Смотреть» на карточке', 4000);
         })();
     }
