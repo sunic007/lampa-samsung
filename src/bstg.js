@@ -2073,7 +2073,7 @@ var BSTelegram = (function () {
             var why = typedText(m.text) ? typeHere(typedText(m.text)) : 'пустой текст';
             if (m.ref) busSend({ t: 'ack', ref: m.ref, ok: !why, why: why, name: tvName() });
         }
-        else if (m.t === 'ack' && m.ref && acks[m.ref]) { var a = acks[m.ref]; delete acks[m.ref]; a(m); }
+        else if (m.t === 'ack' && m.ref && acks[m.ref]) { var a = acks[m.ref]; if (!m.wait) delete acks[m.ref]; a(m); }   // «жду» — ответ ещё будет
         else if (m.t === 'sub' && m.card && m.card.id) setSub(m.card, !!m.on, null);
         else if (m.t === 'seen' && m.id) {
             var all = loadSeen(), r = all[m.id] || {};
@@ -2132,54 +2132,70 @@ var BSTelegram = (function () {
     /* «▶️ Смотреть» из бота: открыть карточку и самим нажать на ней «Смотреть» (кнопка bsmenu.js или «Онлайн» Skaz).
      * Дальше — как с пульта: сериал — с той серии, где остановились, новый фильм — сразу в русской озвучке (bscontinue). */
     var watchFor = null;
-    /* Пока на ТВ идёт видео, карточку открыть нельзя: её перекрыл бы плеер. Запрос владельца не отбрасываем,
-     * а ставим в очередь - когда плеер закроют, бот откроет карточку сам. Гостям очереди нет: видео смотрит
-     * владелец, гость получает отказ. */
-    var afterVideo = null, AFTER_VIDEO_MAX = 10 * 60000;
+    /* Пока на ТВ идёт видео, карточку открыть нельзя: её перекрыл бы плеер. Запрос не отбрасываем: на ТВ спрашиваем
+     * (askDuringVideo), а «после этого видео» ставим в очередь — когда плеер закроют, бот откроет карточку сам.
+     * Очередь — до 3 запросов по порядку, по одному на каждый конец видео; ждут до 4 ч (фильм бывает длинным). */
+    var afterVideo = [], AFTER_VIDEO_MAX = 4 * 3600000, AFTER_VIDEO_N = 3, afterTimer = 0, quietClose = false;
     function tvPlaying() { try { return !!Lampa.Player.opened(); } catch (e) { return false; } }
-    function whenVideoEnds(run) { afterVideo = { run: run, at: Date.now() }; }
+    function whenVideoEnds(run) {
+        afterVideo.push({ run: run, at: Date.now() });
+        if (afterVideo.length > AFTER_VIDEO_N) afterVideo.shift();
+    }
+    /* Lampa шлёт 'destroy' и при смене серии внутри плеера (destroy, потом сразу play) — это не конец видео:
+     * через 1,5 с плеер снова открыт, и очередь ждёт дальше (2026-10-25). */
     function onVideoClosed() {
-        if (asking) asking(true);                               // видео кончилось, пока висел вопрос, — откроем сейчас
-        var w = afterVideo;
-        afterVideo = null;
-        if (w && Date.now() - w.at < AFTER_VIDEO_MAX) setTimeout(keep(function () { w.run(); }), 1500);
+        if (quietClose) return;                                 // плеер закрыли мы сами («Открыть сейчас»)
+        if (asking) asking.hidden = true;                       // destroy убрал меню с вопросом (Select.hide)
+        clearTimeout(afterTimer);
+        afterTimer = setTimeout(keep(function () {
+            afterTimer = 0;
+            if (tvPlaying()) return;
+            if (asking) asking.later(true);                     // видео кончилось, пока висел вопрос, — откроем сейчас
+            var now = Date.now(), w;
+            while ((w = afterVideo.shift())) if (now - w.at < AFTER_VIDEO_MAX) return w.run();
+        }), 1500);
+    }
+    /** Плеер снова открылся (следующая серия): вопрос, который убрал destroy, — показать снова. */
+    function onVideoStarted() {
+        if (asking && asking.hidden) { asking.hidden = false; asking.show(); }
     }
     /* Во время видео запрос из бота не ставим в очередь молча: на ТВ спрашиваем того, кто смотрит, — «Имя отправил(а)
-     * фильм «…»: открыть сейчас или после этого видео» (владелец, 2026-10-25). Никто не ответил за минуту — в очередь. */
+     * фильм «…»: открыть сейчас или после этого видео» (владелец, 2026-10-25; гостей тоже спрашиваем, а не отказываем).
+     * Никто не ответил за минуту — в очередь. */
     var asking = null, ASK_WAIT = 60000;
     function senderName() { if (isOwner()) return ownerName(); var g = users()[to()]; return (g && g.name) || 'Гость'; }
     function askDuringVideo(who, kind, title, now, later) {
-        if (asking) asking();                                   // прошлый вопрос ещё висит — тот запрос в очередь
-        var ctrl = '', done = false, timer;
-        try { ctrl = Lampa.Controller.enabled().name; } catch (e) {}
+        if (asking) asking.later();                             // прошлый вопрос ещё висит — тот запрос в очередь
+        var ctrl = '', done = false, timer, me;
         var finish = function (fn) {
             if (done) return;
-            done = true; asking = null; clearTimeout(timer);
+            done = true; clearTimeout(timer);
+            if (asking === me) asking = null;
             try { if (ctrl) Lampa.Controller.toggle(ctrl); } catch (e) {}
             fn();
         };
-        // shut — меню уже убрал сам плеер (видео кончилось): Select.close не зовём
-        asking = function (shut) { if (!shut) try { Lampa.Select.close(); } catch (e) {} finish(later); };
-        timer = setTimeout(asking, ASK_WAIT);
-        try {
-            Lampa.Select.show({
-                title: esc(who + ' отправил(а) ' + (kind === 't' ? 'сериал' : 'фильм') + (title ? ' «' + title + '»' : '')),
-                items: [{ title: '▶️ Открыть сейчас', now: true }, { title: '⏳ После этого видео' }],
-                onSelect: function (a) { finish(a && a.now ? now : later); },
-                onBack: function () { finish(later); }
-            });
-        } catch (e) { log('спросить на ТВ', e.message); finish(later); }
+        var show = function () {
+            try { ctrl = Lampa.Controller.enabled().name; } catch (e) {}
+            try {
+                Lampa.Select.show({
+                    title: esc(who + ' отправил(а) ' + (kind === 't' ? 'сериал' : 'фильм') + (title ? ' «' + title + '»' : '')),
+                    items: [{ title: '▶️ Открыть сейчас', now: true }, { title: '⏳ После этого видео' }],
+                    onSelect: function (a) { finish(a && a.now ? now : later); },
+                    onBack: function () { finish(later); }
+                });
+            } catch (e) { log('спросить на ТВ', e.message); finish(later); }
+        };
+        // shut — меню уже убрал сам плеер: Select.close не зовём
+        me = asking = { hidden: false, show: show, later: function (shut) { if (!shut && !me.hidden) try { Lampa.Select.close(); } catch (e) {} finish(later); } };
+        timer = setTimeout(function () { me.later(); }, ASK_WAIT);
+        show();
     }
-    /** «Открыть сейчас»: закрыть плеер и открыть. То, что уже стояло в очереди, ждёт конца следующего видео. */
+    /** «Открыть сейчас»: закрыть плеер и открыть. Очередь не трогаем — она ждёт конца следующего видео. */
     function stopVideo(open) {
-        var w = afterVideo;
-        afterVideo = null;
+        quietClose = true;
         try { Lampa.Player.close(); } catch (e) {}
-        afterVideo = null;
-        setTimeout(keep(function () {
-            if (w && !afterVideo) afterVideo = { run: w.run, at: Date.now() };
-            open();
-        }), 700);
+        quietClose = false;
+        setTimeout(keep(open), 700);
     }
     /** Запрос во время видео: спросить на ТВ. tell('ask' | 'later') — что написать отправителю. */
     function videoAsk(card, kind, open, tell) {
@@ -4597,6 +4613,7 @@ var BSTelegram = (function () {
         try { addSettings(); } catch (e) { log('settings', e.message); }
         try { searchKeypad(); } catch (e) { log('клавиатура поиска', e.message); }
         try { Lampa.Player.listener.follow('destroy', onVideoClosed); } catch (e) {}
+        try { Lampa.Player.listener.follow('start', onVideoStarted); } catch (e) {}
         try { Lampa.Search.listener.follow('sources', function () { setTimeout(function () { try { searchQr(); } catch (e) { log('qr поиска', e.message); } }, 50); }); } catch (e) {}
         try {
             Lampa.Listener.follow('full', cardButton);
@@ -4689,7 +4706,7 @@ var BSTelegram = (function () {
         /** 'own' — свой бот подключён, 'none' — не подключено. */
         state: state, refresh: function () { try { refreshSettings(); } catch (e) {} },
         tvName: tvName,
-        _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _join4: { code: join4Code, show: join4Show, topic: join4Topic, hellos: join4Hellos, box: join4Box, open: join4Open, send: join4Send, BASE9: BASE9 }, _joinTopic: joinTopic, _joinShow: joinShow, _joinKeys: joinKeys, _aiForget: aiForget, _relaySet: relaySet, _svcSync: svcSync, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _askDuringVideo: askDuringVideo, _stopVideo: stopVideo, _leaderStale: leaderStale, _leaderOnScreen: leaderOnScreen, _watchTick: watchTick, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _lateCommand: lateCommand, _botDesc: function (l, s) { return [botDesc(l || 'ru', s), botShort(l || 'ru', s)]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _tmdbGet: tmdbGet, _blockParse: blockParse, _blockReset: function () { blockIds = null; blockAt = 0; }, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow,
+        _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _join4: { code: join4Code, show: join4Show, topic: join4Topic, hellos: join4Hellos, box: join4Box, open: join4Open, send: join4Send, BASE9: BASE9 }, _joinTopic: joinTopic, _joinShow: joinShow, _joinKeys: joinKeys, _aiForget: aiForget, _relaySet: relaySet, _svcSync: svcSync, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _onVideoStarted: onVideoStarted, _askDuringVideo: askDuringVideo, _stopVideo: stopVideo, _leaderStale: leaderStale, _leaderOnScreen: leaderOnScreen, _watchTick: watchTick, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _lateCommand: lateCommand, _botDesc: function (l, s) { return [botDesc(l || 'ru', s), botShort(l || 'ru', s)]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _tmdbGet: tmdbGet, _blockParse: blockParse, _blockReset: function () { blockIds = null; blockAt = 0; }, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow,
         _call: call, _check: check, _remind: remind, _joinCode: joinCode, _randomTopic: randomTopic,
         _busTopic: busTopic, _svc: svc, _svcKey: function (k) { if (window.BS_TEST_HOOKS !== true) return undefined; if (typeof k === 'string') svcKey = k; return svcKey; },
         _svcStart: svcStart, _svcMove: svcMove, _svcCheck: svcCheck, _svcForget: svcForget, _tgOff: tgOff, _tgOffAsk: tgOffAsk, _svcSeen: svcSeen, _tvRules: tvRules, _addSettings: addSettings, _aiRun: aiRun, _aiSlot: aiSlot, _setAiKey: setAiKey,

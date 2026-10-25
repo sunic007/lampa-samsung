@@ -1219,7 +1219,7 @@ t('обновления: непроверенная версия функций 
 {
     let playing = true;
     const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setInterval: () => 0,
-        setTimeout: f => { f(); return 0; },
+        setTimeout: f => { f(); return 0; }, clearTimeout() {},
         Lampa: { Player: { opened: () => playing }, Noty: { show() {} } } };
     ctx.window = ctx; ctx.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
     vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
@@ -1278,6 +1278,29 @@ t('обновления: непроверенная версия функций 
     T._askDuringVideo('Аня', 'm', 'D', () => {}, () => { late++; T._whenVideoEnds(() => late += 10); });
     T._onVideoClosed(); timers.forEach(f => f());
     t('видео кончилось, пока висел вопрос: открывается сразу, не ждёт следующего видео', late === 11);
+
+    // смена серии внутри плеера: Lampa шлёт destroy и сразу снова открывает плеер — это не конец видео
+    ctx.Lampa.Player.opened = () => true;
+    let ep = 0, epNow = 0;
+    timers.length = 0;
+    T._whenVideoEnds(() => ep++);
+    T._askDuringVideo('Аня', 't', 'E', () => epNow++, () => {});
+    const shown = sel;
+    T._onVideoClosed();                                           // destroy при смене серии: меню спрятано
+    T._onVideoStarted();                                          // следующая серия
+    t('смена серии: вопрос показан снова', sel !== shown && /«E»/.test(sel.title));
+    timers.slice(1).forEach(f => f());                            // проверка через 1,5 с: плеер открыт
+    t('смена серии: очередь ждёт конца видео, а не открывает поверх сериала', ep === 0);
+    sel.onSelect(sel.items[0]);
+    t('смена серии: на повторный вопрос можно ответить', epNow === 1);
+
+    // очередь по порядку, до 3 запросов, по одному на каждый конец видео
+    const order = [];
+    T._onVideoClosed(); ctx.Lampa.Player.opened = () => false; timers.length = 0;
+    ['A', 'B', 'C', 'D'].forEach(x => T._whenVideoEnds(() => order.push(x)));
+    T._onVideoClosed(); timers.forEach(f => f()); timers.length = 0;
+    T._onVideoClosed(); timers.forEach(f => f());
+    t('очередь: по одному за конец видео, старше 3 запросов — выпадает первый', order.join() === 'B,C' && ep === 0);
 }
 
 /* ---- bsfix.js: качество под скорость канала ---- */
