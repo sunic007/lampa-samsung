@@ -4326,6 +4326,12 @@ async function serviceTests() {
     T._parse('Федеральные,#genre#\nПервый,http://x/1.m3u8\nРоссия 1,https://x/2.m3u8#https://y/2.m3u8\nДетские,#genre#\nКарусель,http://x/3\n', r => { got = r; });
     t('ТВ: TXT-список «Раздел,#genre#» — каналы по разделам', got && got.length === 3 && got[0].group === 'Федеральные' &&
         got[1].url === 'https://x/2.m3u8' && got[2].group === 'Детские' && got[2].name === 'Карусель');
+    got = null; T._parse('\n\n#EXTM3U\n#EXTINF:-1,A\nhttps://x/a\n', r => { got = r; });
+    t('ТВ: пустые строки до #EXTM3U — каналы не теряются', got && got.length === 1 && got[0].name === 'A');
+    got = null; T._parse('#EXTINF:-1,A\nhttps://x/a\n#EXTINF:-1,B\nhttps://x/b\n', r => { got = r; });
+    t('ТВ: m3u без строки #EXTM3U — тоже m3u', got && got.length === 2 && got[1].name === 'B');
+    got = null; T._parse('#EXTM3U\n#EXTINF:-1 group-title="News",Channel "X", HD\nhttps://x/a\n#EXTINF:-1 tvg-name="A, B" tvg-logo="l",Name "Q"\nhttps://x/b\n', r => { got = r; });
+    t('ТВ: кавычки в имени канала — имя целиком', got && got[0].name === 'Channel "X", HD' && got[1].name === 'Name "Q"');
 }
 serviceTests().catch(e => { fail++; console.log('FAIL служба: исключение', e && e.stack); }).then(() => {
     console.log(pass + ' passed, ' + fail + ' failed');

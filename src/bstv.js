@@ -98,7 +98,13 @@ var BSTv = (function () {
     }
     /** Имя канала — после запятой, что идёт за атрибутами (в самих атрибутах тоже бывают запятые). */
     function infName(line) {
-        var q = line.lastIndexOf('"'), c = line.indexOf(',', q > 0 ? q : 0);
+        var c = -1, q = '', i, ch;
+        for (i = 0; i < line.length; i++) {                     // первая запятая вне кавычек
+            ch = line.charAt(i);
+            if (q) { if (ch === q) q = ''; }
+            else if (ch === '"' || (ch === "'" && line.charAt(i - 1) === '=')) q = ch;
+            else if (ch === ',') { c = i; break; }
+        }
         if (c < 0) c = line.indexOf(',');
         return c < 0 ? '' : line.slice(c + 1).replace(/^\s+|\s+$/g, '');
     }
@@ -125,9 +131,18 @@ var BSTv = (function () {
     /** Разбор m3u кусками (step строк за такт): каналы {num, name, logo, group, url, tid}. */
     function parse(text, done) {
         var lines = String(text || '').replace(/^\uFEFF/, '').split('\n'), i = 0, cur = null, out = [], sticky = '';
-        if (!/^\s*#EXTM3U/i.test(lines[0] || '')) return done(parseTxt(lines));
+        // m3u узнаём по #EXTM3U или #EXTINF в первых строках (бывают пустые строки до заголовка или его нет совсем)
+        var h = -1, k, seen = 0;
+        for (k = 0; k < lines.length && seen < 5; k++) {
+            if (/^\s*$/.test(lines[k])) continue;
+            seen++;
+            if (/^\s*#EXT(M3U|INF)/i.test(lines[k])) { h = k; break; }
+        }
+        if (h < 0) return done(parseTxt(lines));
         // архив: catchup="…" catchup-days="…" catchup-source="…" у канала, а по умолчанию — в строке #EXTM3U
-        var head = lines[0], hType = attr(head, 'catchup'), hDays = attr(head, 'catchup-days'), hSrc = attr(head, 'catchup-source');
+        var head = /^\s*#EXTM3U/i.test(lines[h]) ? lines[h] : '';
+        i = head ? h + 1 : h;
+        var hType = attr(head, 'catchup'), hDays = attr(head, 'catchup-days'), hSrc = attr(head, 'catchup-source');
         var catchup = function (line) {
             var t = attr(line, 'catchup') || hType, d = attr(line, 'catchup-days') || attr(line, 'tvg-rec') || hDays, s = attr(line, 'catchup-source') || hSrc;
             if (!t && +d > 0) t = s ? 'default' : 'shift';
@@ -1133,6 +1148,9 @@ var BSTv = (function () {
         Lampa.PlayerVideo.listener.follow('play', ok);
         Lampa.Keypad.listener.follow('keydown', function (e) {
             if (!S || !S.playing || S.panel === 'cats' || S.panel === 'epg') return;
+            var ctl = '';
+            try { ctl = Lampa.Controller.enabled().name || ''; } catch (err) {}
+            if (ctl.indexOf('bstv') !== 0) return;              // открыто меню или клавиатура — цифры набирают текст
             var c = e.code, d = -1;
             if (c >= 48 && c <= 57) d = c - 48; else if (c >= 96 && c <= 105) d = c - 96;
             if (d >= 0 && !S.panel) return digit(String(d));
@@ -1175,6 +1193,7 @@ var BSTv = (function () {
         // total: 1 — переключение каналов самого плеера Lampa выключено (номера и CH ведём сами, см. hooks)
         Lampa.Player.iptv({
             title: first.name, url: first.url, position: 0, total: 1, bstv: true,
+            launch_player: 'inner',                             // внешний плеер (Android, webOS) — без нашего экрана и пульта
             onGetChannel: function () { return stub; },
             onGetProgram: function () {},
             onPlay: function () {}
@@ -1188,6 +1207,17 @@ var BSTv = (function () {
         holder.append(S.root);
         Lampa.Controller.toggle('bstv');
         info(true);
+        digitKeys();
+    }
+    /** Цифры пульта Samsung приходят приложению, только если их зарегистрировать (как цветные кнопки). */
+    var digitsOn = false;
+    function digitKeys() {
+        if (digitsOn) return;
+        digitsOn = true;
+        try {
+            if (typeof tizen === 'undefined' || !tizen.tvinputdevice) return;
+            for (var k = 0; k < 10; k++) try { tizen.tvinputdevice.registerKey(String(k)); } catch (e) {}
+        } catch (e) {}
     }
 
     /* ---------- витрина ----------
@@ -1215,12 +1245,14 @@ var BSTv = (function () {
     function shopTile(cls, title, sub) {
         return $('<div class="bstv-tile selector ' + cls + '"><div class="bstv-tile__t">' + esc(title) + '</div><div class="bstv-tile__s">' + esc(sub || '') + '</div></div>');
     }
+    /** Убрать витрину; keep — пульт не возвращаем (дальше откроется плейлист). Возвращает, куда вернуть пульт. */
     function closeShop(keep) {
-        if (!shop) return;
+        if (!shop) return '';
         var prev = shop.prev;
         shop.root.remove();
         shop = null;
         if (!keep) try { Lampa.Controller.toggle(prev); } catch (e) {}
+        return prev;
     }
     function open() {
         if (S || shop) return;
@@ -1243,21 +1275,21 @@ var BSTv = (function () {
         for (i = 0; i < pls.length; i++) have[pls[i].id] = 1;
         g = grid('Смотреть');
         if (last && last.ch && last.ch.name && last.pl) {
-            tile(g, 'bstv-tile--go', '▶ ' + last.ch.name, 'Продолжить · ' + playlistById(last.pl).name, function () { closeShop(true); openPlaylist(last.pl); });
+            tile(g, 'bstv-tile--go', '▶ ' + last.ch.name, 'Продолжить · ' + playlistById(last.pl).name, function () { openPlaylist(last.pl, closeShop(true)); });
         }
         for (i = 0; i < pls.length; i++) (function (p) {
-            tile(g, '', p.name, p.key ? 'Sunic Apps' : 'ваш плейлист', function () { closeShop(true); openPlaylist(p.id); });
+            tile(g, '', p.name, p.key ? 'Sunic Apps' : 'ваш плейлист', function () { openPlaylist(p.id, closeShop(true)); });
         })(pls[i]);
         if (skazItem().length) tile(g, 'bstv-tile--skaz', 'TV Skaz', 'каналы Skaz', function () { closeShop(true); openSkaz(); });
         tile(g, 'bstv-tile--add', '+ Добавить свой', 'ссылка на плейлист m3u', function () {
-            addPlaylist('bstv_shop', function (id) { closeShop(true); openPlaylist(id); });
+            addPlaylist('bstv_shop', function (id) { openPlaylist(id, closeShop(true)); });
         });
         var more = [];
         for (i = 0; i < cat.length; i++) if (!have['sunic-iptv-' + cat[i].key]) more.push(cat[i]);
         if (more.length) {
             g = grid('Каталог Sunic Apps — выбрать и добавить');
             for (i = 0; i < more.length; i++) (function (c) {
-                tile(g, '', c.name, c.sub, function () { addOur(c); closeShop(true); openPlaylist('sunic-iptv-' + c.key); });
+                tile(g, '', c.name, c.sub, function () { addOur(c); openPlaylist('sunic-iptv-' + c.key, closeShop(true)); });
             })(more[i]);
         }
         $('body').append(root);
@@ -1270,19 +1302,23 @@ var BSTv = (function () {
         Lampa.Controller.toggle('bstv_shop');
     }
 
-    function openPlaylist(id) {
+    /* back — куда вернуть пульт, если не включилось (открыли с витрины): Loading.stop вернул бы его витрине, которой
+     * уже нет, и пульт не работал бы совсем, даже «Назад» (2026-10-25). */
+    function openPlaylist(id, back) {
         if (S) return;
         var pls = playlists(), pl = playlistById(id || lsGet('bs_tv_pl') || pls[0].id);
         lsSet('bs_tv_pl', pl.id);
-        S = { root: build(), panel: '', num: '', zap: -1, info: false, focus: 0, cfocus: 0, playing: false };
-        try { Lampa.Loading.start(function () { S = null; Lampa.Loading.stop(); }); } catch (e) {}
+        var me = S = { root: build(), panel: '', num: '', zap: -1, info: false, focus: 0, cfocus: 0, playing: false };
+        var giveBack = function () { if (back) try { Lampa.Controller.toggle(back); } catch (e) {} };
+        try { Lampa.Loading.start(function () { if (S === me) S = null; Lampa.Loading.stop(); giveBack(); }); } catch (e) {}
         var tryLoad = function (list, n) {
             load(list[n], function (data) {
-                if (!S) return;
+                if (S !== me) return;                           // отменили (или уже открыт другой плейлист)
                 if (data && data.channels.length) { try { Lampa.Loading.stop(); } catch (e) {} return startWith(list[n], data); }
                 if (n + 1 < list.length) return tryLoad(list, n + 1);
                 try { Lampa.Loading.stop(); } catch (e) {}
                 S = null;
+                giveBack();
                 noty('Каналы не загрузились — проверьте интернет');
             });
         };
