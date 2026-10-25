@@ -1235,6 +1235,51 @@ t('обновления: непроверенная версия функций 
     t('видео: повторное закрытие ничего не запускает', ran === 1);
 }
 
+/* ---- bstg.js: запрос во время видео — на ТВ спросить «открыть сейчас или после» ---- */
+{
+    let sel = null, closed = 0, toggled = [], timers = [];
+    const ctx = { console: { log() {} }, Date, Math, JSON, String, Object, Array, parseInt, setInterval: () => 0,
+        setTimeout: f => { timers.push(f); return timers.length; }, clearTimeout() {},
+        Lampa: { Player: { opened: () => true, close() { closed++; } }, Noty: { show() {} },
+            Select: { show: o => { sel = o; }, close() { if (sel) sel.onBack(); } },
+            Controller: { enabled: () => ({ name: 'player' }), toggle: n => toggled.push(n) } } };
+    ctx.window = ctx; ctx.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+    vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bstg.js'), 'utf8') + ';this.M=BSTelegram;', ctx);
+    const T = ctx.M;
+    let now = 0, later = 0;
+    T._askDuringVideo('Аня', 't', 'Тьма', () => now++, () => later++);
+    t('во время видео: вопрос с именем и названием', sel && /^Аня отправил\(а\) сериал «Тьма»$/.test(sel.title) && sel.items.length === 2);
+    sel.onSelect(sel.items[0]);
+    t('во время видео: «Открыть сейчас» — сразу, управление вернулось плееру', now === 1 && later === 0 && toggled.join() === 'player');
+    sel.onBack();
+    t('во время видео: второй ответ на тот же вопрос ничего не делает', now === 1 && later === 0);
+    T._askDuringVideo('Аня', 'm', '', () => now++, () => later++);
+    t('во время видео: фильм без названия', sel.title === 'Аня отправил(а) фильм');
+    sel.onBack();
+    t('во время видео: «Назад» — в очередь', later === 1 && now === 1);
+    T._askDuringVideo('Бобур', 'm', 'A', () => now++, () => later++);
+    T._askDuringVideo('Вика', 'm', 'B', () => now++, () => later++);
+    t('во время видео: новый запрос — прошлый вопрос уходит в очередь', later === 2 && /Вика/.test(sel.title));
+    timers.length = 0;
+    T._askDuringVideo('Гуля', 'm', 'C', () => now++, () => later++);
+    timers.shift()();                                            // минута без ответа
+    t('во время видео: никто не ответил — в очередь', later === 4 && now === 1);
+    let opened = 0;
+    T._whenVideoEnds(() => opened += 10);
+    timers.length = 0;
+    T._stopVideo(() => opened++);
+    timers.shift()();
+    t('«Открыть сейчас»: плеер закрыт, открыто сразу, очередь ждёт следующего видео', closed === 1 && opened === 1);
+    ctx.Lampa.Player.opened = () => false;
+    T._onVideoClosed(); timers.shift()();
+    t('«Открыть сейчас»: прежняя очередь сработала после следующего видео', opened === 11);
+    let late = 0;
+    timers.length = 0;
+    T._askDuringVideo('Аня', 'm', 'D', () => {}, () => { late++; T._whenVideoEnds(() => late += 10); });
+    T._onVideoClosed(); timers.forEach(f => f());
+    t('видео кончилось, пока висел вопрос: открывается сразу, не ждёт следующего видео', late === 11);
+}
+
 /* ---- bsfix.js: качество под скорость канала ---- */
 const QP = fixCtx().M._pickQuality, QS = { '2160p': 'u4k', '1080p': 'u1080', '720p': 'u720', '480p': 'u480' };
 t('качество: 25 Мбит/с — 4K остаётся', QP(QS, 'u4k', 25e6) === '');

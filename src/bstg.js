@@ -2068,7 +2068,7 @@ var BSTelegram = (function () {
             for (k2 in m.map) if (m.map.hasOwnProperty(k2)) putLang(k2, m.map[k2], ats[k2] || 1);
         }
         else if (m.t === 'rename' && m.to === tvId && cleanName(m.title)) { lsSet('bs_tv_name', cleanName(m.title)); busHello(false); refreshSettings(); }
-        else if (m.t === 'open' && m.to === tvId && now - (m.ts || 0) < 60000) openHere(m.k, m.id, m.ref, !!m.play, !!m.g);
+        else if (m.t === 'open' && m.to === tvId && now - (m.ts || 0) < 60000) openHere(m.k, m.id, m.ref, !!m.play, !!m.g, m.n);
         else if (m.t === 'type' && m.to === tvId && now - (m.ts || 0) < 60000) {
             var why = typedText(m.text) ? typeHere(typedText(m.text)) : 'пустой текст';
             if (m.ref) busSend({ t: 'ack', ref: m.ref, ok: !why, why: why, name: tvName() });
@@ -2139,9 +2139,54 @@ var BSTelegram = (function () {
     function tvPlaying() { try { return !!Lampa.Player.opened(); } catch (e) { return false; } }
     function whenVideoEnds(run) { afterVideo = { run: run, at: Date.now() }; }
     function onVideoClosed() {
+        if (asking) asking(true);                               // видео кончилось, пока висел вопрос, — откроем сейчас
         var w = afterVideo;
         afterVideo = null;
         if (w && Date.now() - w.at < AFTER_VIDEO_MAX) setTimeout(keep(function () { w.run(); }), 1500);
+    }
+    /* Во время видео запрос из бота не ставим в очередь молча: на ТВ спрашиваем того, кто смотрит, — «Имя отправил(а)
+     * фильм «…»: открыть сейчас или после этого видео» (владелец, 2026-10-25). Никто не ответил за минуту — в очередь. */
+    var asking = null, ASK_WAIT = 60000;
+    function senderName() { if (isOwner()) return ownerName(); var g = users()[to()]; return (g && g.name) || 'Гость'; }
+    function askDuringVideo(who, kind, title, now, later) {
+        if (asking) asking();                                   // прошлый вопрос ещё висит — тот запрос в очередь
+        var ctrl = '', done = false, timer;
+        try { ctrl = Lampa.Controller.enabled().name; } catch (e) {}
+        var finish = function (fn) {
+            if (done) return;
+            done = true; asking = null; clearTimeout(timer);
+            try { if (ctrl) Lampa.Controller.toggle(ctrl); } catch (e) {}
+            fn();
+        };
+        // shut — меню уже убрал сам плеер (видео кончилось): Select.close не зовём
+        asking = function (shut) { if (!shut) try { Lampa.Select.close(); } catch (e) {} finish(later); };
+        timer = setTimeout(asking, ASK_WAIT);
+        try {
+            Lampa.Select.show({
+                title: esc(who + ' отправил(а) ' + (kind === 't' ? 'сериал' : 'фильм') + (title ? ' «' + title + '»' : '')),
+                items: [{ title: '▶️ Открыть сейчас', now: true }, { title: '⏳ После этого видео' }],
+                onSelect: function (a) { finish(a && a.now ? now : later); },
+                onBack: function () { finish(later); }
+            });
+        } catch (e) { log('спросить на ТВ', e.message); finish(later); }
+    }
+    /** «Открыть сейчас»: закрыть плеер и открыть. То, что уже стояло в очереди, ждёт конца следующего видео. */
+    function stopVideo(open) {
+        var w = afterVideo;
+        afterVideo = null;
+        try { Lampa.Player.close(); } catch (e) {}
+        afterVideo = null;
+        setTimeout(keep(function () {
+            if (w && !afterVideo) afterVideo = { run: w.run, at: Date.now() };
+            open();
+        }), 700);
+    }
+    /** Запрос во время видео: спросить на ТВ. tell('ask' | 'later') — что написать отправителю. */
+    function videoAsk(card, kind, open, tell) {
+        var title = card.title || card.name || card.original_title || card.original_name || '';
+        tell('ask');
+        askDuringVideo(senderName(), kind, title, keep(function () { stopVideo(open); }),
+            keep(function () { tell('later'); whenVideoEnds(open); }));
     }
     /* Заставка Lampa — слой поверх всего (z-index 10000), и сама она снимается только от пульта или мыши: карточку и
      * плеер бот открывал под ней, на экране оставалась заставка (владелец, 2026-10-25). Снимаем её сами. */
@@ -2178,18 +2223,20 @@ var BSTelegram = (function () {
         })();
     }
 
-    function openHere(kind, id, ref, play, guest) {
+    function openHere(kind, id, ref, play, guest, who) {
         var ack = function (ok, why, wait) { if (ref) busSend({ t: 'ack', ref: ref, ok: ok, why: why || '', name: tvName(), wait: !!wait }); };
-        if (tvPlaying()) {
-            if (guest) return ack(false, 'на этом ТВ сейчас смотрят — подождите');
-            ack(true, 'откроется, когда закончится видео', true);
-            return whenVideoEnds(function () { openHere(kind, id, ref, play, false); });
-        }
         tmdbGet((kind === 't' ? 'tv/' : 'movie/') + id, function (j) {
             if (j === BLOCKED || (j && j.bs_blocked)) return ack(false, 'заблокирован по просьбе правообладателя');
             if (!j || !j.id) return ack(false, 'TMDB не ответил');
+            var card = toCard(j, kind), again = function () { openHere(kind, id, ref, play, guest, who); };
+            if (tvPlaying()) {                                  // имя отправителя пришло с другого ТВ (старый ТВ его не шлёт)
+                ack(true, 'спрашиваю на ТВ: открыть сейчас или после видео', true);
+                return askDuringVideo(cleanName(String(who || '')) || (guest ? 'Гость' : ownerName()), kind, card.title || card.name || '',
+                    function () { stopVideo(again); },
+                    function () { ack(true, 'откроется, когда закончится видео', true); whenVideoEnds(again); });
+            }
             try {
-                pushCard(toCard(j, kind), kind, play);
+                pushCard(card, kind, play);
                 ack(true);
             } catch (e) { ack(false, e.message); }
         });
@@ -4164,17 +4211,16 @@ var BSTelegram = (function () {
             edit(m.ok ? openedOn(play, name) : '📺 ' + quoted(name) + ': ' + whyText(m.why || 'не получилось'));
         });
         timer = setTimeout(expire, ACK_WAIT);
-        busSend({ t: 'open', to: dev, k: kind, id: id, ref: ref, play: !!play, g: !isOwner() });
+        busSend({ t: 'open', to: dev, k: kind, id: id, ref: ref, play: !!play, g: !isOwner(), n: senderName() });
         answer(L('Отправляю на «' + name + '»…', 'Sending to “' + name + '”…', "«" + name + "»ga yuboryapman…"));
         function openHereLocal(deferred) {
-            if (tvPlaying()) {
-                if (!isOwner()) { if (!deferred) answer(watchingNow()); return; }
-                if (!deferred) { answer(afterVideoText()); edit(L('⏳ Откроется на «' + name + '», когда закончится видео', '⏳ Will open on “' + name + '” when the video ends', "⏳ Video tugagach, «" + name + "»da ochiladi")); }
-                return whenVideoEnds(function () { openHereLocal(true); });
-            }
             tmdbGet((kind === 't' ? 'tv/' : 'movie/') + id, function (j) {
                 if (j === BLOCKED || (j && j.bs_blocked)) return deferred ? null : answer(blockedText());
                 if (!j || !j.id) return deferred ? null : answer(whyText('TMDB не ответил'));
+                if (tvPlaying()) return videoAsk(toCard(j, kind), kind, function () { openHereLocal(true); }, function (st) {
+                    if (st === 'ask') { if (!deferred) answer(askingText()); edit(askingOn(name)); }
+                    else edit(L('⏳ Откроется на «' + name + '», когда закончится видео', '⏳ Will open on “' + name + '” when the video ends', "⏳ Video tugagach, «" + name + "»da ochiladi"));
+                });
                 try {
                     pushCard(toCard(j, kind), kind, play);
                     if (!deferred) answer();
@@ -4190,8 +4236,8 @@ var BSTelegram = (function () {
     function noAnswer(name) {
         return L('📺 «' + name + '» не ответил — возможно, выключен или Lampa закрыта.', "📺 “" + name + "” didn't answer — maybe it's off or Lampa is closed.", "📺 «" + name + "» javob bermadi — ehtimol, o'chiq yoki Lampa yopiq.");
     }
-    function watchingNow() { return L('На этом ТВ сейчас смотрят — подождите', 'Someone is watching this TV now — please wait', "Bu televizorda hozir video ko'rilmoqda — biroz kuting"); }
-    function afterVideoText() { return L('Откроется после просмотра', 'Will open after the video', "Ko'rishdan keyin ochiladi"); }
+    function askingText() { return L('На ТВ идёт видео — спрашиваю, открыть сейчас или после', 'A video is playing on the TV — asking whether to open it now or after', "Televizorda video ketyapti — hozir yoki keyin ochishni so'rayapman"); }
+    function askingOn(name) { return L('⏳ На «' + name + '» идёт видео — спрашиваю, открыть сейчас или после него', '⏳ A video is playing on “' + name + '” — asking whether to open it now or after it', "⏳ «" + name + "»da video ketyapti — hozir yoki undan keyin ochishni so'rayapman"); }
     function cantOpen() { return L('Не получилось открыть: ', "Couldn't open: ", "Ochib bo'lmadi: "); }
     function noPlay() { return L('Владелец запретил гостям включать видео на ТВ', "The owner doesn't allow guests to play videos on the TV", "Bot egasi mehmonlarga televizorda video yoqishni taqiqlagan"); }
     function noRemote() { return L('Владелец запретил гостям управлять ТВ.', "The owner doesn't allow guests to control the TV.", "Bot egasi mehmonlarga televizorni boshqarishni taqiqlagan."); }
@@ -4202,6 +4248,7 @@ var BSTelegram = (function () {
     var WHY = {
         'на этом ТВ сейчас смотрят — подождите': ['Someone is watching this TV now — please wait', "Bu televizorda hozir video ko'rilmoqda — biroz kuting"],
         'откроется, когда закончится видео': ['will open when the video ends', 'video tugagach ochiladi'],
+        'спрашиваю на ТВ: открыть сейчас или после видео': ['asking on the TV: open now or after the video', "televizorda so'rayapman: hozir yoki videodan keyin ochish"],
         'ждёт, пока закончится видео': ['waiting for the video to end', 'video tugashini kutyapti'],
         'TMDB не ответил': ["TMDB didn't answer", 'TMDB javob bermadi'],
         'заблокирован по просьбе правообладателя': ['blocked at the copyright holder’s request', 'mualliflik huquqi egasining talabi bilan bloklangan'],
@@ -4307,11 +4354,10 @@ var BSTelegram = (function () {
                     return reply(act === 'v' ? L('На каком ТВ включить «' + name + '»?', 'Which TV to play “' + name + '” on?', "«" + name + "»ni qaysi televizorda yoqamiz?")
                         : L('На каком ТВ открыть «' + name + '»?', 'Which TV to open “' + name + '” on?', "«" + name + "»ni qaysi televizorda ochamiz?"), rows);
                 }
-                if (tvPlaying()) {
-                    if (!isOwner()) return answer(L('На ТВ сейчас смотрят — подождите', 'Someone is watching the TV now — please wait', "Televizorda hozir video ko'rilmoqda — biroz kuting"));
-                    answer(afterVideoText());
-                    return whenVideoEnds(function () { try { pushCard(card, kind, act === 'v'); } catch (e) { log('после видео', e.message); } });
-                }
+                if (tvPlaying()) return videoAsk(card, kind, function () { try { pushCard(card, kind, act === 'v'); } catch (e) { log('после видео', e.message); } }, function (st) {
+                    if (st === 'ask') return answer(askingText());
+                    tmp(TMP_SHORT, function () { reply(L('⏳ «' + name + '» откроется на ТВ, когда закончится видео', '⏳ “' + name + '” will open on the TV when the video ends', "⏳ «" + name + "» video tugagach televizorda ochiladi")); });
+                });
                 try {
                     pushCard(card, kind, act === 'v');
                     var told = queuedTv;                                // служба уже написала «включите ТВ»
@@ -4643,7 +4689,7 @@ var BSTelegram = (function () {
         /** 'own' — свой бот подключён, 'none' — не подключено. */
         state: state, refresh: function () { try { refreshSettings(); } catch (e) {} },
         tvName: tvName,
-        _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _join4: { code: join4Code, show: join4Show, topic: join4Topic, hellos: join4Hellos, box: join4Box, open: join4Open, send: join4Send, BASE9: BASE9 }, _joinTopic: joinTopic, _joinShow: joinShow, _joinKeys: joinKeys, _aiForget: aiForget, _relaySet: relaySet, _svcSync: svcSync, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _leaderStale: leaderStale, _leaderOnScreen: leaderOnScreen, _watchTick: watchTick, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _lateCommand: lateCommand, _botDesc: function (l, s) { return [botDesc(l || 'ru', s), botShort(l || 'ru', s)]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _tmdbGet: tmdbGet, _blockParse: blockParse, _blockReset: function () { blockIds = null; blockAt = 0; }, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow,
+        _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _join4: { code: join4Code, show: join4Show, topic: join4Topic, hellos: join4Hellos, box: join4Box, open: join4Open, send: join4Send, BASE9: BASE9 }, _joinTopic: joinTopic, _joinShow: joinShow, _joinKeys: joinKeys, _aiForget: aiForget, _relaySet: relaySet, _svcSync: svcSync, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _askDuringVideo: askDuringVideo, _stopVideo: stopVideo, _leaderStale: leaderStale, _leaderOnScreen: leaderOnScreen, _watchTick: watchTick, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _lateCommand: lateCommand, _botDesc: function (l, s) { return [botDesc(l || 'ru', s), botShort(l || 'ru', s)]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _tmdbGet: tmdbGet, _blockParse: blockParse, _blockReset: function () { blockIds = null; blockAt = 0; }, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow,
         _call: call, _check: check, _remind: remind, _joinCode: joinCode, _randomTopic: randomTopic,
         _busTopic: busTopic, _svc: svc, _svcKey: function (k) { if (window.BS_TEST_HOOKS !== true) return undefined; if (typeof k === 'string') svcKey = k; return svcKey; },
         _svcStart: svcStart, _svcMove: svcMove, _svcCheck: svcCheck, _svcForget: svcForget, _tgOff: tgOff, _tgOffAsk: tgOffAsk, _svcSeen: svcSeen, _tvRules: tvRules, _addSettings: addSettings, _aiRun: aiRun, _aiSlot: aiSlot, _setAiKey: setAiKey,
