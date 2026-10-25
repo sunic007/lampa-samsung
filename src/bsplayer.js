@@ -513,7 +513,9 @@ var BSPlayer = (function () {
         if (ev === 'hlsAudioTrackSwitching' && d && typeof d.id === 'number') {
             if (d.id !== g.cur) { g.cur = d.id; g.bad = 0; }
         } else if (ev === 'hlsFragBuffered' && d && d.frag && d.frag.type === 'audio') {
-            g.good = g.cur = h.audioTrack; g.bad = 0;
+            // дорожка самого куска: кусок прежней дорожки, докачанный после переключения, не делает новую «хорошей»
+            var lv = typeof d.frag.level === 'number' ? d.frag.level : h.audioTrack;
+            if (lv === h.audioTrack) { g.good = g.cur = lv; g.bad = 0; }
         } else if (ev === 'hlsError' && d && d.details === 'fragParsingError' && d.frag && d.frag.type === 'audio') {
             if (++g.bad < HLS_BAD_AUDIO || g.back || g.good < 0 || g.good === h.audioTrack) return;
             var name = '', tr = h.audioTracks && h.audioTracks[h.audioTrack];

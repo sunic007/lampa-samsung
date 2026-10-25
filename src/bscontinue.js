@@ -168,7 +168,7 @@ var BSContinue = (function () {
     function toHistory(card) {
         try {
             var list = Lampa.Favorite.get({ type: 'history' }) || [];
-            for (var i = 0; i < list.length; i++) if (list[i] && list[i].id === card.id) return;
+            for (var i = 0; i < list.length; i++) if (list[i] && list[i].id === card.id && isTv(list[i]) === isTv(card)) return;   // id фильмов и сериалов TMDB пересекаются
             Lampa.Favorite.add('history', card, 100);
         } catch (e) {}
     }
@@ -189,7 +189,9 @@ var BSContinue = (function () {
         cur = null;
         try {
             // история Lampa — для фильма из любого источника (Telegram и автопереход включают файл без нажатия)
-            var hc = (data && (data.card || data.movie)) || activeCard();
+            // не фильм карточки: трейлер YouTube, каналы (IPTV, «Телеканалы») поверх открытой карточки
+            var other = data && (data.iptv || data.bstv || /youtube\.com|youtu\.be/i.test(String(data.url || '')));
+            var hc = (data && (data.card || data.movie)) || (other ? null : activeCard());
             if (hc && hc.id > 0) toHistory(hc);
         } catch (e) {}
         try {
@@ -297,7 +299,8 @@ var BSContinue = (function () {
         if (pending || o.lampac_continue_episode || !o.movie || !(o.movie.id > 0)) return;
         var list = load(), i = find(list, o.movie), bot = window.BS_BOT_PLAY;
         // «▶️ Смотреть» из бота на сериале, который ещё не смотрели: сразу 1-я серия, а не список серий
-        if (i < 0 && isTv(o.movie) && bot && bot.id == o.movie.id && Date.now() < bot.until && !skazAsksContinue()) {
+        // (плагин помнит сериал сам — смотрели через другой источник, устройство или больше 20 фильмов назад — его серия)
+        if (i < 0 && isTv(o.movie) && bot && bot.id == o.movie.id && Date.now() < bot.until && !skazAsksContinue() && !targetEpisode(o.movie, null).known) {
             window.BS_BOT_PLAY = null;
             o.lampac_continue_episode = 1;
             quiet('Включаю: сезон 1, серия 1', 3000);
