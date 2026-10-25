@@ -2143,7 +2143,13 @@ var BSTelegram = (function () {
         afterVideo = null;
         if (w && Date.now() - w.at < AFTER_VIDEO_MAX) setTimeout(keep(function () { w.run(); }), 1500);
     }
+    /* Заставка Lampa — слой поверх всего (z-index 10000), и сама она снимается только от пульта или мыши: карточку и
+     * плеер бот открывал под ней, на экране оставалась заставка (владелец, 2026-10-25). Снимаем её сами. */
+    function wakeScreen() {
+        try { if (Lampa.Screensaver && Lampa.Screensaver.isWorked()) Lampa.Screensaver.stopSlideshow(); else if (Lampa.Screensaver) Lampa.Screensaver.resetTimer(); } catch (e) { }
+    }
     function pushCard(card, kind, play) {
+        wakeScreen();
         // карточка у нас грузится и по 30–60 с (TMDB через прокси, Lampa только открылась): ждём её дольше — иначе на ТВ
         // оставалось кольцо загрузки, а «Смотреть» никто не нажимал (2026-10-23)
         watchFor = play ? { id: card.id, until: Date.now() + 90000 } : null;
@@ -2164,6 +2170,7 @@ var BSTelegram = (function () {
             if (b.length) {
                 log('смотреть сразу', card.id);
                 window.BS_BOT_PLAY = { id: card.id, until: Date.now() + 60000 };   // сериал без памяти — с 1-й серии (bscontinue)
+                wakeScreen();   // карточка грузилась до 90 с — заставка могла включиться снова
                 return b.trigger('hover:enter');
             }
             if (++tries < 40) setTimeout(click, 300);
