@@ -17,9 +17,9 @@ The `.wgt` package bundles the following third-party software. Each part keeps i
 | vast-player 0.2.10 | `src/vender/vast` | not stated in the file; shipped as part of Lampa's `vender/` | https://github.com/yumata/lampa |
 | **Segoe UI** font | `src/fonts/SegoeUI` | © Microsoft Corporation — **not** GPL-2.0 and not MIT; see below | shipped as part of Lampa's resources |
 
-The bundled Lampa build is version **3.4.2** (`src/app.js`, the version is in its `app_version`; the build served by
+The bundled Lampa build is version **3.4.4** (`src/app.js`, the version is in its `app_version`; the build served by
 lampa.byskaz.ru, i.e. Lampa with the byskaz server addresses). Its source code is
-[yumata/lampa-source, version 3.4.2](https://github.com/yumata/lampa-source/tree/a47ae0701fda162dc8dd601ab7e07e23d6a8d79b)
+[yumata/lampa-source, version 3.4.4](https://github.com/yumata/lampa-source/tree/7cf18c6e855301975ac416e077006f9bb84e69e0)
 (GPL-2.0). `src/app.js` and Lampa's resources are included as served by lampa.byskaz.ru,
 without changes by this project; `src/index.html` is based on Lampa's page with the package's loader added. If a link
 stops working, ask in the [Telegram group](https://t.me/sunicapps) or open an issue — the matching source will be
