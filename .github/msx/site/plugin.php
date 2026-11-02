@@ -6,6 +6,7 @@
 const LIFE = 600;
 $from = [
     'https://sunic007.github.io/lampa-android/sunic.js',
+    'https://raw.githubusercontent.com/sunic007/lampa-android/main/docs/sunic.js',
     'https://cdn.jsdelivr.net/gh/sunic007/lampa-android@main/docs/sunic.js',
 ];
 $cache = __DIR__ . '/lampa/.cache/sunic.js';
@@ -24,7 +25,12 @@ function fetch_js($u) {
 if (!is_file($cache) || time() - filemtime($cache) >= LIFE) {
     foreach ($from as $u) {
         $b = fetch_js($u);
-        if ($b !== null) { @file_put_contents($cache . '.tmp', $b) && @rename($cache . '.tmp', $cache); break; }
+        if ($b === null) continue;
+        if (@file_put_contents($cache . '.tmp', $b) === strlen($b)) { @rename($cache . '.tmp', $cache); break; }
+        @unlink($cache . '.tmp');                // диск хостинга полон — отдаём свежий файл без записи
+        header('Content-Type: application/javascript; charset=utf-8');
+        header('Cache-Control: no-cache');
+        exit($b);
     }
     if (is_file($cache)) @touch($cache);   // не вышло — старую копию отдаём ещё 10 минут, не дёргая GitHub на каждый запрос
 }

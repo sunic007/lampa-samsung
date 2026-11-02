@@ -42,7 +42,10 @@ if ($repo === 'lampa-samsung' && $ref !== 'main' && strpos($path, 'src/') === 0)
 // 2. с jsDelivr или GitHub. На диск — только @main (несколько файлов, 10 минут): выпуски @vX.Y.Z не кешируем, иначе
 //    перебором всех тегов и файлов можно забить диск хостинга
 function fetch_from($repo, $ref, $path) {
-    foreach (["https://cdn.jsdelivr.net/gh/sunic007/$repo@$ref/$path", "https://raw.githubusercontent.com/sunic007/$repo/$ref/$path"] as $u) {
+    // ветки (@main, @epg) — сначала GitHub: jsDelivr держит их в кеше днями (зеркало отдавало sunic.js 2.3.13)
+    $from = ["https://cdn.jsdelivr.net/gh/sunic007/$repo@$ref/$path", "https://raw.githubusercontent.com/sunic007/$repo/$ref/$path"];
+    if ($ref === 'main' || $ref === 'epg') $from = array_reverse($from);
+    foreach ($from as $u) {
         $h = curl_init($u);
         curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 20, CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_FOLLOWLOCATION => true, CURLOPT_USERAGENT => 'sunic.stream mirror']);
@@ -65,7 +68,8 @@ if (!is_file($cache) || time() - filemtime($cache) >= ($epg ? LIFE_EPG : LIFE_MA
     $b = fetch_from($repo, $ref, $path);
     if ($b !== null) {
         @mkdir(dirname($cache), 0755, true);
-        if (@file_put_contents($cache . '.tmp', $b) !== false) @rename($cache . '.tmp', $cache);
+        if (@file_put_contents($cache . '.tmp', $b) === strlen($b)) @rename($cache . '.tmp', $cache);
+        else { @unlink($cache . '.tmp'); send($b, $type, $ref); }    // диск полон — свежий ответ без записи
     } elseif (is_file($cache)) {
         @touch($cache);                                  // GitHub не ответил — старая копия ещё 10 минут
     }

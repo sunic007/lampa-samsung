@@ -13,7 +13,7 @@
 const REPO = 'sunic007/lampa-samsung';
 const GH = 'https://raw.githubusercontent.com/' . REPO . '/main/version.json';
 const CDN = 'https://cdn.jsdelivr.net/gh/' . REPO . '@v';
-const PIN = '2.3.67';   // если GitHub не ответил и ничего не запомнено
+const PIN = '2.3.72';   // если GitHub не ответил и ничего не запомнено
 const LIFE = 600;       // версию проверяем раз в 10 минут
 const KEEP = 2;         // версий на хостинге
 
@@ -98,6 +98,12 @@ function sync_release($store, $cache, $ver) {
     $files = release_files($ver);
     if (count($files) < 20 || !isset($files['index.html'], $files['app.js'], $files['loader.js'])) return false;
     $tmp = "$store/.tmp-$ver";
+    /* Место на хостинге маленькое (~50 МБ, выпуск ~14 МБ): пока качаем новый — держим только последний готовый, а
+     * недокачанные прошлые (.tmp-<другая версия>) убираем. Иначе три копии не влезали и сайт застревал на старой. */
+    $vers = array_values(array_filter(scandir($store), 'ok_ver'));
+    usort($vers, 'version_compare');
+    foreach (array_slice($vers, 0, -1) as $old) if ($old !== $ver) rrmdir("$store/$old");
+    foreach (glob("$store/.tmp-*", GLOB_ONLYDIR) ?: [] as $d) if ($d !== $tmp) rrmdir($d);
     @mkdir($tmp, 0755, true);
     /* Хостинг обрывает PHP через 30 с (и после ответа тоже) — качаем пачками по 12 файлов параллельно и следим за
      * временем: не успели — остальное докачает следующий запрос (готовые файлы не перекачиваются). */
@@ -128,7 +134,7 @@ function sync_release($store, $cache, $ver) {
             // содержимое — как в выпуске на GitHub (git blob sha), а не только размер: подмену по дороге не принимаем
             if (!empty($sha[$p]) && sha1('blob ' . strlen($b) . "\0" . $b) !== $sha[$p]) continue;
             @mkdir(dirname("$tmp/$p"), 0755, true);
-            file_put_contents("$tmp/$p", $b);
+            if (@file_put_contents("$tmp/$p", $b) !== strlen($b)) @unlink("$tmp/$p");     // диск полон — не оставляем обрывок
         }
         curl_multi_close($mh);
     }
