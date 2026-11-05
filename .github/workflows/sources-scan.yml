@@ -27,6 +27,8 @@ jobs:
       - name: Scan
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          # необязательно: токен владельца только для поиска по коду (встроенному он недоступен)
+          SEARCH_TOKEN: ${{ secrets.SOURCES_SEARCH_TOKEN }}
         run: python3 tools/sources_scan.py out --issue
       - name: Summary
         run: cat out/report.md >> "$GITHUB_STEP_SUMMARY"

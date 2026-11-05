@@ -27,6 +27,9 @@ import urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO = os.environ.get('GITHUB_REPOSITORY', 'sunic007/lampa-samsung')
 TOKEN = os.environ.get('GITHUB_TOKEN', '')
+# поиск по коду GitHub даёт только токен человека (встроенному токену Actions — 429); владелец может добавить секрет
+# SOURCES_SEARCH_TOKEN (fine-grained, только чтение публичного) — тогда ищем и по коду. Без него — поиск по репозиториям.
+SEARCH_TOKEN = os.environ.get('SEARCH_TOKEN', '') or TOKEN
 UA = 'SunicApps-sources-scan/1.0 (+https://sunic.stream)'
 STATE_URL = 'https://raw.githubusercontent.com/%s/sources/state.json' % REPO
 
@@ -54,7 +57,7 @@ def get(url, timeout=15, head=False, data=None, method=None, auth=False):
     """(status, body bytes, seconds). Сеть не ответила — (0, b'', seconds)."""
     h = {'User-Agent': UA, 'Accept-Encoding': 'identity'}
     if auth and TOKEN:
-        h['Authorization'] = 'Bearer ' + TOKEN
+        h['Authorization'] = 'Bearer ' + (SEARCH_TOKEN if '/search/' in url else TOKEN)
         h['Accept'] = 'application/vnd.github+json'
     if data is not None:
         h['Content-Type'] = 'application/json'
