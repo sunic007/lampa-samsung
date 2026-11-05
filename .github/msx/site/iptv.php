@@ -10,6 +10,7 @@
  * без http-каналов (/iptv/s/…) — на каждый запрос ничего не сжимаем и не разбираем. Cache-Control — только отсюда
  * (.htaccess снимает лишний no-cache хостинга).
  */
+ini_set('display_errors', '0');      // ошибки PHP — в журнал хостинга, не посетителю (пути сервера)
 const LIFE = 21600;                  // источники обновляются раз в сутки — 6 часов
 const MAX = 3 * 1024 * 1024;         // самый большой список (Free-TV) — 0,5 МБ
 const GZ_MIN = 50000;                // мельче не сжимаем: заголовки gzip дороже выигрыша
@@ -31,7 +32,7 @@ $LISTS = [
     'freetv'      => 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8',
 ];
 
-$l = $_GET['l'] ?? '';
+$l = is_string($_GET['l'] ?? '') ? ($_GET['l'] ?? '') : '';
 if (!isset($LISTS[$l])) { http_response_code(404); exit; }
 
 function fetch_upstream($url) {

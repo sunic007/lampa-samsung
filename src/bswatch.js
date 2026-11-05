@@ -36,7 +36,8 @@ var BSWatch = (function () {
     function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
     function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
     function on(k, def) { var v = lsGet(k); return v === null ? def : v === 'true'; }
-    function noty(t, time) { try { Lampa.Noty.show(t, { time: time || 4000 }); } catch (e) {} }
+    // Lampa.Noty вставляет текст как HTML, а названия серий приходят с серверов источников — экранируем
+    function noty(t, time) { try { Lampa.Noty.show(String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'), { time: time || 4000 }); } catch (e) {} }
     function log(a, b) { try { console.log('BS watch', a, b === undefined ? '' : b); } catch (e) {} }
     function video() { try { return Lampa.PlayerVideo.video(); } catch (e) { return null; } }
 

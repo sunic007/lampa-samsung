@@ -274,12 +274,15 @@ function bsInitWait() {
  * (она новее пакета), а не через 15 с из пакета. Копия годится, только если в её тексте есть её hash (как проверяет
  * update_bundled.py) и после запуска есть window.Lampa; иначе она стирается и всё идёт как раньше: сервер → пакет.
  * Новая сборка на сервере (bsUpdateCheck) сразу скачивается своей копией — перезапуск поднимет её без загрузки. */
-var BS_CORE_DB = 'bs_core', BS_CORE_MIN = 500000, BS_CORE_NO_SERVER = 3;
+var BS_CORE_DB = 'bs_core', BS_CORE_MIN = 500000, BS_CORE_NO_SERVER = 3, BS_VERIFY = 'https://sunic.stream/lampa/verify.php?h=';
 var bsCore = null, bsCoreRead = false, bsCoreWaiting = null, bsCoreNoServer = false, bsCoreSaving = '';
 
+/* Копия годится, только если при сохранении её sha256 совпал с тем, что независимо посчитал наш хостинг
+ * (verify.php качает ту же сборку другой сетью): подменённый по дороге (http) файл в копию не попадёт.
+ * Копии без sha256 (2.3.73–2.3.81) — не годятся, перезапишутся проверенной. */
 function bsCoreOk(r) {
     return !!(r && typeof r.hash === 'string' && /^[0-9a-f]{16,64}$/.test(r.hash) && typeof r.js === 'string' &&
-        r.js.length > BS_CORE_MIN && r.js.indexOf(r.hash) >= 0);
+        r.js.length > BS_CORE_MIN && r.js.indexOf(r.hash) >= 0 && typeof r.sha === 'string' && /^[0-9a-f]{64}$/.test(r.sha));
 }
 function bsCoreReady(r) {
     if (bsCoreRead) return;
@@ -309,22 +312,25 @@ function bsCoreDb(cb) {
 function bsCoreTx(mode, op, cb) {
     bsCoreDb(function (db) {
         if (!db) return cb && cb(null);
-        var out = null;
-        var fin = function () { try { db.close(); } catch (e) {} if (cb) { var c = cb; cb = null; c(out); } };
+        var out = null, ok = false;
+        var fin = function () { try { db.close(); } catch (e) {} if (cb) { var c = cb; cb = null; c(out, ok); } };
         try {
             var tx = db.transaction('core', mode), rq = op(tx.objectStore('core'));
             if (rq) rq.onsuccess = function () { out = rq.result; };
-            tx.oncomplete = fin;
-            tx.onerror = tx.onabort = function () { out = null; fin(); };
+            tx.oncomplete = function () { ok = true; fin(); };
+            tx.onerror = tx.onabort = function () { out = null; fin(); };       // нет места, база закрыта — не сохранили
         } catch (e) { fin(); }
     });
 }
 function bsCoreDrop() { bsCoreTx('readwrite', function (st) { return st['delete']('app'); }); }
 
+function bsLocalFirst() { try { return window.localStorage.getItem('bs_local_first') !== 'false'; } catch (e) { return true; } }
 /** Подходит ли своя копия для этого запуска. */
 function bsCoreFits() {
     if (!bsCore) return false;
-    return bsRemote && bsRemote.hash ? bsCore.hash === bsRemote.hash : bsCoreNoServer;
+    if (bsRemote && bsRemote.hash) return bsCore.hash === bsRemote.hash;
+    // сервер молчит: копия — только если она новее Lampa из пакета (поставили свежий .wgt — пакет новее старой копии)
+    return bsCoreNoServer && bsVerNum(bsCore.version) > bsVerNum(BS_BUNDLED_VERSION);
 }
 /** Запустить Lampa из своей копии. false — копия не запустилась (она стёрта), запуск идёт дальше как раньше. */
 function bsCoreRun() {
@@ -337,7 +343,9 @@ function bsCoreRun() {
         s.type = 'text/javascript';
         s.text = c.js;
         document.getElementsByTagName('body')[0].appendChild(s);
+        if (s.parentNode) s.parentNode.removeChild(s);          // код уже выполнен — 2 МБ текста в памяти не держим
     } catch (e) {}
+    c.js = null; c.css = null;
     if (window.Lampa) return true;
     console.log('BS core: своя копия не запустилась — стираю');
     bsCore = null;
@@ -345,14 +353,19 @@ function bsCoreRun() {
     bsSource = '';
     return false;
 }
-/** GET текста: cb(текст | null). */
-function bsCoreGet(url, cb) {
+/** GET: cb(текст | null); bin — cb(Uint8Array | null). */
+function bsCoreGet(url, cb, bin) {
     var x = new XMLHttpRequest(), done = false;
     var fin = function (t) { if (!done) { done = true; cb(t); } };
     try {
         x.open('GET', url, true);
         x.timeout = 120000;
-        x.onload = function () { fin(x.status === 200 && typeof x.responseText === 'string' ? x.responseText : null); };
+        if (bin) x.responseType = 'arraybuffer';
+        x.onload = function () {
+            if (x.status !== 200) return fin(null);
+            if (bin) return fin(x.response ? new Uint8Array(x.response) : null);
+            fin(typeof x.responseText === 'string' ? x.responseText : null);
+        };
         x.onerror = x.ontimeout = function () { fin(null); };
         x.send(null);
     } catch (e) { fin(null); }
@@ -361,20 +374,75 @@ function bsCoreGet(url, cb) {
 function bsCoreKeep(a) {
     if (!a || !a.hash || BS_HTTPS_PAGE || bsCoreSaving === a.hash || (bsCore && bsCore.hash === a.hash)) return;
     if (a.hash === BS_BUNDLED_HASH) return;                                 // та же сборка, что в пакете, — копия не нужна
-    var h = a.hash;
+    if (typeof Uint8Array === 'undefined' || typeof window.TextDecoder === 'undefined') return;   // старый ТВ — без копии
+    var h = a.hash, stop = function (why) { bsCoreSaving = ''; console.log('BS core: копию не сохраняю — ' + why); };
     bsCoreSaving = h;
-    bsCoreGet(BS_SERVER + 'app.min.js?h=' + h, function (js) {
-        if (!js || js.length <= BS_CORE_MIN || js.indexOf(h) < 0) { bsCoreSaving = ''; return; }
-        bsCoreGet(BS_SERVER + 'css/app.css?v' + (a.css_version || a.app_version || h), function (css) {
-            var rec = { hash: h, version: String(a.app_version || ''), js: js, at: Date.now(),
-                css: css && css.length > 10000 && css.indexOf('{') >= 0 ? css : null };
-            bsCoreTx('readwrite', function (st) { return st.put(rec, 'app'); }, function () {
-                bsCoreSaving = '';
-                if (bsSource !== 'cache') bsCore = rec;                     // запущенную копию не подменяем
-                console.log('BS core: своя копия Lampa ' + rec.version + ' ' + h + ' сохранена');
+    // sha256 этой сборки независимо от нас (хостинг качает её другой сетью); нет ответа — копии не будет
+    bsCoreGet(BS_VERIFY + h, function (vt) {
+        var v = null;
+        try { v = JSON.parse(vt || 'null'); } catch (e) {}
+        if (!v || !v.ok || v.hash !== h || !/^[0-9a-f]{64}$/.test(String(v.sha256))) return stop('сверка недоступна');
+        bsCoreGet(BS_SERVER + 'app.min.js?h=' + h, function (bytes) {
+            if (!bytes || bytes.length <= BS_CORE_MIN || bytes.length !== v.size) return stop('файл не скачался');
+            bsSha256(bytes, function (sha) {
+                if (sha !== v.sha256) return stop('sha256 не совпал со сверкой — файл подменён по дороге?');
+                var js = '';
+                try { js = new window.TextDecoder('utf-8').decode(bytes); } catch (e) {}
+                if (js.indexOf(h) < 0) return stop('в файле нет hash сборки');
+                bsCoreGet(BS_SERVER + 'css/app.css?v' + (a.css_version || a.app_version || h), function (css) {
+                    var rec = { hash: h, sha: sha, version: String(a.app_version || ''), js: js, at: Date.now(),
+                        css: css && css.length > 10000 && css.indexOf('{') >= 0 ? css : null };
+                    bsCoreTx('readwrite', function (st) { return st.put(rec, 'app'); }, function (r, ok) {
+                        if (!ok) return stop('нет места в памяти ТВ');
+                        bsCoreSaving = '';
+                        if (bsSource !== 'cache') bsCore = rec;             // запущенную копию не подменяем
+                        console.log('BS core: своя копия Lampa ' + rec.version + ' ' + h + ' проверена и сохранена');
+                    });
+                });
             });
-        });
+        }, true);
     });
+}
+
+/* SHA-256 (ES5, без crypto.subtle: на ТВ страница пакета не «защищённая», subtle там нет). Считает кусками по 4096
+ * блоков с паузой — 2 МБ на слабом ТВ не занимают поток целиком. cb(hex). */
+var BS_SHA_K = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98,
+    0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6,
+    0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3,
+    0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e,
+    0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116,
+    0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814,
+    0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
+function bsSha256(b, cb) {
+    var len = b.length, words = ((len + 9 + 63) >> 6) << 4, m = new Int32Array(words), i;
+    for (i = 0; i < len; i++) m[i >> 2] |= b[i] << (24 - (i & 3) * 8);
+    m[len >> 2] |= 0x80 << (24 - (len & 3) * 8);
+    m[words - 1] = (len * 8) | 0;
+    m[words - 2] = Math.floor(len / 0x20000000);
+    var H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19], w = new Int32Array(64), K = BS_SHA_K;
+    (function step(off) {
+        var end = Math.min(words, off + 4096 * 16), a, bb, c, d, e, f, g, h, j, t1, t2, x, y;
+        for (; off < end; off += 16) {
+            for (j = 0; j < 16; j++) w[j] = m[off + j];
+            for (j = 16; j < 64; j++) {
+                x = w[j - 15]; y = w[j - 2];
+                w[j] = (((x >>> 7) | (x << 25)) ^ ((x >>> 18) | (x << 14)) ^ (x >>> 3)) + w[j - 16] +
+                    (((y >>> 17) | (y << 15)) ^ ((y >>> 19) | (y << 13)) ^ (y >>> 10)) + w[j - 7] | 0;
+            }
+            a = H[0]; bb = H[1]; c = H[2]; d = H[3]; e = H[4]; f = H[5]; g = H[6]; h = H[7];
+            for (j = 0; j < 64; j++) {
+                t1 = h + (((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7))) + ((e & f) ^ (~e & g)) + K[j] + w[j] | 0;
+                t2 = (((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10))) + ((a & bb) ^ (a & c) ^ (bb & c)) | 0;
+                h = g; g = f; f = e; e = d + t1 | 0; d = c; c = bb; bb = a; a = t1 + t2 | 0;
+            }
+            H[0] = H[0] + a | 0; H[1] = H[1] + bb | 0; H[2] = H[2] + c | 0; H[3] = H[3] + d | 0;
+            H[4] = H[4] + e | 0; H[5] = H[5] + f | 0; H[6] = H[6] + g | 0; H[7] = H[7] + h | 0;
+        }
+        if (off < words) return setTimeout(function () { step(off); }, 0);
+        var hex = '';
+        for (j = 0; j < 8; j++) hex += ('00000000' + (H[j] >>> 0).toString(16)).slice(-8);
+        cb(hex);
+    })(0);
 }
 
 /* Стили Lampa — один раз. index.html уже разобрал css/app.css из пакета, а Lampa при запуске всё равно качала те же
@@ -426,6 +494,7 @@ function startAppWithDeepLink(){
     try { localFirst = window.localStorage.getItem('bs_local_first') !== 'false'; } catch (e) {}
     if (localFirst && bsRemote && bsRemote.hash === BS_BUNDLED_HASH) {
         bsSource = 'local';
+        if (bsCore) { bsCore = null; bsCoreDrop(); }                 // сервер = пакет: старая копия больше не нужна
         bsCssKeep(null, function () {
             createScript('app.js', function () {
                 console.log('Local copy error');
@@ -526,7 +595,7 @@ function countdown() {
         return;
     }
     // сервер молчит BS_CORE_NO_SERVER с, а своя копия ядра есть — запускаем её, а не ждём 15 с
-    if (!bsStarted && bsCore && timeLeft <= 15 - BS_CORE_NO_SERVER) {
+    if (!bsStarted && bsCore && timeLeft <= 15 - BS_CORE_NO_SERVER && bsLocalFirst()) {
         clearInterval(timerId);
         timeLeft = -1;
         bsCoreNoServer = true;

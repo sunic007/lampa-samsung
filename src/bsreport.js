@@ -33,7 +33,10 @@ var BSReport = (function () {
     /** Убрать секреты и личное: тот же набор, что sanitize() в боте поддержки, плюс параметры адресов. */
     function clean(s) {
         s = String(s == null ? '' : s);
-        s = s.replace(/\b\d{6,12}:[A-Za-z0-9_-]{30,}/g, '[токен бота]');
+        // токен бота — и внутри адреса (…/bot123456789:AA…, там нет границы слова), и обрезанный (хвост от 20 знаков)
+        s = s.replace(/(^|[^0-9])\d{6,12}:[A-Za-z0-9_-]{20,}/g, '$1[токен бота]');
+        // ключ службы ТВ и ключ шины — 64 hex (от 40 знаков: hash сборки Lampa из 32 остаётся в журнале)
+        s = s.replace(/\b[0-9a-f]{40,}\b/gi, '[ключ]');
         s = s.replace(/\b(?:gsk_[A-Za-z0-9]{16,}|AIza[0-9A-Za-z_-]{30,}|sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/g, '[ключ]');
         s = s.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '[почта]');
         s = s.replace(/\b[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}\b/g, '[код]');
@@ -67,7 +70,8 @@ var BSReport = (function () {
         }
         var text = parts.join(' ').replace(/\s+/g, ' ');
         if (!text) return;
-        if (text.length > LINE_MAX) text = text.slice(0, LINE_MAX) + '…';
+        // сначала маскируем, потом режем: обрезанный посередине токен иначе мог уйти в отчёт без маски
+        if (text.length > LINE_MAX) text = clean(text.slice(0, LINE_MAX * 2)).slice(0, LINE_MAX) + '…';
         var last = lines[lines.length - 1];
         if (last && last.text === text) { last.n++; return; }
         lines.push({ at: stamp(), kind: kind, text: text, n: 1 });

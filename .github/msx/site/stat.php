@@ -11,6 +11,7 @@
  * Файлы в .cache/stat (наружу не отдаются): s-<10-минутка>.txt — кто был в эту 10-минутку, d-<ГГГГММДД>.txt — кто был
  * за день (строка «номер тип», каждый номер раз в день). Старше 31 дня — удаляем.
  */
+ini_set('display_errors', '0');      // ошибки PHP — в журнал хостинга, не посетителю (пути сервера)
 const DAYS = 30;
 const SLOT = 600;                    // 10 минут: «сейчас» = эта и прошлая 10-минутка
 
@@ -18,20 +19,23 @@ $dir = __DIR__ . '/.cache/stat';
 if (!is_dir($dir)) @mkdir($dir, 0755, true);
 $d = $_GET['d'] ?? '';
 $p = $_GET['p'] ?? '';
+if (!is_string($d) || !is_string($p)) { http_response_code(400); exit; }
 
 if ($d !== '') {
     header('Cache-Control: no-store');
     if (!preg_match('/^[a-f0-9]{16}$/', $d) || !in_array($p, ['samsung', 'tv', 'android', 'web'], true)) { http_response_code(400); exit; }
     $now = time();
-    add_once($dir . '/s-' . intdiv($now, SLOT) . '.txt', $d . "\n");
-    add_once($dir . '/d-' . gmdate('Ymd', $now) . '.txt', $d . ' ' . $p . "\n");
+    // предел размера файлов: потоком выдуманных номеров иначе можно забить диск хостинга (~50 МБ) — так уже было
+    add_once($dir . '/s-' . intdiv($now, SLOT) . '.txt', $d . "\n", 131072);
+    add_once($dir . '/d-' . gmdate('Ymd', $now) . '.txt', $d . ' ' . $p . "\n", 262144);
     if (mt_rand(1, 500) === 1) clean($dir, $now);
     http_response_code(204);
     exit;
 }
 
 /** Дописать строку, если номера в файле ещё нет (замок — чтобы два сигнала разом не испортили файл). */
-function add_once($file, $line) {
+function add_once($file, $line, $max) {
+    if (is_file($file) && filesize($file) > $max) return;
     $h = @fopen($file, 'c+');
     if (!$h) return;
     if (flock($h, LOCK_EX)) {

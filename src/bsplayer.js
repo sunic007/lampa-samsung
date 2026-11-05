@@ -20,7 +20,8 @@ var BSPlayer = (function () {
     function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
     function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
     function on(k, def) { var v = lsGet(k); return v === null ? def : v === 'true'; }
-    function noty(t, time) { try { Lampa.Noty.show(t, { time: time || 4000 }); } catch (e) {} }
+    // Lampa.Noty вставляет текст как HTML, а названия звуковых дорожек приходят из плейлиста потока — экранируем
+    function noty(t, time) { try { Lampa.Noty.show(String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'), { time: time || 4000 }); } catch (e) {} }
     function log() { try { console.log.apply(console, ['BSPlayer'].concat([].slice.call(arguments))); } catch (e) {} }
 
     /* ---------- что сейчас играет ---------- */

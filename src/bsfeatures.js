@@ -1090,7 +1090,7 @@ var BSFeatures = (function () {
      * пустые ряды на главной. 3 ошибки связи за минуту — на 15 минут переходим на следующий адрес: прокси byskaz, затем
      * tmdb-api.rootu.top; не отвечают и они — снова основной. Оба запасных — только http: на странице по https не
      * включаем (браузер их не пустит). Ответ 4xx — связь есть (нет такого фильма), его не считаем. */
-    var TMDB_ALT = ['lampa.byskaz.ru/tmdb/api/3/', 'tmdb-api.rootu.top/3/'], tmdbAlt = -1, tmdbAltUntil = 0, tmdbErr = [];
+    var TMDB_ALT = ['lampa.byskaz.ru/tmdb/api/3/', 'tmdb-api.rootu.top/3/'], tmdbAlt = -1, tmdbAltUntil = 0, tmdbErr = [], tmdbSwitchAt = 0, TMDB_GRACE = 5000;
     function tmdbAltUrl(u) {
         if (tmdbAlt >= 0 && Date.now() > tmdbAltUntil) tmdbAlt = -1;
         if (tmdbAlt < 0) return u;
@@ -1099,14 +1099,16 @@ var BSFeatures = (function () {
     function tmdbNetError(e) {
         if (!e || !e.params || e.exception === 'abort') return;
         var url = String(e.params.url || ''), st = e.error && e.error.status ? +e.error.status : 0, now = Date.now(), i, keep = [];
-        var onAlt = tmdbAlt >= 0 && url.indexOf(TMDB_ALT[tmdbAlt]) >= 0;
-        if (!/:\/\/apitmdb\./.test(url) && !onAlt) return;
-        if (st && st < 500) return;
+        // считаем только ошибки адреса, через который идём сейчас: ряды главной падают пачкой (10 запросов разом),
+        // и без этого одна пачка проскакивала оба запасных и возвращала нас на мёртвый основной
+        var active = tmdbAlt < 0 ? /:\/\/apitmdb\./.test(url) : url.indexOf(TMDB_ALT[tmdbAlt]) >= 0;
+        if (!active || (st && st < 500) || now - tmdbSwitchAt < TMDB_GRACE) return;
         for (i = 0; i < tmdbErr.length; i++) if (now - tmdbErr[i] < 60000) keep.push(tmdbErr[i]);
         keep.push(now);
         tmdbErr = keep;
         if (tmdbErr.length < 3) return;
         tmdbErr = [];
+        tmdbSwitchAt = now;
         if (tmdbAlt + 1 < TMDB_ALT.length) { tmdbAlt++; tmdbAltUntil = now + 15 * 60000; }
         else tmdbAlt = -1;
         console.log('BS tmdb', tmdbAlt < 0 ? 'запасные не отвечают — снова основной адрес' : 'основной не отвечает — данные TMDB через ' + TMDB_ALT[tmdbAlt]);
@@ -1151,6 +1153,6 @@ var BSFeatures = (function () {
 
     return {
         _iptvToggle: iptvToggle, _iptvLists: IPTV_LISTS, _iptvFix: iptvFix, _iptvInstalled: iptvInstalled, _iptvAuto: iptvAuto, _iptvMenuOff: iptvMenuOff, _iptvGroup: iptvGroup, _iptvChannel: iptvChannel, _iptvLook: iptvLook,
-        _iptvSource: iptvSourceSet, _iptvDefault: IPTV_DEFAULT, _iptvUrl: iptvUrl, _iptvParse: iptvParse, _iptvParseAsync: iptvParseAsync, _tmdbAltUrl: tmdbAltUrl, _tmdbNetError: tmdbNetError, _iptvParseRun: iptvParseRun, _iptvAlt: iptvAlt, _iptvAltIndex: iptvAltIndex, _iptvNormName: iptvNormName,
+        _iptvSource: iptvSourceSet, _iptvDefault: IPTV_DEFAULT, _iptvUrl: iptvUrl, _iptvParse: iptvParse, _iptvParseAsync: iptvParseAsync, _tmdbAltUrl: tmdbAltUrl, _tmdbNetError: tmdbNetError, _tmdbGrace: function (ms) { TMDB_GRACE = ms; }, _iptvParseRun: iptvParseRun, _iptvAlt: iptvAlt, _iptvAltIndex: iptvAltIndex, _iptvNormName: iptvNormName,
         start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
 })();

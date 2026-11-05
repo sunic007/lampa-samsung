@@ -4003,6 +4003,10 @@ async function serviceTests() {
 {
     const R = load('bsreport.js', 'BSReport', { bs_tv_model: 'QE55Q60BAU', bs_tg_token: '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsawQ', bs_guard: 'true', bs_tg_chat: '555' });
     const c = R.M._clean;
+    t('отчёт: токен внутри адреса бота и обрезанный токен, 64-hex ключ — под маской; hash сборки (32) — нет',
+        !/AAHdqTcv/.test(c('POST https://api.telegram.org/bot123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsawQ/getUpdates')) &&
+        !/AAHdqTcvCH1vG/.test(c('x 123456789:AAHdqTcvCH1vGWJxfSeo')) &&
+        /\[ключ\]/.test(c('key ' + 'ab'.repeat(32))) && /c95b7a3b4d26094b4b7236bab3da7bb6/.test(c('hash c95b7a3b4d26094b4b7236bab3da7bb6')));
     t('отчёт: токен бота и ключ ИИ убраны', !/AAHdqTcv/.test(c('tok 123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsawQ')) && /\[ключ\]/.test(c('k AIzaSyA1234567890abcdefghijklmnopqrstu')));
     t('отчёт: параметры адресов убраны (ключ аккаунта Skaz)', c('GET http://online3.skaz.tv/lite/rezka?account_email=a%40b.c&uid=77&s=1') === 'GET http://online3.skaz.tv/lite/rezka?…');
     t('отчёт: внешний IP — без последней цифры, домашний — как есть', c('95.214.10.5 192.168.1.7') === '95.214.10.x 192.168.1.7');
@@ -4201,6 +4205,7 @@ async function serviceTests() {
     const core = src.slice(src.indexOf('var BS_CORE_DB'), src.indexOf('/* Свою копию читаем сразу'));
     const start = src.slice(src.indexOf('function startAppWithDeepLink(){'), src.indexOf('function bsDropOldCopy(){'));
     const H = 'c95b7a3b4d26094b4b7236bab3da7bb6', H2 = '0123456789abcdef0123456789abcdef';
+    const S = 'ab'.repeat(32);
     const big = h => 'window.Lampa={};/*' + h + '*/' + 'x'.repeat(600000);
     const env = (o = {}) => {
         const log = [], body = { appendChild: el => { log.push(el.tag + (el.text ? ':' + el.text.slice(0, 20) : '')); if (el.text && o.runs !== false) ctx.window.Lampa = {}; } };
@@ -4208,7 +4213,7 @@ async function serviceTests() {
         const ctx = { window: { indexedDB: null, localStorage: { getItem: () => null } }, console: { log() {} }, setTimeout: () => 0,
             document: { createElement: tag => ({ tag, appendChild() {} }), createTextNode: s => s, body, getElementsByTagName: () => [body],
                 querySelector: () => (o.noLink ? null : link) },
-            BS_SERVER: 'http://lampa.byskaz.ru/lampa-main/', BS_BUNDLED_HASH: H, BS_HTTPS_PAGE: false, bsRemote: o.remote || null,
+            BS_SERVER: 'http://lampa.byskaz.ru/lampa-main/', BS_BUNDLED_HASH: H, BS_BUNDLED_VERSION: '3.4.4', BS_HTTPS_PAGE: false, bsVerNum: v => { const m = /(\d+)\.(\d+)\.(\d+)/.exec(String(v || '')); return m ? +m[1] * 1e6 + +m[2] * 1e3 + +m[3] : 0; }, bsRemote: o.remote || null,
             bsSrvReady: true, bsStarted: false, bsSource: '', bsInitWait: () => false,
             createScript: s => log.push('script:' + s), loadFromLocal: () => log.push('bundled'), XMLHttpRequest: function () {} };
         ctx.window.document = ctx.document;
@@ -4217,29 +4222,32 @@ async function serviceTests() {
         return { api: ctx.api, log, ctx };
     };
     let e = env();
+    t('ядро: копия без sha256 сверки (сохранена 2.3.73–2.3.81) не годится', !e.api.ok({ hash: H2, js: big(H2) }));
     t('ядро: копия годится только с hash в тексте и нужного размера',
-        e.api.ok({ hash: H2, js: big(H2) }) && !e.api.ok({ hash: H2, js: big('other') }) && !e.api.ok({ hash: H2, js: 'window.Lampa=1;' + H2 }) &&
+        e.api.ok({ hash: H2, js: big(H2), sha: S, version: '3.4.5' }) && !e.api.ok({ hash: H2, js: big('other') }) && !e.api.ok({ hash: H2, js: 'window.Lampa=1;' + H2 }) &&
         !e.api.ok({ hash: '../x', js: big('../x') }) && !e.api.ok(null));
     // сервер отдал ту же сборку, что в пакете, — пакет, стили не качаются
-    e = env({ remote: { hash: H } }); e.api.ready({ hash: H2, js: big(H2) }); e.api.start();
-    t('ядро: hash сервера = пакет — app.js из пакета, ссылка стилей заменена', e.api.get().src === 'local' && e.log.join() === 'new-link');
+    e = env({ remote: { hash: H } }); e.api.ready({ hash: H2, js: big(H2), sha: S, version: '3.4.5' }); e.api.start();
+    t('ядро: hash сервера = пакет — app.js из пакета, ссылка стилей заменена, старая копия стёрта', e.api.get().src === 'local' && e.log.join() === 'new-link' && e.api.get().core === null);
     // сервер: та же сборка, что в своей копии — из копии, без загрузки, со своими стилями
-    e = env({ remote: { hash: H2 } }); e.api.ready({ hash: H2, js: big(H2), css: 'a{b:c}' }); e.api.start();
+    e = env({ remote: { hash: H2 } }); e.api.ready({ hash: H2, js: big(H2), sha: S, version: '3.4.5', css: 'a{b:c}' }); e.api.start();
     t('ядро: hash сервера = своя копия — запуск из копии без сети', e.api.get().src === 'cache' && e.log[0] === 'style' && e.log.indexOf('rm-link') > 0 &&
         e.log.some(l => l.indexOf('script:') === 0 && l.indexOf('window.Lampa') > 0) && !e.log.some(l => /app\.min\.js/.test(l)));
     // сервер с новой сборкой — как раньше, с сервера
-    e = env({ remote: { hash: 'ffffffffffffffffffffffffffffffff' } }); e.api.ready({ hash: H2, js: big(H2) }); e.api.start();
+    e = env({ remote: { hash: 'ffffffffffffffffffffffffffffffff' } }); e.api.ready({ hash: H2, js: big(H2), sha: S, version: '3.4.5' }); e.api.start();
     t('ядро: на сервере другая сборка — app.min.js с сервера', e.api.get().src === 'server' && /script:http:\/\/lampa\.byskaz\.ru\/lampa-main\/app\.min\.js/.test(e.log.join()));
     // сервер молчит — копия, а не 15 с ожидания
-    e = env(); e.api.ready({ hash: H2, js: big(H2) }); e.api.noServer(); e.api.start();
-    t('ядро: сервер не ответил — запуск из своей копии', e.api.get().src === 'cache');
+    e = env(); e.api.ready({ hash: H2, js: big(H2), sha: S, version: '3.4.5' }); e.api.noServer(); e.api.start();
+    t('ядро: сервер не ответил — запуск из своей копии (она новее пакета)', e.api.get().src === 'cache');
+    e = env(); e.api.ready({ hash: H2, js: big(H2), sha: S, version: '3.4.4' }); e.api.noServer(); e.api.start();
+    t('ядро: сервер не ответил, копия не новее пакета — не она (свежий .wgt важнее старой копии)', e.api.get().src !== 'cache');
     // копия не подняла Lampa — стирается, дальше сервер
-    e = env({ remote: { hash: H2 }, runs: false }); e.api.ready({ hash: H2, js: big(H2) }); e.api.start();
+    e = env({ remote: { hash: H2 }, runs: false }); e.api.ready({ hash: H2, js: big(H2), sha: S, version: '3.4.5' }); e.api.start();
     t('ядро: копия не запустилась — стёрта, Lampa с сервера', e.api.get().src === 'server' && e.api.get().core === null && /app\.min\.js/.test(e.log.join()));
     // копия ещё читается — запуск ждёт её
     e = env({ remote: { hash: H2 } }); e.api.start();
     t('ядро: копия ещё читается — запуск ждёт', !e.api.get().started);
-    e.api.ready({ hash: H2, js: big(H2) });
+    e.api.ready({ hash: H2, js: big(H2), sha: S, version: '3.4.5' });
     t('ядро: прочиталась — запуск продолжился из неё', e.api.get().started && e.api.get().src === 'cache');
     // нет своей копии и нет ссылки стилей — всё как раньше
     e = env({ remote: { hash: H }, noLink: true }); e.api.ready(null); e.api.start();
@@ -4321,6 +4329,9 @@ async function serviceTests() {
         t('TMDB: 404 и отмена — не ошибки связи', F._tmdbAltUrl(U) === U);
         err(U, 0); err(U, 502);
         t('TMDB: 3 ошибки связи за минуту — прокси byskaz', F._tmdbAltUrl(U) === 'http://lampa.byskaz.ru/tmdb/api/3/movie/1?api_key=k&email=');
+        for (let i = 0; i < 9; i++) err(U, 0);      // пачка запоздавших ошибок старого адреса (ряды главной)
+        t('TMDB: запоздавшие ошибки основного адреса не уводят дальше byskaz', F._tmdbAltUrl(U).indexOf('http://lampa.byskaz.ru/') === 0);
+        F._tmdbGrace(0);
         const B = 'http://lampa.byskaz.ru/tmdb/api/3/movie/1'; err(B, 0); err(B, 0); err(B, 0);
         t('TMDB: и он не отвечает — rootu.top', F._tmdbAltUrl(U).indexOf('http://tmdb-api.rootu.top/3/movie/1') === 0);
         const R = 'http://tmdb-api.rootu.top/3/movie/1'; err(R, 0); err(R, 0); err(R, 0);

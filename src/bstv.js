@@ -34,7 +34,8 @@ var BSTv = (function () {
     function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
     function lsJson(k, def) { try { var v = JSON.parse(lsGet(k) || 'null'); return v == null ? def : v; } catch (e) { return def; } }
     function log() { try { console.log.apply(console, ['BS tv'].concat([].slice.call(arguments))); } catch (e) {} }
-    function noty(t) { try { Lampa.Noty.show(t); } catch (e) {} }
+    // Lampa.Noty вставляет текст как HTML, а названия каналов и передач приходят из чужих списков — экранируем
+    function noty(t) { try { Lampa.Noty.show(String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')); } catch (e) {} }
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
     function isArr(a) { return Object.prototype.toString.call(a) === '[object Array]'; }
     function pad(n) { n = String(n); return n.length < 2 ? '0' + n : n; }

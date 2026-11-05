@@ -6,12 +6,17 @@
  * Ветка epg — программа передач «Телеканалов» (index.json, c/<канал>.json): в кеше на час.
  * или GitHub (ветку main — в кеше на 10 минут). Только наши два репозитория, только version.json, src/ и docs/sunic.js.
  */
+ini_set('display_errors', '0');      // ошибки PHP — в журнал хостинга, не посетителю (пути сервера)
 const REPOS = ['lampa-samsung' => 1, 'lampa-android' => 1];
 const LIFE_MAIN = 600;              // @main меняется — 10 минут; @vX.Y.Z не меняется никогда
 const LIFE_EPG = 3600;              // @epg — раз в день, час в кеше хватает
 const MAX = 3 * 1024 * 1024;
 
 $repo = $_GET['repo'] ?? ''; $ref = $_GET['ref'] ?? ''; $path = $_GET['path'] ?? '';
+if (!is_string($repo) || !is_string($ref) || !is_string($path)) { http_response_code(404); exit; }
+// @main меняется и кешируется на диске — разрешаем только то, что берут ТВ и Android (version.json, docs/sunic.js):
+// иначе перебором файлов ветки main можно забить диск хостинга (~50 МБ)
+if ($ref === 'main' && $path !== 'version.json' && $path !== 'docs/sunic.js') { http_response_code(404); exit; }
 $epg = $ref === 'epg';
 if (!isset(REPOS[$repo]) || !preg_match('/^(v\d+\.\d+\.\d+|main|epg)$/', $ref)
     || ($epg ? $repo !== 'lampa-samsung' || !preg_match('#^(index\.json|c/[A-Za-z0-9_-]{1,70}\.json)$#', $path)
