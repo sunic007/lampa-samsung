@@ -2020,7 +2020,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     const z01 = btn('full-start__button view--online lampac--button', 'Z01 2.1', 'Онлайн');
     const ark = btn('full-start__button view--online lampac--button', 'Vod v1.4', 'Онлайн');
     const mod = btn('full-start__button view--online_mod', 'online_mod 3.2', 'Онлайн');
-    const showy = btn('full-start__button view--online showy--button', 'смотреть Filmix/Rezka/Kodik', 'Showy');
+    const showy = btn('full-start__button selector view--online smotret24--button', 'Smotret24 1.0', 'Онлайн');
     const shots = btn('full-start__button view--online', 'Shots', 'Shots');
     t('источники: кнопки узнаются по признакам', S.owner(skaz) === 'skaz' && S.owner(z01) === 'z01' && S.owner(ark) === 'arkmv' &&
         S.owner(mod) === 'online_mod' && S.owner(showy) === 'showy' && S.owner(shots) === '');
@@ -2074,7 +2074,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     r = mk({ bs_src_online_mod: 'true', bs_src_vod_llpp: 'true', bs_src_showy: 'true' });
     r.S._loadAll();
     t('подключение: из группы Online Mod — только один плагин', r.loaded.filter(u => /online_mod\.js|llpp\.in/.test(u)).length === 1);
-    t('подключение: включённые грузятся, выключенные (arkmv) — нет', r.loaded.indexOf('http://showy.online/m.js') >= 0 && r.loaded.indexOf('http://arkmv.ru/vod') < 0);
+    t('подключение: включённые грузятся, выключенные (arkmv) — нет', r.loaded.indexOf('http://smotret24.ru/online.js') >= 0 && r.loaded.indexOf('http://arkmv.ru/vod') < 0);
     t('подключение: Клубничку сами не грузим — решает переключатель Skaz', !r.loaded.some(u => /sisi\.js/.test(u)));
     r = mk({});
     r.S._loadAll();
@@ -2084,7 +2084,28 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('подключение: https не открылся — тот же плагин по http (запасной адрес)', r.loaded.join() === 'https://z01.online/live,http://z01.online/live,https://nb557.github.io/plugins/online_mod.js,http://nb557.github.io/plugins/online_mod.js');
     r = mk({ bs_src_showy: 'true' }, null, true);
     r.S._loadAll();
-    t('подключение: у кого https нет (Showy) — сразу http, как раньше', r.loaded.indexOf('http://showy.online/m.js') >= 0 && r.loaded.indexOf('https://showy.online/m.js') < 0);
+    t('подключение: у кого https нет (Showy без регистрации) — сразу http, как раньше', r.loaded.indexOf('http://smotret24.ru/online.js') >= 0 && !r.loaded.some(u => /^https:\/\/smotret24/.test(u)));
+    {   // зеркала: основной хост не открылся совсем — следующий адрес из alt (правило «у каждого адреса запасной»)
+        const mk2 = (store, failHosts, https) => {
+            const loaded = [], ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem() {} };
+            const Lampa = { Storage: { get: (k, d) => d, set() {} }, Noty: { show() {} }, Listener: { follow() {} }, Plugins: { get: () => [] },
+                Utils: { putScriptAsync: (urls, done, bad, ok) => { loaded.push(urls[0]); if (failHosts.some(h => urls[0].indexOf(h) >= 0)) bad(urls[0]); else ok(urls[0]); } } };
+            const ctx = { window: { localStorage: ls, location: { protocol: https ? 'https:' : 'http:' } }, Lampa, $: { trim: x => String(x).trim() }, console: { log() {} }, JSON, String, Object, Array };
+            ctx.window.window = ctx.window; vm.createContext(ctx);
+            vm.runInContext(fs.readFileSync(path.join(SRC, 'bssources.js'), 'utf8') + ';this.M=BSSources;', ctx);
+            ctx.M._loadAll();
+            return loaded;
+        };
+        let l = mk2({ bs_src_z01: 'false' }, ['github.io']);
+        t('зеркала: GitHub закрыт — Online Mod с nb557.surge.sh', l.join() === 'https://nb557.github.io/plugins/online_mod.js,http://nb557.github.io/plugins/online_mod.js,https://nb557.surge.sh/online_mod.js');
+        l = mk2({ bs_src_z01: 'false', bs_src_online_mod: 'false', bs_src_showy: 'true' }, ['smotret24.ru']);
+        t('зеркала: smotret24.ru не открылся — smotret24.com', l.join() === 'http://smotret24.ru/online.js,http://smotret24.com/online.js');
+        l = mk2({ bs_src_z01: 'false', bs_src_online_mod: 'false', bs_src_modss: 'true' }, ['lampa.stream']);
+        t('MODS: выключен по умолчанию, включённый — https, затем http и зеркало modss.tv', mk2({ bs_src_z01: 'false', bs_src_online_mod: 'false' }, []).length === 0 &&
+            l.join() === 'https://lampa.stream/modss,http://lampa.stream/modss,http://modss.tv');
+        l = mk2({ bs_src_z01: 'false' }, ['github.io'], true);
+        t('зеркала: страница по https — http-адреса не пробуем', l.join() === 'https://nb557.github.io/plugins/online_mod.js,https://nb557.surge.sh/online_mod.js');
+    }
     r = mk({ bs_src_z01: 'true', bs_src_online_mod: 'false' }, [{ url: 'http://z01.online/live' }]);
     r.S._loadAll();
     t('подключение: плагин уже добавлен вручную — второй раз не грузим', r.loaded.length === 0);

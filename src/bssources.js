@@ -1,9 +1,10 @@
 /*
  * Сторонние онлайн-источники на выбор (плагины Lampa).
  *
- *  Skaz — основной источник, как и раньше. Остальные плагины по умолчанию выключены: человек сам включает нужные
- *  в «Онлайн-источниках». Подключаются только адреса из списка ниже (не произвольные ссылки). Включённый плагин
- *  грузится сразу; выключенный перестаёт грузиться после перезапуска Lampa (код уже загружен, выгрузить его нельзя).
+ *  Skaz — основной источник, как и раньше. Бесплатные Z01 и Online Mod включены по умолчанию, остальные человек
+ *  включает сам в «Онлайн-источниках». Подключаются только адреса из списка ниже (не произвольные ссылки); у каждого
+ *  плагина есть запасные адреса (alt) — основной хост не открылся, берём зеркало. Включённый плагин грузится сразу;
+ *  выключенный перестаёт грузиться после перезапуска Lampa (код уже загружен, выгрузить его нельзя).
  *
  *  Главная кнопка «Смотреть» на карточке открывает главный источник (по умолчанию Skaz, выбирается здесь же);
  *  вторая — родное меню Lampa со всеми источниками, трейлерами и Shots (bsmenu.js). Чтобы найти кнопку нужного
@@ -34,12 +35,19 @@ var BSSources = (function () {
         { id: 'z01', key: 'bs_src_z01', name: 'Z01', url: 'http://z01.online/live', comp: ['lampac_z'], on: true, https: true,
           note: 'Есть реклама',
           match: function (b) { return /^Z01\b/i.test(sub(b)); } },
+        // запасной адрес — зеркало автора на surge.sh: GitHub закрыт у человека — Online Mod всё равно грузится
         { id: 'online_mod', key: 'bs_src_online_mod', name: 'Online Mod', url: 'http://nb557.github.io/plugins/online_mod.js', comp: ['online_mod'], group: 'online_mod', on: true, https: true,
+          alt: ['https://nb557.surge.sh/online_mod.js', 'http://nb557.surge.sh/online_mod.js'],
           note: 'Без рекламы', match: hasCls('view--online_mod') },
         { id: 'vod_llpp', key: 'bs_src_vod_llpp', name: 'VOD (llpp.in)', url: 'http://llpp.in/v/vod.js', comp: ['online_mod'], group: 'online_mod', https: true,
           note: 'Вместо Online Mod', match: hasCls('view--online_mod') },
-        { id: 'showy', key: 'bs_src_showy', name: 'Showy', url: 'http://showy.online/m.js', comp: ['showy_free', 'showy'],
-          note: 'Filmix, Rezka, Kodik · есть реклама', match: hasCls('showy--button') },
+        // Showy (showy.online) с 2026-11 без входа через @showybot ничего не показывает — вместо него его версия без
+        // регистрации (smotret24, два зеркала; только http). Ключ прежний: кто включал Showy, получит эту.
+        { id: 'showy', key: 'bs_src_showy', name: 'Showy без регистрации', url: 'http://smotret24.ru/online.js', alt: ['http://smotret24.com/online.js'],
+          comp: ['smotret24', 'smotret24_ru', 'smotret24_com'], note: 'Без входа, до 1080p · есть реклама', match: hasCls('smotret24--button') },
+        // MODS's: бесплатно Lumex (1080p) и Filmix (720p), остальное — платная подписка у самого плагина
+        { id: 'modss', key: 'bs_src_modss', name: "MODS's", url: 'http://lampa.stream/modss', alt: ['http://modss.tv'], comp: ['modss', 'mods'], https: true,
+          note: 'Бесплатно Lumex и Filmix, остальное — платно', match: function (b) { return /mods/i.test(sub(b)) || b.hasClass('view--modss') || b.hasClass('modss--button'); } },
         { id: 'arkmv', key: 'bs_src_arkmv', name: 'Vod (arkmv)', url: 'http://arkmv.ru/vod', comp: ['vod'],
           note: 'Есть реклама', match: function (b) { return b.hasClass('lampac--button') && /^Vod\b/i.test(sub(b)); } }
     ];
@@ -139,19 +147,32 @@ var BSSources = (function () {
      * у каждого адреса есть запасной. Страница по https (браузер) — http браузер всё равно не пустит, его не пробуем. */
     function pageHttps() { try { return window.location.protocol === 'https:'; } catch (e) { return false; } }
     function urlFor(s) { return s.https ? s.url.replace(/^http:\/\//, 'https://') : s.url; }
+    /** Адреса плагина по порядку: https основного, его http (если https не открылся), затем зеркала (alt).
+     *  Страница по https — http-адреса браузер не пустит, их не пробуем. */
+    function urlsFor(s) {
+        var list = [urlFor(s)], https = pageHttps(), i;
+        if (list[0] !== s.url) list.push(s.url);
+        for (i = 0; s.alt && i < s.alt.length; i++) list.push(s.alt[i]);
+        return list.filter(function (u, k) { return list.indexOf(u) === k && (k === 0 || !https || /^https:/.test(u)); });
+    }
     function put(url, ok, bad) {
         try { Lampa.Utils.putScriptAsync([url], null, bad, ok, false); } catch (e) { log('не подключён', url + ' ' + e.message); bad(); }
     }
     /** Подключить плагин s (один раз); cb() — когда загружен или все адреса не открылись. */
     function load(s, cb) {
-        var url = urlFor(s), end = function () { if (cb) cb(); };
-        if (done[s.id] || loaded(s.url) || loaded(url)) return end();
+        var urls = urlsFor(s), end = function () { if (cb) cb(); }, i;
+        if (done[s.id]) return end();
+        for (i = 0; i < urls.length; i++) if (loaded(urls[i])) return end();
+        if (loaded(s.url)) return end();
         done[s.id] = true;
-        put(url, function () { log('подключён', url); end(); }, function () {
-            if (url === s.url || pageHttps()) { log('не подключён', url); return end(); }
-            log('https не открылся — подключаю по http', s.url);
-            put(s.url, function () { log('подключён по http', s.url); end(); }, function () { log('не подключён', s.url); end(); });
-        });
+        (function next(k) {
+            if (k >= urls.length) return end();
+            if (k > 0) log('не открылся ' + urls[k - 1] + ' — пробую', urls[k]);
+            put(urls[k], function () { log('подключён', urls[k]); end(); }, function () {
+                if (k + 1 >= urls.length) log('не подключён', urls[k]);
+                next(k + 1);
+            });
+        })(0);
     }
     function loadAll() {
         var groups = {};
