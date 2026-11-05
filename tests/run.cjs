@@ -2079,15 +2079,16 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('подключение: Клубничку сами не грузим — решает переключатель Skaz', !r.loaded.some(u => /sisi\.js/.test(u)));
     r = mk({});
     r.S._loadAll();
-    t('подключение: по умолчанию — бесплатные Z01 и Online Mod (поиск по всем источникам), сначала по https', r.loaded.join() === 'https://z01.online/live,https://nb557.github.io/plugins/online_mod.js');
+    t('подключение: по умолчанию — бесплатные Z01, Online Mod и Lordfilm (поиск по всем источникам), сначала по https', r.loaded.join() === 'https://z01.online/live,https://nb557.github.io/plugins/online_mod.js,https://cdn.jsdelivr.net/gh/lenorio/lenorio@79710d2b24b5633265e9905684700e5bd4bf5724/plugins/lordfilm.js');
     r = mk({}, null, true);
     r.S._loadAll();
-    t('подключение: https не открылся — тот же плагин по http (запасной адрес)', r.loaded.join() === 'https://z01.online/live,http://z01.online/live,https://nb557.github.io/plugins/online_mod.js,http://nb557.github.io/plugins/online_mod.js');
+    t('подключение: https не открылся — тот же плагин по http (запасной адрес)', r.loaded.join() === 'https://z01.online/live,http://z01.online/live,https://nb557.github.io/plugins/online_mod.js,http://nb557.github.io/plugins/online_mod.js,https://cdn.jsdelivr.net/gh/lenorio/lenorio@79710d2b24b5633265e9905684700e5bd4bf5724/plugins/lordfilm.js,https://fastly.jsdelivr.net/gh/lenorio/lenorio@79710d2b24b5633265e9905684700e5bd4bf5724/plugins/lordfilm.js,https://gcore.jsdelivr.net/gh/lenorio/lenorio@79710d2b24b5633265e9905684700e5bd4bf5724/plugins/lordfilm.js');
     r = mk({ bs_src_showy: 'true' }, null, true);
     r.S._loadAll();
     t('подключение: у кого https нет (Showy без регистрации) — сразу http, как раньше', r.loaded.indexOf('http://smotret24.ru/online.js') >= 0 && !r.loaded.some(u => /^https:\/\/smotret24/.test(u)));
     {   // зеркала: основной хост не открылся совсем — следующий адрес из alt (правило «у каждого адреса запасной»)
         const mk2 = (store, failHosts, https) => {
+            store = Object.assign({ bs_src_lordfilm: 'false' }, store);     // Lordfilm включён по умолчанию — здесь меряем другие
             const loaded = [], ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem() {} };
             const Lampa = { Storage: { get: (k, d) => d, set() {} }, Noty: { show() {} }, Listener: { follow() {} }, Plugins: { get: () => [] },
                 Utils: { putScriptAsync: (urls, done, bad, ok) => { loaded.push(urls[0]); if (failHosts.some(h => urls[0].indexOf(h) >= 0)) bad(urls[0]); else ok(urls[0]); } } };
@@ -2107,17 +2108,17 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
         l = mk2({ bs_src_z01: 'false', bs_src_online_mod: 'false', bs_src_lordfilm: 'true' }, ['cdn.jsdelivr.net']);
         t('Lordfilm: закреплён на коммите (не @main), cdn не ответил — fastly', l.length === 2 && l.every(u => /lenorio@[0-9a-f]{40}\//.test(u)) &&
             /^https:\/\/cdn\./.test(l[0]) && /^https:\/\/fastly\./.test(l[1]));
-        t('Lordfilm: выключен по умолчанию', mk2({ bs_src_z01: 'false', bs_src_online_mod: 'false' }, []).length === 0);
+        t('Lordfilm: включён по умолчанию (бесплатный выбор людям)', mk({ bs_src_z01: 'false', bs_src_online_mod: 'false' }).S.list.some(s => s.id === 'lordfilm' && s.on === true));
         l = mk2({ bs_src_z01: 'false' }, ['github.io'], true);
         t('зеркала: страница по https — http-адреса не пробуем', l.join() === 'https://nb557.github.io/plugins/online_mod.js,https://nb557.surge.sh/online_mod.js');
     }
-    r = mk({ bs_src_z01: 'true', bs_src_online_mod: 'false' }, [{ url: 'http://z01.online/live' }]);
+    r = mk({ bs_src_z01: 'true', bs_src_online_mod: 'false', bs_src_lordfilm: 'false' }, [{ url: 'http://z01.online/live' }]);
     r.S._loadAll();
     t('подключение: плагин уже добавлен вручную — второй раз не грузим', r.loaded.length === 0);
     // поиск по всем источникам: «Смотреть» начинает с главного, сдавшийся источник — следующий включённый
     let s1 = mk({});
-    t('поиск: порядок по умолчанию — Skaz, Z01, Online Mod', s1.S.order().join() === 'skaz,z01,online_mod');
-    t('поиск: главный Z01 — с него, потом Skaz', mk({ bs_src_main: 'z01' }).S.order().join() === 'z01,skaz,online_mod');
+    t('поиск: порядок по умолчанию — Skaz, Z01, Online Mod, Lordfilm', s1.S.order().join() === 'skaz,z01,online_mod,lordfilm');
+    t('поиск: главный Z01 — с него, потом Skaz', mk({ bs_src_main: 'z01' }).S.order().join() === 'z01,skaz,online_mod,lordfilm');
     t('поиск: без «Смотреть» — сдавшийся источник ничего не переключает', s1.S.giveUp('lampacskaz', 'denied') === false);
 }
 /* ---- bssources.js: поиск по всем источникам (giveUp) ---- */

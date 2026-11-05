@@ -54,7 +54,7 @@ var BSSources = (function () {
         { id: 'lordfilm', key: 'bs_src_lordfilm', name: 'Lordfilm', url: 'https://cdn.jsdelivr.net/gh/lenorio/lenorio@79710d2b24b5633265e9905684700e5bd4bf5724/plugins/lordfilm.js',
           alt: ['https://fastly.jsdelivr.net/gh/lenorio/lenorio@79710d2b24b5633265e9905684700e5bd4bf5724/plugins/lordfilm.js',
               'https://gcore.jsdelivr.net/gh/lenorio/lenorio@79710d2b24b5633265e9905684700e5bd4bf5724/plugins/lordfilm.js'],
-          comp: ['lordfilm'], note: 'Без входа и рекламы', match: hasCls('view--lordfilm') },
+          comp: ['lordfilm'], on: true, note: 'Без входа и рекламы', match: hasCls('view--lordfilm') },
         // arkmv («Онлайн Stream», http://arkmv.ru/vod) убран в 2.3.78: адрес плагина отвечает 404, каталоги пишут «не работает»
     ];
     var SKAZ_COMP = ['lampacskaz'];
