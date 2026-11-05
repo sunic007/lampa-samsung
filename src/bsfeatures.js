@@ -234,8 +234,40 @@ var BSFeatures = (function () {
 
     /* ---------- настройки и запуск ---------- */
 
+    /* «Плавный режим» (2.3.75): выключает фон Lampa (через секунду на каждой карточке — загрузка постера, размытие на
+     * canvas и перерисовка трёх полноэкранных слоёв: на слабом ТВ это рывок, когда снова жмёшь пульт) и анимации.
+     * Пишем настройки самой Lampa (background, animation) — она применяет их сразу; прежние значения запоминаем
+     * (bs_smooth_prev) и возвращаем, когда режим выключили. По умолчанию выключен. */
+    var SMOOTH_KEYS = ['background', 'animation'];
+    function smoothSet(onNow) {
+        var S = Lampa.Storage, prev = {}, i, k;
+        if (onNow) {
+            try { prev = JSON.parse(lsGet('bs_smooth_prev') || 'null') || null; } catch (e) { prev = null; }
+            if (!prev) {                                            // уже включали — прежние значения не затираем
+                prev = {};
+                for (i = 0; i < SMOOTH_KEYS.length; i++) { k = SMOOTH_KEYS[i]; prev[k] = S.field(k) === false ? false : true; }
+                lsSet('bs_smooth_prev', JSON.stringify(prev));
+            }
+            for (i = 0; i < SMOOTH_KEYS.length; i++) S.set(SMOOTH_KEYS[i], 'false');   // строкой: false Lampa читает как «нет значения»
+        } else {
+            try { prev = JSON.parse(lsGet('bs_smooth_prev') || '{}') || {}; } catch (e) { prev = {}; }
+            for (i = 0; i < SMOOTH_KEYS.length; i++) { k = SMOOTH_KEYS[i]; S.set(k, prev[k] === false ? 'false' : 'true'); }
+            try { window.localStorage.removeItem('bs_smooth_prev'); } catch (e) {}
+        }
+    }
     function addSettings() {
         var C = 'bs_update', api = Lampa.SettingsApi;
+        api.addParam({
+            component: C,
+            param: { name: 'bs_smooth', type: 'trigger', 'default': false },
+            field: { name: 'Плавный режим', description: 'Без размытого фона и анимаций: меню и карточки листаются плавнее на слабых телевизорах' },
+            onChange: function (v) {
+                var onNow = v === true || v === 'true';
+                lsSet('bs_smooth', String(onNow));
+                try { smoothSet(onNow); } catch (e) {}
+                noty(onNow ? 'Плавный режим включён' : 'Плавный режим выключен: фон и анимации — как раньше', 3000);
+            }
+        });
         api.addParam({ component: C, param: { name: 'bs_feat_title', type: 'title' }, field: { name: 'Плеер' } });
         if (dev('tvPlayer')) api.addParam({
             component: C,
