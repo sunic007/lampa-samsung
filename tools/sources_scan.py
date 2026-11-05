@@ -112,11 +112,49 @@ def check_url(url):
 
 # ---------- поиск на GitHub ----------
 
+REPO_QUERIES = ['lampa plugin', 'lampa plugins', 'lampa online', 'lampa плагин', 'topic:lampa-plugin', 'lampa in:name']
+JS_NAME = re.compile(r'(online|onl|rezka|filmix|kodik|collaps|lumex|alloha|vod|cinema|kino|movie|film|bwa|mods|prestige|lord|'
+                     r'zetflix|hdvb|balans|stream|smotr|showy|lampac|^o\d*\.js$|^[a-z]{1,3}\d?\.js$)', re.I)
+
+
+def search_repos_candidates():
+    """Поиск без code search (встроенный токен Actions его не получает, 429): репозитории про Lampa, обновлённые за
+    MAX_AGE_DAYS, и в них .js-файлы с говорящими именами (online, rezka, filmix…). Содержимое проверит evaluate()."""
+    repos = {}
+    cutoff = time.time() - MAX_AGE_DAYS * 86400
+    for q in REPO_QUERIES:
+        st, j = gh('/search/repositories', {'q': q, 'sort': 'updated', 'per_page': 100})
+        if st != 200 or not j:
+            print('поиск репозиториев: %s → %s' % (q, st), file=sys.stderr)
+            continue
+        for it in j.get('items', []):
+            p = it.get('pushed_at') or ''
+            if it['full_name'].lower() == REPO.lower() or it.get('archived') or not p:
+                continue
+            if time.mktime(time.strptime(p[:10], '%Y-%m-%d')) < cutoff:
+                continue
+            repos[it['full_name']] = (p, it.get('default_branch') or 'main')
+        time.sleep(2)
+    out = []
+    for repo, (pushed, branch) in sorted(repos.items(), key=lambda kv: kv[1][0], reverse=True)[:150]:
+        st, j = gh('/repos/%s/git/trees/%s' % (repo, urllib.parse.quote(branch)), {'recursive': '1'})
+        if st != 200 or not j:
+            continue
+        files = [t['path'] for t in j.get('tree', []) if t.get('type') == 'blob' and t['path'].endswith('.js')
+                 and 1500 < (t.get('size') or 0) < 1500000 and not re.search(r'node_modules|vendor|\.min\.js$|dist/|test', t['path'], re.I)
+                 and JS_NAME.search(t['path'].rsplit('/', 1)[-1])]
+        for path in files[:25]:
+            out.append({'repo': repo, 'path': path})
+    return out
+
+
 def search_candidates():
     if not TOKEN:
         print('нет GITHUB_TOKEN — поиск на GitHub пропущен', file=sys.stderr)
         return []
     found = {}
+    for c in search_repos_candidates():
+        found[c['repo'] + '/' + c['path']] = c
     for i, q in enumerate(QUERIES):
         if i:
             time.sleep(8)
