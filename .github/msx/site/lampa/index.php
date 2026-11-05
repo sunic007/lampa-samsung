@@ -63,6 +63,9 @@ if (!ok_ver($v) || time() - filemtime($vf) > LIFE) {
     elseif (ok_ver($v)) @touch($vf);    // GitHub не ответил — прежняя версия ещё на 10 минут
 }
 if (!ok_ver($v)) $v = PIN;
+// PIN выкладываем с каждым выпуском — ниже него не опускаемся: GitHub с хостинга иногда не отвечает, а jsDelivr держит
+// ветку main в кеше часами и отдавал старую версию (2026-11-05: сайт откатился с 2.3.82 на 2.3.81)
+elseif (version_compare(PIN, $v, '>')) $v = PIN;
 
 /* ---------- своя копия выпуска ---------- */
 function ready($store, $ver) { return ok_ver($ver) && is_file("$store/$ver/.complete"); }
