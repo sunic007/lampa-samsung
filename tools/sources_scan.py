@@ -244,6 +244,9 @@ def evaluate(c, our_prints):
     text = body.decode('utf-8', 'ignore')
     if 'Player.play' not in text or not ONLINE_WORDS.search(text) or ADULT_WORDS.search(text):
         return None
+    # только самостоятельный плагин: регистрирует свой экран; не модуль сборки (import/export) и не копия ядра Lampa
+    if 'Component.add' not in text or re.search(r'^\s*(import|export)\s', text, re.M) or 'LoadingProgress' in text or 'github_lampa' in text:
+        return None
     a = analyse(text)
     if a['fingerprint'] in our_prints:
         return None
