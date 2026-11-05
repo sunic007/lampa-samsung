@@ -194,10 +194,15 @@ def _mention(m):
 def sanitize(text):
     """Убрать из текста то, что нельзя выкладывать в публичный issue."""
     s = text or ''
-    s = re.sub(r'\b\d{6,12}:[A-Za-z0-9_-]{30,}', '[токен бота]', s)
+    # как worker/src/bot.js sanitize (пентест 2026-11-05): токен и внутри адреса …/bot123:AA…, JWT, 40+ hex, параметры
+    s = re.sub(r'(^|[^0-9])\d{6,12}:[A-Za-z0-9_-]{20,}', r'\1[токен бота]', s)
+    s = re.sub(r'\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}', '[ключ]', s)
+    s = re.sub(r'([?&](?:token|access_token|key|apikey|api_key|password|pass|secret|uid|email|account_email)=)[^&\s"\'<>]+',
+               r'\1…', s, flags=re.I)
     s = re.sub(r'\b(?:gsk_[A-Za-z0-9]{16,}|AIza[0-9A-Za-z_-]{30,}|sk-[A-Za-z0-9_-]{16,}|'
                r'gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[abprs]-[A-Za-z0-9-]{10,})',
                '[ключ]', s)
+    s = re.sub(r'\b[0-9a-fA-F]{40,}\b', '[ключ]', s)
     s = re.sub(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}', '[почта]', s)
     s = re.sub(r'\b[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}\b', '[код]', s)        # код «Подключить через бота»
     s = re.sub(r'(?<![\w.])\+?\d[\d ()\-]{7,}\d(?![\w.])', _phone, s)

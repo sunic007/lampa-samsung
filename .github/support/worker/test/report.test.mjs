@@ -71,7 +71,7 @@ test('ntfy: забирает отчёты, вложения по ссылке, s
     const lines = [
         JSON.stringify({ event: 'open' }),
         JSON.stringify({ event: 'message', id: 'm1', message: rep() }),
-        JSON.stringify({ event: 'message', id: 'm2', message: 'You received a file', attachment: { url: 'https://ntfy.sh/file/abc.txt' } }),
+        JSON.stringify({ event: 'message', id: 'm2', message: 'You received a file', attachment: { url: 'https://ntfy.sh/file/abc.txt', size: 5000 } }),
     ].join('\n');
     const fetched = [];
     const n = await pollNtfy({ gh: e.gh, store: e.store }, async url => { fetched.push(url); return url.includes('/file/') ? rep({ kind: 'stall' }) : lines; });
@@ -102,4 +102,29 @@ test('отчёт: дополнения с одного ТВ тоже огран�
     let more = 0;
     for (let i = 0; i < 20; i++) if ((await handleReport(rep(), deps)).dup) more++;
     assert.equal(more, REPORT_PER_DEVICE * 2);
+});
+
+test('ntfy: мусор и огромные вложения пропускаются, since сдвигается, лимит тратится только на отчёты', async () => {
+    const e = env();
+    const lines = [
+        JSON.stringify({ event: 'message', id: 'j1', message: 'спам' }),
+        JSON.stringify({ event: 'message', id: 'j2', message: 'x', attachment: { url: 'https://ntfy.sh/file/big.txt', size: 900000 } }),
+        JSON.stringify({ event: 'message', id: 'j3', message: 'x', attachment: { url: 'https://evil.example/f.txt', size: 100 } }),
+        JSON.stringify({ event: 'message', id: 'm1', message: rep() }),
+    ].join('\n');
+    const fetched = [];
+    const n = await pollNtfy({ gh: e.gh, store: e.store }, async url => { fetched.push(url); return lines; }, 1);
+    assert.equal(n, 1);
+    assert.equal(e.issues().length, 1);
+    assert.equal(e.kv.get('rep:since'), 'm1');
+    assert.equal(fetched.length, 1);                         // большое и чужое вложение не качали
+});
+test('отчёт: общий суточный предел проверяется до любых записей KV', async () => {
+    const e = env(), day = new Date().toISOString().slice(0, 10);
+    e.kv.set('rep:all:' + day, '40');
+    const writes = [];
+    const store = { get: e.store.get, put: async (k, v) => { writes.push(k); e.kv.set(k, v); } };
+    const r = await handleReport(rep(), { gh: e.gh, store, ip: '9.9.9.9' });
+    assert.equal(r.error, 'limit');
+    assert.equal(writes.length, 0);
 });

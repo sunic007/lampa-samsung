@@ -64,6 +64,9 @@ export async function handleReport(raw, deps) {
     const { gh, store } = deps, log = deps.log || (() => {});
     const day = new Date().toISOString().slice(0, 10), DAY = 86400, hash = await devHash(rep.device);
     const repo = REPOS['lampa-samsung'];
+    // общий суточный предел — сначала и только чтением: после него запрос не тратит запись KV (пентест 2026-11-05:
+    // поток отчётов с разных адресов съедал суточную квоту записей, и ломались лимиты и защита группы)
+    try { if (+(await store.get(`rep:all:${day}`) || 0) >= REPORT_PER_DAY) return { ok: false, error: 'limit' }; } catch (e) { /* без KV — дальше */ }
     // тот же ТВ, та же проблема за сутки — дополняем прежнюю задачу (лимит ТВ не тратим, но IP — тратим)
     let prev = null;
     const dupKey = `rep:last:${hash}:${rep.kind}`;
@@ -92,21 +95,28 @@ export async function handleReport(raw, deps) {
 }
 
 /** Отчёты, пришедшие через ntfy (ТВ не достучался до Worker). since — в KV; за раз не больше max. */
+export const NTFY_MAX = 60000;
 export async function pollNtfy(deps, fetchText, max = 10) {
     const since = await deps.store.get('rep:since') || '12h';
     const text = await fetchText(`https://ntfy.sh/${REPORT_TOPIC}/json?poll=1&since=${encodeURIComponent(since)}`);
     let last = '', done = 0;
+    // топик открытый: мусор и огромные вложения пропускаем и сдвигаем since дальше — иначе ими можно было забить очередь
+    // (лимит в 10 тратился на мусор, а не скачавшееся вложение навсегда останавливало разбор)
     for (const line of String(text || '').split('\n')) {
         let ev;
         try { ev = JSON.parse(line); } catch (e) { continue; }
         if (!ev || ev.event !== 'message') continue;
         if (done >= max) break;                                  // остальное — в следующий раз (since не сдвигаем дальше)
-        done++;
         // больше 4 КБ ntfy хранит вложением — текст отчёта по ссылке
         let body = ev.message;
-        if (ev.attachment && /^https:\/\/ntfy\.sh\/file\//.test(String(ev.attachment.url || ''))) {
-            try { body = await fetchText(ev.attachment.url); } catch (e) { break; }   // вложение не скачалось — в следующий раз с этого места
+        if (ev.attachment) {
+            const okUrl = /^https:\/\/ntfy\.sh\/file\//.test(String(ev.attachment.url || ''));
+            if (!okUrl || !(+ev.attachment.size > 0) || +ev.attachment.size > NTFY_MAX) { last = ev.id; continue; }
+            try { body = await fetchText(ev.attachment.url); } catch (e) { last = ev.id; continue; }
+            if (String(body).length > NTFY_MAX) { last = ev.id; continue; }
         }
+        if (!parseReport(body)) { last = ev.id; continue; }     // не отчёт — не считаем в лимит
+        done++;
         const r = await handleReport(body, { ...deps, ip: '' });
         if (r && r.error === 'github') break;                    // GitHub не принял — этот и дальше в следующий раз
         last = ev.id;

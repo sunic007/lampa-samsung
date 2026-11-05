@@ -261,3 +261,15 @@ test('/test у обычного участника — без проверки �
     assert.equal(e.calls('sendMessage').length, 0);
     assert.deepEqual(await e.bot.handleMessage(msg('/test https://example.com')), { kind: 'removed' });
 });
+
+test('пентест 2026-11-05: маска токена в адресе, JWT, 40+ hex, параметры адресов; hash сборки остаётся', async () => {
+    const { sanitize, cleanAnswer } = await import('../src/bot.js');
+    const t = sanitize('https://api.telegram.org/bot123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsawQ/getUpdates');
+    assert.ok(!/AAHdqTcv/.test(t));
+    assert.ok(!/eyJhbGci/.test(sanitize('x eyJhbGciOiJIUzI1.eyJzdWIiOiIxMjM0NTY3.SflKxwRJSMeKKF2QT4fw')));
+    assert.ok(/\[ключ\]/.test(sanitize('k ' + 'ab'.repeat(32))));
+    assert.ok(/c95b7a3b4d26094b4b7236bab3da7bb6/.test(sanitize('hash c95b7a3b4d26094b4b7236bab3da7bb6')));
+    assert.ok(!/s3cr3t/.test(sanitize('http://x.ru/a?b=1&token=s3cr3t&c=2')));
+    assert.ok(!/4276/.test(cleanAnswer('Оплатите на карту 4276 3800 1234 5678 или звоните +998 90 123 45 67')));
+    assert.ok(/версия 2\.3\.82/.test(cleanAnswer('Обновите до версия 2.3.82')));
+});

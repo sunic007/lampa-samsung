@@ -133,8 +133,14 @@ export function langOfUser(user) {
 const PRIVATE_IP = /^(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/;
 export function sanitize(text) {
     let s = text || '';
-    s = s.replace(/\b\d{6,12}:[A-Za-z0-9_-]{30,}/g, '[токен бота]');
+    // токен бота — и внутри адреса (…/bot123456789:AA…: там нет границы слова), и обрезанный (хвост от 20 знаков)
+    s = s.replace(/(^|[^0-9])\d{6,12}:[A-Za-z0-9_-]{20,}/g, '$1[токен бота]');
+    // JWT и длинные hex-ключи (40+: hash сборки Lampa из 32 знаков оставляем — он нужен в задачах)
+    s = s.replace(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g, '[ключ]');
+    // параметры адресов со словами token/key/password/uid/email — как на ТВ (src/bsreport.js clean)
+    s = s.replace(/([?&](?:token|access_token|key|apikey|api_key|password|pass|secret|uid|email|account_email)=)[^&\s"'<>]+/gi, '$1…');
     s = s.replace(/\b(?:gsk_[A-Za-z0-9]{16,}|AIza[0-9A-Za-z_-]{30,}|sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[abprs]-[A-Za-z0-9-]{10,})/g, '[ключ]');
+    s = s.replace(/\b[0-9a-f]{40,}\b/gi, '[ключ]');
     s = s.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '[почта]');
     s = s.replace(/\b[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}\b/g, '[код]');
     s = s.replace(/(?<![\p{L}\p{N}_.])\+?\d[\d ()\-]{7,}\d(?![\p{L}\p{N}_.])/gu, m => {
@@ -294,6 +300,12 @@ export function cleanAnswer(text) {
     let s = String(text || '').replace(/(?:https?:\/\/|\bwww\.)[^\s<>"]+|\b(?:t\.me|telegram\.me|bit\.ly|tinyurl\.com|cutt\.ly|clck\.ru)\/[^\s<>"]+/gi,
         u => { const bare = u.replace(/[.,;:!?)]+$/, ''); return linkAllowed(bare) ? u : '[ссылка убрана]' + u.slice(bare.length); });
     s = s.replace(/(?<![\p{L}\p{N}_@])@([A-Za-z][A-Za-z0-9_]{3,31})\b/gu, (m, n) => SAFE_MENTIONS.has(n.toLowerCase()) ? m : '');
+    // телефоны и номера карт из ответа ИИ убираем: сообщение в группе могло подсунуть их боту («пишите в поддержку
+    // по номеру…»), а бот говорит от имени проекта (пентест 2026-11-05)
+    s = s.replace(/(?<![\p{L}\p{N}_.])\+?\d[\d ()\-]{7,}\d(?![\p{L}\p{N}_.])/gu, m => {
+        const d = m.replace(/\D/g, '');
+        return d.length >= 9 && d.length <= 19 ? '[номер убран]' : m;
+    });
     return s;
 }
 

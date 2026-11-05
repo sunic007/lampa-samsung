@@ -18,6 +18,19 @@ const PROVIDERS = [
     ['sk-', 'https://api.openai.com/v1/chat/completions', ['gpt-4.1-mini']],
 ];
 const log = (...a) => console.log(...a);
+/** Сравнение секретов за одно и то же время (по времени ответа не угадать ключ по символу). */
+function sameSecret(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string' || !a || !b) return false;
+    const x = new TextEncoder().encode(a), y = new TextEncoder().encode(b);
+    if (x.length !== y.length) return false;
+    try { return crypto.subtle.timingSafeEqual(x, y); } catch (e) { let d = 0; for (let i = 0; i < x.length; i++) d |= x[i] ^ y[i]; return d === 0; }
+}
+/** IP для лимитов: IPv6 — по сети /64 (у одного абонента их миллиарды), IPv4 — как есть. */
+export function ipKey(ip) {
+    ip = String(ip || '');
+    if (ip.indexOf(':') < 0) return ip;
+    return ip.toLowerCase().split(':').slice(0, 4).join(':') + '::/64';
+}
 const redact = (s, env) => String(s).split(env.TELEGRAM_BOT_TOKEN || '\u0000').join('***');
 
 function telegram(env) {
@@ -85,7 +98,7 @@ async function knowledge(env) {
 }
 
 async function handleTelegram(request, env) {
-    if (!env.WEBHOOK_SECRET || request.headers.get('X-Telegram-Bot-Api-Secret-Token') !== env.WEBHOOK_SECRET) return new Response('forbidden', { status: 403 });
+    if (!sameSecret(request.headers.get('X-Telegram-Bot-Api-Secret-Token') || '', env.WEBHOOK_SECRET)) return new Response('forbidden', { status: 403 });
     const u = await request.json().catch(() => null);
     if (!u || typeof u.update_id !== 'number') return new Response('ok');
     // Telegram повторяет обновление, если ответ не пришёл вовремя, — второй раз не обрабатываем
@@ -119,7 +132,7 @@ async function handleTelegram(request, env) {
 
 async function setup(request, env) {
     const url = new URL(request.url);
-    if (!env.WEBHOOK_SECRET || url.searchParams.get('key') !== env.WEBHOOK_SECRET) return new Response('forbidden', { status: 403 });
+    if (!sameSecret(url.searchParams.get('key') || '', env.WEBHOOK_SECRET)) return new Response('forbidden', { status: 403 });
     const tg = telegram(env);
     await tg('setWebhook', { url: url.origin + '/tg', secret_token: env.WEBHOOK_SECRET, allowed_updates: ['message', 'edited_message', 'callback_query'], max_connections: 5 });
     const info = await tg('getWebhookInfo');
@@ -146,6 +159,18 @@ async function health(env) {
     return Response.json(out);
 }
 
+/* /health открыт всем, а каждый вызов — 3 запроса к Telegram и 2 к GitHub: в цикле им выедали лимит GitHub (задачи
+ * переставали открываться). Ответ держим 5 минут в кеше Cloudflare — без записей KV. */
+async function cachedHealth(request, env) {
+    const cache = typeof caches !== 'undefined' ? caches.default : null;
+    const key = new Request(new URL(request.url).origin + '/health');
+    if (cache) { const hit = await cache.match(key).catch(() => null); if (hit) return hit; }
+    const res = await health(env);
+    const out = new Response(res.body, { status: res.status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300' } });
+    if (cache) await cache.put(key, out.clone()).catch(() => {});
+    return out;
+}
+
 function kvStore(env) {
     return { get: k => env.STATE.get(k), put: (k, v, ttl) => env.STATE.put(k, v, ttl ? { expirationTtl: Math.max(60, ttl) } : undefined) };
 }
@@ -154,7 +179,7 @@ async function report(request, env) {
     if (request.method === 'OPTIONS') return new Response(null, { headers: CORS });
     const raw = await request.text();
     if (raw.length > 60000) return Response.json({ ok: false, error: 'bad' }, { status: 413, headers: CORS });
-    const res = await handleReport(raw, { gh: github(env), store: kvStore(env), ip: request.headers.get('CF-Connecting-IP') || '', log });
+    const res = await handleReport(raw, { gh: github(env), store: kvStore(env), ip: ipKey(request.headers.get('CF-Connecting-IP') || ''), log });
     const status = res.ok ? 200 : res.error === 'limit' ? 429 : res.error === 'bad' ? 400 : 502;
     return Response.json(res, { status, headers: CORS });
 }
@@ -174,7 +199,7 @@ export default {
         if (request.method === 'POST' && path === '/tg') return handleTelegram(request, env);
         if (path === '/report' && (request.method === 'POST' || request.method === 'OPTIONS')) return report(request, env).catch(e => Response.json({ ok: false, error: 'github' }, { status: 502, headers: CORS }));
         if (path === '/setup') return setup(request, env).catch(e => Response.json({ ok: false, error: redact(e.message, env) }, { status: 500 }));
-        if (path === '/health') return health(env);
+        if (path === '/health') return cachedHealth(request, env);
         return new Response('Sunic Apps support bot', { status: 404 });
     },
 };
