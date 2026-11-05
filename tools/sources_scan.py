@@ -296,14 +296,18 @@ def md_report(ours, cands, new_ids, dead):
     return '\n'.join(L) + '\n'
 
 
-def upsert_issue(title, body):
+def upsert_issue(title, body, create=True):
+    """Открытая задача `sources` — обновить свежим отчётом; нет её и create — создать."""
     if not TOKEN:
         return
     st, items = gh('/repos/%s/issues' % REPO, {'labels': 'sources', 'state': 'open', 'per_page': 5})
-    data = json.dumps({'title': title, 'body': body[:60000], 'labels': ['sources']}).encode('utf-8')
     if st == 200 and items:
-        get('https://api.github.com/repos/%s/issues/%d' % (REPO, items[0]['number']), data=data, method='PATCH', auth=True)
-    else:
+        fields = {'body': body[:60000]}
+        if title:
+            fields['title'] = title
+        get('https://api.github.com/repos/%s/issues/%d' % (REPO, items[0]['number']), data=json.dumps(fields).encode('utf-8'), method='PATCH', auth=True)
+    elif create and title:
+        data = json.dumps({'title': title, 'body': body[:60000], 'labels': ['sources']}).encode('utf-8')
         get('https://api.github.com/repos/%s/issues' % REPO, data=data, method='POST', auth=True)
 
 
@@ -357,13 +361,14 @@ def main():
     json.dump({'seen': seen, 'dead_runs': dead_runs}, open(os.path.join(out, 'state.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     print('наши: %d, не отвечают: %s; найдено файлов: %d, кандидатов: %d, новых сильных: %d' %
           (len(ours), ', '.join(dead) or 'нет', len(raw), len(cands), len(strong_new)))
-    if '--issue' in sys.argv and (dead or strong_new):
+    if '--issue' in sys.argv:
         why = []
         if dead:
             why.append('не отвечает: ' + ', '.join(dead))
         if strong_new:
             why.append('новых кандидатов: %d' % len(strong_new))
-        upsert_issue('Онлайн-источники: ' + '; '.join(why), md)
+        # есть что сказать — заголовок и, если нужно, новая задача; нечего — открытая задача просто получает свежий отчёт
+        upsert_issue('Онлайн-источники: ' + '; '.join(why) if why else '', md, create=bool(why))
 
 
 if __name__ == '__main__':
