@@ -41,13 +41,6 @@ var BSSources = (function () {
           note: 'Без рекламы', match: hasCls('view--online_mod') },
         { id: 'vod_llpp', key: 'bs_src_vod_llpp', name: 'VOD (llpp.in)', url: 'http://llpp.in/v/vod.js', comp: ['online_mod'], group: 'online_mod', https: true,
           note: 'Вместо Online Mod', match: hasCls('view--online_mod') },
-        // Showy (showy.online) с 2026-11 без входа через @showybot ничего не показывает — вместо него его версия без
-        // регистрации (smotret24, два зеркала; только http). Ключ прежний: кто включал Showy, получит эту.
-        { id: 'showy', key: 'bs_src_showy', name: 'Showy без регистрации', url: 'http://smotret24.ru/online.js', alt: ['http://smotret24.com/online.js'],
-          comp: ['smotret24', 'smotret24_ru', 'smotret24_com'], note: 'Без входа, до 1080p · есть реклама', match: hasCls('smotret24--button') },
-        // MODS's: бесплатно Lumex (1080p) и Filmix (720p), остальное — платная подписка у самого плагина
-        { id: 'modss', key: 'bs_src_modss', name: "MODS's", url: 'http://lampa.stream/modss', alt: ['http://modss.tv'], comp: ['modss', 'mods'], https: true,
-          note: 'Бесплатно Lumex и Filmix, остальное — платно', match: function (b) { return /mods/i.test(sub(b)) || b.hasClass('view--modss') || b.hasClass('modss--button'); } },
         // Lordfilm (github.com/lenorio/lenorio, 2.3.79): проверен в браузере — фильм и сериал, видео за доли секунды.
         // Закреплён на коммите, а не @main: автор не подменит код на ТВ незаметно; новую версию берём, проверив её
         // (sources-scan покажет изменения). Запасные — другие сети jsDelivr.
@@ -55,6 +48,13 @@ var BSSources = (function () {
           alt: ['https://fastly.jsdelivr.net/gh/lenorio/lenorio@79710d2b24b5633265e9905684700e5bd4bf5724/plugins/lordfilm.js',
               'https://gcore.jsdelivr.net/gh/lenorio/lenorio@79710d2b24b5633265e9905684700e5bd4bf5724/plugins/lordfilm.js'],
           comp: ['lordfilm'], on: true, note: 'Без входа и рекламы', match: hasCls('view--lordfilm') },
+        // Showy (showy.online) с 2026-11 без входа через @showybot ничего не показывает — вместо него его версия без
+        // регистрации (smotret24, два зеркала; только http). Ключ прежний: кто включал Showy, получит эту.
+        { id: 'showy', key: 'bs_src_showy', name: 'Showy без регистрации', url: 'http://smotret24.ru/online.js', alt: ['http://smotret24.com/online.js'],
+          comp: ['smotret24', 'smotret24_ru', 'smotret24_com'], on: true, note: 'Без входа, до 1080p · есть реклама', match: hasCls('smotret24--button') },
+        // MODS's: бесплатно Lumex (1080p) и Filmix (720p), остальное — платная подписка у самого плагина
+        { id: 'modss', key: 'bs_src_modss', name: "MODS's", url: 'http://lampa.stream/modss', alt: ['http://modss.tv'], comp: ['modss', 'mods'], https: true,
+          note: 'Бесплатно Lumex и Filmix, остальное — платно', match: function (b) { return /mods/i.test(sub(b)) || b.hasClass('view--modss') || b.hasClass('modss--button'); } },
         // arkmv («Онлайн Stream», http://arkmv.ru/vod) убран в 2.3.78: адрес плагина отвечает 404, каталоги пишут «не работает»
     ];
     var SKAZ_COMP = ['lampacskaz'];

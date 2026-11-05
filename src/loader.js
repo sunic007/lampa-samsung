@@ -892,7 +892,7 @@ var BS_SETTINGS_LAYOUT = [
         '#Бот', 'bs_tg_on', 'bs_tg_shots', 'bs_search_qr', 'bs_tg_check',
         '#Люди и доступ', 'bs_tg_approve', 'bs_tg_guest_play', 'bs_tg_invite_reset']],
     ['bs_online', ['#Источники', 'bs_auto_source', 'bs_race', 'bs_torrents', 'bs_srv_title', 'bs_srv_now', 'bs_srv_auto', 'bs_srv_pick',
-        '#Источники на выбор', 'bs_src_main', 'bs_src_z01', 'bs_src_online_mod', 'bs_src_vod_llpp', 'bs_src_showy', 'bs_src_modss', 'bs_src_lordfilm']]
+        '#Источники на выбор', 'bs_src_main', 'bs_src_z01', 'bs_src_online_mod', 'bs_src_vod_llpp', 'bs_src_lordfilm', 'bs_src_showy', 'bs_src_modss']]
 ];
 // заголовки старой общей вкладки; подсказка про цветные кнопки (на Smart Remote их нет); «Быстрый старт» (техническое,
 // всегда вкл.); журнал запросов (отладка — есть журнал на компьютере); «Название источника» (выкл., просили скрыть)
