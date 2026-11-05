@@ -20,7 +20,7 @@ if (window.BS_REMOTE_VERSION && window.BS_PKG_APP && window.BS_PKG_APP.hash) {
 }
 
 var bsRemote = null;      // assembly.json с сервера: {app_version, hash, time}
-var bsSource = '';        // 'server' | 'local' (из пакета, та же сборка что на сервере) | 'bundled' (сервер недоступен)
+var bsSource = '';        // 'server' | 'local' (из пакета, та же сборка что на сервере) | 'cache' (своя копия серверной сборки, IndexedDB) | 'bundled' (сервер недоступен)
 var bsStarted = false;
 
 /* Версия функций с GitHub: update.js ставит bs_upd_try и снимает, когда Lampa поднялась; не снятый — следующий запуск
@@ -265,25 +265,178 @@ function bsInitWait() {
     return true;
 }
 
+/* ---------- своя копия ядра Lampa (IndexedDB) ---------- */
+
+/* Пакет на ТВ почти всегда старше сборки Lampa на сервере byskaz (новая — раз в 1–3 дня, а .wgt переустанавливают
+ * редко). Тогда на КАЖДОМ запуске app.min.js (2,3 МБ, 0,8 МБ по сети) качался заново: в адресе случайное число, и
+ * сервер кешировать не разрешает. Теперь серверная сборка один раз сохраняется в IndexedDB вместе со стилями:
+ * тот же hash на сервере — Lampa запускается из своей копии; сервер не ответил за BS_CORE_NO_SERVER с — тоже из неё
+ * (она новее пакета), а не через 15 с из пакета. Копия годится, только если в её тексте есть её hash (как проверяет
+ * update_bundled.py) и после запуска есть window.Lampa; иначе она стирается и всё идёт как раньше: сервер → пакет.
+ * Новая сборка на сервере (bsUpdateCheck) сразу скачивается своей копией — перезапуск поднимет её без загрузки. */
+var BS_CORE_DB = 'bs_core', BS_CORE_MIN = 500000, BS_CORE_NO_SERVER = 3;
+var bsCore = null, bsCoreRead = false, bsCoreWaiting = null, bsCoreNoServer = false, bsCoreSaving = '';
+
+function bsCoreOk(r) {
+    return !!(r && typeof r.hash === 'string' && /^[0-9a-f]{16,64}$/.test(r.hash) && typeof r.js === 'string' &&
+        r.js.length > BS_CORE_MIN && r.js.indexOf(r.hash) >= 0);
+}
+function bsCoreReady(r) {
+    if (bsCoreRead) return;
+    bsCoreRead = true;
+    bsCore = bsCoreOk(r) ? r : null;
+    if (bsCoreWaiting) { var go = bsCoreWaiting; bsCoreWaiting = null; go(); }
+}
+/** База своей копии: cb(db | null). Не открылась за 1,5 с — null (запуск не ждёт). */
+function bsCoreDb(cb) {
+    var idb = null, done = false;
+    var fin = function (db) {
+        if (done) { try { if (db) db.close(); } catch (e) {} return; }
+        done = true;
+        cb(db);
+    };
+    try { idb = window.indexedDB; } catch (e) {}
+    if (!idb) return cb(null);
+    try {
+        var rq = idb.open(BS_CORE_DB, 1);
+        rq.onupgradeneeded = function () { try { rq.result.createObjectStore('core'); } catch (e) {} };
+        rq.onsuccess = function () { fin(rq.result); };
+        rq.onerror = rq.onblocked = function () { fin(null); };
+    } catch (e) { return fin(null); }
+    setTimeout(function () { fin(null); }, 1500);
+}
+/** Одна транзакция: op(хранилище) возвращает запрос; cb(его результат | null). */
+function bsCoreTx(mode, op, cb) {
+    bsCoreDb(function (db) {
+        if (!db) return cb && cb(null);
+        var out = null;
+        var fin = function () { try { db.close(); } catch (e) {} if (cb) { var c = cb; cb = null; c(out); } };
+        try {
+            var tx = db.transaction('core', mode), rq = op(tx.objectStore('core'));
+            if (rq) rq.onsuccess = function () { out = rq.result; };
+            tx.oncomplete = fin;
+            tx.onerror = tx.onabort = function () { out = null; fin(); };
+        } catch (e) { fin(); }
+    });
+}
+function bsCoreDrop() { bsCoreTx('readwrite', function (st) { return st['delete']('app'); }); }
+
+/** Подходит ли своя копия для этого запуска. */
+function bsCoreFits() {
+    if (!bsCore) return false;
+    return bsRemote && bsRemote.hash ? bsCore.hash === bsRemote.hash : bsCoreNoServer;
+}
+/** Запустить Lampa из своей копии. false — копия не запустилась (она стёрта), запуск идёт дальше как раньше. */
+function bsCoreRun() {
+    var c = bsCore;
+    bsSource = 'cache';
+    console.log('Load script: своя копия Lampa ' + (c.version || '') + ' ' + c.hash);
+    if (c.css) bsCssKeep(c.css);
+    try {
+        var s = document.createElement('script');
+        s.type = 'text/javascript';
+        s.text = c.js;
+        document.getElementsByTagName('body')[0].appendChild(s);
+    } catch (e) {}
+    if (window.Lampa) return true;
+    console.log('BS core: своя копия не запустилась — стираю');
+    bsCore = null;
+    bsCoreDrop();
+    bsSource = '';
+    return false;
+}
+/** GET текста: cb(текст | null). */
+function bsCoreGet(url, cb) {
+    var x = new XMLHttpRequest(), done = false;
+    var fin = function (t) { if (!done) { done = true; cb(t); } };
+    try {
+        x.open('GET', url, true);
+        x.timeout = 120000;
+        x.onload = function () { fin(x.status === 200 && typeof x.responseText === 'string' ? x.responseText : null); };
+        x.onerror = x.ontimeout = function () { fin(null); };
+        x.send(null);
+    } catch (e) { fin(null); }
+}
+/** Сохранить сборку a (assembly.json сервера) своей копией, если её ещё нет. Фоном; ошибки — молча. */
+function bsCoreKeep(a) {
+    if (!a || !a.hash || BS_HTTPS_PAGE || bsCoreSaving === a.hash || (bsCore && bsCore.hash === a.hash)) return;
+    if (a.hash === BS_BUNDLED_HASH) return;                                 // та же сборка, что в пакете, — копия не нужна
+    var h = a.hash;
+    bsCoreSaving = h;
+    bsCoreGet(BS_SERVER + 'app.min.js?h=' + h, function (js) {
+        if (!js || js.length <= BS_CORE_MIN || js.indexOf(h) < 0) { bsCoreSaving = ''; return; }
+        bsCoreGet(BS_SERVER + 'css/app.css?v' + (a.css_version || a.app_version || h), function (css) {
+            var rec = { hash: h, version: String(a.app_version || ''), js: js, at: Date.now(),
+                css: css && css.length > 10000 && css.indexOf('{') >= 0 ? css : null };
+            bsCoreTx('readwrite', function (st) { return st.put(rec, 'app'); }, function () {
+                bsCoreSaving = '';
+                if (bsSource !== 'cache') bsCore = rec;                     // запущенную копию не подменяем
+                console.log('BS core: своя копия Lampa ' + rec.version + ' ' + h + ' сохранена');
+            });
+        });
+    });
+}
+
+/* Стили Lampa — один раз. index.html уже разобрал css/app.css из пакета, а Lampa при запуске всё равно качала те же
+ * стили с byskaz (без кеша) и разбирала второй раз: она ищет ссылку ровно с href="css/app.css". Сборка из пакета —
+ * её стили уже на странице: ставим ту же ссылку с другим написанием адреса (из кеша браузера), старую убираем, когда
+ * новая готова, — Lampa своей ссылки не находит и ничего не качает. css — стили своей копии ядра: кладём их <style>
+ * (в body, как Lampa), ссылку пакета убираем. done() — можно запускать Lampa (не позже чем через 1,5 с). */
+function bsCssKeep(css, done) {
+    var fin = function () { if (done) { var d = done; done = null; d(); } };
+    try {
+        var old = document.querySelector('link[href="css/app.css"]');
+        if (!old || !old.parentNode) return fin();
+        if (typeof css === 'string') {
+            var st = document.createElement('style');
+            st.type = 'text/css';
+            st.appendChild(document.createTextNode(css.replace(/\.\.\//g, './')));
+            document.body.appendChild(st);
+            old.parentNode.removeChild(old);
+            return fin();
+        }
+        var l = document.createElement('link');
+        l.rel = 'stylesheet';
+        l.href = './css/app.css';
+        l.onload = function () { if (old.parentNode) old.parentNode.removeChild(old); fin(); };
+        // не загрузилась — убираем её, старая остаётся: Lampa скачает стили, как раньше
+        l.onerror = function () { if (l.parentNode) l.parentNode.removeChild(l); fin(); };
+        old.parentNode.insertBefore(l, old.nextSibling);
+        setTimeout(function () { if (done && l.parentNode) l.parentNode.removeChild(l); fin(); }, 1500);
+    } catch (e) { fin(); }
+}
+
+/* Свою копию читаем сразу, параллельно с проверкой сервера. Не прочиталась за 2 с — запуск без неё. */
+try {
+    bsCoreTx('readonly', function (st) { return st.get('app'); }, bsCoreReady);
+    setTimeout(function () { bsCoreReady(null); }, 2000);
+} catch (e) { bsCoreReady(null); }
+
 function startAppWithDeepLink(){
     if (bsStarted) return;
     if (!bsSrvReady) {
         bsSrvWaiting = startAppWithDeepLink;
         return;
     }
-    if (bsInitWait()) { setTimeout(startAppWithDeepLink, 200); return; }
+    // lampainit.js ещё грузится: смотрим часто — раньше шаг был 200 мс, и Lampa стартовала позже, чем могла
+    if (bsInitWait()) { setTimeout(startAppWithDeepLink, 25); return; }
+    if (!bsCoreRead) { bsCoreWaiting = startAppWithDeepLink; return; }     // своя копия ядра ещё читается (≤ 2 с)
     bsStarted = true;
     var localFirst = true;
     try { localFirst = window.localStorage.getItem('bs_local_first') !== 'false'; } catch (e) {}
     if (localFirst && bsRemote && bsRemote.hash === BS_BUNDLED_HASH) {
         bsSource = 'local';
-        createScript('app.js', function () {
-            console.log('Local copy error');
-            bsSource = 'server';
-            createScript(BS_SERVER + 'app.min.js?v' + Math.random(), function () { loadFromLocal(); });
+        bsCssKeep(null, function () {
+            createScript('app.js', function () {
+                console.log('Local copy error');
+                bsSource = 'server';
+                createScript(BS_SERVER + 'app.min.js?v' + Math.random(), function () { loadFromLocal(); });
+            });
         });
         return;
     }
+    // своя копия той же сборки, что на сервере (или сервер молчит, а копия новее пакета) — без 2 МБ по сети
+    if (localFirst && bsCoreFits() && bsCoreRun()) return;
     bsSource = 'server';
 
     createScript(BS_SERVER + 'app.min.js?v' + Math.random(), function(){
@@ -308,10 +461,12 @@ function loadFromLocal(source){
     if (bsRemote && bsRemote.hash) { try { window.localStorage.setItem('bs_failed_hash', bsRemote.hash + '|' + Date.now()); } catch (e) {} }
     bsSource = source === 'local' ? 'local' : 'bundled';
 
-    createScript('app.js', function(){
-        console.log('Load local error');
-        bsStatus('Не удалось запустить Lampa', 'Проверьте интернет и перезапустите приложение.', false);
-    })
+    bsCssKeep(null, function () {                                   // стили этой сборки уже на странице
+        createScript('app.js', function(){
+            console.log('Load local error');
+            bsStatus('Не удалось запустить Lampa', 'Проверьте интернет и перезапустите приложение.', false);
+        });
+    });
 }
 
 // Страница по https (браузер, sunic.stream), а сервер byskaz — только http: браузер не пустит запрос к нему, ждать 15 с
@@ -370,6 +525,15 @@ function countdown() {
         if (!bsStarted) { bsStarted = true; loadFromLocal('local'); }
         return;
     }
+    // сервер молчит BS_CORE_NO_SERVER с, а своя копия ядра есть — запускаем её, а не ждём 15 с
+    if (!bsStarted && bsCore && timeLeft <= 15 - BS_CORE_NO_SERVER) {
+        clearInterval(timerId);
+        timeLeft = -1;
+        bsCoreNoServer = true;
+        startAppWithDeepLink();
+        bsDropOldCopy();
+        return;
+    }
     if (checking && timeLeft > 0) { timeLeft--; return; }
 
     if (timeLeft <= 0) {
@@ -414,6 +578,7 @@ function countdown() {
 
 function bsRunningVersion() {
     try { if (Lampa.Manifest && Lampa.Manifest.app_version) return String(Lampa.Manifest.app_version); } catch (e) {}
+    if (bsSource === 'cache' && bsCore) return bsCore.version || '?';
     return bsSource === 'bundled' || bsSource === 'local' ? BS_BUNDLED_VERSION : (bsRemote && bsRemote.app_version) || '?';
 }
 
@@ -624,7 +789,10 @@ function bsUpdateCheck() {
     bsCheckNow(function (a) {
         if (!a) return;
         if (!bsRunningHash) { bsRunningHash = a.hash; return; }   // запущены без данных о сборке — запоминаем текущую
-        if (bsHasUpdate(a) && !bsRecentlyFailed(a.hash)) bsApplyUpdate(a);
+        if (bsHasUpdate(a) && !bsRecentlyFailed(a.hash)) {
+            bsCoreKeep(a);                                        // новую сборку — сразу своей копией: перезапуск без загрузки
+            bsApplyUpdate(a);
+        }
     });
 }
 
@@ -638,7 +806,9 @@ function bsRecentlyFailed(hash) {
 }
 
 function bsStartAutoUpdate() {
-    bsRunningHash = bsSource === 'bundled' || bsSource === 'local' ? BS_BUNDLED_HASH : (bsRemote && bsRemote.hash) || null;
+    bsRunningHash = bsSource === 'bundled' || bsSource === 'local' ? BS_BUNDLED_HASH : bsSource === 'cache' && bsCore ? bsCore.hash : (bsRemote && bsRemote.hash) || null;
+    // запущены с сервера — эту сборку своей копией, чтобы следующий запуск её не качал (через 30 с, фоном)
+    if (bsSource === 'server' && bsRemote && bsAutoUpdateOn()) setTimeout(function () { bsCoreKeep(bsRemote); }, 30000);
     setInterval(function () { if (!document.hidden) bsUpdateCheck(); }, BS_UPDATE_EVERY);
     try { Lampa.Player.listener.follow('destroy', bsOfferLater); } catch (e) {}   // окно обновления — после видео
     document.addEventListener('visibilitychange', function () {

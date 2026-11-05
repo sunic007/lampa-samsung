@@ -4151,14 +4151,66 @@ async function serviceTests() {
         const ctx = { window: { location: { protocol: proto }, localStorage: { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); } } },
             BS_SERVER: 'http://lampa.byskaz.ru/lampa-main/', bsStarted: false, bsSource: '', bsRemote: null, Date, Math, console: { log() {} },
             createScript: s => scripts.push(s), XMLHttpRequest: function () { this.open = () => scripts.push('check'); this.send = () => {}; }, bsDropOldCopy() {}, bsStatus() {},
+            bsCssKeep: (css, done) => { scripts.push('css'); if (done) done(); }, bsCore: null, BS_CORE_NO_SERVER: 3,
             setInterval: () => 1, clearInterval() {}, clearTimeout() {} };
         vm.createContext(ctx); vm.runInContext(fn + ';countdown();this.r = { src: bsSource, started: bsStarted, https: BS_HTTPS_PAGE };', ctx);
         return { r: ctx.r, scripts };
     };
     let x = run('https:');
-    t('https: сразу копия из пакета, источник «local» (без «Нет связи с сервером»)', x.r.https && x.r.started && x.r.src === 'local' && x.scripts.join() === 'app.js');
+    t('https: сразу копия из пакета, источник «local» (без «Нет связи с сервером»)', x.r.https && x.r.started && x.r.src === 'local' && x.scripts.join() === 'css,app.js');
     x = run('http:');
     t('http (ТВ, MSX): как раньше — сначала проверка сервера', !x.r.https && !x.r.started && x.scripts.join() === 'check');
+}
+/* ---- loader.js: своя копия ядра Lampa (IndexedDB) и стили без второй загрузки ---- */
+{
+    const src = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
+    const core = src.slice(src.indexOf('var BS_CORE_DB'), src.indexOf('/* Свою копию читаем сразу'));
+    const start = src.slice(src.indexOf('function startAppWithDeepLink(){'), src.indexOf('function bsDropOldCopy(){'));
+    const H = 'c95b7a3b4d26094b4b7236bab3da7bb6', H2 = '0123456789abcdef0123456789abcdef';
+    const big = h => 'window.Lampa={};/*' + h + '*/' + 'x'.repeat(600000);
+    const env = (o = {}) => {
+        const log = [], body = { appendChild: el => { log.push(el.tag + (el.text ? ':' + el.text.slice(0, 20) : '')); if (el.text && o.runs !== false) ctx.window.Lampa = {}; } };
+        const link = { parentNode: { removeChild: () => log.push('rm-link'), insertBefore: () => log.push('new-link') } };
+        const ctx = { window: { indexedDB: null, localStorage: { getItem: () => null } }, console: { log() {} }, setTimeout: () => 0,
+            document: { createElement: tag => ({ tag, appendChild() {} }), createTextNode: s => s, body, getElementsByTagName: () => [body],
+                querySelector: () => (o.noLink ? null : link) },
+            BS_SERVER: 'http://lampa.byskaz.ru/lampa-main/', BS_BUNDLED_HASH: H, BS_HTTPS_PAGE: false, bsRemote: o.remote || null,
+            bsSrvReady: true, bsStarted: false, bsSource: '', bsInitWait: () => false,
+            createScript: s => log.push('script:' + s), loadFromLocal: () => log.push('bundled'), XMLHttpRequest: function () {} };
+        ctx.window.document = ctx.document;
+        vm.createContext(ctx);
+        vm.runInContext(core + start + ';this.api={ok:bsCoreOk,ready:bsCoreReady,fits:bsCoreFits,start:startAppWithDeepLink,get:function(){return {src:bsSource,core:bsCore,started:bsStarted};},noServer:function(){bsCoreNoServer=true;}};', ctx);
+        return { api: ctx.api, log, ctx };
+    };
+    let e = env();
+    t('ядро: копия годится только с hash в тексте и нужного размера',
+        e.api.ok({ hash: H2, js: big(H2) }) && !e.api.ok({ hash: H2, js: big('other') }) && !e.api.ok({ hash: H2, js: 'window.Lampa=1;' + H2 }) &&
+        !e.api.ok({ hash: '../x', js: big('../x') }) && !e.api.ok(null));
+    // сервер отдал ту же сборку, что в пакете, — пакет, стили не качаются
+    e = env({ remote: { hash: H } }); e.api.ready({ hash: H2, js: big(H2) }); e.api.start();
+    t('ядро: hash сервера = пакет — app.js из пакета, ссылка стилей заменена', e.api.get().src === 'local' && e.log.join() === 'new-link');
+    // сервер: та же сборка, что в своей копии — из копии, без загрузки, со своими стилями
+    e = env({ remote: { hash: H2 } }); e.api.ready({ hash: H2, js: big(H2), css: 'a{b:c}' }); e.api.start();
+    t('ядро: hash сервера = своя копия — запуск из копии без сети', e.api.get().src === 'cache' && e.log[0] === 'style' && e.log.indexOf('rm-link') > 0 &&
+        e.log.some(l => l.indexOf('script:') === 0 && l.indexOf('window.Lampa') > 0) && !e.log.some(l => /app\.min\.js/.test(l)));
+    // сервер с новой сборкой — как раньше, с сервера
+    e = env({ remote: { hash: 'ffffffffffffffffffffffffffffffff' } }); e.api.ready({ hash: H2, js: big(H2) }); e.api.start();
+    t('ядро: на сервере другая сборка — app.min.js с сервера', e.api.get().src === 'server' && /script:http:\/\/lampa\.byskaz\.ru\/lampa-main\/app\.min\.js/.test(e.log.join()));
+    // сервер молчит — копия, а не 15 с ожидания
+    e = env(); e.api.ready({ hash: H2, js: big(H2) }); e.api.noServer(); e.api.start();
+    t('ядро: сервер не ответил — запуск из своей копии', e.api.get().src === 'cache');
+    // копия не подняла Lampa — стирается, дальше сервер
+    e = env({ remote: { hash: H2 }, runs: false }); e.api.ready({ hash: H2, js: big(H2) }); e.api.start();
+    t('ядро: копия не запустилась — стёрта, Lampa с сервера', e.api.get().src === 'server' && e.api.get().core === null && /app\.min\.js/.test(e.log.join()));
+    // копия ещё читается — запуск ждёт её
+    e = env({ remote: { hash: H2 } }); e.api.start();
+    t('ядро: копия ещё читается — запуск ждёт', !e.api.get().started);
+    e.api.ready({ hash: H2, js: big(H2) });
+    t('ядро: прочиталась — запуск продолжился из неё', e.api.get().started && e.api.get().src === 'cache');
+    // нет своей копии и нет ссылки стилей — всё как раньше
+    e = env({ remote: { hash: H }, noLink: true }); e.api.ready(null); e.api.start();
+    t('ядро: без ссылки css/app.css — app.js сразу', e.log.join() === 'script:app.js');
+    t('ядро: копия и стили — ES5 в loader.js (без let/const/=>)', !/\b(let|const)\s|=>/.test(core));
 }
 /* ---- bsfeatures.js: IPTV — зеркало каталогов, подсадка списка, запасные адреса ---- */
 {
@@ -4219,6 +4271,10 @@ async function serviceTests() {
         p.playlist.channels[1].catchup.type === 'default' && p.playlist.channels[1].catchup.days === '5' &&
         p.playlist.channels[1].group === 'Новости' && p.playlist.channels[1].name === 'мир' &&
         p.playlist.channels[1].url === 'http://host/news.m3u8');
+    let pa = 'нет', pn = 'нет';
+    F._iptvParseAsync(m3u, r => { pa = r; });
+    F._iptvParseAsync('мусор', r => { pn = r; });
+    t('IPTV: разбор кусками (подсадка) — то же, что целиком; не m3u — null', JSON.stringify(pa) === JSON.stringify(p) && pn === null);
     t('IPTV: разбор — разделы по каналам, последний #EXTINF без ссылки тоже в списке',
         p.playlist.channels.length === 3 && p.playlist.channels[2].url === undefined &&
         p.playlist.menu.some(m => m.name === 'Uzbekistan' && m.count === 2) && p.playlist.menu.some(m => m.name === 'Новости' && m.count === 1));

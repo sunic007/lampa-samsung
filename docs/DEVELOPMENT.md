@@ -302,6 +302,16 @@
 - `loader.js`: `assembly.json` → если `hash === BS_BUNDLED_HASH` и не выключено `bs_local_first`, `bsSource='local'` и
   грузится `app.js` из пакета (ошибка — сервер, затем встроенная). Иначе `app.min.js` с сервера. byskaz пересобирает
   ту же версию с новым hash — после этого снова качаем с сервера, пока не выпустим пакет с `update_bundled.py`.
+- Своя копия ядра (2.3.73): серверная сборка (`app.min.js` + `css/app.css`) сохраняется в IndexedDB `bs_core`
+  (хранилище `core`, ключ `app`: `{hash, version, js, css, at}`) через 30 с после запуска с сервера или сразу, когда
+  `bsUpdateCheck` нашёл новую сборку. Порядок выбора: hash сервера = пакет → `local`; = своя копия → `cache` (код
+  вставляется `<script>` текстом, стили — `<style>`); сервер молчит 3 с, а копия есть → `cache`; иначе сервер → пакет.
+  Копия годна, если в тексте есть её hash и он > 500 КБ; не подняла `window.Lampa` — стирается. Выключает и копию,
+  и пакет тот же `bs_local_first=false`.
+- Стили один раз: Lampa качает `css/app.css` с byskaz, если на странице есть `<link href="css/app.css">`. Для
+  `local`/`bundled` `bsCssKeep` ставит ту же ссылку как `./css/app.css` и убирает старую до старта `app.js`; для
+  `cache` — `<style>` из копии.
+- `lampainit.js` ждём шагом 25 мс (было 200).
 - `bsfeatures.js`: `localVender` — `lampa-main/vender/(hls|dash|qrcode)` → `vender/…`, только при `local/bundled`.
   YouTube iframe_api убран из index.html; `Lampa.YouTube.play` подгружает его по требованию.
 

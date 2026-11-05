@@ -515,9 +515,18 @@ var BSFeatures = (function () {
         while (st.i < st.lines.length) iptvParseLine(st);
         return iptvParseFinish(st);
     }
-    /** Разбор кусками: столько строк за такт, между тактами отдаём поток ТВ (setTimeout 0). */
+    /** То же, но кусками (iptvParseRun): подсадка идёт в фоне, пока человек листает главную, — разбор целиком
+     *  (тысячи строк) занимал поток ТВ на заметное время, и пульт «подвисал». done(запись | null). */
+    function iptvParseAsync(text, done) {
+        var st = iptvParseInit(text);
+        if (!/^#EXTM3U/i.test(String(st.lines[0] || ''))) return done(null);
+        if (String(st.lines[0] || '').indexOf('catchup') < 0) st.noCatchup = true;
+        iptvParseRun(st, 0, done);
+    }
+    /** Разбор кусками: столько строк за такт (по умолчанию 500 — на ТВ это несколько десятков мс), между тактами
+     *  отдаём поток ТВ (setTimeout 0). */
     function iptvParseRun(st, step, done) {
-        var end = st.i + (step || 4000);
+        var end = st.i + (step || 500);
         while (st.i < st.lines.length && st.i < end) iptvParseLine(st);
         if (st.i < st.lines.length) return setTimeout(function () { iptvParseRun(st, step, done); }, 0);
         done(iptvParseFinish(st));
@@ -552,9 +561,10 @@ var BSFeatures = (function () {
                     if (fresh) return cb(db.close());
                     db.close();
                     iptvFetchText(url, function (text) {
-                        var rec2 = iptvParse(text);
-                        if (!rec2) return cb();
-                        iptvSeedWrite(id, rec2, cb);
+                        iptvParseAsync(text, function (rec2) {
+                            if (!rec2) return cb();
+                            iptvSeedWrite(id, rec2, cb);
+                        });
                     }, function () { cb(); });
                 };
                 op.ready = oq.ready = false;
@@ -863,6 +873,7 @@ var BSFeatures = (function () {
         'display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-align:center;-webkit-align-items:center;align-items:center;' +
         '-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center}' +
         '.iptv-playlist-item.bs-iptv-add .iptv-playlist-item__title{padding:0;font-size:1.2em;opacity:.7}';
+    var iptvObs = null, iptvObsAct = null;
     function iptvLook() {
         try {
             var st = document.createElement('style');
@@ -873,11 +884,20 @@ var BSFeatures = (function () {
                 iptvWords();                                            // до создания экрана: тексты он берёт при создании
                 var root = e.object.activity.render(true), wait = false;
                 if (!root || !window.MutationObserver) return;
-                new MutationObserver(function () {
+                if (iptvObs) { try { iptvObs.disconnect(); } catch (er) {} }   // прошлый экран IPTV — его наблюдатель не нужен
+                iptvObs = new MutationObserver(function () {
                     if (wait) return;
                     wait = true;
                     setTimeout(function () { wait = false; try { iptvTidy(root); } catch (er) {} }, 30);
-                }).observe(root, { childList: true, subtree: true, characterData: true });
+                });
+                iptvObs.observe(root, { childList: true, subtree: true, characterData: true });
+                iptvObsAct = e.object.activity;
+            });
+            // экран IPTV закрыли — наблюдатель снимаем (раньше оставался и держал в памяти закрытый экран)
+            Lampa.Listener.follow('activity', function (e) {
+                if (!e || e.type !== 'destroy' || !iptvObs || !e.object || e.object.activity !== iptvObsAct) return;
+                try { iptvObs.disconnect(); } catch (er) {}
+                iptvObs = iptvObsAct = null;
             });
         } catch (e) {}
     }
@@ -1061,6 +1081,6 @@ var BSFeatures = (function () {
 
     return {
         _iptvToggle: iptvToggle, _iptvLists: IPTV_LISTS, _iptvFix: iptvFix, _iptvInstalled: iptvInstalled, _iptvAuto: iptvAuto, _iptvMenuOff: iptvMenuOff, _iptvGroup: iptvGroup, _iptvChannel: iptvChannel, _iptvLook: iptvLook,
-        _iptvSource: iptvSourceSet, _iptvDefault: IPTV_DEFAULT, _iptvUrl: iptvUrl, _iptvParse: iptvParse, _iptvParseRun: iptvParseRun, _iptvAlt: iptvAlt, _iptvAltIndex: iptvAltIndex, _iptvNormName: iptvNormName,
+        _iptvSource: iptvSourceSet, _iptvDefault: IPTV_DEFAULT, _iptvUrl: iptvUrl, _iptvParse: iptvParse, _iptvParseAsync: iptvParseAsync, _iptvParseRun: iptvParseRun, _iptvAlt: iptvAlt, _iptvAltIndex: iptvAltIndex, _iptvNormName: iptvNormName,
         start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
 })();
