@@ -354,12 +354,12 @@ function bsCoreRun() {
     return false;
 }
 /** GET: cb(текст | null); bin — cb(Uint8Array | null). */
-function bsCoreGet(url, cb, bin) {
+function bsCoreGet(url, cb, bin, timeout) {
     var x = new XMLHttpRequest(), done = false;
     var fin = function (t) { if (!done) { done = true; cb(t); } };
     try {
         x.open('GET', url, true);
-        x.timeout = 120000;
+        x.timeout = timeout || 120000;
         if (bin) x.responseType = 'arraybuffer';
         x.onload = function () {
             if (x.status !== 200) return fin(null);
@@ -370,37 +370,47 @@ function bsCoreGet(url, cb, bin) {
         x.send(null);
     } catch (e) { fin(null); }
 }
-/** Сохранить сборку a (assembly.json сервера) своей копией, если её ещё нет. Фоном; ошибки — молча. */
-function bsCoreKeep(a) {
-    if (!a || !a.hash || BS_HTTPS_PAGE || bsCoreSaving === a.hash || (bsCore && bsCore.hash === a.hash)) return;
-    if (a.hash === BS_BUNDLED_HASH) return;                                 // та же сборка, что в пакете, — копия не нужна
-    if (typeof Uint8Array === 'undefined' || typeof window.TextDecoder === 'undefined') return;   // старый ТВ — без копии
-    var h = a.hash, stop = function (why) { bsCoreSaving = ''; console.log('BS core: копию не сохраняю — ' + why); };
-    bsCoreSaving = h;
-    // sha256 этой сборки независимо от нас (хостинг качает её другой сетью); нет ответа — копии не будет
+/** Проверенная сборка a (assembly.json сервера): sha256 независимо от нас (хостинг качает её другой сетью) → файл с
+ * byskaz → sha256 здесь → совпало — cb(rec) и запись своей копией. Иначе cb(null, почему, подмена). timeout — на каждый
+ * запрос. Старый ТВ без Uint8Array/TextDecoder — cb(null, 'старый ТВ'). */
+function bsCoreCan() { return typeof Uint8Array !== 'undefined' && typeof Int32Array !== 'undefined' && typeof window.TextDecoder !== 'undefined'; }
+function bsCoreFetch(a, cb, timeout) {
+    if (!bsCoreCan()) return cb(null, 'старый ТВ');
+    var h = a.hash;
     bsCoreGet(BS_VERIFY + h, function (vt) {
         var v = null;
         try { v = JSON.parse(vt || 'null'); } catch (e) {}
-        if (!v || !v.ok || v.hash !== h || !/^[0-9a-f]{64}$/.test(String(v.sha256))) return stop('сверка недоступна');
+        if (!v || !v.ok || v.hash !== h || !/^[0-9a-f]{64}$/.test(String(v.sha256))) return cb(null, 'сверка недоступна');
         bsCoreGet(BS_SERVER + 'app.min.js?h=' + h, function (bytes) {
-            if (!bytes || bytes.length <= BS_CORE_MIN || bytes.length !== v.size) return stop('файл не скачался');
+            if (!bytes || bytes.length <= BS_CORE_MIN) return cb(null, 'файл не скачался');
+            if (bytes.length !== v.size) return cb(null, 'размер не совпал со сверкой', true);
             bsSha256(bytes, function (sha) {
-                if (sha !== v.sha256) return stop('sha256 не совпал со сверкой — файл подменён по дороге?');
+                if (sha !== v.sha256) return cb(null, 'sha256 не совпал со сверкой — файл подменён по дороге?', true);
                 var js = '';
                 try { js = new window.TextDecoder('utf-8').decode(bytes); } catch (e) {}
-                if (js.indexOf(h) < 0) return stop('в файле нет hash сборки');
+                if (js.indexOf(h) < 0) return cb(null, 'в файле нет hash сборки', true);
                 bsCoreGet(BS_SERVER + 'css/app.css?v' + (a.css_version || a.app_version || h), function (css) {
-                    var rec = { hash: h, sha: sha, version: String(a.app_version || ''), js: js, at: Date.now(),
-                        css: css && css.length > 10000 && css.indexOf('{') >= 0 ? css : null };
-                    bsCoreTx('readwrite', function (st) { return st.put(rec, 'app'); }, function (r, ok) {
-                        if (!ok) return stop('нет места в памяти ТВ');
-                        bsCoreSaving = '';
-                        if (bsSource !== 'cache') bsCore = rec;             // запущенную копию не подменяем
-                        console.log('BS core: своя копия Lampa ' + rec.version + ' ' + h + ' проверена и сохранена');
+                    css = css && css.length > 10000 && css.indexOf('{') >= 0 ? css : null;
+                    var save = { hash: h, sha: sha, version: String(a.app_version || ''), js: js, css: css, at: Date.now() };
+                    bsCoreTx('readwrite', function (st) { return st.put(save, 'app'); }, function (r, ok) {
+                        console.log('BS core: сборка Lampa ' + save.version + ' ' + h + ' проверена' + (ok ? ' и сохранена' : ', но не сохранена (нет места)'));
                     });
-                });
+                    // запуску — свой объект: bsCoreRun обнуляет в нём текст, а запись в базу идёт со своим
+                    cb({ hash: h, sha: sha, version: save.version, js: js, css: css, at: save.at });
+                }, false, timeout);
             });
-        }, true);
+        }, true, timeout);
+    }, false, timeout);
+}
+/** Сохранить сборку a своей копией заранее (фоном), если её ещё нет: перезапуск поднимет её без загрузки. */
+function bsCoreKeep(a) {
+    if (!a || !a.hash || BS_HTTPS_PAGE || bsCoreSaving === a.hash || (bsCore && bsCore.hash === a.hash)) return;
+    if (a.hash === BS_BUNDLED_HASH) return;                                 // та же сборка, что в пакете, — копия не нужна
+    bsCoreSaving = a.hash;
+    bsCoreFetch(a, function (rec, why) {
+        bsCoreSaving = '';
+        if (!rec) return console.log('BS core: копию не сохраняю — ' + why);
+        if (bsSource !== 'cache') bsCore = rec;                             // запущенную копию не подменяем
     });
 }
 
@@ -507,6 +517,21 @@ function startAppWithDeepLink(){
     // своя копия той же сборки, что на сервере (или сервер молчит, а копия новее пакета) — без 2 МБ по сети
     if (localFirst && bsCoreFits() && bsCoreRun()) return;
     bsSource = 'server';
+
+    /* Ядро с сервера byskaz идёт по открытому http (https у byskaz нет) — подменить его может кто угодно на пути
+     * (чужой Wi-Fi, провайдер). Поэтому запускаем его только после сверки: sha256 совпал с тем, что независимо
+     * посчитал наш хостинг (verify.php, https). Не совпал или сверка недоступна — Lampa из пакета (её сверили при
+     * выпуске). Проверенная сборка тут же сохраняется своей копией: следующий запуск — без загрузки. */
+    if (bsRemote && bsRemote.hash && !BS_HTTPS_PAGE && bsCoreCan()) {
+        bsCoreFetch(bsRemote, function (rec, why, attack) {
+            if (window.Lampa) return;                                 // Lampa уже поднялась другим путём
+            if (rec) { bsCore = rec; if (bsCoreRun()) return; }
+            console.log('BS core: сборка с сервера не запущена — ' + (why || 'не поднялась') + '; Lampa из пакета');
+            if (attack) { try { window.localStorage.setItem('bs_core_mismatch', String(Date.now())); } catch (e) {} }
+            loadFromLocal();
+        }, 30000);
+        return;
+    }
 
     createScript(BS_SERVER + 'app.min.js?v' + Math.random(), function(){
         console.log('Server app.min.js failed — bundled copy');

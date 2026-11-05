@@ -159,7 +159,11 @@ var BSSources = (function () {
         var list = [urlFor(s)], https = pageHttps(), i;
         if (list[0] !== s.url) list.push(s.url);
         for (i = 0; s.alt && i < s.alt.length; i++) list.push(s.alt[i]);
-        return list.filter(function (u, k) { return list.indexOf(u) === k && (k === 0 || !https || /^https:/.test(u)); });
+        // https у этого плагина уже открывался на этом ТВ — на http больше не откатываемся: иначе тот, кто на пути
+        // (чужой Wi-Fi), мог бы заблокировать 443 и подсунуть свой код по http (пентест 2026-11-05)
+        var tls = https || lsGet('bs_src_tls_' + s.id) === '1';
+        var out = list.filter(function (u, k) { return list.indexOf(u) === k && (k === 0 || !tls || /^https:/.test(u)); });
+        return out.length ? out : list.slice(0, 1);
     }
     function put(url, ok, bad) {
         try { Lampa.Utils.putScriptAsync([url], null, bad, ok, false); } catch (e) { log('не подключён', url + ' ' + e.message); bad(); }
@@ -174,7 +178,11 @@ var BSSources = (function () {
         (function next(k) {
             if (k >= urls.length) return end();
             if (k > 0) log('не открылся ' + urls[k - 1] + ' — пробую', urls[k]);
-            put(urls[k], function () { log('подключён', urls[k]); end(); }, function () {
+            put(urls[k], function () {
+                log('подключён', urls[k]);
+                if (/^https:/.test(urls[k])) lsSet('bs_src_tls_' + s.id, '1');       // запомнить: https здесь работает
+                end();
+            }, function () {
                 if (k + 1 >= urls.length) log('не подключён', urls[k]);
                 next(k + 1);
             });

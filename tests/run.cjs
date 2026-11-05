@@ -2109,6 +2109,11 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
         t('Lordfilm: закреплён на коммите (не @main), cdn не ответил — fastly', l.length === 2 && l.every(u => /lenorio@[0-9a-f]{40}\//.test(u)) &&
             /^https:\/\/cdn\./.test(l[0]) && /^https:\/\/fastly\./.test(l[1]));
         t('Lordfilm: включён по умолчанию (бесплатный выбор людям)', mk({ bs_src_z01: 'false', bs_src_online_mod: 'false' }).S.list.some(s => s.id === 'lordfilm' && s.on === true));
+        l = mk2({ bs_src_online_mod: 'false', bs_src_tls_z01: '1' }, ['z01.online']);
+        t('плагины: https уже работал на этом ТВ — на http не откатываемся (не подсунуть код по http)', l.join() === 'https://z01.online/live');
+        const st0 = { bs_src_online_mod: 'false', bs_src_lordfilm: 'false', bs_src_showy: 'false' };
+        mk(st0).S._loadAll();
+        t('плагины: удачная загрузка по https запоминается', st0.bs_src_tls_z01 === '1');
         l = mk2({ bs_src_z01: 'false' }, ['github.io'], true);
         t('зеркала: страница по https — http-адреса не пробуем', l.join() === 'https://nb557.github.io/plugins/online_mod.js,https://nb557.surge.sh/online_mod.js');
     }
@@ -4241,6 +4246,21 @@ async function serviceTests() {
     t('ядро: сервер не ответил — запуск из своей копии (она новее пакета)', e.api.get().src === 'cache');
     e = env(); e.api.ready({ hash: H2, js: big(H2), sha: S, version: '3.4.4' }); e.api.noServer(); e.api.start();
     t('ядро: сервер не ответил, копия не новее пакета — не она (свежий .wgt важнее старой копии)', e.api.get().src !== 'cache');
+    // сервер с новой сборкой на ТВ, который умеет сверку: только после сверки sha256 (пентест 2026-11-05)
+    const verified = (res) => {
+        const v = env({ remote: { hash: 'ffffffffffffffffffffffffffffffff' } });
+        v.ctx.window.TextDecoder = function () {}; v.ctx.Uint8Array = Uint8Array; v.ctx.Int32Array = Int32Array;
+        v.ctx.bsCoreFetch = (a, cb) => cb.apply(null, res);
+        v.ctx.window.localStorage.setItem = (k, val) => v.log.push('ls:' + k);
+        v.api.ready(null); v.api.start();
+        return v;
+    };
+    e = verified([{ hash: 'ffffffffffffffffffffffffffffffff', sha: S, version: '3.4.5', js: big('ffffffffffffffffffffffffffffffff') }]);
+    t('ядро: сборка с сервера прошла сверку — запуск из неё, без старого <script> по http', e.api.get().src === 'cache' && !e.log.some(l => /script:http/.test(l)));
+    e = verified([null, 'sha256 не совпал', true]);
+    t('ядро: сборка с сервера не прошла сверку — Lampa из пакета, отметка о подмене', e.log.indexOf('bundled') >= 0 && e.log.indexOf('ls:bs_core_mismatch') >= 0 && !e.log.some(l => /script:http/.test(l)));
+    e = verified([null, 'сверка недоступна']);
+    t('ядро: сверка недоступна — Lampa из пакета (не непроверенная с сервера)', e.log.indexOf('bundled') >= 0 && !e.log.some(l => /script:http/.test(l)));
     // копия не подняла Lampa — стирается, дальше сервер
     e = env({ remote: { hash: H2 }, runs: false }); e.api.ready({ hash: H2, js: big(H2), sha: S, version: '3.4.5' }); e.api.start();
     t('ядро: копия не запустилась — стёрта, Lampa с сервера', e.api.get().src === 'server' && e.api.get().core === null && /app\.min\.js/.test(e.log.join()));
