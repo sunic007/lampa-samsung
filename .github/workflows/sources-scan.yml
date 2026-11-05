@@ -1,0 +1,41 @@
+# Онлайн-источники: раз в день tools/sources_scan.py проверяет наши источники (bssources.js, с запасными адресами)
+# и ищет новые плагины Lampa на GitHub (код не выполняется — только читается). Отчёт — в ветке `sources`
+# (report.md, report.json, state.json; без истории). Наш источник не отвечает два дня подряд или нашлись новые сильные
+# кандидаты — одна открытая задача с меткой `sources` (создаётся или обновляется). В Lampa ничего не добавляется само:
+# новый источник — только после проверки на ТВ и «да» владельца.
+name: sources-scan
+
+on:
+  schedule:
+    - cron: '17 1 * * *'      # 06:17 в Ташкенте
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: sources-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Scan
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 tools/sources_scan.py out --issue
+      - name: Summary
+        run: cat out/report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish branch sources
+        run: |
+          cd out
+          git init -q -b sources
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -q -m "Источники $(date -u +%F)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" sources
