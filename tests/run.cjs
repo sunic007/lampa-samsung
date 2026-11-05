@@ -2830,6 +2830,13 @@ async function serviceTests() {
     const moved = await until(() => store.bs_tg_svc === '1' && !('bs_tg_token' in store) && !store.bs_ai_groq && !store.bs_gemini_key && store.bs_ai_groq_u === '{}' && store.bs_gemini_keys === '{}');
     t('перенос: служба запущена через launchAppControl (operation/service, 0SG81L944p.LampaService)', launches.length >= 1 && launches[0][0] === 'http://tizen.org/appcontrol/operation/service' && launches[0][1] === '0SG81L944p.LampaService');
     t('перенос: токен и ключи ушли в службу, в localStorage — только метки', moved && !secretsAll.some(s => JSON.stringify(store).indexOf(s) >= 0));
+    {   // служба — только когда бот настроен (2.3.74): без токена и ключей её не поднимаем; подключили — поднимаем сразу
+        const P0 = page({}, mkXHR({}), tz), PK = page({ bs_ai_groq: KEYS.og }, mkXHR({}), tz), PM = page({ bs_tg_svc: '1' }, mkXHR({}), tz);
+        t('служба: без бота не нужна, с ключом ИИ или меткой службы — нужна', P0._svcWanted() === false && PK._svcWanted() === true && PM._svcWanted() === true);
+        const n0 = launches.length;
+        P0._svc.deferred = true; P0._svcMove();
+        t('служба: отложена — первый перенос (подключили бота) её запускает', launches.length === n0 + 1 && P0._svc.deferred === false);
+    }
     t('перенос: копия токена в памяти Lampa.Storage тоже стёрта', lampaMem.bs_tg_token === '');
     r = await ask('GET', '/health');
     t('перенос: в службе — токен и все ключи (владельца и человека)', r.j.has.tg && r.j.has.ai.join() === 'groq,gemini' && r.j.has.aiu.groq.join() === '2' && r.j.has.aiu.gemini.join() === '2');
@@ -4211,6 +4218,11 @@ async function serviceTests() {
     e = env({ remote: { hash: H }, noLink: true }); e.api.ready(null); e.api.start();
     t('ядро: без ссылки css/app.css — app.js сразу', e.log.join() === 'script:app.js');
     t('ядро: копия и стили — ES5 в loader.js (без let/const/=>)', !/\b(let|const)\s|=>/.test(core));
+    const ready = src.slice(src.indexOf('var bsReadyTimer'), src.indexOf('countdown();', src.indexOf('var bsReadyTimer')));
+    const order = (ready.match(/(BS[A-Za-z]+)\.start\(\)/g) || []).map(x => x.replace('.start()', ''));
+    t('старт модулей: по одному за такт, порядок прежний, настройки сводятся после всех',
+        /setTimeout\(function \(\) \{ next\(i \+ 1\); \}, 0\)/.test(ready) && order[0] === 'BSSkaz' && order[order.length - 1] === 'BSTv' && order.length === 14 &&
+        ready.indexOf('bsFlushSettings') > ready.indexOf('BSTv.start') && ready.indexOf('bsStartAutoUpdate') > ready.indexOf('bsFlushSettings'));
 }
 /* ---- bsfeatures.js: IPTV — зеркало каталогов, подсадка списка, запасные адреса ---- */
 {

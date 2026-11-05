@@ -351,6 +351,18 @@ var BSTelegram = (function () {
         svcHealth(function (j) { if (j) svcOn(j); else svcLost(); });
     }
     function hasSvcMarks() { return lsGet('bs_tg_svc') === '1' || Object.keys(aiMarks()).length > 0; }
+    /* Служба нужна только боту: токен, ключи ИИ (в службе или ещё в localStorage). Нет ничего — при запуске её не
+     * поднимаем: это отдельный процесс на ТВ с тиком 5 с, и он отнимал процессор у Lampa у всех, кто бота не
+     * настраивал. Подключили бота или ключ — svcMove() поднимает её сразу (svc.deferred). */
+    function svcWanted() {
+        if (hasToken() || hasSvcMarks()) return true;
+        for (var i = 0; i < AI_LIST.length; i++) {
+            var m = lsKeyMap(AI_LIST[i]), c;
+            if (lsKey(AI_LIST[i], '')) return true;
+            for (c in m) if (m.hasOwnProperty(c) && m[c]) return true;
+        }
+        return false;
+    }
     function svcOn(h) {
         var was = svc.up;
         svc.up = true; svc.v = h.v; svc.store = String(h.store || '');
@@ -438,6 +450,7 @@ var BSTelegram = (function () {
 
     /** Всё, что ещё в localStorage, — в службу; из localStorage стираем, только когда служба сохранила. */
     function svcMove() {
+        if (!svc.up && svc.deferred) { svc.deferred = false; svcStart(); return; }   // поднялась — svcOn перенесёт сама
         if (!svc.up || svc.store !== 'ok') return;
         if (svc.moving) { svc.again = true; return; }
         var jobs = [], t = token();
@@ -4602,11 +4615,14 @@ var BSTelegram = (function () {
 
     function start() {
         try { tokenMigrate(); } catch (e) {}
-        try { svcStart(); } catch (e) { log('служба', e.message); }
+        var want = true;
+        try { want = svcWanted(); } catch (e) {}
+        if (want) { try { svcStart(); } catch (e) { log('служба', e.message); } }
+        else svc.deferred = true;                                    // бот не настроен — служба не нужна (svcWanted)
         // служба может стартовать позже 6 проб (медленный ТВ после включения): первые 10 минут — раз в минуту, потом раз в 5
         var svcT0 = Date.now();
         (function svcTick() {
-            setTimeout(function () { try { svcCheck(); } catch (e) {} svcTick(); }, Date.now() - svcT0 < 10 * 60000 ? 60000 : 5 * 60000);
+            setTimeout(function () { try { if (!svc.deferred) svcCheck(); } catch (e) {} svcTick(); }, Date.now() - svcT0 < 10 * 60000 ? 60000 : 5 * 60000);
         })();
         // общий бот Sunic Apps закрыт (2.3.45): его метки на ТВ больше не нужны
         try { ['bs_sb_on', 'bs_sb_key', 'bs_sb_tv', 'bs_sb_users'].forEach(lsDel); if (lsGet('bs_tg_bot') === 'SunicStreamBot') lsDel('bs_tg_bot'); } catch (e) {}
@@ -4709,7 +4725,7 @@ var BSTelegram = (function () {
         _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _mini: mini, _joinMsg: joinMsg, _join4: { code: join4Code, show: join4Show, topic: join4Topic, hellos: join4Hellos, box: join4Box, open: join4Open, send: join4Send, BASE9: BASE9 }, _joinTopic: joinTopic, _joinShow: joinShow, _joinKeys: joinKeys, _aiForget: aiForget, _relaySet: relaySet, _svcSync: svcSync, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _onVideoStarted: onVideoStarted, _askDuringVideo: askDuringVideo, _stopVideo: stopVideo, _leaderStale: leaderStale, _leaderOnScreen: leaderOnScreen, _watchTick: watchTick, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _lateCommand: lateCommand, _botDesc: function (l, s) { return [botDesc(l || 'ru', s), botShort(l || 'ru', s)]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _tmdbGet: tmdbGet, _blockParse: blockParse, _blockReset: function () { blockIds = null; blockAt = 0; }, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow,
         _call: call, _check: check, _remind: remind, _joinCode: joinCode, _randomTopic: randomTopic,
         _busTopic: busTopic, _svc: svc, _svcKey: function (k) { if (window.BS_TEST_HOOKS !== true) return undefined; if (typeof k === 'string') svcKey = k; return svcKey; },
-        _svcStart: svcStart, _svcMove: svcMove, _svcCheck: svcCheck, _svcForget: svcForget, _tgOff: tgOff, _tgOffAsk: tgOffAsk, _svcSeen: svcSeen, _tvRules: tvRules, _addSettings: addSettings, _aiRun: aiRun, _aiSlot: aiSlot, _setAiKey: setAiKey,
+        _svcStart: svcStart, _svcMove: svcMove, _svcWanted: svcWanted, _svcCheck: svcCheck, _svcForget: svcForget, _tgOff: tgOff, _tgOffAsk: tgOffAsk, _svcSeen: svcSeen, _tvRules: tvRules, _addSettings: addSettings, _aiRun: aiRun, _aiSlot: aiSlot, _setAiKey: setAiKey,
         _poll: poll, _takeUpdate: takeUpdate, _pairPhone: pairPhone, _pairJoin: pairJoin, _pairStop: pairStop, _pairNow: function () { return pair; }, _modalOpen: modalOpen, _modalClose: modalClose, _tvBell: tvBell, _bellCard: bellCard, _relays: RELAYS, _relayPost: relayPost, _busRelay: busRelay, _busSend: busSend, _busStart: busStart, _busStop: busStop, _busStreams: function () { return busS; },
         _svcAlive: svcAlive, _svcAway: svcAway, _svcBack: svcBack, _svcWake: svcWake, _svcCfg: svcCfg, _svcBot: svcBot,
         _watchTick: watchTick, _lead: function () { return { isLeader: isLeader, held: held(), polling: polling, watch: watch }; } };

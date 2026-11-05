@@ -27,7 +27,7 @@ var BSSkaz = (function () {
         direct: ['online3', 'online4', 'online5', 'online7'],
         cf: ['onlinecf3', 'onlinecf4', 'onlinecf5', 'onlinecf7']
     };
-    var PROBE_TIMEOUT = 3000, FAST_BUDGET = 2500, WATCH_MS = 3 * 60 * 1000;
+    var PROBE_TIMEOUT = 3000, FAST_BUDGET = 2500, WATCH_MS = 3 * 60 * 1000, IDLE_MS = 10000;
     var USE_LIFE = 7 * 24 * 3600 * 1000, LIGHT_MS = 15 * 60 * 1000, CLEAN_MS = 400, SKAZ_COMP = 'lampacskaz';
 
     var last = { online: {}, time: 0 };
@@ -380,11 +380,18 @@ var BSSkaz = (function () {
         /* Во время просмотра не меряем: канал забит видео, очередь в роутере раздувает задержки (bufferbloat) — замер
          * показал бы «скачки» у вполне живого сервера, а ~50 запросов за раз ещё и отнимают у видео. Сервер видео уже
          * выбран; новые запросы к Skaz пойдут после плеера — тогда и проверим. */
-        var due = false, first = true;
+        /* И пока человек листает (пульт нажимали меньше IDLE_MS назад), не меряем: замер — до 32 запросов с разбором
+         * ответов, на слабом ТВ это рывки на главной. Ждём паузы в нажатиях. */
+        var due = false, first = true, lastKey = 0, idleWait = false;
+        try { document.addEventListener('keydown', function () { lastKey = Date.now(); }, true); } catch (e) {}
         var tryCheck = function () {
             if (!first && !dueWatch(Date.now())) return;
             if (first && (!enabled() || !used())) return;
             if (playerOpen() || document.hidden) { due = true; return; }
+            if (Date.now() - lastKey < IDLE_MS) {
+                if (!idleWait) { idleWait = true; setTimeout(function () { idleWait = false; tryCheck(); }, IDLE_MS); }
+                return;
+            }
             first = false; due = false; check(false);
         };
         setTimeout(tryCheck, 20000);

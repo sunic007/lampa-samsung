@@ -1277,24 +1277,32 @@ var bsReadyTimer = setInterval(function () {
     bsHideStatus();
     var err = document.getElementById('bs-error');
     if (err && err.parentNode) err.parentNode.removeChild(err);
-    try { bsAddSettings(); } catch (e) { console.log('BS settings', e); }
-    try { BSSkaz.start(); } catch (e) { console.log('BS servers', e); }
-    try { BSGuard.start(); } catch (e) { console.log('BS guard', e); }
-    try { BSFeatures.start(); } catch (e) { console.log('BS features', e); }
-    try { BSPlayer.start(); } catch (e) { console.log('BS player', e); }
-    try { BSRch.start(); } catch (e) { console.log('BS rch', e); }
-    try { BSFix.start(); } catch (e) { console.log('BS fix', e); }
-    try { BSSources.start(); } catch (e) { console.log('BS sources', e); }
-    try { BSMenu.start(); } catch (e) { console.log('BS menu', e); }
-    try { BSContinue.start(); } catch (e) { console.log('BS continue', e); }
-    try { BSWatch.start(); } catch (e) { console.log('BS watch', e); }
-    try { BSHub.start(); } catch (e) { console.log('BS hub', e); }
-    try { BSTelegram.start(); } catch (e) { console.log('BS telegram', e); }
-    try { BSVolume.start(); } catch (e) { console.log('BS volume', e); }
-    try { BSTv.start(); } catch (e) { console.log('BS tv', e); }                // «Телеканалы» — везде (с 2.3.63)
-    try { bsFlushSettings(); } catch (e) { console.log('BS settings flush', e); }
-    try { bsStartAutoUpdate(); } catch (e) { console.log('BS autoupdate', e); }
-    setTimeout(bsAnnounce, 2500);
+    // Модули — по одному за такт, в прежнем порядке: между ними ТВ рисует первые ряды главной и принимает пульт.
+    // Раньше все стартовали одним куском ровно тогда, когда Lampa рисовала главную, — первые секунды листания дёргались.
+    var steps = [
+        ['BS settings', function () { bsAddSettings(); }],
+        ['BS servers', function () { BSSkaz.start(); }],
+        ['BS guard', function () { BSGuard.start(); }],
+        ['BS features', function () { BSFeatures.start(); }],
+        ['BS player', function () { BSPlayer.start(); }],
+        ['BS rch', function () { BSRch.start(); }],
+        ['BS fix', function () { BSFix.start(); }],
+        ['BS sources', function () { BSSources.start(); }],
+        ['BS menu', function () { BSMenu.start(); }],
+        ['BS continue', function () { BSContinue.start(); }],
+        ['BS watch', function () { BSWatch.start(); }],
+        ['BS hub', function () { BSHub.start(); }],
+        ['BS telegram', function () { BSTelegram.start(); }],
+        ['BS volume', function () { BSVolume.start(); }],
+        ['BS tv', function () { BSTv.start(); }],                         // «Телеканалы» — везде (с 2.3.63)
+        ['BS settings flush', function () { bsFlushSettings(); }],
+        ['BS autoupdate', function () { bsStartAutoUpdate(); }]
+    ];
+    (function next(i) {
+        if (i >= steps.length) { setTimeout(bsAnnounce, 2500); return; }
+        try { steps[i][1](); } catch (e) { console.log(steps[i][0], e); }
+        setTimeout(function () { next(i + 1); }, 0);
+    })(0);
 }, 300);
 
 countdown();
