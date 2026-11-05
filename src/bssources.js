@@ -8,9 +8,9 @@
  *
  *  Главная кнопка «Смотреть» на карточке открывает главный источник (по умолчанию Skaz, выбирается здесь же);
  *  вторая — родное меню Lampa со всеми источниками, трейлерами и Shots (bsmenu.js). Чтобы найти кнопку нужного
- *  плагина, у каждого описан её признак (match): у Z01 и arkmv тот же класс lampac--button, что у Skaz.
+ *  плагина, у каждого описан её признак (match): у Z01 тот же класс lampac--button, что у Skaz.
  *
- *  Общие ключи. Skaz, Z01, arkmv и Online Mod — переделки одного плагина и пишут в одни и те же настройки
+ *  Общие ключи. Skaz, Z01 и Online Mod — переделки одного плагина и пишут в одни и те же настройки
  *  (последний источник, «продолжить»). Без защиты чужой плагин сбивал бы выбор Skaz. Поэтому у каждого плагина свой
  *  набор этих ключей: перед входом в его экран текущий набор сохраняется (bs_src_snap_<кто>), а свой — возвращается;
  *  на остальных экранах (карточка, главная) действуют ключи Skaz.
@@ -48,8 +48,7 @@ var BSSources = (function () {
         // MODS's: бесплатно Lumex (1080p) и Filmix (720p), остальное — платная подписка у самого плагина
         { id: 'modss', key: 'bs_src_modss', name: "MODS's", url: 'http://lampa.stream/modss', alt: ['http://modss.tv'], comp: ['modss', 'mods'], https: true,
           note: 'Бесплатно Lumex и Filmix, остальное — платно', match: function (b) { return /mods/i.test(sub(b)) || b.hasClass('view--modss') || b.hasClass('modss--button'); } },
-        { id: 'arkmv', key: 'bs_src_arkmv', name: 'Vod (arkmv)', url: 'http://arkmv.ru/vod', comp: ['vod'],
-          note: 'Есть реклама', match: function (b) { return b.hasClass('lampac--button') && /^Vod\b/i.test(sub(b)); } }
+        // arkmv («Онлайн Stream», http://arkmv.ru/vod) убран в 2.3.78: адрес плагина отвечает 404, каталоги пишут «не работает»
     ];
     var SKAZ_COMP = ['lampacskaz'];
 
@@ -334,13 +333,46 @@ var BSSources = (function () {
         return true;
     }
 
+    /* Списки Lampac (Skaz, Z01): варианты с пометкой «Заблокировано» (правообладатель закрыл в этой стране) не
+     * откроются — убираем их из ответа, прежде чем плагин нарисует список. Тогда «Смотреть» не упирается в них, а
+     * если заблокировано всё — список пуст, и поиск переходит к следующему источнику. Дешёвая проверка первой:
+     * разбираем HTML, только если в ответе есть и пункты, и это слово. */
+    function dropBlocked(html) {
+        if (typeof html !== 'string' || html.indexOf('videos__item') < 0 || html.indexOf('Заблокировано') < 0) return null;
+        var doc = null, items, i, n = 0;
+        try { doc = new DOMParser().parseFromString(html, 'text/html'); } catch (e) {}
+        if (!doc || !doc.body) return null;
+        items = doc.querySelectorAll('.videos__item');
+        for (i = 0; i < items.length; i++) {
+            if (/заблокировано/i.test(items[i].textContent || '') && items[i].parentNode) { items[i].parentNode.removeChild(items[i]); n++; }
+        }
+        if (!n) return null;
+        log('убраны заблокированные', n + ' из ' + items.length);
+        return doc.body.innerHTML;
+    }
+    function hookBlocked() {
+        Lampa.Listener.follow('request_secuses', function (e) {
+            if (!e || !e.params) return;
+            var out = dropBlocked(e.data);
+            if (out === null) return;
+            if (typeof e.abort === 'function') { var send = e.abort(); if (typeof send === 'function') send(out); return; }
+            var orig = e.params.complite;
+            if (typeof orig === 'function') e.params.complite = function () {
+                var a = Array.prototype.slice.call(arguments);
+                a[0] = out;
+                return orig.apply(this, a);
+            };
+        });
+    }
+
     function start() {
         try { addSettings(); } catch (e) { log('настройки', e.message); }
         try { Lampa.Listener.follow('activity', onActivity); } catch (e) {}
+        try { hookBlocked(); } catch (e) { log('заблокированные', e.message); }
         try { loadAll(); } catch (e) { log('подключение', e.message); }
     }
 
     return { start: start, owner: owner, mainId: mainId, isMain: isMain, pick: pick, list: LIST, useMain: useMain,
         startSearch: startSearch, giveUp: giveUp, order: order, _search: function () { return search; }, _candidates: candidates, _looksOnline: looksOnline,
-        _swapTo: swapTo, _compOwner: compOwner, _onActivity: onActivity, _loadAll: loadAll };
+        _swapTo: swapTo, _compOwner: compOwner, _onActivity: onActivity, _loadAll: loadAll, _dropBlocked: dropBlocked };
 })();

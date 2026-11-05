@@ -2018,13 +2018,12 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     const btn = (cls, subtitle, text) => ({ hasClass: c => cls.split(' ').indexOf(c) >= 0, attr: () => subtitle, data: () => subtitle, text: () => text || '' });
     const skaz = btn('full-start__button view--online lampac--button', 'Онлайн by Skaz', 'Онлайн');
     const z01 = btn('full-start__button view--online lampac--button', 'Z01 2.1', 'Онлайн');
-    const ark = btn('full-start__button view--online lampac--button', 'Vod v1.4', 'Онлайн');
     const mod = btn('full-start__button view--online_mod', 'online_mod 3.2', 'Онлайн');
     const showy = btn('full-start__button selector view--online smotret24--button', 'Smotret24 1.0', 'Онлайн');
     const shots = btn('full-start__button view--online', 'Shots', 'Shots');
-    t('источники: кнопки узнаются по признакам', S.owner(skaz) === 'skaz' && S.owner(z01) === 'z01' && S.owner(ark) === 'arkmv' &&
+    t('источники: кнопки узнаются по признакам', S.owner(skaz) === 'skaz' && S.owner(z01) === 'z01' &&
         S.owner(mod) === 'online_mod' && S.owner(showy) === 'showy' && S.owner(shots) === '');
-    t('источники: по умолчанию главный — Skaz', S.mainId() === 'skaz' && S.isMain(skaz) && !S.isMain(z01) && !S.isMain(ark));
+    t('источники: по умолчанию главный — Skaz', S.mainId() === 'skaz' && S.isMain(skaz) && !S.isMain(z01));
     store.bs_src_main = 'z01'; store.bs_src_z01 = 'false';
     t('источники: выбран, но выключен — главный остаётся Skaz', S.mainId() === 'skaz' && S.isMain(skaz));
     delete store.bs_src_z01;
@@ -2033,7 +2032,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     store.bs_src_main = 'vod_llpp'; store.bs_src_vod_llpp = 'true';
     t('источники: вариант Online Mod узнаётся по общей кнопке группы', S.isMain(mod));
     t('источники: экраны плагинов', S._compOwner('lampacskaz') === 'skaz' && S._compOwner('lampac_z') === 'z01' &&
-        S._compOwner('online_mod') === 'online_mod' && S._compOwner('vod') === 'arkmv' && S._compOwner('full') === '');
+        S._compOwner('online_mod') === 'online_mod' && S._compOwner('vod') === '' && S._compOwner('full') === '' && !S.list.some(s => s.id === 'arkmv'));
     mem.online_balanser = 'rezka'; mem.online_watched_last = '{"skaz":1}';
     S._onActivity({ type: 'init', component: 'lampac_z' });
     t('ключи: Z01 впервые — без выбора Skaz', mem.online_balanser === '' && mem.online_watched_last === '');
@@ -2074,7 +2073,9 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     r = mk({ bs_src_online_mod: 'true', bs_src_vod_llpp: 'true', bs_src_showy: 'true' });
     r.S._loadAll();
     t('подключение: из группы Online Mod — только один плагин', r.loaded.filter(u => /online_mod\.js|llpp\.in/.test(u)).length === 1);
-    t('подключение: включённые грузятся, выключенные (arkmv) — нет', r.loaded.indexOf('http://smotret24.ru/online.js') >= 0 && r.loaded.indexOf('http://arkmv.ru/vod') < 0);
+    t('заблокированные: ответ без пометки или не список — не трогаем (без разбора HTML)', r.S._dropBlocked('<div class="videos__item">Фильм</div>') === null &&
+        r.S._dropBlocked('{"a":"Заблокировано"}') === null && r.S._dropBlocked(null) === null);
+    t('подключение: включённые грузятся, мёртвого arkmv больше нет', r.loaded.indexOf('http://smotret24.ru/online.js') >= 0 && !r.loaded.some(u => /arkmv/.test(u)));
     t('подключение: Клубничку сами не грузим — решает переключатель Skaz', !r.loaded.some(u => /sisi\.js/.test(u)));
     r = mk({});
     r.S._loadAll();
@@ -4308,6 +4309,18 @@ async function serviceTests() {
     F._iptvParseAsync(m3u, r => { pa = r; });
     F._iptvParseAsync('мусор', r => { pn = r; });
     t('IPTV: разбор кусками (подсадка) — то же, что целиком; не m3u — null', JSON.stringify(pa) === JSON.stringify(p) && pn === null);
+    {   // TMDB: основной прокси не отвечает — запасной адрес (2.3.78)
+        const U = 'http://apitmdb.cubnotrip.top/3/movie/1?api_key=k&email=', err = (url, status, exc) => F._tmdbNetError({ params: { url }, error: { status }, exception: exc });
+        t('TMDB: пока ошибок нет — основной адрес', F._tmdbAltUrl(U) === U);
+        err(U, 0); err(U, 404); err(U, 0, 'abort');
+        t('TMDB: 404 и отмена — не ошибки связи', F._tmdbAltUrl(U) === U);
+        err(U, 0); err(U, 502);
+        t('TMDB: 3 ошибки связи за минуту — прокси byskaz', F._tmdbAltUrl(U) === 'http://lampa.byskaz.ru/tmdb/api/3/movie/1?api_key=k&email=');
+        const B = 'http://lampa.byskaz.ru/tmdb/api/3/movie/1'; err(B, 0); err(B, 0); err(B, 0);
+        t('TMDB: и он не отвечает — rootu.top', F._tmdbAltUrl(U).indexOf('http://tmdb-api.rootu.top/3/movie/1') === 0);
+        const R = 'http://tmdb-api.rootu.top/3/movie/1'; err(R, 0); err(R, 0); err(R, 0);
+        t('TMDB: запасные кончились — снова основной', F._tmdbAltUrl(U) === U);
+    }
     t('IPTV: разбор — разделы по каналам, последний #EXTINF без ссылки тоже в списке',
         p.playlist.channels.length === 3 && p.playlist.channels[2].url === undefined &&
         p.playlist.menu.some(m => m.name === 'Uzbekistan' && m.count === 2) && p.playlist.menu.some(m => m.name === 'Новости' && m.count === 1));

@@ -1085,7 +1085,45 @@ var BSFeatures = (function () {
     }
     function iphone() { try { return /iPhone|iPod/.test(navigator.userAgent || ''); } catch (e) { return false; } }
 
+    /* Запасной адрес данных TMDB (2.3.78). Для картинок у ядра пять зеркал, а описания фильмов, списки и поиск идут
+     * только через apitmdb.<домен CUB> (запасной path_api_backup в ядре объявлен, но не используется). Упал он —
+     * пустые ряды на главной. 3 ошибки связи за минуту — на 15 минут переходим на следующий адрес: прокси byskaz, затем
+     * tmdb-api.rootu.top; не отвечают и они — снова основной. Оба запасных — только http: на странице по https не
+     * включаем (браузер их не пустит). Ответ 4xx — связь есть (нет такого фильма), его не считаем. */
+    var TMDB_ALT = ['lampa.byskaz.ru/tmdb/api/3/', 'tmdb-api.rootu.top/3/'], tmdbAlt = -1, tmdbAltUntil = 0, tmdbErr = [];
+    function tmdbAltUrl(u) {
+        if (tmdbAlt >= 0 && Date.now() > tmdbAltUntil) tmdbAlt = -1;
+        if (tmdbAlt < 0) return u;
+        return String(u).replace(/^https?:\/\/apitmdb\.[^\/]+\/3\//, 'http://' + TMDB_ALT[tmdbAlt]);
+    }
+    function tmdbNetError(e) {
+        if (!e || !e.params || e.exception === 'abort') return;
+        var url = String(e.params.url || ''), st = e.error && e.error.status ? +e.error.status : 0, now = Date.now(), i, keep = [];
+        var onAlt = tmdbAlt >= 0 && url.indexOf(TMDB_ALT[tmdbAlt]) >= 0;
+        if (!/:\/\/apitmdb\./.test(url) && !onAlt) return;
+        if (st && st < 500) return;
+        for (i = 0; i < tmdbErr.length; i++) if (now - tmdbErr[i] < 60000) keep.push(tmdbErr[i]);
+        keep.push(now);
+        tmdbErr = keep;
+        if (tmdbErr.length < 3) return;
+        tmdbErr = [];
+        if (tmdbAlt + 1 < TMDB_ALT.length) { tmdbAlt++; tmdbAltUntil = now + 15 * 60000; }
+        else tmdbAlt = -1;
+        console.log('BS tmdb', tmdbAlt < 0 ? 'запасные не отвечают — снова основной адрес' : 'основной не отвечает — данные TMDB через ' + TMDB_ALT[tmdbAlt]);
+    }
+    function installTmdbFallback() {
+        var T = Lampa.TMDB;
+        if (!T || typeof T.api !== 'function' || T.api.__bs) return;
+        try { if (window.location.protocol === 'https:') return; } catch (e) {}
+        var orig = T.api;
+        var wrap = function () { return tmdbAltUrl(orig.apply(this, arguments)); };
+        wrap.__bs = true;
+        T.api = wrap;
+        Lampa.Listener.follow('request_error', tmdbNetError);
+    }
+
     function start() {
+        try { installTmdbFallback(); } catch (e) { console.log('BS tmdb fallback', e.message); }
         try { keyboardWrap(); } catch (e) { console.log('BS keyboard wrap', e.message); }
         try { fullscreenButton(); } catch (e) {}
         try { webKeys(); } catch (e) {}
@@ -1113,6 +1151,6 @@ var BSFeatures = (function () {
 
     return {
         _iptvToggle: iptvToggle, _iptvLists: IPTV_LISTS, _iptvFix: iptvFix, _iptvInstalled: iptvInstalled, _iptvAuto: iptvAuto, _iptvMenuOff: iptvMenuOff, _iptvGroup: iptvGroup, _iptvChannel: iptvChannel, _iptvLook: iptvLook,
-        _iptvSource: iptvSourceSet, _iptvDefault: IPTV_DEFAULT, _iptvUrl: iptvUrl, _iptvParse: iptvParse, _iptvParseAsync: iptvParseAsync, _iptvParseRun: iptvParseRun, _iptvAlt: iptvAlt, _iptvAltIndex: iptvAltIndex, _iptvNormName: iptvNormName,
+        _iptvSource: iptvSourceSet, _iptvDefault: IPTV_DEFAULT, _iptvUrl: iptvUrl, _iptvParse: iptvParse, _iptvParseAsync: iptvParseAsync, _tmdbAltUrl: tmdbAltUrl, _tmdbNetError: tmdbNetError, _iptvParseRun: iptvParseRun, _iptvAlt: iptvAlt, _iptvAltIndex: iptvAltIndex, _iptvNormName: iptvNormName,
         start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
 })();

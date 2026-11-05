@@ -391,7 +391,7 @@ var BSMenu = (function () {
      * full_btn_priority), но об этом мало кто знает. Если человек свою кнопку не выбрал — выносим «Онлайн by Skaz»
      * сами и ставим на неё фокус: карточка → ОК → источники. Своя кнопка (долгое ОК) заменяет нашу — это делает Lampa. */
     function watchEnabled() { return lsGet('bs_watch_btn') !== 'false'; }
-    // без bssources.js (старый пакет с новым модулем): прежнее правило; с ним — BSSources.pick (у Z01 и arkmv тот же класс)
+    // без bssources.js (старый пакет с новым модулем): прежнее правило; с ним — BSSources.pick (у Z01 тот же класс, что у Skaz)
     function isSkazButton(btn) {
         var sub = String(btn.data('subtitle') || ''), text = $.trim(btn.text());
         // Shots тоже ставит класс view--online — узнаём Skaz по его классу и подписи «by Skaz»
