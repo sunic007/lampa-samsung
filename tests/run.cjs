@@ -2104,6 +2104,10 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
         l = mk2({ bs_src_z01: 'false', bs_src_online_mod: 'false', bs_src_modss: 'true' }, ['lampa.stream']);
         t('MODS: выключен по умолчанию, включённый — https, затем http и зеркало modss.tv', mk2({ bs_src_z01: 'false', bs_src_online_mod: 'false' }, []).length === 0 &&
             l.join() === 'https://lampa.stream/modss,http://lampa.stream/modss,http://modss.tv');
+        l = mk2({ bs_src_z01: 'false', bs_src_online_mod: 'false', bs_src_lordfilm: 'true' }, ['cdn.jsdelivr.net']);
+        t('Lordfilm: закреплён на коммите (не @main), cdn не ответил — fastly', l.length === 2 && l.every(u => /lenorio@[0-9a-f]{40}\//.test(u)) &&
+            /^https:\/\/cdn\./.test(l[0]) && /^https:\/\/fastly\./.test(l[1]));
+        t('Lordfilm: выключен по умолчанию', mk2({ bs_src_z01: 'false', bs_src_online_mod: 'false' }, []).length === 0);
         l = mk2({ bs_src_z01: 'false' }, ['github.io'], true);
         t('зеркала: страница по https — http-адреса не пробуем', l.join() === 'https://nb557.github.io/plugins/online_mod.js,https://nb557.surge.sh/online_mod.js');
     }
