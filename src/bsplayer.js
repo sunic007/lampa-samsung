@@ -594,7 +594,99 @@ var BSPlayer = (function () {
         });
     }
 
+    /* ---------- баннер перед фильмом (владелец, 2026-11-07: разово, бесплатно — концерт друга) ----------
+     * Перед запуском фильма — картинка на весь экран на PROMO.sec секунд с отсчётом; через PROMO.skipAfter с любая кнопка
+     * пульта (или щелчок) — сразу фильм. Только в Узбекистане (концерт в Самарканде; по часовому поясу устройства),
+     * не перед телеканалами и трейлерами, не чаще раза в PROMO.gapMin минут и не больше PROMO.perDay раз в день.
+     * После PROMO.until баннера нет сам по себе. Картинка — с sunic.stream, запасная — jsDelivr (правило 16); не
+     * загрузилась — фильм без баннера. Запуск откладываем родным способом Lampa: событие плеера 'create' умеет abort(). */
+    var PROMO = {
+        id: 'concert-2026-11-13',
+        until: Date.UTC(2026, 10, 13, 13, 30),            // 13 ноября 2026, 18:30 по Ташкенту (UTC+5)
+        img: ['https://sunic.stream/media/promo/concert-2026-11-13.jpg',
+            'https://cdn.jsdelivr.net/gh/sunic007/lampa-samsung@main/.github/msx/site/media/promo/concert-2026-11-13.jpg'],
+        sec: 7, skipAfter: 2, gapMin: 60, perDay: 3
+    };
+    var promoImg = null, promoBusy = false, promoPass = null;
+    function promoUz() {
+        try {
+            var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (tz) return /^Asia\/(Tashkent|Samarkand)$/.test(tz);
+        } catch (e) {}
+        return new Date().getTimezoneOffset() === -300;
+    }
+    function promoDay(t) { var d = new Date(t + 5 * 3600000); return d.getUTCFullYear() + '-' + (d.getUTCMonth() + 1) + '-' + d.getUTCDate(); }
+    function promoState() { var st = null; try { st = JSON.parse(lsGet('bs_promo') || 'null'); } catch (e) {} return st && st.id === PROMO.id ? st : { id: PROMO.id, day: '', n: 0, at: 0 }; }
+    /** Показать ли баннер перед этим запуском. now — для тестов. */
+    function promoDue(data, now) {
+        now = now || Date.now();
+        if (!PROMO || now > PROMO.until || !promoImg || promoBusy || !data) return false;
+        if (data.iptv || data.youtube || /youtube\.com|youtu\.be/i.test(String(data.url || ''))) return false;
+        var st = promoState();
+        if (st.day === promoDay(now) && st.n >= PROMO.perDay) return false;
+        return now - (st.at || 0) >= PROMO.gapMin * 60000;
+    }
+    function promoMark(now) {
+        var st = promoState(), d = promoDay(now);
+        lsSet('bs_promo', JSON.stringify({ id: PROMO.id, day: d, n: st.day === d ? st.n + 1 : 1, at: now }));
+    }
+    function promoShow(done) {
+        promoBusy = true;
+        var left = PROMO.sec, t0 = Date.now(), iv = 0, el = document.createElement('div');
+        if (!document.getElementById('bs-promo-css')) {
+            var css = document.createElement('style');
+            css.id = 'bs-promo-css';
+            css.textContent = '.bs-promo{position:fixed;left:0;top:0;right:0;bottom:0;z-index:10001;background:#000;display:-webkit-box;display:-webkit-flex;display:flex;' +
+                '-webkit-box-orient:vertical;-webkit-flex-direction:column;flex-direction:column;-webkit-box-align:center;-webkit-align-items:center;align-items:center;' +
+                '-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center}' +
+                '.bs-promo__img{max-width:96%;max-height:84%}' +
+                '.bs-promo__bar{margin-top:1.2em;font-size:1.4em;color:#fff;opacity:.85}' +
+                '.bs-promo__tag{display:inline-block;padding:.1em .5em;margin-right:.6em;border:1px solid rgba(255,255,255,.5);border-radius:.3em;font-size:.8em}';
+            document.head.appendChild(css);
+        }
+        el.className = 'bs-promo';
+        el.innerHTML = '<img class="bs-promo__img" alt=""><div class="bs-promo__bar"><span class="bs-promo__tag">Реклама</span><span class="bs-promo__txt"></span></div>';
+        el.querySelector('.bs-promo__img').src = promoImg.src;
+        var txt = el.querySelector('.bs-promo__txt');
+        var canSkip = function () { return Date.now() - t0 >= PROMO.skipAfter * 1000; };
+        var draw = function () { txt.textContent = 'Фильм начнётся через ' + left + ' с' + (canSkip() ? ' · OK — смотреть сразу' : ''); };
+        var fin = function () {
+            if (!promoBusy) return;
+            promoBusy = false;
+            clearInterval(iv);
+            window.removeEventListener('keydown', key, true);
+            if (el.parentNode) el.parentNode.removeChild(el);
+            done();
+        };
+        // пока баннер на экране, кнопки пульта не уходят в Lampa (под баннером — список серий): только пропуск
+        var key = function (e) { try { e.preventDefault(); e.stopImmediatePropagation(); } catch (x) {} if (canSkip()) fin(); };
+        window.addEventListener('keydown', key, true);
+        el.addEventListener('click', function () { if (canSkip()) fin(); });
+        document.body.appendChild(el);
+        draw();
+        iv = setInterval(function () { left--; if (left <= 0) return fin(); draw(); }, 1000);
+    }
+    function promoStart() {
+        if (!PROMO || Date.now() > PROMO.until || !promoUz()) return;
+        (function load(i) {
+            var im = new Image();
+            im.onload = function () { promoImg = im; };
+            im.onerror = function () { if (i + 1 < PROMO.img.length) load(i + 1); };
+            im.src = PROMO.img[i];
+        })(0);
+        Lampa.Player.listener.follow('create', function (e) {
+            if (!e || !e.data) return;
+            if (promoPass === e.data) { promoPass = null; return; }     // повторный запуск после баннера
+            if (!promoDue(e.data) || typeof e.abort !== 'function') return;
+            e.abort();
+            promoMark(Date.now());
+            var data = e.data;
+            promoShow(function () { promoPass = data; try { Lampa.Player.play(data); } catch (x) { log('после баннера', x.message); } });
+        });
+    }
+
     function start() {
+        try { promoStart(); } catch (e) { log('баннер', e.message); }
         try { iptvArrows(); } catch (e) {}
         try { friendlyError(); } catch (e) {}
         try {
@@ -614,5 +706,5 @@ var BSPlayer = (function () {
 
     function hasEndMark() { return !!(s && s.endMark); }
 
-    return { start: start, hasEndMark: hasEndMark, _toLampa: toLampa, _parseChapters: parseChapters, _feedLampa: feedLampa, _state: function () { return s; }, _trimTracks: trimTracks, _night: nightNext, _bwUsable: bwUsable, _audioGuard: audioGuard, _panelCss: panelCss, _togglePanelBtn: togglePanelBtn, _hiddenBtns: hiddenBtns, _isGearMenu: isGearMenu, _gearItems: gearItems, _iptvArrowDir: iptvArrowDir, _errorText: errorText };
+    return { start: start, hasEndMark: hasEndMark, _toLampa: toLampa, _parseChapters: parseChapters, _feedLampa: feedLampa, _state: function () { return s; }, _trimTracks: trimTracks, _night: nightNext, _bwUsable: bwUsable, _audioGuard: audioGuard, _panelCss: panelCss, _togglePanelBtn: togglePanelBtn, _hiddenBtns: hiddenBtns, _isGearMenu: isGearMenu, _gearItems: gearItems, _iptvArrowDir: iptvArrowDir, _errorText: errorText, _promoDue: promoDue, _promoMark: promoMark, _promo: PROMO, _promoSetImg: function (i) { promoImg = i; } };
 })();

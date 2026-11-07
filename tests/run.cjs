@@ -98,6 +98,20 @@ x2 = decide2({}, res({}, DEAD_DIRECT)); t('источники: прямые ме
     t('шестерёнка: «Сон», «День», «Ночь» и выбор кнопок панели', gi === '#,sleep,day,night,btns');
     t('кнопки плеера: кнопки Lampa тоже (качество, картинка в картинке)', /player-panel__quality/.test(P.M._panelCss(['quality'])) && /player-panel__pip/.test(P.M._panelCss(['pip'])) && !/settings/.test(P.M._panelCss(['quality', 'pip', 'tracks', 'subs', 'flow', 'volume', 'fullscreen', 'sleep', 'day', 'night'])));
 }
+{   /* bsplayer: баннер перед фильмом (концерт 13 ноября 2026) — когда показывать */
+    const store = {};
+    const P = load('bsplayer.js', 'BSPlayer', store), M = P.M;
+    const T = Date.UTC(2026, 10, 10, 10, 0), film = { url: 'http://x/film.m3u8', title: 'Фильм' };
+    t('баннер: картинка не загрузилась — без баннера', M._promoDue(film, T) === false);
+    M._promoSetImg({ src: 'x.jpg' });
+    t('баннер: обычный фильм до концерта — показываем', M._promoDue(film, T) === true);
+    t('баннер: телеканал и трейлер — нет', M._promoDue({ url: 'http://x/ch.m3u8', iptv: true }, T) === false && M._promoDue({ url: 'https://www.youtube.com/watch?v=1' }, T) === false);
+    t('баннер: после 13 ноября 18:30 (Ташкент) — больше нет', M._promoDue(film, Date.UTC(2026, 10, 13, 13, 31)) === false && M._promoDue(film, Date.UTC(2026, 10, 13, 13, 29)) === true);
+    M._promoMark(T);
+    t('баннер: показали — следующий фильм в течение часа без него, через час — снова', M._promoDue(film, T + 30 * 60000) === false && M._promoDue(film, T + 61 * 60000) === true);
+    M._promoMark(T + 61 * 60000); M._promoMark(T + 122 * 60000);
+    t('баннер: не больше 3 раз в день, на следующий день — снова', M._promoDue(film, T + 300 * 60000) === false && M._promoDue(film, T + 24 * 3600000) === true);
+}
 {   /* bsplayer: дорожку, которую hls.js не разбирает (AC3 под видом AAC), — назад на прежнюю */
     const P = load('bsplayer.js', 'BSPlayer', {});
     const notes = []; P.w.Lampa = undefined;
