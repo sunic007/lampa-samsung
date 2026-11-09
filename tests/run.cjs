@@ -1869,6 +1869,12 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('модели: перегружены — «через минуту», по каждой строка', (x => /через минуту/.test(x) && /• a — перегружена/.test(x) && /• b — лимит на сегодня/.test(x))(T._geminiSummary([{ id: 'a', kind: 'busy' }, { id: 'b', kind: 'day', until: gnow }], gnow)));
     const gt = T._guestTracked({ subs: [{ id: 1, tv: true }, { id: 2, tv: true }], want: [{ id: 1, tv: true }, { id: 3, tv: false }, { id: 4, tv: true }], muted: ['2'] });
     t('люди: уведомления — подписки и «Хочу посмотреть» (сериалы), без отписанных и повторов', gt.map(c => c.id).join() === '1,4');
+    const ol = (list, mine, u) => T._ownerList(list, mine, u).map(c => c.id).join();
+    const olTv = [{ id: 10 }, { id: 11 }, { id: 12 }], olU = { '555': { name: 'Шахноза', subs: [{ id: 11, tv: true }], want: [{ id: 12, tv: true }] }, '666': { name: 'Бан', banned: true, subs: [{ id: 10, tv: true }] } };
+    t('люди: подписка на Шахнозу — владельцу о сериале не пишем (даже если смотрели на ТВ), её «Хочу посмотреть» не мешает', ol(olTv, [], olU) === '10,12');
+    t('люди: владелец сам подписан — пишем обоим', ol(olTv, [{ id: 11 }], olU) === '10,11,12');
+    t('люди: отписанное у человека и отключённые люди владельца не трогают', ol(olTv, [], { '555': { subs: [{ id: 11, tv: true }], muted: ['11'] }, '666': { banned: true, subs: [{ id: 10, tv: true }] } }) === '10,11,12');
+    t('люди: без людей — всё как было', ol(olTv, [], {}) === '10,11,12');
     t('люди: пустой человек — пусто', T._guestTracked(null).length === 0 && T._guestTracked({}).length === 0);
     t('люди: карточка в список — сериал/фильм', T._mini({ id: 7, name: 'X', poster_path: '/p' }, 't').tv === true && T._mini({ id: 8, title: 'Y' }, 'm').name === 'Y');
     t('ИИ в поиске: описание — 5+ слов без года и студии', T._isDescription('фильм где мужик застрял на марсе') && !T._isDescription('Доктор Стрендж 2016') && !T._isDescription('Солдаты') && !T._isDescription('фильмы марвел про космос и героев 2026'));
