@@ -1,0 +1,106 @@
+{
+ "at": 1794639667,
+ "checked": 6776,
+ "strikes": 3,
+ "lists": {
+  "uz": {
+   "was": 34,
+   "kept": 34,
+   "closed": 0,
+   "dead": 0,
+   "logo": 0
+  },
+  "rus": {
+   "was": 651,
+   "kept": 719,
+   "closed": 18,
+   "dead": 56,
+   "logo": 0,
+   "freetv": 142
+  },
+  "ru": {
+   "was": 504,
+   "kept": 447,
+   "closed": 17,
+   "dead": 40,
+   "logo": 0
+  },
+  "kz": {
+   "was": 49,
+   "kept": 48,
+   "closed": 0,
+   "dead": 1,
+   "logo": 0
+  },
+  "tr": {
+   "was": 177,
+   "kept": 162,
+   "closed": 4,
+   "dead": 11,
+   "logo": 0
+  },
+  "movies": {
+   "was": 775,
+   "kept": 720,
+   "closed": 2,
+   "dead": 53,
+   "logo": 0
+  },
+  "series": {
+   "was": 524,
+   "kept": 495,
+   "closed": 1,
+   "dead": 28,
+   "logo": 0
+  },
+  "kids": {
+   "was": 448,
+   "kept": 412,
+   "closed": 7,
+   "dead": 29,
+   "logo": 0
+  },
+  "animation": {
+   "was": 185,
+   "kept": 176,
+   "closed": 0,
+   "dead": 9,
+   "logo": 0
+  },
+  "documentary": {
+   "was": 250,
+   "kept": 219,
+   "closed": 6,
+   "dead": 25,
+   "logo": 0
+  },
+  "sports": {
+   "was": 513,
+   "kept": 456,
+   "closed": 4,
+   "dead": 53,
+   "logo": 0
+  },
+  "music": {
+   "was": 779,
+   "kept": 697,
+   "closed": 3,
+   "dead": 79,
+   "logo": 0
+  },
+  "news": {
+   "was": 1069,
+   "kept": 968,
+   "closed": 6,
+   "dead": 95,
+   "logo": 0
+  },
+  "freetv": {
+   "was": 2203,
+   "kept": 1937,
+   "closed": 20,
+   "dead": 246,
+   "logo": 54
+  }
+ }
+}
