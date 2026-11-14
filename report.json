@@ -1,0 +1,2203 @@
+{
+ "time": "2026-11-14",
+ "ours": [
+  {
+   "id": "z01",
+   "name": "Z01",
+   "urls": [
+    "https://z01.online/live",
+    "http://z01.online/live"
+   ],
+   "checks": [
+    {
+     "url": "https://z01.online/live",
+     "status": 200,
+     "bytes": 144,
+     "sec": 0.74,
+     "ok": true
+    },
+    {
+     "url": "http://z01.online/live",
+     "status": 200,
+     "bytes": 182,
+     "sec": 0.49,
+     "ok": true
+    }
+   ],
+   "alive": true,
+   "dead_runs": 0
+  },
+  {
+   "id": "online_mod",
+   "name": "Online Mod",
+   "urls": [
+    "https://nb557.github.io/plugins/online_mod.js",
+    "http://nb557.github.io/plugins/online_mod.js",
+    "https://nb557.surge.sh/online_mod.js",
+    "http://nb557.surge.sh/online_mod.js"
+   ],
+   "checks": [
+    {
+     "url": "https://nb557.github.io/plugins/online_mod.js",
+     "status": 200,
+     "bytes": 604446,
+     "sec": 0.11,
+     "ok": true
+    },
+    {
+     "url": "http://nb557.github.io/plugins/online_mod.js",
+     "status": 200,
+     "bytes": 604446,
+     "sec": 0.22,
+     "ok": true
+    },
+    {
+     "url": "https://nb557.surge.sh/online_mod.js",
+     "status": 200,
+     "bytes": 604446,
+     "sec": 0.15,
+     "ok": true
+    },
+    {
+     "url": "http://nb557.surge.sh/online_mod.js",
+     "status": 200,
+     "bytes": 604446,
+     "sec": 0.14,
+     "ok": true
+    }
+   ],
+   "alive": true,
+   "dead_runs": 0
+  },
+  {
+   "id": "vod_llpp",
+   "name": "VOD (llpp.in)",
+   "urls": [
+    "https://llpp.in/v/vod.js",
+    "http://llpp.in/v/vod.js"
+   ],
+   "checks": [
+    {
+     "url": "https://llpp.in/v/vod.js",
+     "status": 0,
+     "bytes": 0,
+     "sec": 20.04,
+     "ok": false
+    },
+    {
+     "url": "http://llpp.in/v/vod.js",
+     "status": 0,
+     "bytes": 0,
+     "sec": 20.04,
+     "ok": false
+    }
+   ],
+   "alive": false,
+   "dead_runs": 2
+  },
+  {
+   "id": "lordfilm",
+   "name": "Lordfilm",
+   "urls": [
+    "https://cdn.jsdelivr.net/gh/lenorio/lenorio@79710d2b24b5633265e9905684700e5bd4bf5724/plugins/lordfilm.js",
+    "https://fastly.jsdelivr.net/gh/lenorio/lenorio@79710d2b24b5633265e9905684700e5bd4bf5724/plugins/lordfilm.js",
+    "https://gcore.jsdelivr.net/gh/lenorio/lenorio@79710d2b24b5633265e9905684700e5bd4bf5724/plugins/lordfilm.js"
+   ],
+   "checks": [
+    {
+     "url": "https://cdn.jsdelivr.net/gh/lenorio/lenorio@79710d2b24b5633265e9905684700e5bd4bf5724/plugins/lordfilm.js",
+     "status": 200,
+     "bytes": 34001,
+     "sec": 0.14,
+     "ok": true
+    },
+    {
+     "url": "https://fastly.jsdelivr.net/gh/lenorio/lenorio@79710d2b24b5633265e9905684700e5bd4bf5724/plugins/lordfilm.js",
+     "status": 200,
+     "bytes": 34001,
+     "sec": 0.37,
+     "ok": true
+    },
+    {
+     "url": "https://gcore.jsdelivr.net/gh/lenorio/lenorio@79710d2b24b5633265e9905684700e5bd4bf5724/plugins/lordfilm.js",
+     "status": 200,
+     "bytes": 34001,
+     "sec": 0.4,
+     "ok": true
+    }
+   ],
+   "alive": true,
+   "dead_runs": 0
+  },
+  {
+   "id": "showy",
+   "name": "Showy без регистрации",
+   "urls": [
+    "http://smotret24.ru/online.js",
+    "http://smotret24.com/online.js"
+   ],
+   "checks": [
+    {
+     "url": "http://smotret24.ru/online.js",
+     "status": 200,
+     "bytes": 234551,
+     "sec": 4.31,
+     "ok": true
+    },
+    {
+     "url": "http://smotret24.com/online.js",
+     "status": 200,
+     "bytes": 234559,
+     "sec": 2.03,
+     "ok": true
+    }
+   ],
+   "alive": true,
+   "dead_runs": 0
+  },
+  {
+   "id": "modss",
+   "name": "MODS's",
+   "urls": [
+    "https://lampa.stream/modss",
+    "http://lampa.stream/modss",
+    "http://modss.tv"
+   ],
+   "checks": [
+    {
+     "url": "https://lampa.stream/modss",
+     "status": 200,
+     "bytes": 17088,
+     "sec": 0.67,
+     "ok": true
+    },
+    {
+     "url": "http://lampa.stream/modss",
+     "status": 200,
+     "bytes": 17088,
+     "sec": 0.64,
+     "ok": true
+    },
+    {
+     "url": "http://modss.tv",
+     "status": 200,
+     "bytes": 17084,
+     "sec": 0.33,
+     "ok": true
+    }
+   ],
+   "alive": true,
+   "dead_runs": 0
+  }
+ ],
+ "dead": [
+  "VOD (llpp.in)"
+ ],
+ "searched": 385,
+ "candidates": [
+  {
+   "repo": "GideonWhite1029/lampa-desktop",
+   "path": "src/plugins/online.js",
+   "url": "https://cdn.jsdelivr.net/gh/GideonWhite1029/lampa-desktop@main/src/plugins/online.js",
+   "pushed": "2026-11-12",
+   "stars": 74,
+   "fork": false,
+   "alive_hosts": [
+    "api.delivembd.ws",
+    "cdnmovies.net",
+    "filmix.ac",
+    "filmixapp.cyou",
+    "kinobase.org",
+    "kinopoiskapiunofficial.tech",
+    "proxy.com"
+   ],
+   "score": 6,
+   "hosts": [
+    "api.delivembd.ws",
+    "cdn.svetacdn.in",
+    "cdnmovies.net",
+    "filmix.ac",
+    "filmixapp.cyou",
+    "kinobase.org",
+    "kinopoiskapiunofficial.tech",
+    "proxy.com",
+    "svgjs.com",
+    "voidboost.net"
+   ],
+   "components": [
+    "online"
+   ],
+   "flags": [
+    "вход/подписка",
+    "свой аккаунт Filmix"
+   ],
+   "obfuscated": false,
+   "fingerprint": "fd44211788291cb8",
+   "size": 118803
+  },
+  {
+   "repo": "imjamoe1/imjamoe1.github.io",
+   "path": "online_pro.js",
+   "url": "https://imjamoe1.github.io/online_pro.js",
+   "pushed": "2026-11-08",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "beta.mitsu.tv"
+   ],
+   "score": 5,
+   "hosts": [
+    "beta.mitsu.tv"
+   ],
+   "components": [
+    "rezka_pro",
+    "sports_tv_pro"
+   ],
+   "flags": [],
+   "obfuscated": false,
+   "fingerprint": "9ca588f60f6b153f",
+   "size": 32912
+  },
+  {
+   "repo": "olgyvsyv-lang/lampa-rezka-tizen",
+   "path": "rezka_samsung_compat.js",
+   "url": "https://cdn.jsdelivr.net/gh/olgyvsyv-lang/lampa-rezka-tizen@main/rezka_samsung_compat.js",
+   "pushed": "2026-11-13",
+   "stars": 1,
+   "fork": false,
+   "alive_hosts": [
+    "a.mp",
+    "corsproxy.io",
+    "hdrezka.ag"
+   ],
+   "score": 4,
+   "hosts": [
+    "a.mp",
+    "b.mp",
+    "c.mp",
+    "corsproxy.io",
+    "hdrezka.ag"
+   ],
+   "components": [
+    "rezka_online"
+   ],
+   "flags": [
+    "вход/подписка"
+   ],
+   "obfuscated": false,
+   "fingerprint": "78728741a43860c2",
+   "size": 39218
+  },
+  {
+   "repo": "entropious/lampa-online",
+   "path": "online.js",
+   "url": "https://cdn.jsdelivr.net/gh/entropious/lampa-online@main/online.js",
+   "pushed": "2026-11-06",
+   "stars": 1,
+   "fork": false,
+   "alive_hosts": [
+    "anilibria.top",
+    "lam.akter-black.com",
+    "lam.maxvol.pro",
+    "rc.bwa.ad",
+    "smotret24.ru",
+    "wtch.ch",
+    "z01.online"
+   ],
+   "score": 3,
+   "hosts": [
+    "anilibria.top",
+    "lam.akter-black.com",
+    "lam.maxvol.pro",
+    "rc.bwa.ad",
+    "smotret24.ru",
+    "wtch.ch",
+    "z01.online"
+   ],
+   "components": [],
+   "flags": [
+    "вход/подписка",
+    "реклама",
+    "загрузчик Lampac"
+   ],
+   "obfuscated": false,
+   "fingerprint": "9ab822dbdfa3630c",
+   "size": 191531
+  },
+  {
+   "repo": "GideonWhite1029/lampa-desktop",
+   "path": "src/plugins/online_prestige.js",
+   "url": "https://cdn.jsdelivr.net/gh/GideonWhite1029/lampa-desktop@main/src/plugins/online_prestige.js",
+   "pushed": "2026-11-12",
+   "stars": 74,
+   "fork": false,
+   "alive_hosts": [
+    "api.delivembd.ws",
+    "filmix.ac",
+    "filmixapp.cyou",
+    "kinobase.org",
+    "kinopoiskapiunofficial.tech",
+    "proxy.com",
+    "voidboost.net"
+   ],
+   "score": 3,
+   "hosts": [
+    "api.delivembd.ws",
+    "filmix.ac",
+    "filmixapp.cyou",
+    "kinobase.org",
+    "kinopoiskapiunofficial.tech",
+    "proxy.com",
+    "videocdn.tv",
+    "voidboost.net"
+   ],
+   "components": [
+    "online_prestige"
+   ],
+   "flags": [
+    "вход/подписка",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "02bd7ea7f51accd7",
+   "size": 124360
+  },
+  {
+   "repo": "war100ck/war100ck.github.io",
+   "path": "Lampa/plugins/online.js",
+   "url": "https://war100ck.github.io/Lampa/plugins/online.js",
+   "pushed": "2026-09-15",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "api.delivembd.ws",
+    "cdnmovies.net",
+    "filmix.ac",
+    "filmixapp.cyou",
+    "kinobase.org",
+    "kinopoiskapiunofficial.tech",
+    "proxy.com",
+    "svgjs.com"
+   ],
+   "score": 2,
+   "hosts": [
+    "api.delivembd.ws",
+    "cdnmovies.net",
+    "filmix.ac",
+    "filmixapp.cyou",
+    "kinobase.org",
+    "kinopoiskapiunofficial.tech",
+    "proxy.com",
+    "svgjs.com",
+    "videocdn.tv",
+    "voidboost.net"
+   ],
+   "components": [
+    "online"
+   ],
+   "flags": [
+    "вход/подписка",
+    "свой аккаунт Filmix"
+   ],
+   "obfuscated": false,
+   "fingerprint": "422bbbff45719ed4",
+   "size": 118325
+  },
+  {
+   "repo": "datalabMD/lampa-plugins",
+   "path": "rezka2.js",
+   "url": "https://cdn.jsdelivr.net/gh/datalabMD/lampa-plugins@main/rezka2.js",
+   "pushed": "2026-10-22",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "kvk.pub",
+    "lampa.datalab.md"
+   ],
+   "score": 2,
+   "hosts": [
+    "kvk.pub",
+    "lampa.datalab.md"
+   ],
+   "components": [
+    "rezka2_online"
+   ],
+   "flags": [
+    "вход/подписка"
+   ],
+   "obfuscated": false,
+   "fingerprint": "d5009aef1e5c8804",
+   "size": 13050
+  },
+  {
+   "repo": "VitaliyPA/Pages",
+   "path": "filmix.js",
+   "url": "https://cdn.jsdelivr.net/gh/VitaliyPA/Pages@main/filmix.js",
+   "pushed": "2026-10-28",
+   "stars": 2,
+   "fork": false,
+   "alive_hosts": [
+    "back.freebie.tom.ru",
+    "cf.freebie.tom.ru",
+    "filmix.ac",
+    "filmixapp.cyou",
+    "freebie.tom.ru",
+    "kinopoiskapiunofficial.tech",
+    "myshows.me"
+   ],
+   "score": 2,
+   "hosts": [
+    "back.freebie.tom.ru",
+    "cdn.svetacdn.in",
+    "cf.freebie.tom.ru",
+    "filmix.ac",
+    "filmixapp.cyou",
+    "freebie.tom.ru",
+    "kinopoiskapiunofficial.tech",
+    "myshows.me",
+    "proxy.com",
+    "svgjs.com"
+   ],
+   "components": [
+    "FilmixPVA"
+   ],
+   "flags": [
+    "вход/подписка",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix"
+   ],
+   "obfuscated": false,
+   "fingerprint": "77d0f75d56b234b2",
+   "size": 139790
+  },
+  {
+   "repo": "Kirill9732/Alcopac_docker",
+   "path": "app/wwwroot/plugins/prestige.js",
+   "url": "https://cdn.jsdelivr.net/gh/Kirill9732/Alcopac_docker@main/app/wwwroot/plugins/prestige.js",
+   "pushed": "2026-05-12",
+   "stars": 54,
+   "fork": false,
+   "alive_hosts": [
+    "api.delivembd.ws",
+    "filmix.ac",
+    "filmixapp.cyou",
+    "kinopoiskapiunofficial.tech",
+    "proxy.com",
+    "voidboost.net"
+   ],
+   "score": 1,
+   "hosts": [
+    "api.delivembd.ws",
+    "cors.apn.monster",
+    "filmix.ac",
+    "filmixapp.cyou",
+    "kinopoiskapiunofficial.tech",
+    "proxy.com",
+    "videocdn.tv",
+    "voidboost.net"
+   ],
+   "components": [
+    "online_prestige"
+   ],
+   "flags": [
+    "вход/подписка",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "f438370bf1f3a75a",
+   "size": 97366
+  },
+  {
+   "repo": "you-oops-dev/lampa_plugins_mods_sync",
+   "path": "o.js",
+   "url": "https://cdn.jsdelivr.net/gh/you-oops-dev/lampa_plugins_mods_sync@main/o.js",
+   "pushed": "2026-10-27",
+   "stars": 1,
+   "fork": false,
+   "alive_hosts": [
+    "online3.skaz.tv",
+    "online4.skaz.tv",
+    "online5.skaz.tv",
+    "skaztv.top"
+   ],
+   "score": 1,
+   "hosts": [
+    "apn.watch",
+    "online3.skaz.tv",
+    "online4.skaz.tv",
+    "online5.skaz.tv",
+    "skaztv.top"
+   ],
+   "components": [
+    "lampacskaz"
+   ],
+   "flags": [
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "5779cbe827a0fa2c",
+   "size": 83531
+  },
+  {
+   "repo": "cevamnelampaplagin/tytnemanichogodobrogo",
+   "path": "smarton.js",
+   "url": "https://cdn.jsdelivr.net/gh/cevamnelampaplagin/tytnemanichogodobrogo@main/smarton.js",
+   "pushed": "2026-11-05",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "lampaua.mooo.com"
+   ],
+   "score": 1,
+   "hosts": [
+    "lampaua.mooo.com"
+   ],
+   "components": [],
+   "flags": [
+    "реклама",
+    "украинские источники",
+    "загрузчик Lampac"
+   ],
+   "obfuscated": false,
+   "fingerprint": "16a1ac7502f48207",
+   "size": 45467
+  },
+  {
+   "repo": "max-lampa/MAX",
+   "path": "smartt.js",
+   "url": "https://cdn.jsdelivr.net/gh/max-lampa/MAX@main/smartt.js",
+   "pushed": "2026-11-09",
+   "stars": 2,
+   "fork": false,
+   "alive_hosts": [
+    "beta.l-vid.online"
+   ],
+   "score": 1,
+   "hosts": [
+    "beta.l-vid.online"
+   ],
+   "components": [],
+   "flags": [
+    "реклама",
+    "украинские источники",
+    "загрузчик Lampac"
+   ],
+   "obfuscated": false,
+   "fingerprint": "459bccb8149e50fc",
+   "size": 45776
+  },
+  {
+   "repo": "max-lampa/MAX",
+   "path": "smartmod.js",
+   "url": "https://cdn.jsdelivr.net/gh/max-lampa/MAX@main/smartmod.js",
+   "pushed": "2026-11-09",
+   "stars": 2,
+   "fork": false,
+   "alive_hosts": [
+    "bwa.ad"
+   ],
+   "score": 1,
+   "hosts": [
+    "bwa.ad"
+   ],
+   "components": [],
+   "flags": [
+    "реклама",
+    "украинские источники",
+    "загрузчик Lampac"
+   ],
+   "obfuscated": false,
+   "fingerprint": "d142dcabf8e28cff",
+   "size": 45538
+  },
+  {
+   "repo": "max-lampa/MAX",
+   "path": "smartonline_modified.js",
+   "url": "https://cdn.jsdelivr.net/gh/max-lampa/MAX@main/smartonline_modified.js",
+   "pushed": "2026-11-09",
+   "stars": 2,
+   "fork": false,
+   "alive_hosts": [
+    "bwa.ad"
+   ],
+   "score": 1,
+   "hosts": [
+    "bwa.ad"
+   ],
+   "components": [],
+   "flags": [
+    "реклама",
+    "украинские источники",
+    "загрузчик Lampac"
+   ],
+   "obfuscated": false,
+   "fingerprint": "bba7aaccca13dd07",
+   "size": 45403
+  },
+  {
+   "repo": "voipoddsns/voipoddsns.github.io",
+   "path": "plugins/lampa_plugins/o.js",
+   "url": "https://voipoddsns.github.io/plugins/lampa_plugins/o.js",
+   "pushed": "2026-11-12",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "online3.skaz.tv",
+    "online4.skaz.tv",
+    "online5.skaz.tv",
+    "online7.skaz.tv",
+    "onlinecf3.skaz.tv",
+    "onlinecf4.skaz.tv",
+    "onlinecf5.skaz.tv",
+    "onlinecf7.skaz.tv"
+   ],
+   "score": 1,
+   "hosts": [
+    "online3.skaz.tv",
+    "online4.skaz.tv",
+    "online5.skaz.tv",
+    "online7.skaz.tv",
+    "onlinecf3.skaz.tv",
+    "onlinecf4.skaz.tv",
+    "onlinecf5.skaz.tv",
+    "onlinecf7.skaz.tv",
+    "skaz.tv"
+   ],
+   "components": [
+    "lampacskaz"
+   ],
+   "flags": [
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "cc5ea7dc9f290a36",
+   "size": 97530
+  },
+  {
+   "repo": "alexlulchak/alexlulchak",
+   "path": "rezka.js",
+   "url": "https://cdn.jsdelivr.net/gh/alexlulchak/alexlulchak@main/rezka.js",
+   "pushed": "2026-09-12",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "rezka.fi",
+    "your-proxy.com"
+   ],
+   "score": 0,
+   "hosts": [
+    "rezka.fi",
+    "your-proxy.com"
+   ],
+   "components": [
+    "rezka_online"
+   ],
+   "flags": [
+    "вход/подписка",
+    "копия Online Mod"
+   ],
+   "obfuscated": false,
+   "fingerprint": "67e1988ce95414a2",
+   "size": 36135
+  },
+  {
+   "repo": "mailinternetx-sudo/plugins1",
+   "path": "4.js",
+   "url": "https://cdn.jsdelivr.net/gh/mailinternetx-sudo/plugins1@main/4.js",
+   "pushed": "2026-09-21",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "beta.mitsu.tv",
+    "my-proxy-worker.mail-internetx.workers.dev"
+   ],
+   "score": 0,
+   "hosts": [
+    "beta.mitsu.tv",
+    "my-proxy-worker.mail-internetx.workers.dev"
+   ],
+   "components": [],
+   "flags": [
+    "свой аккаунт Filmix",
+    "украинские источники",
+    "загрузчик Lampac"
+   ],
+   "obfuscated": false,
+   "fingerprint": "39f0989fc56b9c18",
+   "size": 228768
+  },
+  {
+   "repo": "aa1286901/aa1286901.github.io",
+   "path": "kp/showy.js",
+   "url": "https://aa1286901.github.io/kp/showy.js",
+   "pushed": "2026-11-09",
+   "stars": 1,
+   "fork": false,
+   "alive_hosts": [
+    "showy.online"
+   ],
+   "score": 0,
+   "hosts": [
+    "apn.watch",
+    "showy.online"
+   ],
+   "components": [
+    "showy"
+   ],
+   "flags": [
+    "KinoPub (платно)",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "d801cb072b1e9ee3",
+   "size": 70674
+  },
+  {
+   "repo": "lampaplugins/store",
+   "path": "fx.js",
+   "url": "https://cdn.jsdelivr.net/gh/lampaplugins/store@main/fx.js",
+   "pushed": "2026-11-11",
+   "stars": 7,
+   "fork": false,
+   "alive_hosts": [
+    "cors.jacred.stream",
+    "filmix.my",
+    "filmixapp.vip"
+   ],
+   "score": 0,
+   "hosts": [
+    "cors.jacred.stream",
+    "filmix.my",
+    "filmixapp.vip"
+   ],
+   "components": [
+    "online_fxapi"
+   ],
+   "flags": [
+    "вход/подписка",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "414b9f284630bae7",
+   "size": 73821
+  },
+  {
+   "repo": "serg-kara/plugin",
+   "path": "showy.js",
+   "url": "https://cdn.jsdelivr.net/gh/serg-kara/plugin@main/showy.js",
+   "pushed": "2026-11-13",
+   "stars": 1,
+   "fork": false,
+   "alive_hosts": [
+    "showy.online"
+   ],
+   "score": 0,
+   "hosts": [
+    "apn.watch",
+    "showy.online"
+   ],
+   "components": [
+    "showy"
+   ],
+   "flags": [
+    "KinoPub (платно)",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "93d41873c9383198",
+   "size": 87334
+  },
+  {
+   "repo": "Kirill9732/Alcopac_docker",
+   "path": "app/wwwroot/plugins/fx.js",
+   "url": "https://cdn.jsdelivr.net/gh/Kirill9732/Alcopac_docker@main/app/wwwroot/plugins/fx.js",
+   "pushed": "2026-05-12",
+   "stars": 54,
+   "fork": false,
+   "alive_hosts": [
+    "filmix.my",
+    "filmixapp.vip"
+   ],
+   "score": -1,
+   "hosts": [
+    "cors.cfhttp.top",
+    "filmix.my",
+    "filmixapp.vip"
+   ],
+   "components": [
+    "online_fxapi"
+   ],
+   "flags": [
+    "вход/подписка",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "493736674c7ee651",
+   "size": 57033
+  },
+  {
+   "repo": "Dzhinn/iptv",
+   "path": "onlines.js",
+   "url": "https://cdn.jsdelivr.net/gh/Dzhinn/iptv@main/onlines.js",
+   "pushed": "2026-05-23",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "online3.skaz.tv",
+    "online4.skaz.tv",
+    "online5.skaz.tv",
+    "online7.skaz.tv",
+    "onlinecf3.skaz.tv",
+    "onlinecf4.skaz.tv",
+    "onlinecf5.skaz.tv",
+    "onlinecf7.skaz.tv"
+   ],
+   "score": -1,
+   "hosts": [
+    "online3.skaz.tv",
+    "online4.skaz.tv",
+    "online5.skaz.tv",
+    "online7.skaz.tv",
+    "onlinecf3.skaz.tv",
+    "onlinecf4.skaz.tv",
+    "onlinecf5.skaz.tv",
+    "onlinecf7.skaz.tv",
+    "skaz.tv"
+   ],
+   "components": [
+    "lampacskaz"
+   ],
+   "flags": [
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "24696278452b97c2",
+   "size": 102461
+  },
+  {
+   "repo": "gorshkovkv/gorshkovkv.github.io",
+   "path": "scr/showww.js",
+   "url": "https://gorshkovkv.github.io/scr/showww.js",
+   "pushed": "2026-08-09",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "cdnjs.cloudflare.com",
+    "cdnmovies.net",
+    "showy.online"
+   ],
+   "score": -1,
+   "hosts": [
+    "apn.watch",
+    "cdnjs.cloudflare.com",
+    "cdnmovies.net",
+    "showy.online"
+   ],
+   "components": [
+    "showy"
+   ],
+   "flags": [
+    "вход/подписка",
+    "бот Telegram",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "ff66ba46953b7404",
+   "size": 59543
+  },
+  {
+   "repo": "gorshkovkv/gorshkovkv.github.io",
+   "path": "scr/stream.js",
+   "url": "https://gorshkovkv.github.io/scr/stream.js",
+   "pushed": "2026-08-09",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "cdnjs.cloudflare.com",
+    "player.cdnvideohub.com"
+   ],
+   "score": -1,
+   "hosts": [
+    "cdnjs.cloudflare.com",
+    "player.cdnvideohub.com"
+   ],
+   "components": [
+    "lampavod"
+   ],
+   "flags": [
+    "реклама",
+    "KinoPub (платно)",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "992d3fe2ade48730",
+   "size": 85740
+  },
+  {
+   "repo": "zubsverlo/vod",
+   "path": "vod.js",
+   "url": "https://cdn.jsdelivr.net/gh/zubsverlo/vod@main/vod.js",
+   "pushed": "2026-09-08",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "hdpoisk.ru"
+   ],
+   "score": -1,
+   "hosts": [
+    "arkmv.ru",
+    "hdpoisk.ru"
+   ],
+   "components": [
+    "vod"
+   ],
+   "flags": [
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "84ff7e7902b657b9",
+   "size": 87500
+  },
+  {
+   "repo": "ipavlin98/lmp-plugins",
+   "path": "oooo-full.js",
+   "url": "https://cdn.jsdelivr.net/gh/ipavlin98/lmp-plugins@main/oooo-full.js",
+   "pushed": "2026-10-20",
+   "stars": 5,
+   "fork": false,
+   "alive_hosts": [
+    "bwa.ad",
+    "kvk.zone",
+    "rc.bwa.ad"
+   ],
+   "score": -1,
+   "hosts": [
+    "bwa.ad",
+    "kvk.zone",
+    "rc.bwa.ad"
+   ],
+   "components": [
+    "lamponline"
+   ],
+   "flags": [
+    "вход/подписка",
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "c03b703d10ee129a",
+   "size": 190667
+  },
+  {
+   "repo": "danifilth17/lampa",
+   "path": "Filmix.js",
+   "url": "https://cdn.jsdelivr.net/gh/danifilth17/lampa@main/Filmix.js",
+   "pushed": "2026-10-25",
+   "stars": 1,
+   "fork": false,
+   "alive_hosts": [
+    "wtch.ch"
+   ],
+   "score": -1,
+   "hosts": [
+    "wtch.ch"
+   ],
+   "components": [
+    "wtch_online"
+   ],
+   "flags": [
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "a8b90b51492934dd",
+   "size": 88225
+  },
+  {
+   "repo": "SimSomNat/lampa-plugins",
+   "path": "hdrezka.js",
+   "url": "https://cdn.jsdelivr.net/gh/SimSomNat/lampa-plugins@main/hdrezka.js",
+   "pushed": "2026-10-30",
+   "stars": 1,
+   "fork": false,
+   "alive_hosts": [
+    "api.ipify.org",
+    "cors.fx666.workers.dev",
+    "cors.nb557.workers.dev",
+    "kvk.zone"
+   ],
+   "score": -1,
+   "hosts": [
+    "api.ipify.org",
+    "apn.cfhttp.top",
+    "apn.watch",
+    "cors.fx666.workers.dev",
+    "cors.nb557.deno.net",
+    "cors.nb557.workers.dev",
+    "iqslgbok.deploy.cx",
+    "kvk.zone",
+    "rezka.ag"
+   ],
+   "components": [
+    "online_mod"
+   ],
+   "flags": [
+    "вход/подписка",
+    "украинские источники",
+    "копия Online Mod"
+   ],
+   "obfuscated": false,
+   "fingerprint": "04efc3372ae43a1b",
+   "size": 126855
+  },
+  {
+   "repo": "cevamnelampaplagin/tytnemanichogodobrogo",
+   "path": "maxvolonl.js",
+   "url": "https://cdn.jsdelivr.net/gh/cevamnelampaplagin/tytnemanichogodobrogo@main/maxvolonl.js",
+   "pushed": "2026-11-05",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "lam.maxvol.pro"
+   ],
+   "score": -1,
+   "hosts": [
+    "lam.maxvol.pro"
+   ],
+   "components": [
+    "lampac"
+   ],
+   "flags": [
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "899a9893281d7f96",
+   "size": 84595
+  },
+  {
+   "repo": "cevamnelampaplagin/tytnemanichogodobrogo",
+   "path": "pakonli.js",
+   "url": "https://cdn.jsdelivr.net/gh/cevamnelampaplagin/tytnemanichogodobrogo@main/pakonli.js",
+   "pushed": "2026-11-05",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "lampac.pakmar.uk"
+   ],
+   "score": -1,
+   "hosts": [
+    "lampac.pakmar.uk"
+   ],
+   "components": [
+    "lampac"
+   ],
+   "flags": [
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "b9163c71fe7ed546",
+   "size": 97097
+  },
+  {
+   "repo": "cevamnelampaplagin/tytnemanichogodobrogo",
+   "path": "mabvidaonli.js",
+   "url": "https://cdn.jsdelivr.net/gh/cevamnelampaplagin/tytnemanichogodobrogo@main/mabvidaonli.js",
+   "pushed": "2026-11-05",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "abvidaa.ru"
+   ],
+   "score": -1,
+   "hosts": [
+    "abvidaa.ru"
+   ],
+   "components": [
+    "lampac"
+   ],
+   "flags": [
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "4b7042623e1dd3d8",
+   "size": 86042
+  },
+  {
+   "repo": "imjamoe1/imjamoe1.github.io",
+   "path": "uhd.js",
+   "url": "https://imjamoe1.github.io/uhd.js",
+   "pushed": "2026-11-08",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "lampa.gorsovet26.ru"
+   ],
+   "score": -1,
+   "hosts": [
+    "lampa.gorsovet26.ru"
+   ],
+   "components": [
+    "VoKino"
+   ],
+   "flags": [
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "eb534bb37735dd39",
+   "size": 91147
+  },
+  {
+   "repo": "max-lampa/MAX",
+   "path": "fil.js",
+   "url": "https://cdn.jsdelivr.net/gh/max-lampa/MAX@main/fil.js",
+   "pushed": "2026-11-09",
+   "stars": 2,
+   "fork": false,
+   "alive_hosts": [
+    "bbe.lme.isroot.in",
+    "filmix.my",
+    "proxy.com",
+    "tut.im"
+   ],
+   "score": -1,
+   "hosts": [
+    "bbe.lme.isroot.in",
+    "filmix.my",
+    "proxy.com",
+    "tut.im"
+   ],
+   "components": [
+    "bandera_online"
+   ],
+   "flags": [
+    "вход/подписка",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "b3775af71d0d11ed",
+   "size": 111529
+  },
+  {
+   "repo": "voipoddsns/voipoddsns.github.io",
+   "path": "plugins/lampa_plugins/fx.js",
+   "url": "https://voipoddsns.github.io/plugins/lampa_plugins/fx.js",
+   "pushed": "2026-11-12",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "cors.byskaz.ru",
+    "filmix.my",
+    "filmixapp.vip"
+   ],
+   "score": -1,
+   "hosts": [
+    "cors.byskaz.ru",
+    "filmix.my",
+    "filmixapp.vip"
+   ],
+   "components": [
+    "online_fxapi"
+   ],
+   "flags": [
+    "вход/подписка",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "83b9481495e84865",
+   "size": 57031
+  },
+  {
+   "repo": "voipoddsns/voipoddsns.github.io",
+   "path": "web/plugins/online_prestige.js",
+   "url": "https://voipoddsns.github.io/web/plugins/online_prestige.js",
+   "pushed": "2026-11-12",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "api.delivembd.ws",
+    "filmix.ac",
+    "filmixapp.cyou",
+    "kinobase.org",
+    "kinopoiskapiunofficial.tech",
+    "proxy.com",
+    "voidboost.net"
+   ],
+   "score": -1,
+   "hosts": [
+    "api.delivembd.ws",
+    "filmix.ac",
+    "filmixapp.cyou",
+    "kinobase.org",
+    "kinopoiskapiunofficial.tech",
+    "proxy.com",
+    "videocdn.tv",
+    "voidboost.net"
+   ],
+   "components": [
+    "online_prestige"
+   ],
+   "flags": [
+    "вход/подписка",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "c34062fad4bb2361",
+   "size": 124163
+  },
+  {
+   "repo": "voipoddsns/voipoddsns.github.io",
+   "path": "plugins/lampa_plugins/rc.js",
+   "url": "https://voipoddsns.github.io/plugins/lampa_plugins/rc.js",
+   "pushed": "2026-11-12",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "rc.bwa.ad"
+   ],
+   "score": -1,
+   "hosts": [
+    "rc.bwa.ad"
+   ],
+   "components": [
+    "bwarch"
+   ],
+   "flags": [
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "5ac81de16847f9fd",
+   "size": 87158
+  },
+  {
+   "repo": "P1cas5o/lampa",
+   "path": "ua_kino.js",
+   "url": "https://cdn.jsdelivr.net/gh/P1cas5o/lampa@main/ua_kino.js",
+   "pushed": "2026-11-13",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "uakino.best"
+   ],
+   "score": -1,
+   "hosts": [
+    "uakino.best"
+   ],
+   "components": [],
+   "flags": [
+    "вход/подписка",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "0499a0d3cf1e49f3",
+   "size": 10940
+  },
+  {
+   "repo": "epsill/plugins",
+   "path": "film.js",
+   "url": "https://cdn.jsdelivr.net/gh/epsill/plugins@main/film.js",
+   "pushed": "2026-11-13",
+   "stars": 4,
+   "fork": false,
+   "alive_hosts": [
+    "wtch.ch"
+   ],
+   "score": -1,
+   "hosts": [
+    "wtch.ch"
+   ],
+   "components": [
+    "wtch_online"
+   ],
+   "flags": [
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "f629253c5071ace9",
+   "size": 86270
+  },
+  {
+   "repo": "BazZziliuS/BazZziliuS.github.io",
+   "path": "scripts/cinema.js",
+   "url": "https://bazzzilius.github.io/scripts/cinema.js",
+   "pushed": "2026-04-08",
+   "stars": 1,
+   "fork": false,
+   "alive_hosts": [
+    "cdnjs.cloudflare.com",
+    "cdnmovies.net"
+   ],
+   "score": -2,
+   "hosts": [
+    "apn.watch",
+    "cdnjs.cloudflare.com",
+    "cdnmovies.net"
+   ],
+   "components": [
+    "cinema"
+   ],
+   "flags": [
+    "KinoPub (платно)",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "237a5998827aab1e",
+   "size": 74027
+  },
+  {
+   "repo": "Menasco/lampa",
+   "path": "kas_plugin.js",
+   "url": "https://cdn.jsdelivr.net/gh/Menasco/lampa@main/kas_plugin.js",
+   "pushed": "2026-10-31",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "aniliberty.top",
+    "beta.mitsu.tv",
+    "jacred.su",
+    "wtch.ch"
+   ],
+   "score": -2,
+   "hosts": [
+    "aniliberty.top",
+    "beta.mitsu.tv",
+    "jacred.su",
+    "wtch.ch"
+   ],
+   "components": [
+    "kas_plugin"
+   ],
+   "flags": [
+    "вход/подписка",
+    "реклама",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "c129175e1c61d6ae",
+   "size": 108341
+  },
+  {
+   "repo": "SM1LE666/SM1LE666.github.io",
+   "path": "online.js",
+   "url": "https://sm1le666.github.io/online.js",
+   "pushed": "2026-11-01",
+   "stars": 2,
+   "fork": false,
+   "alive_hosts": [
+    "showy.pro",
+    "showypro.com",
+    "smotret24.ru"
+   ],
+   "score": -2,
+   "hosts": [
+    "showy.pro",
+    "showypro.com",
+    "smotret24.ru"
+   ],
+   "components": [
+    "smotret24"
+   ],
+   "flags": [
+    "бот Telegram",
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "606c9d06292b676d",
+   "size": 247423
+  },
+  {
+   "repo": "cevamnelampaplagin/tytnemanichogodobrogo",
+   "path": "gbpxonl.js",
+   "url": "https://cdn.jsdelivr.net/gh/cevamnelampaplagin/tytnemanichogodobrogo@main/gbpxonl.js",
+   "pushed": "2026-11-05",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "gpbx.me",
+    "mc.webvisor.org",
+    "www.googletagmanager.com"
+   ],
+   "score": -2,
+   "hosts": [
+    "gpbx.me",
+    "mc.webvisor.org",
+    "www.googletagmanager.com"
+   ],
+   "components": [
+    "gpbay"
+   ],
+   "flags": [
+    "вход/подписка",
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "2474762efc148005",
+   "size": 127289
+  },
+  {
+   "repo": "LuckyGeniusss/lampa-sergey-hub",
+   "path": "online.js",
+   "url": "https://cdn.jsdelivr.net/gh/LuckyGeniusss/lampa-sergey-hub@main/online.js",
+   "pushed": "2026-11-13",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "ab2024.ru",
+    "beta.l-vid.online",
+    "filmixapp.cyou",
+    "filmixapp.vip",
+    "hdpoisk.ru"
+   ],
+   "score": -2,
+   "hosts": [
+    "ab2024.ru",
+    "beta.l-vid.online",
+    "filmixapp.cyou",
+    "filmixapp.vip",
+    "hdpoisk.ru",
+    "sergey-online-backend.onrender.com"
+   ],
+   "components": [
+    "sergey_online"
+   ],
+   "flags": [
+    "вход/подписка",
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "b73cf27c325efd41",
+   "size": 115144
+  },
+  {
+   "repo": "danifilth17/lampa",
+   "path": "onlinefilm.js",
+   "url": "https://cdn.jsdelivr.net/gh/danifilth17/lampa@main/onlinefilm.js",
+   "pushed": "2026-10-25",
+   "stars": 1,
+   "fork": false,
+   "alive_hosts": [
+    "filmix.my",
+    "filmixapp.vip"
+   ],
+   "score": -3,
+   "hosts": [
+    "cors.lampa.pro",
+    "filmix.my",
+    "filmixapp.vip"
+   ],
+   "components": [
+    "online_fxapi"
+   ],
+   "flags": [
+    "вход/подписка",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "4fe90c5e4c231e9d",
+   "size": 46531
+  },
+  {
+   "repo": "Hlushok/lampa-plugin",
+   "path": "fx.js",
+   "url": "https://cdn.jsdelivr.net/gh/Hlushok/lampa-plugin@main/fx.js",
+   "pushed": "2026-10-29",
+   "stars": 3,
+   "fork": false,
+   "alive_hosts": [
+    "filmix.my",
+    "filmixapp.vip"
+   ],
+   "score": -3,
+   "hosts": [
+    "cors.cfhttp.top",
+    "filmix.my",
+    "filmixapp.vip"
+   ],
+   "components": [
+    "online_fxapi"
+   ],
+   "flags": [
+    "вход/подписка",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "09ade44a0ee0d2b4",
+   "size": 57032
+  },
+  {
+   "repo": "LightAries/lampa-plugins",
+   "path": "LA_online.js",
+   "url": "https://cdn.jsdelivr.net/gh/LightAries/lampa-plugins@main/LA_online.js",
+   "pushed": "2026-11-04",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "anilib.me",
+    "aniliberty.top",
+    "anilibria.top",
+    "api.anilibria.app",
+    "api.anilibria.tv",
+    "api.apbugall.org",
+    "api.ipify.org",
+    "api.srvkp.com"
+   ],
+   "score": -3,
+   "hosts": [
+    "anilib.me",
+    "aniliberty.top",
+    "anilibria.top",
+    "api.anilibria.app",
+    "api.anilibria.tv",
+    "api.apbugall.org",
+    "api.ipify.org",
+    "api.srvkp.com",
+    "api2.mangalib.me",
+    "cdnmovies-stream.online",
+    "cors.fx666.workers.dev",
+    "cors.kp556.workers.dev",
+    "cors.nb557.deno.net",
+    "cors.nb557.workers.dev",
+    "filmix.gg",
+    "filmixapp.cyou",
+    "kinobase.org",
+    "kinopoiskapiunofficial.tech",
+    "kodik-api.com",
+    "kvk.zone",
+    "redheadsound.studio",
+    "rezka.ag",
+    "svgjs.com",
+    "video1.anilib.me",
+    "video2.anilib.me",
+    "video3.anilib.me"
+   ],
+   "components": [
+    "online_mod"
+   ],
+   "flags": [
+    "вход/подписка",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники",
+    "копия Online Mod"
+   ],
+   "obfuscated": false,
+   "fingerprint": "0e6628e927b3892a",
+   "size": 599091
+  },
+  {
+   "repo": "ImKreeg/lampa-plugin",
+   "path": "online_mod_2026-10-25_noads.js",
+   "url": "https://cdn.jsdelivr.net/gh/ImKreeg/lampa-plugin@main/online_mod_2026-10-25_noads.js",
+   "pushed": "2026-11-06",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "anilib.me",
+    "api.anilibria.app",
+    "api.anilibria.tv",
+    "api.apbugall.org",
+    "api.ipify.org",
+    "api.srvkp.com",
+    "api2.mangalib.me",
+    "cdnmovies-stream.online"
+   ],
+   "score": -3,
+   "hosts": [
+    "anilib.me",
+    "api.anilibria.app",
+    "api.anilibria.tv",
+    "api.apbugall.org",
+    "api.ipify.org",
+    "api.srvkp.com",
+    "api2.mangalib.me",
+    "cdnmovies-stream.online",
+    "cors.fx666.workers.dev",
+    "cors.kp556.workers.dev",
+    "cors.nb557.deno.net",
+    "cors.nb557.workers.dev",
+    "filmix.gg",
+    "filmixapp.cyou",
+    "kinobase.org",
+    "kinopoiskapiunofficial.tech",
+    "kodik-api.com",
+    "kvk.zone",
+    "redheadsound.studio",
+    "rezka.ag",
+    "svgjs.com",
+    "video1.anilib.me",
+    "video2.anilib.me",
+    "video3.anilib.me"
+   ],
+   "components": [
+    "online_mod"
+   ],
+   "flags": [
+    "вход/подписка",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники",
+    "копия Online Mod"
+   ],
+   "obfuscated": false,
+   "fingerprint": "d7df45922b008d7a",
+   "size": 580100
+  },
+  {
+   "repo": "namaleksey-dot/lampa_online_mode_atv",
+   "path": "online_mod_atv.js",
+   "url": "https://cdn.jsdelivr.net/gh/namaleksey-dot/lampa_online_mode_atv@main/online_mod_atv.js",
+   "pushed": "2026-11-13",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "anilib.me",
+    "api.anilibria.app",
+    "api.anilibria.tv",
+    "api.apbugall.org",
+    "api.ipify.org",
+    "api.srvkp.com",
+    "api2.mangalib.me",
+    "cdnmovies-stream.online"
+   ],
+   "score": -3,
+   "hosts": [
+    "anilib.me",
+    "api.anilibria.app",
+    "api.anilibria.tv",
+    "api.apbugall.org",
+    "api.ipify.org",
+    "api.srvkp.com",
+    "api2.mangalib.me",
+    "cdnmovies-stream.online",
+    "cors.fx666.workers.dev",
+    "cors.kp556.workers.dev",
+    "cors.nb557.deno.net",
+    "cors.nb557.workers.dev",
+    "filmix.gg",
+    "filmixapp.cyou",
+    "kinobase.org",
+    "kinopoiskapiunofficial.tech",
+    "kodik-api.com",
+    "kvk.zone",
+    "redheadsound.studio",
+    "rezka.ag",
+    "svgjs.com",
+    "video1.anilib.me",
+    "video2.anilib.me",
+    "video3.anilib.me"
+   ],
+   "components": [
+    "online_mod"
+   ],
+   "flags": [
+    "вход/подписка",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники",
+    "копия Online Mod"
+   ],
+   "obfuscated": false,
+   "fingerprint": "515b4e8b549a1511",
+   "size": 597537
+  },
+  {
+   "repo": "Illmix/lampa-plugins",
+   "path": "fx.js",
+   "url": "https://cdn.jsdelivr.net/gh/Illmix/lampa-plugins@main/fx.js",
+   "pushed": "2026-11-13",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "filmix.my",
+    "filmixapp.vip"
+   ],
+   "score": -3,
+   "hosts": [
+    "cors.cfhttp.top",
+    "filmix.my",
+    "filmixapp.vip"
+   ],
+   "components": [
+    "online_fxapi"
+   ],
+   "flags": [
+    "вход/подписка",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "7d755eb2b2aa0aca",
+   "size": 59513
+  },
+  {
+   "repo": "Illmix/lampa-plugins",
+   "path": "online_mod.js",
+   "url": "https://cdn.jsdelivr.net/gh/Illmix/lampa-plugins@main/online_mod.js",
+   "pushed": "2026-11-13",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "anilib.me",
+    "api.anilibria.app",
+    "api.anilibria.tv",
+    "api.apbugall.org",
+    "api.ipify.org",
+    "api.srvkp.com",
+    "api2.mangalib.me",
+    "apn-latest.onrender.com"
+   ],
+   "score": -3,
+   "hosts": [
+    "anilib.me",
+    "api.anilibria.app",
+    "api.anilibria.tv",
+    "api.apbugall.org",
+    "api.ipify.org",
+    "api.srvkp.com",
+    "api2.mangalib.me",
+    "apn-latest.onrender.com",
+    "apn.cfhttp.top",
+    "apn.watch",
+    "cdnmovies-stream.online",
+    "cors.fx666.workers.dev",
+    "cors.kp556.workers.dev",
+    "cors.nb557.workers.dev",
+    "cors557.deno.dev",
+    "filmix.my",
+    "filmixapp.cyou",
+    "kinobase.org",
+    "kinopoiskapiunofficial.tech",
+    "kodik-api.com",
+    "kvk.zone",
+    "redheadsound.studio",
+    "rezka.ag",
+    "svgjs.com",
+    "video1.anilib.me",
+    "video2.anilib.me",
+    "video3.anilib.me"
+   ],
+   "components": [
+    "online_mod"
+   ],
+   "flags": [
+    "вход/подписка",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники",
+    "копия Online Mod"
+   ],
+   "obfuscated": false,
+   "fingerprint": "f19ccf2e0a98a68f",
+   "size": 569739
+  },
+  {
+   "repo": "whydudeman/lampa_extension",
+   "path": "ref/online_mod.js",
+   "url": "https://cdn.jsdelivr.net/gh/whydudeman/lampa_extension@main/ref/online_mod.js",
+   "pushed": "2026-11-13",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "anilib.me",
+    "api.anilibria.app",
+    "api.anilibria.tv",
+    "api.apbugall.org",
+    "api.ipify.org",
+    "api.srvkp.com",
+    "api2.mangalib.me"
+   ],
+   "score": -3,
+   "hosts": [
+    "anilib.me",
+    "api.anilibria.app",
+    "api.anilibria.tv",
+    "api.apbugall.org",
+    "api.ipify.org",
+    "api.srvkp.com",
+    "api2.mangalib.me",
+    "apn.cfhttp.top",
+    "apn.watch",
+    "cdnmovies-stream.online",
+    "cors.fx666.workers.dev",
+    "cors.kp556.workers.dev",
+    "cors.nb557.deno.net",
+    "cors.nb557.workers.dev",
+    "filmix.gg",
+    "filmixapp.cyou",
+    "kinobase.org",
+    "kinopoiskapiunofficial.tech",
+    "kodik-api.com",
+    "kvk.zone",
+    "redheadsound.studio",
+    "rezka.ag",
+    "svgjs.com",
+    "video1.anilib.me",
+    "video2.anilib.me",
+    "video3.anilib.me"
+   ],
+   "components": [
+    "online_mod"
+   ],
+   "flags": [
+    "вход/подписка",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники",
+    "копия Online Mod"
+   ],
+   "obfuscated": false,
+   "fingerprint": "6a4ad82d2224f638",
+   "size": 568641
+  },
+  {
+   "repo": "qlampa/plugins",
+   "path": "online.js",
+   "url": "https://cdn.jsdelivr.net/gh/qlampa/plugins@main/online.js",
+   "pushed": "2026-07-04",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "api4.thetvdb.com",
+    "cdnjs.cloudflare.com",
+    "smotret24.ru"
+   ],
+   "score": -4,
+   "hosts": [
+    "api4.thetvdb.com",
+    "cdnjs.cloudflare.com",
+    "smotret24.ru"
+   ],
+   "components": [
+    "qwatch"
+   ],
+   "flags": [
+    "вход/подписка",
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "6cf8043dc5bc8c7f",
+   "size": 67761
+  },
+  {
+   "repo": "gorshkovkv/gorshkovkv.github.io",
+   "path": "scr/c.js",
+   "url": "https://gorshkovkv.github.io/scr/c.js",
+   "pushed": "2026-08-09",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "cdnjs.cloudflare.com",
+    "cdnmovies.net"
+   ],
+   "score": -4,
+   "hosts": [
+    "apn.watch",
+    "cdnjs.cloudflare.com",
+    "cdnmovies.net"
+   ],
+   "components": [
+    "cinema"
+   ],
+   "flags": [
+    "запутан",
+    "KinoPub (платно)",
+    "украинские источники"
+   ],
+   "obfuscated": true,
+   "fingerprint": "b0a2dfb9caf9e118",
+   "size": 87026
+  },
+  {
+   "repo": "drshpackz/dorama",
+   "path": "online.js",
+   "url": "https://cdn.jsdelivr.net/gh/drshpackz/dorama@master/online.js",
+   "pushed": "2026-11-12",
+   "stars": 1,
+   "fork": false,
+   "alive_hosts": [
+    "oplata.z01.online",
+    "z01.online"
+   ],
+   "score": -4,
+   "hosts": [
+    "oplata.z01.online",
+    "z01.online"
+   ],
+   "components": [
+    "lampac_z"
+   ],
+   "flags": [
+    "вход/подписка",
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "23fabb08b68c3483",
+   "size": 114394
+  },
+  {
+   "repo": "voipoddsns/voipoddsns.github.io",
+   "path": "lampa/plugins/m.js",
+   "url": "https://voipoddsns.github.io/lampa/plugins/m.js",
+   "pushed": "2026-11-12",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "api.ipify.org",
+    "wtch.ch"
+   ],
+   "score": -4,
+   "hosts": [
+    "api.ipify.org",
+    "wtch.ch"
+   ],
+   "components": [
+    "wtch_online"
+   ],
+   "flags": [
+    "вход/подписка",
+    "бот Telegram",
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "7970a04e6f2f5268",
+   "size": 94705
+  },
+  {
+   "repo": "voipoddsns/voipoddsns.github.io",
+   "path": "plugins/lampa_plugins/m.js",
+   "url": "https://voipoddsns.github.io/plugins/lampa_plugins/m.js",
+   "pushed": "2026-11-12",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "showwwy.com"
+   ],
+   "score": -4,
+   "hosts": [
+    "showwwy.com"
+   ],
+   "components": [
+    "lampac",
+    "showy"
+   ],
+   "flags": [
+    "вход/подписка",
+    "бот Telegram",
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "fa266abf5d9af99e",
+   "size": 98180
+  },
+  {
+   "repo": "voipoddsns/voipoddsns.github.io",
+   "path": "plugins/lampa_plugins/online.js",
+   "url": "https://voipoddsns.github.io/plugins/lampa_plugins/online.js",
+   "pushed": "2026-11-12",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "beta.l-vid.online"
+   ],
+   "score": -4,
+   "hosts": [
+    "beta.l-vid.online"
+   ],
+   "components": [
+    "alcopac"
+   ],
+   "flags": [
+    "вход/подписка",
+    "бот Telegram",
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "8315642261baa57e",
+   "size": 113549
+  },
+  {
+   "repo": "EdemBey/lampa-torbox",
+   "path": "plugin/online_mod.js",
+   "url": "https://cdn.jsdelivr.net/gh/EdemBey/lampa-torbox@master/plugin/online_mod.js",
+   "pushed": "2026-11-13",
+   "stars": 0,
+   "fork": false,
+   "alive_hosts": [
+    "anilib.me",
+    "anime.home.kopenkin.tech",
+    "api.anilibria.app",
+    "api.anilibria.tv",
+    "api.apbugall.org",
+    "api.ipify.org",
+    "api.srvkp.com",
+    "api2.mangalib.me"
+   ],
+   "score": -4,
+   "hosts": [
+    "anilib.me",
+    "anime.home.kopenkin.tech",
+    "api.anilibria.app",
+    "api.anilibria.tv",
+    "api.apbugall.org",
+    "api.ipify.org",
+    "api.srvkp.com",
+    "api2.mangalib.me",
+    "cdnmovies-stream.online",
+    "cors.fx666.workers.dev",
+    "cors.kp556.workers.dev",
+    "cors.nb557.deno.net",
+    "cors.nb557.workers.dev",
+    "filmix.gg",
+    "filmixapp.cyou",
+    "kinobase.org",
+    "kinopoiskapiunofficial.tech",
+    "kodik-api.com",
+    "r.jina.ai",
+    "redheadsound.studio",
+    "rezka.ag",
+    "svgjs.com",
+    "video1.anilib.me",
+    "video2.anilib.me",
+    "video3.anilib.me"
+   ],
+   "components": [
+    "online_mod"
+   ],
+   "flags": [
+    "вход/подписка",
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники",
+    "копия Online Mod"
+   ],
+   "obfuscated": false,
+   "fingerprint": "9137b81863bb5a04",
+   "size": 650002
+  },
+  {
+   "repo": "mainsync-afk/lampa_kinopub",
+   "path": "docs/kp.js",
+   "url": "https://cdn.jsdelivr.net/gh/mainsync-afk/lampa_kinopub@main/docs/kp.js",
+   "pushed": "2026-06-13",
+   "stars": 3,
+   "fork": false,
+   "alive_hosts": [
+    "api.service-kp.com",
+    "kinopub.fastcdn.pics"
+   ],
+   "score": -5,
+   "hosts": [
+    "api.service-kp.com",
+    "kino.pub",
+    "kinopub.fastcdn.pics"
+   ],
+   "components": [],
+   "flags": [
+    "вход/подписка",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники",
+    "загрузчик Lampac"
+   ],
+   "obfuscated": false,
+   "fingerprint": "e17ab33b67437840",
+   "size": 191884
+  },
+  {
+   "repo": "amikdn/amikdn.github.io",
+   "path": "cinema.js",
+   "url": "https://amikdn.github.io/cinema.js",
+   "pushed": "2026-11-05",
+   "stars": 20,
+   "fork": false,
+   "alive_hosts": [],
+   "score": -5,
+   "hosts": [],
+   "components": [
+    "cinema_online"
+   ],
+   "flags": [
+    "реклама",
+    "KinoPub (платно)",
+    "свой аккаунт Filmix",
+    "украинские источники"
+   ],
+   "obfuscated": false,
+   "fingerprint": "3791409a411d1be1",
+   "size": 84167
+  }
+ ],
+ "new_strong": [
+  "https://cdn.jsdelivr.net/gh/olgyvsyv-lang/lampa-rezka-tizen@main/rezka_samsung_compat.js"
+ ]
+}
