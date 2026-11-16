@@ -7,7 +7,11 @@
     каналы закрыты для зарубежа (403) или медленно отвечают издалека, поэтому «мёртвый» — только точно мёртвый:
     404/410, домена нет, сервер отказал в соединении. И только 3 дня подряд (STRIKES). 403, 401, 451, 429, 5xx,
     таймаут и страница вместо плейлиста (так выглядят заглушки «недоступно в вашей стране») — «не знаем», канал остаётся;
-  - дорисовываем логотип каналу без tvg-logo — по iptv-org/database (logos.csv).
+  - дорисовываем логотип каналу без tvg-logo — по iptv-org/database (logos.csv);
+  - второе мнение — своя проверка Free-TV (FREETV_FAILED, 4 раза в сутки): наш ответ «не знаем» (таймаут, 403), а у
+    Free-TV поток в списке упавших — это тоже день «мёртв» (причина freetv). Только 3 дня подряд, как и свои;
+  - один и тот же поток в разных списках пишут по-разному (iptv-org с 11.2026 не перекодирует адреса, порядок параметров
+    свой) — дубли при слиянии Free-TV в «На русском» ищем по нормальной форме адреса (norm_url).
 Выход (ветка `iptv` без истории, перезаписывается):
   <ключ>.m3u    — список для iptv.php (зеркало кеширует его, http-фильтр /iptv/s/ делает оно же)
   state.json    {"v":1, "at":<unix>, "dead":{url: [дней подряд, последняя причина]}} — память между запусками
@@ -49,6 +53,7 @@ FREETV_RU = {
     'Azerbaijan': 'Азербайджан', 'Georgia': 'Грузия', 'Moldova': 'Молдова',
     'Turkey': 'Турция',           # владелец: турецкие каналы тоже в общем списке (турецкие сериалы смотрят многие)
 }
+FREETV_FAILED = 'https://raw.githubusercontent.com/Free-TV/IPTV/master/.github/checker-history/failed.txt'
 STRIKES = 3                 # дней подряд «точно мёртв» — тогда убираем
 TIMEOUT = 12
 WORKERS = 48
@@ -100,6 +105,27 @@ def parse(body):
             out.append((hold, s))
             hold = []
     return head, out
+
+
+def norm_url(url):
+    """Ключ для поиска дублей: схема и хост строчными, без порта по умолчанию, %-коды раскрыты, параметры по порядку."""
+    from urllib.parse import urlsplit, unquote, parse_qsl, urlencode
+    try:
+        p = urlsplit(url.split('|')[0].strip())
+    except ValueError:
+        return url
+    host = (p.hostname or '').lower()
+    port = p.port
+    if port and not ((p.scheme == 'http' and port == 80) or (p.scheme == 'https' and port == 443)):
+        host += ':%d' % port
+    q = urlencode(sorted(parse_qsl(p.query, keep_blank_values=True)))
+    return '%s://%s%s%s' % (p.scheme.lower(), host, unquote(p.path), '?' + unquote(q) if q else '')
+
+
+def freetv_failed():
+    """Адреса, которые своя проверка Free-TV сейчас считает упавшими (нормальная форма). Не ответил — пусто."""
+    t = text(FREETV_FAILED) or ''
+    return {norm_url(l.strip()) for l in t.splitlines() if l.strip().startswith(('http://', 'https://'))}
 
 
 def tvg_id(info):
@@ -166,10 +192,14 @@ def main():
           'ok', sum(1 for v in res.values() if v == 'ok'), 'мёртвых сегодня', sum(1 for v in res.values() if v.startswith('dead')))
 
     old = prev_state().get('dead', {})
+    ftv = freetv_failed()
+    print('Free-TV считает упавшими', len(ftv))
     dead = {}
     for url, v in res.items():
         if v.startswith('dead'):
             dead[url] = [(old.get(url) or [0])[0] + 1, v[5:]]
+        elif v.startswith('unknown') and norm_url(url) in ftv:   # мы не знаем, Free-TV видит падение — тоже день
+            dead[url] = [(old.get(url) or [0])[0] + 1, 'freetv']
     gone = {u for u, (n, _) in dead.items() if n >= STRIKES}
 
     clean = {}
@@ -199,14 +229,14 @@ def main():
     # бывшего Союза, где смотрят по-русски; раздел — страна по-русски. Тот же адрес уже есть в списке — не дублируем.
     if 'rus' in clean and 'freetv' in clean:
         head, kept, why, was = clean['rus']
-        have = {u for _, u in kept}
+        have = {norm_url(u) for _, u in kept}
         why['freetv'] = 0
         for info, url in clean['freetv'][1]:
             m = re.search(r'group-title="([^"]*)"', ' '.join(info))
             country = FREETV_RU.get(m.group(1)) if m else None
-            if not country or url in have:
+            if not country or norm_url(url) in have:
                 continue
-            have.add(url)
+            have.add(norm_url(url))
             kept.append(([re.sub(r'group-title="[^"]*"', 'group-title="%s"' % country, l) for l in info], url))
             why['freetv'] += 1
 
