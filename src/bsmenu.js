@@ -477,7 +477,7 @@ var BSMenu = (function () {
         try {
             Lampa.Listener.follow('full', function (e) {
                 // после 'complite' Lampa сама группирует кнопки и ставит фокус — встаём следом
-                if (e && e.type === 'complite' && e.body && watchEnabled()) setTimeout(function () { addWatchButton(e, 0); }, 0);
+                if (e && (e.type === 'complite' || e.type === 'complete') && e.body && watchEnabled()) setTimeout(function () { addWatchButton(e, 0); }, 0);
             });
         } catch (e) { console.log('BS watch', e); }
     }

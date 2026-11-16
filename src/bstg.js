@@ -2241,7 +2241,7 @@ var BSTelegram = (function () {
         Lampa.Activity.push({ url: '', component: 'full', id: card.id, method: kind === 't' ? 'tv' : 'movie', card: card, source: 'tmdb' });
     }
     function onFullWatch(e) {
-        if (!watchFor || !e || e.type !== 'complite' || !e.body || Date.now() > watchFor.until) return;
+        if (!watchFor || !e || (e.type !== 'complite' && e.type !== 'complete') || !e.body || Date.now() > watchFor.until) return;
         var card = e.data && e.data.movie;
         if (!card || card.id != watchFor.id) return;
         watchFor = null;
@@ -3837,7 +3837,7 @@ var BSTelegram = (function () {
     }
     function cardButton(e) {
         try {
-            if (!e || e.type !== 'complite' || !e.body) return;
+            if (!e || (e.type !== 'complite' && e.type !== 'complete') || !e.body) return;
             var card = e.data && e.data.movie;
             if (!card || !(card.id > 0) || !(card.number_of_seasons || card.first_air_date || card.original_name)) return;
             var btn = e.body.find('.button--subscribe');

@@ -408,18 +408,22 @@ var BSSources = (function () {
         return doc.body.innerHTML;
     }
     function hookBlocked() {
-        Lampa.Listener.follow('request_secuses', function (e) {
+        // Lampa переименовывает опечатки (lampa-source #411): request_secuses → request_success; слушаем оба имени
+        ['request_secuses', 'request_success'].forEach(function (ev) { Lampa.Listener.follow(ev, onReply); });
+        function onReply(e) {
             if (!e || !e.params) return;
             var out = dropBlocked(e.data);
             if (out === null) return;
             if (typeof e.abort === 'function') { var send = e.abort(); if (typeof send === 'function') send(out); return; }
-            var orig = e.params.complite;
-            if (typeof orig === 'function') e.params.complite = function () {
-                var a = Array.prototype.slice.call(arguments);
-                a[0] = out;
-                return orig.apply(this, a);
-            };
-        });
+            ['complite', 'complete'].forEach(function (k) {             // старое и новое имя (#411)
+                var orig = e.params[k];
+                if (typeof orig === 'function') e.params[k] = function () {
+                    var a = Array.prototype.slice.call(arguments);
+                    a[0] = out;
+                    return orig.apply(this, a);
+                };
+            });
+        }
     }
 
     function start() {

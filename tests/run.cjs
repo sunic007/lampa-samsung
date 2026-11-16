@@ -2215,6 +2215,12 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     store.bs_src_main = 'z01'; store.bs_src_denied_z01 = String(Date.now());
     t('главный без доступа — сначала Skaz (подписка есть), потом бесплатные', S.mainId() === 'skaz');
 }
+/* ---- ядро Lampa: имена событий, которые слушают наши модули (lampa-source #411 переименовывает опечатки) ---- */
+{
+    const core = fs.readFileSync(path.join(SRC, 'app.js'), 'utf8');
+    t('ядро Lampa: ответ запроса — request_secuses или request_success (bssources: «Заблокировано»)', /send\('request_(secuses|success)'/.test(core));
+    t("ядро Lampa: карточка готова — type 'complite' или 'complete' (кнопка «Смотреть», «Продолжить», бот)", /type: *'(complite|complete)'/.test(core));
+}
 /* ---- update.js: запасные зеркала CDN ---- */
 {
     const mk = store => {

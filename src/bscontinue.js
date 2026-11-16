@@ -513,7 +513,7 @@ var BSContinue = (function () {
             Lampa.Player.listener.follow('start', onStart);
             Lampa.Player.listener.follow('destroy', onStop);
             Lampa.PlayerVideo.listener.follow('timeupdate', onTime);
-            Lampa.Listener.follow('full', function (e) { if (e && e.type === 'complite') handleFull(e); });
+            Lampa.Listener.follow('full', function (e) { if (e && (e.type === 'complite' || e.type === 'complete')) handleFull(e); });
         } catch (e) { log('listen', e.message); }
         setTimeout(checkNews, 20000);
         // приложение живёт днями — «Новая серия» проверяем и дальше (каждую карточку не чаще раза в 12 ч, см. checkNews)
