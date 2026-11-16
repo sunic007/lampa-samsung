@@ -154,6 +154,7 @@ async function health(env) {
             const r = await fetch(`https://api.github.com/repos/${repo}/issues?per_page=1`, { signal: AbortSignal.timeout(10000),
                 headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'sunicapps-support-bot', Authorization: 'Bearer ' + env.SUPPORT_TOKEN } });
             out.issues[repo.split('/')[1]] = r.status;
+            if (env.SUPPORT_TOKEN && (r.status === 401 || r.status === 403)) out.github = 'token rejected';
         } catch (e) { out.issues[repo.split('/')[1]] = 'error'; }
     }
     return Response.json(out);

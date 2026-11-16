@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseReport, reportBody, reportTitle, handleReport, pollNtfy, REPORT_PER_DEVICE } from '../src/report.js';
 
+test('ntfy: unchanged since does not write KV', async () => {
+    for (const text of ['', JSON.stringify({ event: 'open' }), JSON.stringify({ event: 'message', id: 'm1', message: 'invalid report' })]) {
+        const writes = [];
+        const store = { get: async () => 'm1', put: async (...args) => { writes.push(args); } };
+        assert.equal(await pollNtfy({ store }, async () => text), 0);
+        assert.deepEqual(writes, []);
+    }
+});
+
 function env() {
     const kv = new Map(), calls = [];
     let n = 100;

@@ -3,6 +3,31 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as B from '../src/bot.js';
+import worker from '../src/index.js';
+
+test('/health exposes rejected GitHub credentials without secrets', async t => {
+    const token = 'test-support-secret';
+    for (const status of [200, 401, 403]) {
+        for (const rejectedRepo of ['lampa-samsung', 'tvinstaller']) {
+            t.mock.method(globalThis, 'fetch', async url => {
+                if (String(url).startsWith('https://api.github.com/')) {
+                    return new Response('[]', { status: String(url).includes('/' + rejectedRepo + '/') ? status : 200 });
+                }
+                return Response.json({ ok: true, result: { id: 1, status: 'administrator' } });
+            });
+            const response = await worker.fetch(new Request('https://worker.test/health'), {
+                SUPPORT_TOKEN: token, TELEGRAM_BOT_TOKEN: 'test-telegram-secret'
+            });
+            const text = await response.text();
+            const body = JSON.parse(text);
+            assert.equal(body.github, status === 200 ? true : 'token rejected');
+            assert.equal(body.issues[rejectedRepo], status);
+            assert.ok(!text.includes(token));
+            assert.ok(!text.includes('test-telegram-secret'));
+            t.mock.restoreAll();
+        }
+    }
+});
 
 const NOW = 1800000000;
 const GROUP = { id: -1001234567890, type: 'supergroup', username: 'sunicapps' };
