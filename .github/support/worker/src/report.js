@@ -121,6 +121,6 @@ export async function pollNtfy(deps, fetchText, max = 10) {
         if (r && r.error === 'github') break;                    // GitHub не принял — этот и дальше в следующий раз
         last = ev.id;
     }
-    if (last) await deps.store.put('rep:since', last, 3 * 86400);
+    if (last && last !== since) await deps.store.put('rep:since', last, 3 * 86400);
     return done;
 }

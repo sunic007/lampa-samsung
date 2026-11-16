@@ -79,6 +79,7 @@
     def(Object, 'entries', function (o) { var r = []; for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) r.push([k, o[k]]); return r; });
     def(Object, 'fromEntries', function (list) {
         var o = {};
+        // eslint-disable-next-line es-x/no-array-from -- Feature-tested; the Array.from polyfill below is installed before callers run.
         var arr = Array.from ? Array.from(list) : list;
         for (var i = 0; i < arr.length; i++) o[arr[i][0]] = arr[i][1];
         return o;
