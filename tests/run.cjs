@@ -1440,6 +1440,24 @@ t('буфер: по умолчанию 4 с до старта / 8 с после 
 t('буфер: «как у Samsung» — не трогаем', bufferFor('auto') === '');
 t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFER_FOR_PLAY=8,PLAYER_BUFFER_FOR_RESUME=15');
 
+/* ---- bscontinue.js: фильм и сериал с одним номером TMDB не перетирают друг друга ---- */
+{
+    const st = { bs_resume: JSON.stringify([{ card: { id: 50, title: 'Старый фильм' }, s: 0, e: 0, pos: 900, dur: 7200, at: 1 }]) };
+    const C = load('bscontinue.js', 'BSContinue', st), M = C.M;
+    t('продолжить: старая запись без типа читается, как раньше', M._load().length === 1 && !M._load()[0].mt);
+    const film = { id: 42, title: 'Фильм', original_title: 'Film', release_date: '2020-01-01' };
+    const show = { id: 42, name: 'Сериал', original_name: 'Show', first_air_date: '2021-01-01' };
+    M._record(film, 0, 0, 3000, 7200, 1000);
+    M._record(show, 1, 3, 600, 2400, 2000);
+    let L = M._load().filter(r => r.card.id === 42);
+    t('продолжить: фильм и сериал с одним номером — две записи', L.length === 2 && L.some(r => r.mt === 'movie' && r.pos === 3000) && L.some(r => r.mt === 'tv' && r.e === 3));
+    M._record(film, 0, 0, 3600, 7200, 3000);
+    L = M._load().filter(r => r.card.id === 42);
+    t('продолжить: запись фильма обновляется, сериал на месте', L.length === 2 && L.filter(r => r.mt === 'movie')[0].pos === 3600 && L.filter(r => r.mt === 'tv')[0].pos === 600);
+    M._record({ id: 50, title: 'Старый фильм' }, 0, 0, 1200, 7200, 4000);
+    L = M._load().filter(r => r.card.id === 50);
+    t('продолжить: старая запись без типа заменяется записью с типом', L.length === 1 && L[0].mt === 'movie' && L[0].pos === 1200);
+}
 /* ---- bscontinue.js: продолжить с места ---- */
 {
     const C = load('bscontinue.js', 'BSContinue'), M = C.M, st = C.store;

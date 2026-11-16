@@ -41,7 +41,18 @@ var BSContinue = (function () {
     }
     function save(list) { lsSet(KEY, JSON.stringify(list.slice(0, MAX))); }
     function keyOf(card) { return String(card.source || 'tmdb') + ':' + card.id; }
-    function find(list, card) { var k = keyOf(card); for (var i = 0; i < list.length; i++) if (keyOf(list[i].card) === k) return i; return -1; }
+    /* У TMDB фильм и сериал могут иметь один и тот же номер: запись помнит тип (mt: 'tv' | 'movie') и находится только
+     * для карточки того же типа. Старые записи без типа находятся, как раньше, по номеру (запись своего типа — первой). */
+    function kind(card) { return isTv(card) ? 'tv' : 'movie'; }
+    function find(list, card) {
+        var k = keyOf(card), t = kind(card), loose = -1;
+        for (var i = 0; i < list.length; i++) {
+            if (keyOf(list[i].card) !== k) continue;
+            if (list[i].mt === t) return i;
+            if (!list[i].mt && loose < 0) loose = i;
+        }
+        return loose;
+    }
 
     var CARD_FIELDS = ['id', 'title', 'name', 'original_title', 'original_name', 'poster_path', 'backdrop_path', 'release_date',
         'first_air_date', 'number_of_seasons', 'source', 'img', 'poster', 'vote_average', 'original_language'];
@@ -66,7 +77,7 @@ var BSContinue = (function () {
             save(list);
             return old;
         }
-        var r = { card: slim(card), s: s | 0, e: e | 0, pos: Math.floor(pos), dur: Math.floor(dur), at: now, done: done };
+        var r = { card: slim(card), mt: kind(card), s: s | 0, e: e | 0, pos: Math.floor(pos), dur: Math.floor(dur), at: now, done: done };
         if (old && old.news) r.news = old.news;
         if (old && old.checked) r.checked = old.checked;
         list.unshift(r);
