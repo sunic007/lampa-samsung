@@ -140,7 +140,10 @@ var BSSources = (function () {
         if (!next || next === cur) return false;
         var snap = {}, saved = null, i;
         for (i = 0; i < SHARED.length; i++) snap[SHARED[i]] = storeGet(SHARED[i]);
-        lsSet('bs_src_snap_' + cur, JSON.stringify(snap));
+        var json = JSON.stringify(snap);
+        lsSet('bs_src_snap_' + cur, json);
+        // память переполнена — снимок не записался: ключи не меняем, иначе выбор прежнего хозяина потерян
+        if (lsGet('bs_src_snap_' + cur) !== json) { log('снимок ключей не записался — остаюсь на', cur); return false; }
         try { saved = JSON.parse(lsGet('bs_src_snap_' + next) || 'null'); } catch (e) { saved = null; }
         // впервые — с чистого листа: чужой выбор (например, источник Skaz) новому плагину не достаётся
         for (i = 0; i < SHARED.length; i++) storeSet(SHARED[i], saved && saved[SHARED[i]] !== undefined ? saved[SHARED[i]] : '');
@@ -162,7 +165,9 @@ var BSSources = (function () {
         } catch (e) {}
         return false;
     }
-    var done = {};
+    /* Состояние загрузки плагина: 'busy' — идёт, 'ok' — подключён, число — когда все адреса не открылись.
+     * Не открылся (сеть пропала на минуту) — пробуем снова при следующем запросе, но не чаще RETRY_MS. */
+    var done = {}, RETRY_MS = 60000;
     /* Сначала https (исполняемый скрипт по открытому http можно подменить по дороге); у кого его нет (s.https false) —
      * как было, http. https не открылся (старый TLS на ТВ, кривой сертификат у хоста) — тогда http, с отметкой в журнале:
      * у каждого адреса есть запасной. Страница по https (браузер) — http браузер всё равно не пустит, его не пробуем. */
@@ -186,14 +191,18 @@ var BSSources = (function () {
     /** Подключить плагин s (один раз); cb() — когда загружен или все адреса не открылись. */
     function load(s, cb) {
         var urls = urlsFor(s), end = function () { if (cb) cb(); }, i;
-        if (done[s.id]) return end();
+        var st = done[s.id];
+        if (st === 'busy' || st === 'ok') return end();
+        if (typeof st === 'number' && Date.now() - st < RETRY_MS) return end();
         for (i = 0; i < urls.length; i++) if (loaded(urls[i])) return end();
         if (loaded(s.url)) return end();
-        done[s.id] = true;
+        if (typeof st === 'number') log('повтор', s.id);
+        done[s.id] = 'busy';
         (function next(k) {
-            if (k >= urls.length) return end();
+            if (k >= urls.length) { done[s.id] = Date.now(); return end(); }
             if (k > 0) log('не открылся ' + urls[k - 1] + ' — пробую', urls[k]);
             put(urls[k], function () {
+                done[s.id] = 'ok';
                 log('подключён', urls[k]);
                 if (/^https:/.test(urls[k])) lsSet('bs_src_tls_' + s.id, '1');       // запомнить: https здесь работает
                 end();
@@ -623,5 +632,5 @@ var BSSources = (function () {
         startSearch: startSearch, giveUp: giveUp, fallback: fallback,
         /** Видео пошло: этот источник доступен (купили подписку) — отметку «нет доступа» снимаем. */
         played: played, wasCancelled: wasCancelled, step: veilStep, veilOn: veilOn, veilOff: veilOff, veilWanted: veilWanted, _veil: function () { return veil; }, _isFake: isFake, _fakeVideo: fakeVideo, here: function () { if (!veil) return false; try { return !!compOwner(Lampa.Activity.active().component); } catch (e) { return false; } }, _denied: denied, _sortDenied: sortDenied, order: order, _search: function () { return search; }, _candidates: candidates, _looksOnline: looksOnline,
-        _swapTo: swapTo, _compOwner: compOwner, _onActivity: onActivity, _loadAll: loadAll, _dropBlocked: dropBlocked };
+        _swapTo: swapTo, _compOwner: compOwner, _onActivity: onActivity, _loadAll: loadAll, _load: load, _dropBlocked: dropBlocked };
 })();

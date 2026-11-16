@@ -380,6 +380,19 @@ gz.urls = []; gz.getFileUrl({ url: 'http://online3.skaz.tv/lite/rhsprem/movie?e=
 t('ссылка: после отказа HDRezka следующая серия сразу из Rezka', gz.urls[0] === 'online3.skaz.tv/lite/rezka/movie' && gz.urls.length === 1);
 
 const gf = { n: 0, setDefaultQuality() {}, find() { this.n++; null.indexOf('?'); } };
+{   // отмена / другая серия: поздний ответ прежнего выбора не запускает старое видео
+    const gl = { pend: [], setDefaultQuality() {}, getFileUrl(f, call) { this.pend.push({ f, call }); } };
+    X._patch(gl); const ran = [];
+    gl.getFileUrl({ url: 'http://x/s1e1' }, j => ran.push('e1:' + j.url));
+    gl.getFileUrl({ url: 'http://x/s1e2' }, j => ran.push('e2:' + j.url));
+    gl.pend[0].call({ url: 'v1' }, {}); gl.pend[1].call({ url: 'v2' }, {});
+    t('выбор: два запроса сразу (Skaz собирает плейлист плеера ТВ) — оба ответа доходят', ran.join() === 'e1:v1,e2:v2');
+    gl.getFileUrl({ url: 'http://x/s1e3' }, j => ran.push('e3:' + j.url));
+    X._dropSelection();                                     // «Назад» на «Загрузке» или уход с экрана
+    gl.pend[2].call({ url: 'v3' }, {});
+    gl.getFileUrl({ url: 'http://x/s1e4' }, j => ran.push('e4:' + j.url)); gl.pend[3].call({ url: 'v4' }, {});
+    t('выбор: отменили — поздний ответ пропущен, новый выбор работает', ran.join() === 'e1:v1,e2:v2,e4:v4');
+}
 X._patch(gf); let thrown = false; try { gf.find(); } catch (e) { thrown = true; }
 t('поиск: падение плагина не выходит наружу', !thrown && gf.n === 1);
 
@@ -1427,6 +1440,24 @@ t('буфер: по умолчанию 4 с до старта / 8 с после 
 t('буфер: «как у Samsung» — не трогаем', bufferFor('auto') === '');
 t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFER_FOR_PLAY=8,PLAYER_BUFFER_FOR_RESUME=15');
 
+/* ---- bscontinue.js: фильм и сериал с одним номером TMDB не перетирают друг друга ---- */
+{
+    const st = { bs_resume: JSON.stringify([{ card: { id: 50, title: 'Старый фильм' }, s: 0, e: 0, pos: 900, dur: 7200, at: 1 }]) };
+    const C = load('bscontinue.js', 'BSContinue', st), M = C.M;
+    t('продолжить: старая запись без типа читается, как раньше', M._load().length === 1 && !M._load()[0].mt);
+    const film = { id: 42, title: 'Фильм', original_title: 'Film', release_date: '2020-01-01' };
+    const show = { id: 42, name: 'Сериал', original_name: 'Show', first_air_date: '2021-01-01' };
+    M._record(film, 0, 0, 3000, 7200, 1000);
+    M._record(show, 1, 3, 600, 2400, 2000);
+    let L = M._load().filter(r => r.card.id === 42);
+    t('продолжить: фильм и сериал с одним номером — две записи', L.length === 2 && L.some(r => r.mt === 'movie' && r.pos === 3000) && L.some(r => r.mt === 'tv' && r.e === 3));
+    M._record(film, 0, 0, 3600, 7200, 3000);
+    L = M._load().filter(r => r.card.id === 42);
+    t('продолжить: запись фильма обновляется, сериал на месте', L.length === 2 && L.filter(r => r.mt === 'movie')[0].pos === 3600 && L.filter(r => r.mt === 'tv')[0].pos === 600);
+    M._record({ id: 50, title: 'Старый фильм' }, 0, 0, 1200, 7200, 4000);
+    L = M._load().filter(r => r.card.id === 50);
+    t('продолжить: старая запись без типа заменяется записью с типом', L.length === 1 && L[0].mt === 'movie' && L[0].pos === 1200);
+}
 /* ---- bscontinue.js: продолжить с места ---- */
 {
     const C = load('bscontinue.js', 'BSContinue'), M = C.M, st = C.store;
@@ -1787,6 +1818,18 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('фильм: 3D первым в списке — включаем обычный', B._decide([{ method: 'play', title: 'Дубляж 3D', url: '3d' }, { method: 'play', title: 'Дубляж', url: '2d' }], [], { season: 0, episode: 0 }).item.url === '2d');
     t('фильм: есть только 3D — включаем его', B._decide([{ method: 'play', title: 'Дубляж SBS', url: '3d' }], [], { season: 0, episode: 0 }).item.url === '3d');
     t('фильм: папки озвучек — мимо 3D', B._decide([{ method: 'link', text: 'Дубляж 3D', url: 'a' }, { method: 'link', text: 'Дубляж', url: 'b' }], [], {}).go === 'b');
+    {   // «нет серии» у сериала — только про эту серию: для других серий источник остаётся в выборе
+        const P = load('bsprobe.js', 'BSProbe');
+        const list = [{ key: 'rezka', url: 'a' }, { key: 'filmix', url: 'b' }];
+        P.ctx.Lampa = { Activity: { active: () => ({ movie: { id: 77 } }) }, Storage: { cache: () => ({ 77: { list } }) } };
+        const comp = {}, e5 = { season: 2, episode: 5 }, e6 = { season: 2, episode: 6 };
+        P.M._mark(77, 'rezka', 'missing', e5);
+        t('пробы: нет 5-й серии — для 5-й источник не берём, для 6-й берём', P.M._candidates(comp, [], e5).join() === 'filmix' && P.M._candidates(comp, [], e6).join() === 'rezka,filmix');
+        P.M._mark(77, 'filmix', 'dead', e5);
+        t('пробы: мёртвый поток у сериала — как раньше, источник плохой', P.M._candidates(comp, [], e6).join() === 'rezka');
+        P.M._mark(77, 'rezka', 'missing', { season: 0, episode: 0 });
+        t('пробы: фильм — «нет фильма» исключает источник, как раньше', P.M._candidates(comp, []).join() === '' && P.M.state('rezka') === 'missing');
+    }
     t('prefer2D: список без 3D не меняется', B.prefer2D([{ title: 'a' }, { title: 'b' }]).length === 2 && B.prefer2D([]).length === 0);
 }
 
@@ -2069,6 +2112,15 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('ключи: Z01 снова — его собственный выбор', mem.online_balanser === 'filmix');
     S._onActivity({ type: 'init', component: 'lampacskaz' });
     t('ключи: экран Skaz — выбор Skaz не потерян', mem.online_balanser === 'rezka');
+    {   // память переполнена: снимок не записался — хозяина и ключи не меняем (выбор Skaz не потерян)
+        const realSet = ls.setItem;
+        ls.setItem = (k, v) => { if (/^bs_src_snap_/.test(k)) throw new Error('QuotaExceededError'); realSet(k, v); };
+        const ownerWas = store.bs_src_owner;
+        delete store.bs_src_snap_skaz;
+        const sw = S._swapTo('z01');
+        t('ключи: снимок не записался (память полна) — не переключаемся, ключи прежние', sw === false && store.bs_src_owner === ownerWas && mem.online_balanser === 'rezka');
+        ls.setItem = realSet;
+    }
 }
 /* ---- bssources.js: выбор кнопки «Смотреть» и подключение плагинов ---- */
 {
@@ -2146,6 +2198,25 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     r = mk({ bs_src_z01: 'true', bs_src_online_mod: 'false', bs_src_lordfilm: 'false', bs_src_showy: 'false' }, [{ url: 'http://z01.online/live' }]);
     r.S._loadAll();
     t('подключение: плагин уже добавлен вручную — второй раз не грузим', r.loaded.length === 0);
+    {   // сеть пропала на минуту: плагин не открылся ни по одному адресу — повтор при следующем запросе, но не чаще раза в 60 с
+        let now = 1e12, fail = true, calls = 0;
+        const tried = [], store = { bs_src_z01: 'true' };
+        const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem() {} };
+        const Lampa = { Storage: { get: (k, d) => d, set() {} }, Noty: { show() {} }, Listener: { follow() {} }, Plugins: { get: () => [] },
+            Utils: { putScriptAsync: (urls, done, bad, ok) => { tried.push(urls[0]); if (fail) bad(urls[0]); else ok(urls[0]); } } };
+        const ctx = { window: { localStorage: ls }, Lampa, $: { trim: x => String(x).trim() }, console: { log() {} }, JSON, String, Object, Array, Date: { now: () => now } };
+        ctx.window.window = ctx.window; vm.createContext(ctx);
+        vm.runInContext(fs.readFileSync(path.join(SRC, 'bssources.js'), 'utf8') + ';this.M=BSSources;', ctx);
+        const z = ctx.M.list.filter(s => s.id === 'z01')[0], cb = () => { calls++; };
+        ctx.M._load(z, cb);
+        const first = tried.length;
+        ctx.M._load(z, cb); now += 30000; ctx.M._load(z, cb);
+        t('подключение: не открылся — сразу второй раз не дёргаем (пауза 60 с), cb всё равно зовётся', first === 2 && tried.length === 2 && calls === 3);
+        now += 31000; fail = false; ctx.M._load(z, cb);
+        t('подключение: через 60 с — повтор при следующем запросе, плагин подключён', tried.length === 3 && calls === 4);
+        now += 600000; ctx.M._load(z, cb);
+        t('подключение: подключённый плагин второй раз не грузим', tried.length === 3 && calls === 5);
+    }
     // поиск по всем источникам: «Смотреть» начинает с главного, сдавшийся источник — следующий включённый
     let s1 = mk({});
     t('поиск: порядок по умолчанию — Skaz, Z01, Online Mod, Lordfilm, Showy без регистрации', s1.S.order().join() === 'skaz,z01,online_mod,lordfilm,showy');
