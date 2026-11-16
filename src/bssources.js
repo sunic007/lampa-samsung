@@ -140,7 +140,10 @@ var BSSources = (function () {
         if (!next || next === cur) return false;
         var snap = {}, saved = null, i;
         for (i = 0; i < SHARED.length; i++) snap[SHARED[i]] = storeGet(SHARED[i]);
-        lsSet('bs_src_snap_' + cur, JSON.stringify(snap));
+        var json = JSON.stringify(snap);
+        lsSet('bs_src_snap_' + cur, json);
+        // память переполнена — снимок не записался: ключи не меняем, иначе выбор прежнего хозяина потерян
+        if (lsGet('bs_src_snap_' + cur) !== json) { log('снимок ключей не записался — остаюсь на', cur); return false; }
         try { saved = JSON.parse(lsGet('bs_src_snap_' + next) || 'null'); } catch (e) { saved = null; }
         // впервые — с чистого листа: чужой выбор (например, источник Skaz) новому плагину не достаётся
         for (i = 0; i < SHARED.length; i++) storeSet(SHARED[i], saved && saved[SHARED[i]] !== undefined ? saved[SHARED[i]] : '');

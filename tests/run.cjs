@@ -2069,6 +2069,15 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('ключи: Z01 снова — его собственный выбор', mem.online_balanser === 'filmix');
     S._onActivity({ type: 'init', component: 'lampacskaz' });
     t('ключи: экран Skaz — выбор Skaz не потерян', mem.online_balanser === 'rezka');
+    {   // память переполнена: снимок не записался — хозяина и ключи не меняем (выбор Skaz не потерян)
+        const realSet = ls.setItem;
+        ls.setItem = (k, v) => { if (/^bs_src_snap_/.test(k)) throw new Error('QuotaExceededError'); realSet(k, v); };
+        const ownerWas = store.bs_src_owner;
+        delete store.bs_src_snap_skaz;
+        const sw = S._swapTo('z01');
+        t('ключи: снимок не записался (память полна) — не переключаемся, ключи прежние', sw === false && store.bs_src_owner === ownerWas && mem.online_balanser === 'rezka');
+        ls.setItem = realSet;
+    }
 }
 /* ---- bssources.js: выбор кнопки «Смотреть» и подключение плагинов ---- */
 {
