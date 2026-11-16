@@ -386,12 +386,12 @@ const gf = { n: 0, setDefaultQuality() {}, find() { this.n++; null.indexOf('?');
     gl.getFileUrl({ url: 'http://x/s1e1' }, j => ran.push('e1:' + j.url));
     gl.getFileUrl({ url: 'http://x/s1e2' }, j => ran.push('e2:' + j.url));
     gl.pend[0].call({ url: 'v1' }, {}); gl.pend[1].call({ url: 'v2' }, {});
-    t('выбор: другая серия — поздний ответ первой пропущен, вторая запускается', ran.join() === 'e2:v2');
+    t('выбор: два запроса сразу (Skaz собирает плейлист плеера ТВ) — оба ответа доходят', ran.join() === 'e1:v1,e2:v2');
     gl.getFileUrl({ url: 'http://x/s1e3' }, j => ran.push('e3:' + j.url));
     X._dropSelection();                                     // «Назад» на «Загрузке» или уход с экрана
     gl.pend[2].call({ url: 'v3' }, {});
     gl.getFileUrl({ url: 'http://x/s1e4' }, j => ran.push('e4:' + j.url)); gl.pend[3].call({ url: 'v4' }, {});
-    t('выбор: отменили — поздний ответ пропущен, новый выбор работает', ran.join() === 'e2:v2,e4:v4');
+    t('выбор: отменили — поздний ответ пропущен, новый выбор работает', ran.join() === 'e1:v1,e2:v2,e4:v4');
 }
 X._patch(gf); let thrown = false; try { gf.find(); } catch (e) { thrown = true; }
 t('поиск: падение плагина не выходит наружу', !thrown && gf.n === 1);
