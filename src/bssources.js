@@ -374,7 +374,14 @@ var BSSources = (function () {
         st.textContent = '.bs-veil{position:fixed;left:0;top:0;right:0;bottom:0;z-index:100000;background:#0b0d10;display:flex;align-items:center;justify-content:center;color:#fff}' +
             '.bs-veil__box{text-align:center;max-width:70%}.bs-veil__img{width:12em;border-radius:.6em;margin-bottom:1.5em;box-shadow:0 1em 3em rgba(0,0,0,.6)}' +
             '.bs-veil__title{font-size:1.8em;font-weight:600;margin-bottom:.6em}.bs-veil__text{font-size:1.3em;opacity:.85}' +
-            '.bs-veil__hint{margin-top:2em;font-size:1em;opacity:.5}';
+            '.bs-veil__hint{margin-top:2em;font-size:1em;opacity:.5}' +
+            // крутилка (Chromium 47 понимает и без -webkit-, префикс — для совсем старых), шаг поиска и секунды
+            '.bs-veil__spin{width:2.6em;height:2.6em;margin:0 auto 1.2em;border-radius:50%;border:.28em solid rgba(255,255,255,.18);' +
+            'border-top-color:#fff;-webkit-animation:bsVeilSpin .9s linear infinite;animation:bsVeilSpin .9s linear infinite}' +
+            '@-webkit-keyframes bsVeilSpin{to{-webkit-transform:rotate(360deg)}}@keyframes bsVeilSpin{to{transform:rotate(360deg)}}' +
+            '.bs-veil__step{margin-top:.8em;font-size:1.05em;opacity:.7}' +
+            '.bs-veil__bar{width:16em;height:.3em;margin:1em auto 0;border-radius:.2em;background:rgba(255,255,255,.15);overflow:hidden}' +
+            '.bs-veil__fill{height:100%;width:0;background:#fff;-webkit-transition:width .4s;transition:width .4s}';
         document.head.appendChild(st);
     }
     function veilOn(card) {
@@ -382,7 +389,9 @@ var BSSources = (function () {
         if (!veilWanted(card)) return false;
         try {
             veilCss();
-            var el = $('<div class="bs-veil"><div class="bs-veil__box"><div class="bs-veil__title"></div><div class="bs-veil__text"></div><div class="bs-veil__hint">Назад — отменить</div></div></div>');
+            var el = $('<div class="bs-veil"><div class="bs-veil__box"><div class="bs-veil__title"></div><div class="bs-veil__spin"></div>' +
+                '<div class="bs-veil__text"></div><div class="bs-veil__step"></div><div class="bs-veil__bar"><div class="bs-veil__fill"></div></div>' +
+                '<div class="bs-veil__hint">Назад — отменить</div></div></div>');
             el.find('.bs-veil__title').text(card.title || card.name || '');
             el.find('.bs-veil__text').text('Подбираю, где посмотреть…');
             if (card.poster_path) el.find('.bs-veil__box').prepend($('<img class="bs-veil__img">').attr('src', 'https://image.tmdb.org/t/p/w300' + card.poster_path));
@@ -396,17 +405,35 @@ var BSSources = (function () {
                 if (e.type === 'keydown' && BACK_KEYS.indexOf(k) >= 0 && !e.repeat) veilCancel();
             };
             ['keydown', 'keyup', 'keypress'].forEach(function (t) { window.addEventListener(t, keys, true); });
-            veil = { el: el, card: card, keys: keys, down: down, playing: false, step: 0, firstAt: 0, all: setTimeout(function () { veilGiveUp('Не нашёл быстро — выберите вручную'); }, VEIL_MAX) };
+            veil = { el: el, card: card, keys: keys, down: down, playing: false, step: 0, firstAt: 0, at: Date.now(), all: setTimeout(function () { veilGiveUp('Не нашёл быстро — выберите вручную'); }, VEIL_MAX) };
+            veil.tick = setInterval(veilTick, 1000);
             veilStep();
+            veilTick();
             return true;
         } catch (e) { log('заставка', e.message); veilOff(); return false; }
     }
     function veilSay(t) { try { if (veil) veil.el.find('.bs-veil__text').text(String(t)); } catch (e) {} }
+    /** «Источник 2 из 5 · Z01 · 12 с» и полоска: какой по счёту источник проверяем (search.tried) из включённых (order),
+     *  секунды — с начала поиска; полоска — доля пройденных источников. */
+    function veilProgress(now) {
+        if (!search) return null;
+        var total = order().length, n = Math.min(search.tried.length, total) || 1;
+        if (n > total) total = n;
+        return { n: n, total: total, name: labelOf(search.current || ''), sec: Math.round(((now || Date.now()) - (veil ? veil.at : Date.now())) / 1000) };
+    }
+    function veilTick() {
+        if (!veil) return;
+        var p = veilProgress();
+        try {
+            veil.el.find('.bs-veil__step').text(p ? 'Источник ' + p.n + ' из ' + p.total + (p.name ? ' · ' + p.name : '') + ' · ' + p.sec + ' с' : '');
+            veil.el.find('.bs-veil__fill').css('width', p ? Math.round(p.n / (p.total + 1) * 100) + '%' : '0');
+        } catch (e) {}
+    }
     function veilOff() {
         var v = veil;
         veil = null;
         if (!v) return;
-        clearTimeout(v.all); clearTimeout(v.step); clearTimeout(v.ext);
+        clearTimeout(v.all); clearTimeout(v.step); clearTimeout(v.ext); clearInterval(v.tick);
         ['keydown', 'keyup', 'keypress'].forEach(function (t) { window.removeEventListener(t, v.keys, true); });
         try { v.el.remove(); } catch (e) {}
         if (v.after) notyOut(v.after);                           // важное, что было сказано под заставкой (главный источник сменён)
@@ -575,6 +602,7 @@ var BSSources = (function () {
                     var said = 'Главный источник теперь «' + labelOf(list[0].key) + '». Вернуть «' + cur + '»: Sunic Apps → Онлайн-источники';
                     if (veil) { veil.after = said; veilSay('Ищу в «' + labelOf(list[0].key) + '»'); } else noty(said);
                 } else noty('Ищу в «' + labelOf(list[0].key) + '»');
+                veilTick();
                 list[0].btn.trigger('hover:enter');
             }, 300);
         })();
@@ -631,6 +659,6 @@ var BSSources = (function () {
     return { start: start, owner: owner, mainId: mainId, isMain: isMain, pick: pick, list: LIST, useMain: useMain,
         startSearch: startSearch, giveUp: giveUp, fallback: fallback,
         /** Видео пошло: этот источник доступен (купили подписку) — отметку «нет доступа» снимаем. */
-        played: played, wasCancelled: wasCancelled, step: veilStep, veilOn: veilOn, veilOff: veilOff, veilWanted: veilWanted, _veil: function () { return veil; }, _isFake: isFake, _fakeVideo: fakeVideo, here: function () { if (!veil) return false; try { return !!compOwner(Lampa.Activity.active().component); } catch (e) { return false; } }, _denied: denied, _sortDenied: sortDenied, order: order, _search: function () { return search; }, _candidates: candidates, _looksOnline: looksOnline,
+        played: played, _veilProgress: veilProgress, wasCancelled: wasCancelled, step: veilStep, veilOn: veilOn, veilOff: veilOff, veilWanted: veilWanted, _veil: function () { return veil; }, _isFake: isFake, _fakeVideo: fakeVideo, here: function () { if (!veil) return false; try { return !!compOwner(Lampa.Activity.active().component); } catch (e) { return false; } }, _denied: denied, _sortDenied: sortDenied, order: order, _search: function () { return search; }, _candidates: candidates, _looksOnline: looksOnline,
         _swapTo: swapTo, _compOwner: compOwner, _onActivity: onActivity, _loadAll: loadAll, _load: load, _dropBlocked: dropBlocked };
 })();
