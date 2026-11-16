@@ -2204,7 +2204,7 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
         /Главный источник теперь «Z01»\. Вернуть «Skaz»: Sunic Apps → Онлайн-источники/.test(notes[1]));
     // видео не пошло в Z01, свои источники Z01 кончились — сразу следующий плагин, а не «выберите вручную»
     comp = 'lampac_z'; pressed.length = 0; card.push(b('view--online view--online_mod', 'Online Mod', 'Онлайн'));
-    t('видео не пошло: следующий плагин сам (Online Mod), без поиска «Смотреть»', S.fallback('noanswer') === true && pressed.join() === 'Online Mod:hover:enter');
+    t('2.3.94: переход к следующему плагину из плеера выключен (на ТВ шёл по кругу) — ничего не нажимаем', S.fallback('noanswer') === false && pressed.length === 0);
     comp = 'full';
     t('не экран источника — fallback ничего не делает', S.fallback('noanswer') === false);
     // сбой связи (noConnectToServer без accsdb) — не «нет доступа» на 7 дней

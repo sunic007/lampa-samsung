@@ -28,7 +28,7 @@
  * возвращаются (bs_player_forced хранит прежние, если приложение закрыли посреди просмотра).
  */
 var BSGuard = (function () {
-    var cfg = { NUDGE: 8000, RESTART_AGAIN: 10 * 60000, BUFFER_GRACE: 60000, START_LIMIT: 25000, ONLINE_START: 15000, PLAY_LIMIT: 20000, ERROR_GRACE: 6000, START_ERROR_GRACE: 2000, CLOSE_DELAY: 4000, TICK: 1000, RESUME_GRACE: 25000 };
+    var cfg = { NUDGE: 8000, RESTART_AGAIN: 10 * 60000, BUFFER_GRACE: 60000, START_LIMIT: 25000, ONLINE_START: 25000, PLAY_LIMIT: 20000, ERROR_GRACE: 6000, START_ERROR_GRACE: 2000, CLOSE_DELAY: 4000, TICK: 1000, RESUME_GRACE: 25000 };
     var s = null;          // текущий сеанс просмотра
     var timer = null;
     var HLS_START_LIMIT = 10000, HLS_QUIET = 6000, HLS_HINT = 3000, HLS_LEARN = 30 * 24 * 3600 * 1000, LEARN_KEY = 'bs_hls_inner', FORCED_KEY = 'bs_player_forced';

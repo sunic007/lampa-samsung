@@ -324,7 +324,11 @@ var BSSources = (function () {
     /** Видео не пошло, а свои источники плагина кончились (bsfix.js, playerguard.js): не «выберите вручную», а
      *  следующий плагин — как при поиске «Смотреть». Поиска не было (выбрали источник сами) или он устарел — начинаем
      *  с текущего. true — идём к следующему; false — некуда (не карточка, нет фильма). */
+    /* 2.3.94: на ТВ владельца переход по кругу открывал и закрывал источники и включил не тот фильм — выключено,
+     * пока не разберёмся (как до 2.3.93: «выберите вручную»). */
+    var FALLBACK = false;
     function fallback(why) {
+        if (!FALLBACK) return false;
         var id = activeMovieId(), comp = '';
         if (!id) return false;
         try { if (Lampa.Player.opened()) return false; } catch (e) {}   // пока закрывали, включили другое видео — не мешаем
@@ -436,6 +440,6 @@ var BSSources = (function () {
     return { start: start, owner: owner, mainId: mainId, isMain: isMain, pick: pick, list: LIST, useMain: useMain,
         startSearch: startSearch, giveUp: giveUp, fallback: fallback,
         /** Видео пошло: этот источник доступен (купили подписку) — отметку «нет доступа» снимаем. */
-        played: function () { try { var w = compOwner(Lampa.Activity.active().component); if (w) clearDenied(w); } catch (e) {} }, here: function () { try { return !!compOwner(Lampa.Activity.active().component); } catch (e) { return false; } }, _denied: denied, _sortDenied: sortDenied, order: order, _search: function () { return search; }, _candidates: candidates, _looksOnline: looksOnline,
+        played: function () { try { var w = compOwner(Lampa.Activity.active().component); if (w) clearDenied(w); } catch (e) {} }, here: function () { if (!FALLBACK) return false; try { return !!compOwner(Lampa.Activity.active().component); } catch (e) { return false; } }, _denied: denied, _sortDenied: sortDenied, order: order, _search: function () { return search; }, _candidates: candidates, _looksOnline: looksOnline,
         _swapTo: swapTo, _compOwner: compOwner, _onActivity: onActivity, _loadAll: loadAll, _dropBlocked: dropBlocked };
 })();
