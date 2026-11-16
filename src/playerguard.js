@@ -28,7 +28,7 @@
  * возвращаются (bs_player_forced хранит прежние, если приложение закрыли посреди просмотра).
  */
 var BSGuard = (function () {
-    var cfg = { NUDGE: 8000, RESTART_AGAIN: 10 * 60000, BUFFER_GRACE: 60000, START_LIMIT: 25000, ONLINE_START: 25000, PLAY_LIMIT: 20000, ERROR_GRACE: 6000, START_ERROR_GRACE: 2000, CLOSE_DELAY: 4000, TICK: 1000, RESUME_GRACE: 25000 };
+    var cfg = { NUDGE: 8000, RESTART_AGAIN: 10 * 60000, BUFFER_GRACE: 60000, START_LIMIT: 25000, ONLINE_START: 15000, PLAY_LIMIT: 20000, ERROR_GRACE: 6000, START_ERROR_GRACE: 2000, CLOSE_DELAY: 4000, TICK: 1000, RESUME_GRACE: 25000 };
     var s = null;          // текущий сеанс просмотра
     var timer = null;
     var HLS_START_LIMIT = 10000, HLS_QUIET = 6000, HLS_HINT = 3000, HLS_LEARN = 30 * 24 * 3600 * 1000, LEARN_KEY = 'bs_hls_inner', FORCED_KEY = 'bs_player_forced';
@@ -286,12 +286,14 @@ var BSGuard = (function () {
         if (t > s.lastTime + 0.2 || t < s.lastTime - 2) {
             s.bufPct = -1; s.bufSince = 0;
             if (s.lastTime >= 0 || t > 0.2) {
+                var fake = false;
                 if (!s.everPlayed) {
-                    try { if (window.BSFix && BSFix.played) BSFix.played(); } catch (err) {}   // автоподбор нашёл рабочий
-                    try { if (window.BSSources && BSSources.played) BSSources.played(); } catch (err) {}   // источник снова доступен
+                    // заставка «Подбираю»: подделка (видео гораздо короче фильма) — BSSources сам закроет и поищет дальше
+                    try { fake = !!(window.BSSources && BSSources.played && BSSources.played(e.duration) === 'fake'); } catch (err) {}
+                    if (!fake) try { if (window.BSFix && BSFix.played) BSFix.played(); } catch (err) {}   // автоподбор нашёл рабочий
                     log('видео пошло через', ((Date.now() - s.startedAt) / 1000).toFixed(1), 'с,', s.avplay ? 'плеер ТВ' : 'встроенный', s.hls ? 'HLS' : 'файл', s.avSignal ? '(был сигнал загрузки)' : '');
                 }
-                s.played = true; s.everPlayed = true; s.watched = true;   // watched подмена потока не сбрасывает
+                s.played = true; s.everPlayed = true; if (!fake) s.watched = true;   // watched подмена потока не сбрасывает
             }
             s.lastTime = t;
             progress();
@@ -337,7 +339,7 @@ var BSGuard = (function () {
         }
         if (s.played && !s.avplay && !s.nudged && Date.now() - s.lastProgressAt > cfg.NUDGE) { s.nudged = true; nudge(); }
         // онлайн-источник с запасными: ждать первой картинки 15 с, а не 25 — дальше подбор другого (торренты — как было)
-        if (s.online === undefined) s.online = !s.iptv && (autoAvailable() || canOther());
+        if (s.online === undefined) s.online = !s.iptv && canOther();   // только под заставкой «Подбираю» (есть куда перейти)
         var limit = s.played ? cfg.PLAY_LIMIT : hlsWait ? (s.avSignal ? HLS_START_LIMIT : HLS_QUIET) : s.online ? cfg.ONLINE_START : cfg.START_LIMIT;
         if (Date.now() - s.lastProgressAt > limit) escalate(s.played ? 'остановился' : 'не запускается');
     }

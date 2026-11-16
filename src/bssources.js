@@ -24,7 +24,8 @@ var BSSources = (function () {
     function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
     function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
     function on(k, def) { var v = lsGet(k); return v === null ? def : v === 'true'; }
-    function noty(t) { try { Lampa.Noty.show(t, { time: 5000 }); } catch (e) {} }
+    function noty(t) { if (veil) return veilSay(t); try { Lampa.Noty.show(t, { time: 5000 }); } catch (e) {} }
+    function notyOut(t) { try { Lampa.Noty.show(t, { time: 6000 }); } catch (e) {} }   // мимо заставки
     function log(a, b) { try { console.log('BS sources', a, b === undefined ? '' : b); } catch (e) {} }
     function sub(btn) { return String(btn.attr('data-subtitle') || btn.data('subtitle') || ''); }
     function hasCls(c) { return function (btn) { return btn.hasClass(c); }; }
@@ -324,11 +325,11 @@ var BSSources = (function () {
     /** Видео не пошло, а свои источники плагина кончились (bsfix.js, playerguard.js): не «выберите вручную», а
      *  следующий плагин — как при поиске «Смотреть». Поиска не было (выбрали источник сами) или он устарел — начинаем
      *  с текущего. true — идём к следующему; false — некуда (не карточка, нет фильма). */
-    /* 2.3.94: на ТВ владельца переход по кругу открывал и закрывал источники и включил не тот фильм — выключено,
-     * пока не разберёмся (как до 2.3.93: «выберите вручную»). */
-    var FALLBACK = false;
+    /* Переход к следующему плагину из плеера — только под заставкой «Подбираю, где посмотреть» (veil): человек не
+     * видит, как экраны открываются и закрываются (2.3.93 делал это на виду — пугало). Без заставки — как в 2.3.94:
+     * «выберите вручную». */
     function fallback(why) {
-        if (!FALLBACK) return false;
+        if (!veil) return false;
         var id = activeMovieId(), comp = '';
         if (!id) return false;
         try { if (Lampa.Player.opened()) return false; } catch (e) {}   // пока закрывали, включили другое видео — не мешаем
@@ -340,6 +341,132 @@ var BSSources = (function () {
         search.fallback = true;
         return giveUp(comp, why || 'noanswer');
     }
+    /* ---------- заставка «Подбираю, где посмотреть» ----------
+     * «Смотреть» на фильме (или на начатом сериале — плагин сам включит его серию): поверх всего (и плеера) — постер и
+     * «Подбираю, где посмотреть…»; под ней поиск по источникам идёт как обычно (экраны плагинов, плеер, переход к
+     * следующему), но человек этого не видит, а пульт ловим мы: «Назад» — отмена, остальное — ничего. Снимаем, когда
+     * видео пошло (и это не подделка), когда источник показал список и сам ничего не включает (выбрать вручную) —
+     * STEP_WAIT, и не дольше VEIL_MAX. Подделка — видео гораздо короче фильма по TMDB (заглушка, реклама под чужим
+     * названием): источник помним для этого фильма (bs_src_fake, 7 дней) и ищем дальше. */
+    var VEIL_MAX = 75000, STEP_WAIT = 20000, FAKE_LIFE = 7 * 86400000, BACK_KEYS = [8, 27, 10009, 461, 4];
+    var veil = null;     // {el, card, all, step, keys, playing}
+    function isTv(card) { return !!(card && (card.original_name || card.number_of_seasons || card.first_air_date)); }
+    /** Ставить ли заставку: фильм — всегда; сериал — только начатый (иначе плагин ждёт выбора серии). */
+    function veilWanted(card) {
+        if (!card || !(card.id > 0) || lsGet('bs_auto_source') === 'false') return false;
+        if (!isTv(card)) return true;
+        try { return (window.BSContinue && BSContinue._load ? BSContinue._load() : []).some(function (r) { return r && r.card && r.card.id == card.id; }); }
+        catch (e) { return false; }
+    }
+    function veilCss() {
+        if (document.getElementById('bs-veil-css')) return;
+        var st = document.createElement('style');
+        st.id = 'bs-veil-css';
+        st.textContent = '.bs-veil{position:fixed;left:0;top:0;right:0;bottom:0;z-index:100000;background:#0b0d10;display:flex;align-items:center;justify-content:center;color:#fff}' +
+            '.bs-veil__box{text-align:center;max-width:70%}.bs-veil__img{width:12em;border-radius:.6em;margin-bottom:1.5em;box-shadow:0 1em 3em rgba(0,0,0,.6)}' +
+            '.bs-veil__title{font-size:1.8em;font-weight:600;margin-bottom:.6em}.bs-veil__text{font-size:1.3em;opacity:.85}' +
+            '.bs-veil__hint{margin-top:2em;font-size:1em;opacity:.5}';
+        document.head.appendChild(st);
+    }
+    function veilOn(card) {
+        veilOff();
+        if (!veilWanted(card)) return false;
+        try {
+            veilCss();
+            var el = $('<div class="bs-veil"><div class="bs-veil__box"><div class="bs-veil__title"></div><div class="bs-veil__text"></div><div class="bs-veil__hint">Назад — отменить</div></div></div>');
+            el.find('.bs-veil__title').text(card.title || card.name || '');
+            el.find('.bs-veil__text').text('Подбираю, где посмотреть…');
+            if (card.poster_path) el.find('.bs-veil__box').prepend($('<img class="bs-veil__img">').attr('src', 'https://image.tmdb.org/t/p/w300' + card.poster_path));
+            $('body').append(el);
+            var keys = function (e) {
+                if (!veil) return;
+                var k = e.keyCode || e.which;
+                e.preventDefault(); e.stopPropagation(); if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+                if (e.type === 'keydown' && BACK_KEYS.indexOf(k) >= 0) veilCancel();
+            };
+            ['keydown', 'keyup', 'keypress'].forEach(function (t) { window.addEventListener(t, keys, true); });
+            veil = { el: el, card: card, keys: keys, playing: false, step: 0, all: setTimeout(function () { veilGiveUp('Не нашёл быстро — выберите вручную'); }, VEIL_MAX) };
+            veilStep();
+            return true;
+        } catch (e) { log('заставка', e.message); veilOff(); return false; }
+    }
+    function veilSay(t) { try { if (veil) veil.el.find('.bs-veil__text').text(String(t)); } catch (e) {} }
+    function veilOff() {
+        var v = veil;
+        veil = null;
+        if (!v) return;
+        clearTimeout(v.all); clearTimeout(v.step);
+        ['keydown', 'keyup', 'keypress'].forEach(function (t) { window.removeEventListener(t, v.keys, true); });
+        try { v.el.remove(); } catch (e) {}
+    }
+    /** Новый шаг поиска (открыли источник, закрыли плеер): если STEP_WAIT ничего не играет — источник ждёт выбора. */
+    function veilStep() {
+        if (!veil) return;
+        clearTimeout(veil.step);
+        veil.step = setTimeout(function () {
+            if (!veil || veil.playing) return;
+            var name = '';
+            try { name = labelOf(compOwner(Lampa.Activity.active().component) || (search && search.current) || ''); } catch (e) {}
+            veilOff();
+            notyOut(name ? 'Выберите, что включить в «' + name + '»' : 'Выберите источник');
+        }, STEP_WAIT);
+    }
+    function veilGiveUp(t) {
+        if (!veil) return;
+        veilOff();
+        search = null;
+        try { if (Lampa.Player.opened()) Lampa.Player.close(); } catch (e) {}
+        notyOut(t);
+    }
+    /** «Назад» на заставке: всё остановить и вернуться на карточку. */
+    function veilCancel() {
+        veilOff();
+        search = null;
+        try { if (Lampa.Player.opened()) Lampa.Player.close(); } catch (e) {}
+        setTimeout(function () { try { if (compOwner(Lampa.Activity.active().component)) Lampa.Activity.backward(); } catch (e) {} }, 300);
+    }
+    function onPlayer(e) {
+        if (!veil || !e) return;
+        if (e.type === 'start') { veil.playing = true; clearTimeout(veil.step); }
+        else if (e.type === 'destroy') { veil.playing = false; veilStep(); }   // не пошло — сторож закрыл, ищем дальше
+    }
+
+    function fakes() { var m = null; try { m = JSON.parse(lsGet('bs_src_fake') || 'null'); } catch (e) {} return m && typeof m === 'object' ? m : {}; }
+    function isFake(movie, src) { var r = fakes()[movie + ':' + src]; return !!r && Date.now() - r < FAKE_LIFE; }
+    function markFake(movie, src) {
+        if (!movie || !src) return;
+        var m = fakes(), now = Date.now(), out = {};
+        m[movie + ':' + src] = now;
+        Object.keys(m).filter(function (k) { return now - m[k] < FAKE_LIFE; }).slice(-100).forEach(function (k) { out[k] = m[k]; });
+        lsSet('bs_src_fake', JSON.stringify(out));
+    }
+    /** Подделка ли: фильм по TMDB (runtime, минуты) от 40 мин, а видео (dur, секунды) короче половины или 10 мин.
+     *  Сериалы, неизвестная длина, прямой эфир (Infinity) — не судим. */
+    function fakeVideo(card, dur) {
+        var rt = +(card && card.runtime) || 0;
+        if (isTv(card) || rt < 40 || !(dur > 0) || !isFinite(dur)) return false;
+        return dur < 600 || dur < rt * 60 * 0.5;
+    }
+    /** Сторож плеера: видео пошло (dur — длина в секундах, если знает). 'fake' — подделка: плеер закрываем сами и
+     *  ищем дальше; иначе заставку снимаем и отметку «нет доступа» у источника стираем. */
+    function played(dur) {
+        var w = '';
+        try { w = compOwner(Lampa.Activity.active().component); } catch (e) {}
+        if (veil && fakeVideo(veil.card, dur)) {
+            var v = veil, who = w || (search && search.current) || '';
+            markFake(v.card.id, who);
+            log('подделка', who + ' ' + Math.round(dur) + ' с при ' + v.card.runtime + ' мин');
+            veilSay('В «' + labelOf(who) + '» под этим названием другое видео — ищу дальше');
+            v.playing = false;
+            try { Lampa.Player.close(); } catch (e) {}
+            setTimeout(function () { if (veil === v && !fallback('fake')) veilGiveUp('Рабочий источник не найден — выберите вручную'); }, 900);
+            return 'fake';
+        }
+        if (w) clearDenied(w);
+        if (veil) { veilOff(); if (w) notyOut('Нашёл в «' + labelOf(w) + '»'); }
+        return '';
+    }
+
     /** «Смотреть» нажали: поиск по источникам для этого фильма, первый — first (ключ кнопки). */
     function startSearch(movieId, first) {
         first = first || mainId();
@@ -360,7 +487,7 @@ var BSSources = (function () {
         var skazOff = closed && sameSource(who, mainWas);   // главный без доступа — дальше главным бесплатный
         if (why === 'denied') markDenied(who);                     // кнопка без экрана (search.current)
         noty(skazOff ? (who === 'skaz' ? 'Skaz — по подписке, её нет' : 'В «' + cur + '» нет доступа') + '. Включаю бесплатный источник' :
-            (closed ? 'В «' + cur + '» нет доступа' : why === 'noanswer' ? '«' + cur + '» не отвечает' : 'В «' + cur + '» нет') +
+            (closed ? 'В «' + cur + '» нет доступа' : why === 'fake' ? 'В «' + cur + '» не тот фильм' : why === 'noanswer' ? '«' + cur + '» не отвечает' : 'В «' + cur + '» нет') +
             ' — ищу в других источниках');
         log('поиск: ' + who + ' сдался', why);
         try { Lampa.Activity.backward(); } catch (e) {}
@@ -374,13 +501,16 @@ var BSSources = (function () {
                     if (a.component !== 'full' || (a.card || a.movie || {}).id != id) return press();
                     $(a.activity.render()).find('.buttons--container > .full-start__button').each(function () { btns.push($(this)); });
                     list = candidates(btns).filter(function (c) { return !triedHas(c.key); });
+                    list = list.filter(function (c) { return !isFake(id, c.key); }).concat(list.filter(function (c) { return isFake(id, c.key); }));
                 } catch (e) { return press(); }
                 if (!list.length) {
                     var fb = s.fallback;
                     search = null;
+                    veilOff();
                     // видео не пошло нигде (fallback) — фильм есть, просто не играет: выбрать вручную
-                    return noty(fb ? 'Рабочий источник не найден — выберите вручную' : 'Фильма нет ни в одном источнике — попробуйте позже или другой фильм');
+                    return notyOut(fb ? 'Рабочий источник не найден — выберите вручную' : 'Фильма нет ни в одном источнике — попробуйте позже или другой фильм');
                 }
+                veilStep();
                 s.tried.push(list[0].key);
                 s.current = list[0].key;
                 if (skazOff && byId(list[0].key)) {
@@ -434,12 +564,13 @@ var BSSources = (function () {
         try { addSettings(); } catch (e) { log('настройки', e.message); }
         try { Lampa.Listener.follow('activity', onActivity); } catch (e) {}
         try { hookBlocked(); } catch (e) { log('заблокированные', e.message); }
+        try { Lampa.Player.listener.follow('start', onPlayer); Lampa.Player.listener.follow('destroy', onPlayer); } catch (e) {}
         try { loadAll(); } catch (e) { log('подключение', e.message); }
     }
 
     return { start: start, owner: owner, mainId: mainId, isMain: isMain, pick: pick, list: LIST, useMain: useMain,
         startSearch: startSearch, giveUp: giveUp, fallback: fallback,
         /** Видео пошло: этот источник доступен (купили подписку) — отметку «нет доступа» снимаем. */
-        played: function () { try { var w = compOwner(Lampa.Activity.active().component); if (w) clearDenied(w); } catch (e) {} }, here: function () { if (!FALLBACK) return false; try { return !!compOwner(Lampa.Activity.active().component); } catch (e) { return false; } }, _denied: denied, _sortDenied: sortDenied, order: order, _search: function () { return search; }, _candidates: candidates, _looksOnline: looksOnline,
+        played: played, veilOn: veilOn, veilOff: veilOff, veilWanted: veilWanted, _veil: function () { return veil; }, _isFake: isFake, _fakeVideo: fakeVideo, here: function () { if (!veil) return false; try { return !!compOwner(Lampa.Activity.active().component); } catch (e) { return false; } }, _denied: denied, _sortDenied: sortDenied, order: order, _search: function () { return search; }, _candidates: candidates, _looksOnline: looksOnline,
         _swapTo: swapTo, _compOwner: compOwner, _onActivity: onActivity, _loadAll: loadAll, _dropBlocked: dropBlocked };
 })();

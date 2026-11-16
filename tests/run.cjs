@@ -2214,6 +2214,14 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     // главный z01 без доступа, у Skaz подписка — главным Skaz, а не Online Mod
     store.bs_src_main = 'z01'; store.bs_src_denied_z01 = String(Date.now());
     t('главный без доступа — сначала Skaz (подписка есть), потом бесплатные', S.mainId() === 'skaz');
+    // подделки: видео гораздо короче фильма по TMDB
+    t('подделка: 3 мин при фильме на 2 ч — да; 1 ч 50 мин — нет', S._fakeVideo({ id: 1, title: 'X', runtime: 120 }, 180) && !S._fakeVideo({ id: 1, title: 'X', runtime: 120 }, 6600));
+    t('подделка: длина неизвестна, прямой эфир, короткий фильм, сериал — не судим', !S._fakeVideo({ runtime: 120 }, 0) && !S._fakeVideo({ runtime: 120 }, Infinity) &&
+        !S._fakeVideo({ runtime: 30 }, 60) && !S._fakeVideo({ original_name: 'S', runtime: 120 }, 60));
+    t('заставка: фильм — да, сериал без «Продолжить» — нет, автоподбор выключен — нет', S.veilWanted({ id: 5, title: 'X' }) && !S.veilWanted({ id: 6, original_name: 'S' }) &&
+        (store.bs_auto_source = 'false', !S.veilWanted({ id: 5, title: 'X' })));
+    delete store.bs_auto_source;
+    t('без заставки — переход из плеера выключен, как в 2.3.94', S._veil() === null && S.fallback('noanswer') === false);
 }
 /* ---- ядро Lampa: имена событий, которые слушают наши модули (lampa-source #411 переименовывает опечатки) ---- */
 {

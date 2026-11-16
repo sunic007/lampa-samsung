@@ -423,6 +423,8 @@ var BSMenu = (function () {
                 var go = function () {
                     // поиск по всем источникам: этот не нашёл — следующий (bssources.js giveUp)
                     try { if (window.BSSources && BSSources.startSearch) BSSources.startSearch(((e.data || {}).movie || {}).id || cardId(), BSSources.owner(src)); } catch (err) {}
+                    // поиск — под заставкой «Подбираю, где посмотреть»: экраны источников и переходы человек не видит
+                    try { if (window.BSSources && BSSources.veilOn) BSSources.veilOn((e.data || {}).movie || (Lampa.Activity.active() || {}).card); } catch (err) {}
                     src.trigger('hover:enter');
                 };
                 go();
