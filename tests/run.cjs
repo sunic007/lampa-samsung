@@ -2146,6 +2146,25 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     r = mk({ bs_src_z01: 'true', bs_src_online_mod: 'false', bs_src_lordfilm: 'false', bs_src_showy: 'false' }, [{ url: 'http://z01.online/live' }]);
     r.S._loadAll();
     t('подключение: плагин уже добавлен вручную — второй раз не грузим', r.loaded.length === 0);
+    {   // сеть пропала на минуту: плагин не открылся ни по одному адресу — повтор при следующем запросе, но не чаще раза в 60 с
+        let now = 1e12, fail = true, calls = 0;
+        const tried = [], store = { bs_src_z01: 'true' };
+        const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem() {} };
+        const Lampa = { Storage: { get: (k, d) => d, set() {} }, Noty: { show() {} }, Listener: { follow() {} }, Plugins: { get: () => [] },
+            Utils: { putScriptAsync: (urls, done, bad, ok) => { tried.push(urls[0]); if (fail) bad(urls[0]); else ok(urls[0]); } } };
+        const ctx = { window: { localStorage: ls }, Lampa, $: { trim: x => String(x).trim() }, console: { log() {} }, JSON, String, Object, Array, Date: { now: () => now } };
+        ctx.window.window = ctx.window; vm.createContext(ctx);
+        vm.runInContext(fs.readFileSync(path.join(SRC, 'bssources.js'), 'utf8') + ';this.M=BSSources;', ctx);
+        const z = ctx.M.list.filter(s => s.id === 'z01')[0], cb = () => { calls++; };
+        ctx.M._load(z, cb);
+        const first = tried.length;
+        ctx.M._load(z, cb); now += 30000; ctx.M._load(z, cb);
+        t('подключение: не открылся — сразу второй раз не дёргаем (пауза 60 с), cb всё равно зовётся', first === 2 && tried.length === 2 && calls === 3);
+        now += 31000; fail = false; ctx.M._load(z, cb);
+        t('подключение: через 60 с — повтор при следующем запросе, плагин подключён', tried.length === 3 && calls === 4);
+        now += 600000; ctx.M._load(z, cb);
+        t('подключение: подключённый плагин второй раз не грузим', tried.length === 3 && calls === 5);
+    }
     // поиск по всем источникам: «Смотреть» начинает с главного, сдавшийся источник — следующий включённый
     let s1 = mk({});
     t('поиск: порядок по умолчанию — Skaz, Z01, Online Mod, Lordfilm, Showy без регистрации', s1.S.order().join() === 'skaz,z01,online_mod,lordfilm,showy');
