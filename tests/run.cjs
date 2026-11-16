@@ -1800,6 +1800,18 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('фильм: 3D первым в списке — включаем обычный', B._decide([{ method: 'play', title: 'Дубляж 3D', url: '3d' }, { method: 'play', title: 'Дубляж', url: '2d' }], [], { season: 0, episode: 0 }).item.url === '2d');
     t('фильм: есть только 3D — включаем его', B._decide([{ method: 'play', title: 'Дубляж SBS', url: '3d' }], [], { season: 0, episode: 0 }).item.url === '3d');
     t('фильм: папки озвучек — мимо 3D', B._decide([{ method: 'link', text: 'Дубляж 3D', url: 'a' }, { method: 'link', text: 'Дубляж', url: 'b' }], [], {}).go === 'b');
+    {   // «нет серии» у сериала — только про эту серию: для других серий источник остаётся в выборе
+        const P = load('bsprobe.js', 'BSProbe');
+        const list = [{ key: 'rezka', url: 'a' }, { key: 'filmix', url: 'b' }];
+        P.ctx.Lampa = { Activity: { active: () => ({ movie: { id: 77 } }) }, Storage: { cache: () => ({ 77: { list } }) } };
+        const comp = {}, e5 = { season: 2, episode: 5 }, e6 = { season: 2, episode: 6 };
+        P.M._mark(77, 'rezka', 'missing', e5);
+        t('пробы: нет 5-й серии — для 5-й источник не берём, для 6-й берём', P.M._candidates(comp, [], e5).join() === 'filmix' && P.M._candidates(comp, [], e6).join() === 'rezka,filmix');
+        P.M._mark(77, 'filmix', 'dead', e5);
+        t('пробы: мёртвый поток у сериала — как раньше, источник плохой', P.M._candidates(comp, [], e6).join() === 'rezka');
+        P.M._mark(77, 'rezka', 'missing', { season: 0, episode: 0 });
+        t('пробы: фильм — «нет фильма» исключает источник, как раньше', P.M._candidates(comp, []).join() === '' && P.M.state('rezka') === 'missing');
+    }
     t('prefer2D: список без 3D не меняется', B.prefer2D([{ title: 'a' }, { title: 'b' }]).length === 2 && B.prefer2D([]).length === 0);
 }
 

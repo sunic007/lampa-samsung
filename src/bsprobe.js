@@ -238,14 +238,29 @@ var BSProbe = (function () {
         return r && Date.now() - r.t < VERDICT_LIFE ? r.v : '';
     }
     function bad(v) { return v === 'dead' || v === 'nolink' || v === 'missing' || v === 'failed'; }
+    /* «Нет серии» у сериала — про эту серию, а не про источник: помним её отдельно (имя#sNeM), чтобы источник,
+     * где нет 5-й серии, оставался в выборе для других серий. Фильм — как раньше, по имени. Без want (обёртка
+     * nextSource плагина) — серия последней гонки этого фильма: не хуже прежнего, когда исключался весь источник. */
+    var lastWant = null;   // {id, want}
+    function epKey(name, want) { return want && want.episode ? name + '#s' + (want.season | 0) + 'e' + (want.episode | 0) : ''; }
+    function wantFor(id, want) { return want || (lastWant && lastWant.id === id ? lastWant.want : null); }
+    function mark(id, name, v, want) {
+        var ek = v === 'missing' ? epKey(name, want) : '';
+        remember(id, ek || name, v);
+    }
+    function look(id, name, want) {
+        var v = state(id, name), ek = epKey(name, wantFor(id, want));
+        if (!bad(v) && ek && state(id, ek) === 'missing') return 'missing';
+        return v;
+    }
 
     /** Кандидаты по порядку плагина: без исключённых, пустых (по проверке плагина) и наших плохих. */
-    function candidates(comp, exclude) {
+    function candidates(comp, exclude, want) {
         var id = movieId(), list = sourceList(id), keys = [];
         exclude = exclude || [];
         for (var i = 0; i < list.length; i++) {
             var k = list[i].key;
-            if (!k || !list[i].url || exclude.indexOf(k) >= 0 || bad(state(id, k))) continue;
+            if (!k || !list[i].url || exclude.indexOf(k) >= 0 || bad(look(id, k, want))) continue;
             try { if (comp.sourceState && comp.sourceState(k) === 'empty') continue; } catch (e) {}
             keys.push(k);
         }
@@ -256,7 +271,7 @@ var BSProbe = (function () {
     /** Предпочесть проверенный рабочий: для обёртки nextSource. '' — нечего советовать. */
     function preferred(comp, exclude) {
         var id = movieId(), c = candidates(comp, exclude);
-        for (var i = 0; i < c.length; i++) if (state(id, c[i]) === 'ok') return c[i];
+        for (var i = 0; i < c.length; i++) if (look(id, c[i]) === 'ok') return c[i];
         return '';
     }
 
@@ -267,7 +282,9 @@ var BSProbe = (function () {
      * Гонка: RACE_N лучших кандидатов, у каждого — та же серия. cb(победитель {name, title, verdict} | null, все итоги).
      */
     function race(comp, exclude, want, cb) {
-        var id = movieId(), names = candidates(comp, exclude).slice(0, RACE_N);
+        var id = movieId();
+        if (want && !want.peek) lastWant = { id: id, want: { season: want.season | 0, episode: want.episode | 0 } };
+        var names = candidates(comp, exclude, want).slice(0, RACE_N);
         var list = sourceList(id), byKey = {};
         list.forEach(function (s) { byKey[s.key] = s; });
         if (!names.length) return cb(null, []);
@@ -292,7 +309,7 @@ var BSProbe = (function () {
             resolve(comp, byKey[name], want, deadline, nets, function (r) {
                 results.push(r);
                 // want.peek — разведка серии, которой может ещё не быть: «нет серии» не делает источник плохим
-                if (!(want.peek && r.verdict === 'missing')) remember(id, name, r.verdict);
+                if (!(want.peek && r.verdict === 'missing')) mark(id, name, r.verdict, want);
                 if (ended) return;
                 if (r.verdict === 'ok') return end(r);
                 if (--left === 0) end(best());
@@ -303,7 +320,8 @@ var BSProbe = (function () {
 
     return {
         enabled: enabled, check: check, race: race, preferred: preferred, first: first, remember: function (name, v) { remember(movieId(), name, v); },
-        state: function (name) { return state(movieId(), name); }, bad: bad, is3D: is3D, prefer2D: prefer2D,
+        state: function (name) { return look(movieId(), name); }, bad: bad, is3D: is3D, prefer2D: prefer2D,
+        _mark: mark, _candidates: candidates,
         _verdict: verdict, _decide: decide, _sameVoice: sameVoice, _isSeasonLabel: isSeasonLabel
     };
 })();
