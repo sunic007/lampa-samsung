@@ -28,6 +28,11 @@ jobs:
             npx -y acorn@8.14.0 --ecma5 --silent "$f" || { echo "::error file=$f::not ES5"; exit 1; }
           done
 
+      - name: Chromium 47 API compatibility (own modules)
+        run: |
+          npm i --no-save --no-package-lock eslint@9.39.5 eslint-plugin-es-x@9.7.0 eslint-plugin-compat@7.0.2
+          npx eslint src/update.js src/loader.js src/bs*.js src/skazauto.js src/playerguard.js src/polyfills.js
+
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
