@@ -131,22 +131,22 @@ def write_manifest(version):
     notes = changelog_notes(version)
     if notes:
         data['notes'] = notes
-    # поэтапная выкатка (src/update.js): поля выкатки сохраняем; новая версия — прежняя становится stable, а доля
-    # новой — из --rollout N (по умолчанию 100: всем сразу, как раньше; выпуск для проверки владельцем — --rollout 0)
-    for k in ('hold',):
-        if old.get(k):
-            data[k] = old[k]
-    if old.get('version') == version:
-        for k in ('rollout', 'stable'):
-            if old.get(k):
-                data[k] = old[k]
-    else:
-        pct = arg('--rollout', None)
-        if pct is not None:
-            pct = max(0, min(100, int(pct)))
-            if pct < 100 and old.get('version') and old.get('files'):
-                data['stable'] = {'version': old['version'], 'files': old['files']}
-                data['rollout'] = {'v': version, 'pct': pct}
+    # поэтапная выкатка (src/update.js): "version" — проверенная (её берут и ТВ со старым update.js, Android, сайт),
+    # новая — в "next" с долей pct. --rollout N (N < 100) кладёт выпуск в next, не трогая version; без флага — всем
+    # сразу, как раньше. Пересборка той же версии поля не меняет (CI сверяет version.json).
+    nx = old.get('next') if isinstance(old.get('next'), dict) else None
+    pct = arg('--rollout', None)
+    # пока в next недопроверенная версия — и любой следующий выпуск (в том числе автоматический lampa-watch) идёт в next:
+    # иначе её код ушёл бы всем; всем сразу — только --rollout 100 или tools/rollout.py 100
+    staged = (pct is not None and int(pct) < 100) or (pct is None and bool(nx))
+    if staged and old.get('version') and old.get('files') and old.get('version') != version:
+        data = {k: old[k] for k in ('version', 'files', 'notes', 'site') if k in old}
+        keep = nx.get('pct', 0) if nx and nx.get('version') == version else max(0, int(pct or 0))
+        data['next'] = {'version': version, 'files': update_modules(), 'pct': keep}
+        if notes:
+            data['next']['notes'] = notes
+    if old.get('hold'):
+        data['hold'] = old['hold']
     with open(os.path.join(ROOT, 'version.json'), 'w', encoding='utf-8', newline='\n') as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
         f.write('\n')

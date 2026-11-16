@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Поэтапная выкатка Sunic Apps на ТВ: правит поля выкатки в version.json (их читает src/update.js).
+"""Поэтапная выкатка Sunic Apps на ТВ: правит version.json (его читает src/update.js на ТВ).
 
-  python tools/rollout.py                 что сейчас: версия, доля, stable, остановленные
-  python tools/rollout.py 10              новую версию — 10% ТВ (0 — только ТВ «Получать новые версии первым»)
-  python tools/rollout.py 100             всем (поля rollout/stable убираются — как обычный выпуск)
-  python tools/rollout.py hold 2.3.96     аварийно остановить версию: никому не ставим, кто на ней — вернётся на stable
+  python tools/rollout.py                 что сейчас: проверенная версия, новая и её доля, остановленные
+  python tools/rollout.py 10              новую версию (next) — 10% ТВ; 0 — только ТВ «Получать новые версии первым»
+  python tools/rollout.py 100             новая становится проверенной — для всех (и для ТВ со старым update.js,
+                                          Android, сайта)
+  python tools/rollout.py hold 2.3.96     аварийно остановить версию: никому не ставим, кто на ней — вернётся на
+                                          проверенную
   python tools/rollout.py unhold 2.3.96   снять остановку
 
-Меняет только version.json; коммит и push — как обычно (ТВ читают version.json с ветки main).
-Как выпускать: tools/pack.py --bump --rollout 0 → тег → владелец проверяет на своём ТВ → rollout.py 10 → 50 → 100.
+Меняет только version.json; дальше коммит и push (ТВ читают version.json с ветки main).
+Порядок: tools/pack.py --bump --rollout 0 → тег → владелец проверяет на своём ТВ → rollout.py 10 → 50 → 100.
 """
 import json
 import os
@@ -32,11 +34,10 @@ def save(m):
 
 
 def status(m):
-    r = m.get('rollout')
-    pct = r['pct'] if r and r.get('v') == m['version'] else 100
-    print('версия', m['version'], '— доля', str(pct) + '%', '(+ ТВ «первым»)' if pct < 100 else '')
-    if m.get('stable') and pct < 100:
-        print('остальным — stable', m['stable']['version'])
+    print('проверенная (всем):', m['version'])
+    nx = m.get('next')
+    if nx:
+        print('новая:', nx['version'], '— доля', str(nx.get('pct', 0)) + '% + ТВ «первым»')
     if m.get('hold'):
         print('остановлены:', ', '.join(m['hold']))
 
@@ -50,9 +51,9 @@ def main(argv):
             sys.exit('укажите версию: rollout.py %s 2.3.96' % argv[0])
         hold = [v for v in m.get('hold', []) if v != argv[1]]
         if argv[0] == 'hold':
+            if argv[1] == m['version']:
+                print('внимание: это проверенная версия — ТВ с новым update.js вернутся на пакет, старые её не знают')
             hold.append(argv[1])
-            if argv[1] == m['version'] and not m.get('stable'):
-                print('внимание: stable нет — ТВ на', argv[1], 'вернутся на версию из пакета')
         if hold:
             m['hold'] = hold
         else:
@@ -62,13 +63,18 @@ def main(argv):
             pct = max(0, min(100, int(argv[0])))
         except ValueError:
             sys.exit(__doc__)
+        nx = m.get('next')
+        if not nx:
+            sys.exit('новой версии нет: выпускайте через tools/pack.py --bump --rollout 0')
         if pct >= 100:
-            m.pop('rollout', None)
-            m.pop('stable', None)
+            m['version'], m['files'] = nx['version'], nx['files']
+            if nx.get('notes'):
+                m['notes'] = nx['notes']
+            else:
+                m.pop('notes', None)
+            m.pop('next')
         else:
-            if not m.get('stable'):
-                sys.exit('stable нет: выпускайте через tools/pack.py --bump --rollout 0 (stable = прежняя версия)')
-            m['rollout'] = {'v': m['version'], 'pct': pct}
+            nx['pct'] = pct
     save(m)
     status(m)
 

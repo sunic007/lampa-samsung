@@ -11,13 +11,14 @@
  * завис (ни загрузки, ни ошибки) — через STALL_MS без движения то же, что ошибка: следующее зеркало.
  *
  * Поэтапная выкатка (после 2.3.93, который сломался у владельца и сам ушёл на все ТВ). В version.json на main:
- *   "rollout": {"v": "2.3.96", "pct": 10} — новую версию берёт только pct% ТВ (корзина: hash(bs_uid + версия) % 100,
- *       у каждой версии свои первые ТВ); ТВ с «Получать новые версии первым» (bs_beta, ТВ владельца) — всегда;
- *       нет поля — все (как раньше);
- *   "stable": {"version": "2.3.95", "files": [...]} — что ставить остальным и при остановке;
- *   "hold": ["2.3.96"] — аварийная остановка: эту версию не ставим, а кто уже на ней — возвращается на stable
- *       (при следующем запуске; нет stable новее пакета — на пакет).
- * Поля правит tools/rollout.py.
+ *   "version"/"files" — проверенная версия: её берут все, в том числе ТВ со старым update.js из пакета (этот файл
+ *       приходит только с .wgt), Android и сайт;
+ *   "next": {"version", "files", "pct"} — новая версия: её берёт только этот update.js, и только pct% ТВ (корзина:
+ *       hash(bs_uid + версия) % 100, у каждой версии свои первые ТВ) и ТВ с «Получать новые версии первым» (bs_beta,
+ *       ТВ владельца);
+ *   "hold": ["2.3.96"] — аварийная остановка: эту версию не ставим, а кто уже на ней — возвращается на "version"
+ *       (при следующем запуске; если она не новее пакета — на пакет).
+ * Поля правит tools/rollout.py (100% — next становится version).
  */
 (function () {
     // pack.py вписывает сюда hash и версию app.js из пакета (loader.js с GitHub про них не знает)
@@ -59,13 +60,12 @@
         }
         return h % 100;
     }
-    /** Какую версию ставить этому ТВ по version.json m: {v, files} или null (ничего из выкатки). */
+    /** Какую версию ставить этому ТВ по version.json m: {v, files} или null (ничего). */
     function target(m) {
-        var hold = isArr(m.hold) ? m.hold : [], r = m.rollout;
-        var pct = r && typeof r === 'object' && r.v === m.version && typeof r.pct === 'number' ? r.pct : 100;
-        if (hold.indexOf(m.version) < 0 && (get('bs_beta') === 'true' || bucket(m.version) < pct)) return { v: m.version, files: m.files };
-        var st = m.stable;
-        if (st && okVer(st.version) && okFiles(st.files) && hold.indexOf(st.version) < 0) return { v: st.version, files: st.files };
+        var hold = isArr(m.hold) ? m.hold : [], nx = m.next;
+        if (nx && typeof nx === 'object' && okVer(nx.version) && okFiles(nx.files) && hold.indexOf(nx.version) < 0 &&
+            (get('bs_beta') === 'true' || bucket(nx.version) < (typeof nx.pct === 'number' ? nx.pct : 0))) return { v: nx.version, files: nx.files };
+        if (hold.indexOf(m.version) < 0) return { v: m.version, files: m.files };
         return null;
     }
 
