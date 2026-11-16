@@ -2793,6 +2793,25 @@ async function serviceTests() {
     const svcCfg = { port: SVP, dir, log: false, up: { tg: UPB + '/', ntfy: UPB + '/ntfy/', groq: UPB + '/groq/', gemini: UPB + '/gemini/', openrouter: UPB + '/or/' } };
     SV._test.config(svcCfg);
     await new Promise(r => SV._test.start(r));
+    // предел по часам на запрос наружу: ответ капает по байту (тишины нет — wait не срабатывает) — оборван по deadline
+    {
+        const drip = http.createServer((q, w) => { w.writeHead(200, { 'Content-Type': 'text/plain' }); const iv = setInterval(() => { try { w.write('.'); } catch (e) {} }, 50); w.on('close', () => clearInterval(iv)); });
+        await new Promise(r => drip.listen(0, '127.0.0.1', r));
+        const t0 = Date.now(); let how = '';
+        await new Promise(r => SV._test.upstream('GET', 'http://127.0.0.1:' + drip.address().port + '/', {}, null, 5000, (e, x) => {
+            if (e) { how = 'err'; return r(); }
+            x.on('data', () => {}); x.on('aborted', () => { how = how || 'aborted'; r(); }); x.on('end', () => { how = how || 'end'; r(); });
+        }, null, 400));
+        const took = Date.now() - t0;
+        t('служба: ответ капает по байту — запрос оборван по пределу (deadline), а не висит', how === 'aborted' && took >= 350 && took < 2000);
+        // соединение принято, но ответа нет вовсе — тоже по пределу (раньше wait)
+        const mute = http.createServer(() => {});
+        await new Promise(r => mute.listen(0, '127.0.0.1', r));
+        const t1 = Date.now(); let e1 = null;
+        await new Promise(r => SV._test.upstream('GET', 'http://127.0.0.1:' + mute.address().port + '/', {}, null, 5000, e => { e1 = e; r(); }, null, 300));
+        t('служба: сервер молчит — ошибка timeout по пределу, раньше wait', !!(e1 && e1.timeout) && Date.now() - t1 < 2000);
+        drip.close(); mute.close();
+    }
     t('служба: в config.xml — tizen:service и web.service, файл службы на месте', (c => /<tizen:service id="0SG81L944p\.LampaService" on-boot="true" auto-restart="true">/.test(c) &&
         /<tizen:content src="service\/service\.js"\/>/.test(c) && /http:\/\/tizen\.org\/feature\/web\.service/.test(c) && /privilege\/application\.launch/.test(c))(fs.readFileSync(path.join(SRC, 'config.xml'), 'utf8')));
     t('служба: в update.js её нет — приходит только с пакетом', !/service\.js/.test(fs.readFileSync(path.join(SRC, 'update.js'), 'utf8')));
@@ -3100,6 +3119,21 @@ async function serviceTests() {
     PBig._takeUpdate({ update_id: 9, _big: { chat: '555', date: nowSec }, _q: { at: Date.now(), tv: 0 } }, {});
     t('заглушка «слишком большое»: подключённому — «пришлите ещё раз», давнее и чужим — молча', bigSent.length === 1 && /\/sendMessage$/.test(bigSent[0].u) && /chat_id=1&/.test(bigSent[0].b) &&
         /слишком большим/.test(bigSent[0].b) && PBig._serverNow() > 0);
+
+    // разбор апдейта упал: номер не уходит за него (следующий опрос отдаст его ещё раз), упал и повтор — пропускаем
+    {
+        const stT = { bs_tg_token: TOKEN, bs_tg_chat: '1', bs_tg_offset: '20' };
+        const PT = page(stT, XBig);
+        let throws = 0;
+        const bad = n => { const m = { message_id: 1, text: 'x' }; Object.defineProperty(m, 'chat', { get() { throws++; throw new Error('плохой апдейт'); } }); return { update_id: n, message: m }; };
+        const r1 = PT._takeUpdate(bad(20), {});
+        t('разбор упал: апдейт не подтверждён (номер на нём), остальное из пачки — следующим опросом', r1 === false && stT.bs_tg_offset === '20' && throws === 1);
+        const r2 = PT._takeUpdate(bad(20), {});
+        t('упал и при повторе — пропущен (номер за ним), бот не застревает на одном апдейте', r2 === true && stT.bs_tg_offset === '21' && throws === 2);
+        const r3 = PT._takeUpdate({ update_id: 21, message: { message_id: 2, chat: { id: 555 }, text: 'hi' } }, {});
+        t('следующий обычный апдейт разобран, номер за ним', r3 === true && stT.bs_tg_offset === '22');
+        t('из очереди, уже разобранный, — молча мимо (true)', PT._takeUpdate({ update_id: 5, _q: { at: Date.now(), tv: 0 } }, {}) === true && stT.bs_tg_offset === '22');
+    }
 
     // без службы (старый пакет, браузер): всё как раньше, в localStorage
     const st2 = { bs_tg_token: TOKEN, bs_tg_chat: '1', bs_ai_groq: KEYS.og };
@@ -3628,6 +3662,13 @@ async function serviceTests() {
         ce.tv.cbp.length === 20 && ce.tv.cmd.length === 0 && ce.tv.words.length === 0 && ce.texts[1].closed.length === 500 && !ST().typing[1] && ST().typing[2] - SV._test.mono() <= 600000 && !('abc' in ST().typing));
     t('/alive с чужими правилами: «(a+)+$» — просто строка (RegExp из присланного служба не собирает)', SV._test.tvMatch('(a+)+$', true) && !SV._test.tvMatch('a'.repeat(40) + '!', true));
     await ask('POST', '/alive', { offset: 42, cfg: CFG() });
+    // свой опрос «идёт» дольше предела (ответ не пришёл и не оборвался) — страховка в botTick бросает его, опрос не стоит вечно
+    {
+        const lp = ST().loop, g0 = lp.gen;
+        lp.on = true; lp.onAt = SV._test.mono() - SV._test.pollDeadline() - 60000;
+        SV._test.tick();
+        t('служба: опрос завис дольше предела — брошен (loop.on снят), следующий опрос пойдёт заново', !ST().loop.on && ST().loop.gen > g0 && ST().loop.lost);
+    }
     // страница: ключ из очереди — удалить из чата и попросить прислать ещё раз; «на ТВ» без времени — не выполнять
     await ask('POST', '/pending/ack', { upTo: 44 });
     const pkc = { bs_tg_svc: '1', bs_tg_chat: '1', bs_tv_id: 'tvA', bs_tg_offset: '45', bs_tg_lang: JSON.stringify({ 1: 'ru', 2: 'en' }), bs_tg_lang_at: '{}',

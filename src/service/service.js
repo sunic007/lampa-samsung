@@ -424,15 +424,31 @@ function readJson(req, cb) {
         cb(j && typeof j === 'object' ? 0 : 400, j);
     });
 }
-/** Запрос наружу. cb(err, ответ) — ровно один раз. Молчит дольше wait — обрываем. */
-function upstream(method, target, headers, body, wait, cb, res) {
-    var u = parseUrl(target), o = { protocol: u.protocol, hostname: u.hostname, port: u.port || undefined, path: u.path }, done = false, r;
-    var end = function (e, x) { if (!done) { done = true; cb(e, x); } };
+/** Запрос наружу. cb(err, ответ) — ровно один раз. Молчит дольше wait — обрываем.
+ *  deadline (мс, необязательно) — предел по часам на весь запрос: соединение и ответ целиком. Тишина ловится wait, а
+ *  зависшее соединение или ответ, который капает по байту, — только им: истёк — запрос обрываем (ответ уже шёл —
+ *  у него 'aborted'). Только для ответов, которые читаем целиком (не для pipeBack). */
+function upstream(method, target, headers, body, wait, cb, res, deadline) {
+    var u = parseUrl(target), o = { protocol: u.protocol, hostname: u.hostname, port: u.port || undefined, path: u.path }, done = false, r, dl = null, resp = null;
+    var stopDl = function () { if (dl) { clearTimeout(dl); dl = null; } };
+    var end = function (e, x) { if (e) stopDl(); if (!done) { done = true; cb(e, x); } };
     o.method = method; o.headers = headers || {};
     if (body) o.headers['Content-Length'] = body.length;
     try {
-        r = (o.protocol === 'http:' ? http : https).request(o, function (x) { end(null, x); });
+        r = (o.protocol === 'http:' ? http : https).request(o, function (x) {
+            resp = x;
+            if (dl) { x.on('end', stopDl); x.on('close', stopDl); }
+            end(null, x);
+        });
     } catch (e) { return end(e); }
+    if (deadline > 0) dl = setTimeout(function () {
+        dl = null;
+        var e = new Error('deadline'); e.timeout = true;
+        end(e);
+        try { r.abort(); } catch (x) {}
+        // ответ уже отдан вызвавшему: на старых Node abort не всегда шлёт 'aborted' — скажем сами (вызвавший ждёт один раз)
+        if (resp) try { resp.emit('aborted'); } catch (x) {}
+    }, deadline);
     r.setTimeout(wait, function () { var e = new Error('timeout'); e.timeout = true; end(e); try { r.abort(); } catch (x) {} });
     r.on('error', function (e) { end(e); });
     // страница бросила запрос, не дождавшись ответа (например, длинный опрос при закрытии Lampa), — бросаем и мы
@@ -831,7 +847,7 @@ function pgTrusted() { return pg.okGen === tgGen; }
 // свой опрос; okM — когда (mono) последний раз удался опрос (свой или страницы), lost — с тех пор был сбой,
 // more — прошлый «догоняющий» ответ был полным (100): за ним может быть ещё старое; takeover — ведём бота за пропавшего
 // главного, coolUntil — до каких пор (mono) после 409 в Telegram не смотрим; wAt, wSince, wBusy, wN — проверки getWebhookInfo
-var loop = { on: false, gen: 0, req: null, wait: 0, backoff: 0, yielded: false, timer: null, okM: 0, lost: false, more: false, c409: 0,
+var loop = { on: false, onAt: 0, gen: 0, req: null, wait: 0, backoff: 0, yielded: false, timer: null, okM: 0, lost: false, more: false, c409: 0,
     takeover: false, coolUntil: 0, wAt: 0, wSince: 0, wBusy: false, wN: 0 };
 var launchAt = 0, launchedWall = 0, closedMsg = {}, closedAt = {}, offWaitAt = {}, offAt = {}, okSaved = 0, saveTimer = null;
 
@@ -979,8 +995,12 @@ function botHalt() {
     loop.gen++; loop.req = null; loop.on = false;
     if (r) try { r.abort(); } catch (e) {}
 }
+/** Предел по часам на один свой getUpdates (соединение + ответ целиком): длинный опрос + запас. */
+function pollDeadline() { return (B('poll') + 30) * 1000; }
 function botTick() {
     try {
+        // страховка: опрос «идёт» дольше своего предела (ответ так и не пришёл и не оборвался) — бросить, следующий — заново
+        if (loop.on && loop.onAt && mono() - loop.onAt > pollDeadline() + 10000) { log('опрос завис — заново', ''); botHalt(); botLost(); }
         busTick();
         if (!loop.on && mono() >= loop.wait && shouldPoll()) return botFetch();
         botWatch();
@@ -1005,7 +1025,7 @@ function botFetch() {
     // сеть, таймаут, оборвалось: ждём дольше и дольше (backoff .. backoffMax)
     var fail = once1(function () { botLost(); loop.backoff = Math.min(Math.max(loop.backoff * 2, B('backoff')), B('backoffMax')); botWait(loop.backoff); });
     var answer = once1(function (x, text) { botAnswer(x, text); });
-    loop.on = true;
+    loop.on = true; loop.onAt = mono();
     loop.req = upstream('POST', cfg.up.tg + 'bot' + S().tg + '/getUpdates', { 'Content-Type': 'application/x-www-form-urlencoded' },
         buf('offset=' + start + '&limit=' + lim + '&timeout=' + B('poll'), 'utf8'), (B('poll') + 15) * 1000, function (e, x) {
             if (gen !== loop.gen) { if (x) try { x.resume(); } catch (er) {} return; }
@@ -1014,7 +1034,7 @@ function botFetch() {
             x.on('data', function (d) { n += d.length; if (n > LIMIT_TG_ANSWER) big = true; else parts.push(d); });
             x.on('aborted', fail);
             x.on('end', function () { if (big) return fail(); answer(x, Buffer.concat(parts).toString('utf8')); });
-        }) || null;
+        }, null, pollDeadline()) || null;
 }
 function botAnswer(x, text) {
     var j = null, ec;
@@ -1251,7 +1271,7 @@ function tgSend(method, p, cb) {
                 if (!(j && j.ok)) log('Telegram не принял', method + ' ' + String(j && j.description || x.statusCode).slice(0, 80));
                 fin(!!(x.statusCode === 200 && j && j.ok), j && j.result);
             });
-        });
+        }, null, TG_WAIT + 15000);                                                  // зависшее соединение не держит loop.wBusy вечно
     })();
 }
 /** Строка не длиннее n знаков; половинку суррогатной пары (эмодзи) на конце не оставляем. */
@@ -1596,7 +1616,7 @@ module.exports._test = {
         botHalt(); clearInterval(loop.timer); pairClose(); pairGot = false;
         bot = null; typing = {}; pg = { at: 0, busy: 0, away: false, max: -1, off: 0, seen: false, okGen: 0 }; tgGen = 0;
         clearTimeout(saveTimer); saveTimer = null;
-        loop = { on: false, gen: 0, req: null, wait: 0, backoff: 0, yielded: false, timer: null, okM: 0, lost: false, more: false, c409: 0,
+        loop = { on: false, onAt: 0, gen: 0, req: null, wait: 0, backoff: 0, yielded: false, timer: null, okM: 0, lost: false, more: false, c409: 0,
             takeover: false, coolUntil: 0, wAt: 0, wSince: 0, wBusy: false, wN: 0 };
         launchAt = 0; launchedWall = 0; closedMsg = {}; closedAt = {}; offWaitAt = {}; offAt = {}; okSaved = 0;
         busStop(); bus = { on: false, gen: 0, reqs: [], since: {}, seen: {}, seenN: 0, helloAt: 0, firstAt: 0, heard: false, cmds: [], topic: '', k: null };
@@ -1606,7 +1626,7 @@ module.exports._test = {
     tick: botTick, state: function () { return { bot: BT(), pg: pg, loop: loop, typing: typing, bus: bus }; },
     unseal: unseal, seal: seal, busOn: busOn, BUS: BUS,
     tvMatch: function (s, isCb) { var c = BT().cfg || {}; return isCb ? tvCb(c.tv || {}, s) : isTv(c, { message: { text: s } }, ''); },
-    looksKey: looksKey, mono: mono,
+    looksKey: looksKey, mono: mono, upstream: upstream, pollDeadline: pollDeadline,
     fnv: fnv, derive: derive, joinTopic: joinTopic, codes: function () { return joinCodes; }, PORT: PORT, VERSION: VERSION,
     pair: function () { return { open: !!(pairing && pairing.server), port: pairing ? pairing.port : 0, bad: pairing ? pairing.bad : 0, got: pairGot }; },
     PAIR: PAIR, RELAYS: RELAYS, lanIp: lanIp, pairLang: pairLang, joinFrom: joinFrom, joinKeys: joinKeys, x25519: x25519, join4Topic: join4Topic, join4Hellos: join4Hellos, join4Box: join4Box, TG_METHODS: TG_METHODS, cut: cut, flush: botFlush
