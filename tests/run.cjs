@@ -2207,6 +2207,13 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('видео не пошло: следующий плагин сам (Online Mod), без поиска «Смотреть»', S.fallback('noanswer') === true && pressed.join() === 'Online Mod:hover:enter');
     comp = 'full';
     t('не экран источника — fallback ничего не делает', S.fallback('noanswer') === false);
+    // сбой связи (noConnectToServer без accsdb) — не «нет доступа» на 7 дней
+    delete store.bs_src_denied_skaz; comp = 'lampacskaz'; S.startSearch(5, 'skaz');
+    S.giveUp('lampacskaz', 'noconnect');
+    t('сбой связи со Skaz — 7 дней не помним', !S._denied('skaz'));
+    // главный z01 без доступа, у Skaz подписка — главным Skaz, а не Online Mod
+    store.bs_src_main = 'z01'; store.bs_src_denied_z01 = String(Date.now());
+    t('главный без доступа — сначала Skaz (подписка есть), потом бесплатные', S.mainId() === 'skaz');
 }
 /* ---- update.js: запасные зеркала CDN ---- */
 {

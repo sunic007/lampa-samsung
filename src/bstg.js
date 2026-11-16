@@ -2106,7 +2106,7 @@ var BSTelegram = (function () {
         } else if (m.t === 'qw' && Object.prototype.toString.call(m.list) === '[object Array]') {
             lsSet('bs_tg_qwait', JSON.stringify(m.list.slice(0, QWAIT_MAX)));
         } else if (m.t === 'today' && m.tag) {
-            toldAdd(m.tag + '|' + (m.d || ''));                  // другой ТВ отправил — доставлено
+            toldAdd(m.tag + '|' + (m.d || dayStr(Date.now())));   // другой ТВ отправил — доставлено (старый ТВ без d: «сегодня»)
             var done = lsJson('bs_tg_today', []);
             if (done.indexOf(m.tag) < 0) { done.unshift(m.tag); lsSet('bs_tg_today', JSON.stringify(done.slice(0, 200))); }
         }

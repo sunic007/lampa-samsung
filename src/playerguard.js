@@ -291,7 +291,7 @@ var BSGuard = (function () {
                     try { if (window.BSSources && BSSources.played) BSSources.played(); } catch (err) {}   // источник снова доступен
                     log('видео пошло через', ((Date.now() - s.startedAt) / 1000).toFixed(1), 'с,', s.avplay ? 'плеер ТВ' : 'встроенный', s.hls ? 'HLS' : 'файл', s.avSignal ? '(был сигнал загрузки)' : '');
                 }
-                s.played = true; s.everPlayed = true;
+                s.played = true; s.everPlayed = true; s.watched = true;   // watched подмена потока не сбрасывает
             }
             s.lastTime = t;
             progress();
@@ -393,8 +393,13 @@ var BSGuard = (function () {
             if (sourceInPlayer()) return;
             return giveUp('Источник не работает — ищу другой', function () { try { BSFix.autoNext(); } catch (e) {} });
         }
-        // то же у плагина без своего автоподбора (Online Mod, Lordfilm, Showy): сразу следующий плагин
-        if (!s.everPlayed && !s.iptv && canOther()) return giveUp('Источник не работает — ищу в других источниках', otherPlugin);
+        // то же у плагина без своего автоподбора (Online Mod, Lordfilm, Showy): одно качество ниже (4K, который ТВ не
+        // тянет), не пошло — следующий плагин
+        if (!s.everPlayed && !s.iptv && canOther()) {
+            var lower = s.steps <= 1 && work ? nextQuality(work) : null;
+            if (lower) { noty('Переключаю качество на ' + lower.name, 6000); s.tried.push(lower.url); switchTo(lower); return; }
+            return giveUp('Источник не работает — ищу в других источниках', otherPlugin);
+        }
 
         // Шаг 0: видео шло и встало — сначала тот же поток с того же места.
         if ((!s.restarted || Date.now() - s.restartedAt > cfg.RESTART_AGAIN) && s.played && s.lastTime > 5 && work && work.url) return restartSame(why === 'выдал ошибку' ? 'Ошибка потока' : 'Поток ' + why);
@@ -410,7 +415,7 @@ var BSGuard = (function () {
         var auto = autoAvailable();
         if (auto && sourceInPlayer()) return;
         // плагин без своего автоподбора (Online Mod, Lordfilm, Showy) — следующий плагин
-        var other = !auto && !s.iptv && !s.everPlayed && canOther();   // видео уже шло и встало — плагин не меняем
+        var other = !auto && !s.iptv && !s.everPlayed && canOther();   // видео уже шло и встало — плагин не меняем (canOther)
         giveUp(auto ? 'Источник не отвечает — ищу другой' : other ? 'Источник не отвечает — ищу в других источниках' : 'Источник не отвечает — выберите другой',
             auto ? function () { try { BSFix.autoNext(); } catch (e) {} } : other ? otherPlugin : null);
     }
@@ -483,7 +488,7 @@ var BSGuard = (function () {
         if (!ok) noty('Рабочий источник не найден — выберите вручную', 6000);   // ушли с экрана, пока закрывали, и т. п.
         return ok;
     }
-    function canOther() { try { return !!(window.BSSources && BSSources.fallback && BSSources.here && BSSources.here()) && window.localStorage.getItem('bs_auto_source') !== 'false'; } catch (e) { return false; } }
+    function canOther() { if (s && s.watched) return false; try { return !!(window.BSSources && BSSources.fallback && BSSources.here && BSSources.here()) && window.localStorage.getItem('bs_auto_source') !== 'false'; } catch (e) { return false; } }
     function autoAvailable() {
         try { return !!(window.BSFix && BSFix.current && BSFix.current()) && window.localStorage.getItem('bs_auto_source') !== 'false'; } catch (e) { return false; }
     }

@@ -85,6 +85,7 @@ var BSSources = (function () {
         var id = lsGet('bs_src_main') || 'skaz', s = byId(id);
         if (!(s && enabled(s))) id = 'skaz';
         if (!denied(id)) return id;
+        if (id !== 'skaz' && !denied('skaz')) return 'skaz';        // подписка Skaz есть — он раньше бесплатных
         for (var i = 0; i < LIST.length; i++) if (enabled(LIST[i]) && !denied(LIST[i].id)) return LIST[i].id;
         return id;
     }
@@ -332,6 +333,7 @@ var BSSources = (function () {
         if (!who) return false;                                  // не экран онлайн-источника
         if (!search || search.id != id || Date.now() > search.until) startSearch(id, who);
         search.until = Date.now() + SEARCH_LIFE;
+        search.fallback = true;
         return giveUp(comp, why || 'noanswer');
     }
     /** «Смотреть» нажали: поиск по источникам для этого фильма, первый — first (ключ кнопки). */
@@ -342,18 +344,19 @@ var BSSources = (function () {
     /** Экран источника comp сдался (why: 'empty' | 'denied' | 'noanswer'). true — идём к следующему источнику. */
     function giveUp(comp, why) {
         // «нет доступа» помним и без поиска «Смотреть» (источник открыли сами) — в следующий раз он последний
-        var mainWas = mainId();
-        if (why === 'denied') markDenied(compOwner(comp) || (search && search.current) || '');
-        if (!search || Date.now() > search.until || search.id != activeMovieId()) return false;
+        var mainWas = mainId(), fresh = !!search && Date.now() <= search.until && search.id == activeMovieId();
+        if (why === 'denied') markDenied(compOwner(comp) || (fresh ? search.current : ''));
+        var closed = why === 'denied' || why === 'noconnect';    // для поиска «нет связи» — как «нет доступа»
+        if (!fresh) return false;
         var who = compOwner(comp) || search.current;
         if (!triedHas(who)) search.tried.push(who);
         var cur = labelOf(who), id = search.id, s = search;
         // Skaz — по подписке Skaz (к входу в CUB не относится): нет подписки — он пишет «Нет доступа». Человек должен
         // просто смотреть: идём к бесплатному источнику и делаем его главным, чтобы в следующий раз без этого крюка
-        var skazOff = why === 'denied' && sameSource(who, mainWas);   // главный без доступа — дальше главным бесплатный
+        var skazOff = closed && sameSource(who, mainWas);   // главный без доступа — дальше главным бесплатный
         if (why === 'denied') markDenied(who);                     // кнопка без экрана (search.current)
         noty(skazOff ? (who === 'skaz' ? 'Skaz — по подписке, её нет' : 'В «' + cur + '» нет доступа') + '. Включаю бесплатный источник' :
-            (why === 'denied' ? 'В «' + cur + '» нет доступа' : why === 'noanswer' ? '«' + cur + '» не отвечает' : 'В «' + cur + '» нет') +
+            (closed ? 'В «' + cur + '» нет доступа' : why === 'noanswer' ? '«' + cur + '» не отвечает' : 'В «' + cur + '» нет') +
             ' — ищу в других источниках');
         log('поиск: ' + who + ' сдался', why);
         try { Lampa.Activity.backward(); } catch (e) {}
@@ -369,8 +372,10 @@ var BSSources = (function () {
                     list = candidates(btns).filter(function (c) { return !triedHas(c.key); });
                 } catch (e) { return press(); }
                 if (!list.length) {
+                    var fb = s.fallback;
                     search = null;
-                    return noty('Фильма нет ни в одном источнике — попробуйте позже или другой фильм');
+                    // видео не пошло нигде (fallback) — фильм есть, просто не играет: выбрать вручную
+                    return noty(fb ? 'Рабочий источник не найден — выберите вручную' : 'Фильма нет ни в одном источнике — попробуйте позже или другой фильм');
                 }
                 s.tried.push(list[0].key);
                 s.current = list[0].key;

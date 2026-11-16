@@ -328,8 +328,10 @@ var BSFix = (function () {
             c[m] = function (er) {
                 var r = orig.apply(this, arguments);
                 this.__bsItems = 0;
-                var denied = m === 'noConnectToServer' || !!(er && (er.accsdb || er.blocked));
-                surrender(this, denied ? 'denied' : m === 'empty' ? 'empty' : 'noanswer', denied ? 2500 : m === 'empty' ? 9000 : 16000);
+                // «нет доступа» наверняка — только accsdb/blocked; noConnectToServer бывает и просто сбоем связи
+                // (noconnect: как «нет доступа» в поиске, но 7 дней не помним)
+                var hard = !!(er && (er.accsdb || er.blocked)), denied = hard || m === 'noConnectToServer';
+                surrender(this, hard ? 'denied' : denied ? 'noconnect' : m === 'empty' ? 'empty' : 'noanswer', denied ? 2500 : m === 'empty' ? 9000 : 16000);
                 return r;
             };
         });
@@ -520,7 +522,11 @@ var BSFix = (function () {
         return lastPlay && (lastPlay.bound || Date.now() - lastPlay.time < 90000) ? lastPlay : null;
     }
     /** Видео реально пошло — подбор закончен. Зовёт сторож плеера. */
-    function played() { auto = null; }
+    /* Видео этого фильма уже шло (сторож: первая картинка) — в другой плагин его не уводим: поток встал посреди
+     * просмотра — «выберите вручную», а не чужой экран без места, где остановились. 3 часа на фильм. */
+    var watched = { id: 0, at: 0 };
+    function movieNow() { try { var a = Lampa.Activity.active(); return (a.movie || a.card || {}).id || 0; } catch (e) { return 0; } }
+    function played() { auto = null; watched = { id: movieNow(), at: Date.now() }; }
 
     function autoNext() {
         if (lsGetFix('bs_auto_source') === 'false') return false;
@@ -566,6 +572,7 @@ var BSFix = (function () {
         return false;
     }
     function otherPlugin(why) {
+        if (watched.id && watched.id == movieNow() && Date.now() - watched.at < 3 * 3600000) return false;
         try { return !!(window.BSSources && BSSources.fallback && lsGetFix('bs_auto_source') !== 'false' && BSSources.fallback(why)); }
         catch (e) { log('другой плагин', e.message); return false; }
     }
