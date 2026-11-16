@@ -3,6 +3,7 @@
 #   python tools/pack.py                    собрать текущую версию (из src/config.xml)
 #   python tools/pack.py --bump             поднять patch (1.4.5 -> 1.4.6) и собрать
 #   python tools/pack.py --bump minor       поднять minor (1.4.5 -> 1.5.0) и собрать
+#   python tools/pack.py --bump --rollout 0 новая версия сначала только на ТВ «первым» (владелец); дальше tools/rollout.py
 #   python tools/pack.py --debug <IP>       отладочная сборка: журнал уходит на ПК с этим IP (tools/debug/logserver.py)
 #   python tools/pack.py --force            пересобрать уже выпущенную версию (перезаписать dist/)
 #
@@ -130,6 +131,22 @@ def write_manifest(version):
     notes = changelog_notes(version)
     if notes:
         data['notes'] = notes
+    # поэтапная выкатка (src/update.js): поля выкатки сохраняем; новая версия — прежняя становится stable, а доля
+    # новой — из --rollout N (по умолчанию 100: всем сразу, как раньше; выпуск для проверки владельцем — --rollout 0)
+    for k in ('hold',):
+        if old.get(k):
+            data[k] = old[k]
+    if old.get('version') == version:
+        for k in ('rollout', 'stable'):
+            if old.get(k):
+                data[k] = old[k]
+    else:
+        pct = arg('--rollout', None)
+        if pct is not None:
+            pct = max(0, min(100, int(pct)))
+            if pct < 100 and old.get('version') and old.get('files'):
+                data['stable'] = {'version': old['version'], 'files': old['files']}
+                data['rollout'] = {'v': version, 'pct': pct}
     with open(os.path.join(ROOT, 'version.json'), 'w', encoding='utf-8', newline='\n') as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
         f.write('\n')

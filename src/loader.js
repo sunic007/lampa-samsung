@@ -1294,6 +1294,13 @@ function bsAddSettings() {
             field: { name: 'Автообновление Sunic Apps' },
             onChange: function (v) { try { window.localStorage.setItem('bs_gh_update', String(v === true || v === 'true')); } catch (e) {} }
         });
+        // поэтапная выкатка (update.js): этот ТВ получает новую версию сразу, до остальных — для проверки владельцем
+        Lampa.SettingsApi.addParam({
+            component: C,
+            param: { name: 'bs_beta', type: 'trigger', 'default': false },
+            field: { name: 'Получать новые версии первым', description: 'Для проверки: новая версия приходит на этот ТВ раньше, чем ко всем' },
+            onChange: function (v) { try { window.localStorage.setItem('bs_beta', String(v === true || v === 'true')); } catch (e) {} }
+        });
     }
     // условие API TMDB: указать источник данных о фильмах (бот и строки пакета берут их у TMDB)
     Lampa.SettingsApi.addParam({
