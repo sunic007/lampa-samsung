@@ -252,7 +252,7 @@ var BSFix = (function () {
                 var b = BAL_ORDER[i];
                 if (tried[b]) continue;
                 tried[b] = true;
-                try { self.changeBalanser(b); quiet('В «' + (cur || 'этом') + '» нет видео — пробую «' + b + '»'); return; }
+                try { self.changeBalanser(b); quiet('В «' + (cur || 'этом') + '» нет видео — пробую «' + b + '»'); try { if (window.BSSources && BSSources.step) BSSources.step(); } catch (x) {} return; }
                 catch (e) {}                                     // этого балансера в сборке нет
             }
             if (gaveUp) return;

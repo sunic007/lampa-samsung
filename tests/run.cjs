@@ -2222,6 +2222,10 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
         (store.bs_auto_source = 'false', !S.veilWanted({ id: 5, title: 'X' })));
     delete store.bs_auto_source;
     t('без заставки — переход из плеера выключен, как в 2.3.94', S._veil() === null && S.fallback('noanswer') === false);
+    t('подделка: видео почти вдвое длиннее фильма — другой фильм', S._fakeVideo({ id: 1, title: 'X', runtime: 100 }, 12000) && !S._fakeVideo({ id: 1, title: 'X', runtime: 100 }, 7000));
+    store.bs_src_fake = JSON.stringify({ '9:online_mod': Date.now() });
+    t('подделка у Online Mod — и у VOD той же группы (одна кнопка)', S._isFake(9, 'vod_llpp') && S._isFake(9, 'online_mod') && !S._isFake(9, 'z01') && !S._isFake(10, 'online_mod'));
+    delete store.bs_src_fake;
 }
 /* ---- ядро Lampa: имена событий, которые слушают наши модули (lampa-source #411 переименовывает опечатки) ---- */
 {

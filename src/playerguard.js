@@ -286,14 +286,16 @@ var BSGuard = (function () {
         if (t > s.lastTime + 0.2 || t < s.lastTime - 2) {
             s.bufPct = -1; s.bufSince = 0;
             if (s.lastTime >= 0 || t > 0.2) {
-                var fake = false;
+                var fake = false, sess = s;
                 if (!s.everPlayed) {
-                    // заставка «Подбираю»: подделка (видео гораздо короче фильма) — BSSources сам закроет и поищет дальше
+                    // заставка «Подбираю»: подделка (видео гораздо короче фильма) — BSSources сам закроет плеер (s станет
+                    // null) и поищет дальше: дальше этот сеанс не трогаем
                     try { fake = !!(window.BSSources && BSSources.played && BSSources.played(e.duration) === 'fake'); } catch (err) {}
-                    if (!fake) try { if (window.BSFix && BSFix.played) BSFix.played(); } catch (err) {}   // автоподбор нашёл рабочий
+                    if (fake || s !== sess || !s) return;
+                    try { if (window.BSFix && BSFix.played) BSFix.played(); } catch (err) {}   // автоподбор нашёл рабочий
                     log('видео пошло через', ((Date.now() - s.startedAt) / 1000).toFixed(1), 'с,', s.avplay ? 'плеер ТВ' : 'встроенный', s.hls ? 'HLS' : 'файл', s.avSignal ? '(был сигнал загрузки)' : '');
                 }
-                s.played = true; s.everPlayed = true; if (!fake) s.watched = true;   // watched подмена потока не сбрасывает
+                s.played = true; s.everPlayed = true; s.watched = true;   // watched подмена потока не сбрасывает
             }
             s.lastTime = t;
             progress();

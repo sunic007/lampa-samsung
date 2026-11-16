@@ -297,6 +297,7 @@ var BSContinue = (function () {
      * следующая), фильм — с места (onDraw). Не начатое — экран источников как обычно. */
     function autoResume(o) {
         if (pending || o.lampac_continue_episode || !o.movie || !(o.movie.id > 0)) return;
+        try { if (window.BSSources && BSSources.wasCancelled && BSSources.wasCancelled(o.movie.id)) return; } catch (e) {}   // «Назад» на заставке
         var list = load(), i = find(list, o.movie), bot = window.BS_BOT_PLAY;
         // «▶️ Смотреть» из бота на сериале, который ещё не смотрели: сразу 1-я серия, а не список серий
         // (плагин помнит сериал сам — смотрели через другой источник, устройство или больше 20 фильмов назад — его серия)
