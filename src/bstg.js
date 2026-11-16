@@ -2106,6 +2106,7 @@ var BSTelegram = (function () {
         } else if (m.t === 'qw' && Object.prototype.toString.call(m.list) === '[object Array]') {
             lsSet('bs_tg_qwait', JSON.stringify(m.list.slice(0, QWAIT_MAX)));
         } else if (m.t === 'today' && m.tag) {
+            toldAdd(m.tag + '|' + (m.d || ''));                  // другой ТВ отправил — доставлено
             var done = lsJson('bs_tg_today', []);
             if (done.indexOf(m.tag) < 0) { done.unshift(m.tag); lsSet('bs_tg_today', JSON.stringify(done.slice(0, 200))); }
         }
@@ -2396,11 +2397,11 @@ var BSTelegram = (function () {
                     };
                     if (tracked().some(function (x) { return x.id == c.id; }))
                         tvBell('ep:' + c.id + ':' + sNo + ':' + eNo, name, 'Вышла новая серия: сезон ' + sNo + ', серия ' + eNo + epName, bellCard(c.id, name, json.poster_path, true));
-                    var told = lsJson('bs_tg_today', []), w = watchedEp(c.id), asked = 0;
+                    var told = lsJson('bs_tg_told', []), w = watchedEp(c.id), asked = 0;   // только доставленные «Сегодня выходит»
                     recipients().forEach(function (r) {
                         if (!r.list.some(function (x) { return x.id == c.id; })) return;
                         // утром уже было «Сегодня выходит» об этой серии или владелец её уже посмотрел — второй раз не пишем
-                        if (told.indexOf((r.owner ? '' : r.c + '@') + c.id + ':' + sNo + ':' + eNo) >= 0 || (r.owner && epKnown(sNo, eNo, null, w))) return;
+                        if (told.indexOf((r.owner ? '' : r.c + '@') + c.id + ':' + sNo + ':' + eNo + '|' + (last.air_date || '')) >= 0 || (r.owner && epKnown(sNo, eNo, null, w))) return;
                         asked++;
                         as(r.c, function () {
                             var text = L('🎬 Вышла новая серия\n', '🎬 New episode is out\n', '🎬 Yangi qism chiqdi\n') + name + '\n' + seEp(last.season_number, last.episode_number) + epName;
@@ -2492,6 +2493,14 @@ var BSTelegram = (function () {
     }
     /* Напоминание не ушло (429, сеть) — вернуть его, чтобы следующий remind (через 10 минут) отправил снова, а не
      * потерял. Вызываются из ответа Telegram — в контексте чата (keep). */
+    /** «Сегодня выходит» дошло до чата (bs_tg_told, метка с датой выхода: TMDB перенёс серию — дата другая, и «Вышла
+     *  новая серия» уйдёт): только тогда «Вышла новая серия» о той же серии не шлём. В
+     *  bs_tg_today метка ставится заранее, до ответа Telegram, — по ней check() мог бы пропустить серию, а потом
+     *  «Сегодня выходит» не уйдёт (429, сеть) и человек не узнает о серии вовсе. */
+    function toldAdd(tag) {
+        var l = lsJson('bs_tg_told', []);
+        if (l.indexOf(tag) < 0) { l.unshift(tag); lsSet('bs_tg_told', JSON.stringify(l.slice(0, 200))); }
+    }
     function todayBack(tag) {
         var l = lsJson('bs_tg_today', []), i = l.indexOf(tag);
         if (i >= 0) { l.splice(i, 1); lsSet('bs_tg_today', JSON.stringify(l)); }
@@ -2526,7 +2535,7 @@ var BSTelegram = (function () {
                     if (r.owner) tvBell('today:' + id + ':' + n.s + ':' + n.e, x.name || '', 'Сегодня выходит: сезон ' + n.s + ', серия ' + n.e, bellCard(id, x.name, x.poster, true));
                     jobs.push(keep(function () {
                         send(L('📅 Сегодня выходит\n', '📅 Out today\n', '📅 Bugun chiqadi\n') + (x.name || '') + '\n' + seEp(n.s, n.e), posterUrl(x.poster),
-                            function () { busSend({ t: 'today', tag: tag }); }, function () { todayBack(tag); }, [[epButtons(id)[0][0]]]);
+                            function () { toldAdd(tag + '|' + n.d); busSend({ t: 'today', tag: tag, d: n.d }); }, function () { todayBack(tag); }, [[epButtons(id)[0][0]]]);
                     }));
                 });
                 // «напомнить завтра»
@@ -4516,6 +4525,7 @@ var BSTelegram = (function () {
         var base = show;
         // следующая — после той серии, что включили (TMDB у сериалов «через день» отстаёт): не та — список серий сезона
         show = function (info) {
+            if (!info.ongoing) return base(info);               // сериал закончился — панели нет, серии не нужны
             if (info.next && epKey(info.next.season_number, info.next.episode_number) > epKey(s, e)) return base(info);
             var fin = function (eps) {
                 var x = {}; for (var k in info) if (info.hasOwnProperty(k)) x[k] = info[k];

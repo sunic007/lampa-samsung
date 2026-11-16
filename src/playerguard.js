@@ -288,6 +288,7 @@ var BSGuard = (function () {
             if (s.lastTime >= 0 || t > 0.2) {
                 if (!s.everPlayed) {
                     try { if (window.BSFix && BSFix.played) BSFix.played(); } catch (err) {}   // автоподбор нашёл рабочий
+                    try { if (window.BSSources && BSSources.played) BSSources.played(); } catch (err) {}   // источник снова доступен
                     log('видео пошло через', ((Date.now() - s.startedAt) / 1000).toFixed(1), 'с,', s.avplay ? 'плеер ТВ' : 'встроенный', s.hls ? 'HLS' : 'файл', s.avSignal ? '(был сигнал загрузки)' : '');
                 }
                 s.played = true; s.everPlayed = true;
@@ -409,7 +410,7 @@ var BSGuard = (function () {
         var auto = autoAvailable();
         if (auto && sourceInPlayer()) return;
         // плагин без своего автоподбора (Online Mod, Lordfilm, Showy) — следующий плагин
-        var other = !auto && !s.iptv && canOther();
+        var other = !auto && !s.iptv && !s.everPlayed && canOther();   // видео уже шло и встало — плагин не меняем
         giveUp(auto ? 'Источник не отвечает — ищу другой' : other ? 'Источник не отвечает — ищу в других источниках' : 'Источник не отвечает — выберите другой',
             auto ? function () { try { BSFix.autoNext(); } catch (e) {} } : other ? otherPlugin : null);
     }
@@ -476,7 +477,12 @@ var BSGuard = (function () {
     }
 
     /** После закрытия плеера — следующий плагин (bssources.js через bsfix.js); false — его нет. */
-    function otherPlugin() { try { return !!(window.BSFix && BSFix.otherPlugin && BSFix.otherPlugin('noanswer')); } catch (e) { return false; } }
+    function otherPlugin() {
+        var ok = false;
+        try { ok = !!(window.BSFix && BSFix.otherPlugin && BSFix.otherPlugin('noanswer')); } catch (e) {}
+        if (!ok) noty('Рабочий источник не найден — выберите вручную', 6000);   // ушли с экрана, пока закрывали, и т. п.
+        return ok;
+    }
     function canOther() { try { return !!(window.BSSources && BSSources.fallback && BSSources.here && BSSources.here()) && window.localStorage.getItem('bs_auto_source') !== 'false'; } catch (e) { return false; } }
     function autoAvailable() {
         try { return !!(window.BSFix && BSFix.current && BSFix.current()) && window.localStorage.getItem('bs_auto_source') !== 'false'; } catch (e) { return false; }

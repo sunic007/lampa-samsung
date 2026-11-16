@@ -326,6 +326,7 @@ var BSSources = (function () {
     function fallback(why) {
         var id = activeMovieId(), comp = '';
         if (!id) return false;
+        try { if (Lampa.Player.opened()) return false; } catch (e) {}   // пока закрывали, включили другое видео — не мешаем
         try { comp = Lampa.Activity.active().component; } catch (e) {}
         var who = compOwner(comp);
         if (!who) return false;                                  // не экран онлайн-источника
@@ -340,14 +341,17 @@ var BSSources = (function () {
     }
     /** Экран источника comp сдался (why: 'empty' | 'denied' | 'noanswer'). true — идём к следующему источнику. */
     function giveUp(comp, why) {
+        // «нет доступа» помним и без поиска «Смотреть» (источник открыли сами) — в следующий раз он последний
+        var mainWas = mainId();
+        if (why === 'denied') markDenied(compOwner(comp) || (search && search.current) || '');
         if (!search || Date.now() > search.until || search.id != activeMovieId()) return false;
         var who = compOwner(comp) || search.current;
         if (!triedHas(who)) search.tried.push(who);
         var cur = labelOf(who), id = search.id, s = search;
         // Skaz — по подписке Skaz (к входу в CUB не относится): нет подписки — он пишет «Нет доступа». Человек должен
         // просто смотреть: идём к бесплатному источнику и делаем его главным, чтобы в следующий раз без этого крюка
-        var skazOff = why === 'denied' && sameSource(who, mainId());   // главный без доступа — дальше главным бесплатный
-        if (why === 'denied') markDenied(who);
+        var skazOff = why === 'denied' && sameSource(who, mainWas);   // главный без доступа — дальше главным бесплатный
+        if (why === 'denied') markDenied(who);                     // кнопка без экрана (search.current)
         noty(skazOff ? (who === 'skaz' ? 'Skaz — по подписке, её нет' : 'В «' + cur + '» нет доступа') + '. Включаю бесплатный источник' :
             (why === 'denied' ? 'В «' + cur + '» нет доступа' : why === 'noanswer' ? '«' + cur + '» не отвечает' : 'В «' + cur + '» нет') +
             ' — ищу в других источниках');
@@ -421,6 +425,8 @@ var BSSources = (function () {
     }
 
     return { start: start, owner: owner, mainId: mainId, isMain: isMain, pick: pick, list: LIST, useMain: useMain,
-        startSearch: startSearch, giveUp: giveUp, fallback: fallback, here: function () { try { return !!compOwner(Lampa.Activity.active().component); } catch (e) { return false; } }, _denied: denied, _sortDenied: sortDenied, order: order, _search: function () { return search; }, _candidates: candidates, _looksOnline: looksOnline,
+        startSearch: startSearch, giveUp: giveUp, fallback: fallback,
+        /** Видео пошло: этот источник доступен (купили подписку) — отметку «нет доступа» снимаем. */
+        played: function () { try { var w = compOwner(Lampa.Activity.active().component); if (w) clearDenied(w); } catch (e) {} }, here: function () { try { return !!compOwner(Lampa.Activity.active().component); } catch (e) { return false; } }, _denied: denied, _sortDenied: sortDenied, order: order, _search: function () { return search; }, _candidates: candidates, _looksOnline: looksOnline,
         _swapTo: swapTo, _compOwner: compOwner, _onActivity: onActivity, _loadAll: loadAll, _dropBlocked: dropBlocked };
 })();
