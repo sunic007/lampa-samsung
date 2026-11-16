@@ -3030,6 +3030,21 @@ async function serviceTests() {
     t('заглушка «слишком большое»: подключённому — «пришлите ещё раз», давнее и чужим — молча', bigSent.length === 1 && /\/sendMessage$/.test(bigSent[0].u) && /chat_id=1&/.test(bigSent[0].b) &&
         /слишком большим/.test(bigSent[0].b) && PBig._serverNow() > 0);
 
+    // разбор апдейта упал: номер не уходит за него (следующий опрос отдаст его ещё раз), упал и повтор — пропускаем
+    {
+        const stT = { bs_tg_token: TOKEN, bs_tg_chat: '1', bs_tg_offset: '20' };
+        const PT = page(stT, XBig);
+        let throws = 0;
+        const bad = n => { const m = { message_id: 1, text: 'x' }; Object.defineProperty(m, 'chat', { get() { throws++; throw new Error('плохой апдейт'); } }); return { update_id: n, message: m }; };
+        const r1 = PT._takeUpdate(bad(20), {});
+        t('разбор упал: апдейт не подтверждён (номер на нём), остальное из пачки — следующим опросом', r1 === false && stT.bs_tg_offset === '20' && throws === 1);
+        const r2 = PT._takeUpdate(bad(20), {});
+        t('упал и при повторе — пропущен (номер за ним), бот не застревает на одном апдейте', r2 === true && stT.bs_tg_offset === '21' && throws === 2);
+        const r3 = PT._takeUpdate({ update_id: 21, message: { message_id: 2, chat: { id: 555 }, text: 'hi' } }, {});
+        t('следующий обычный апдейт разобран, номер за ним', r3 === true && stT.bs_tg_offset === '22');
+        t('из очереди, уже разобранный, — молча мимо (true)', PT._takeUpdate({ update_id: 5, _q: { at: Date.now(), tv: 0 } }, {}) === true && stT.bs_tg_offset === '22');
+    }
+
     // без службы (старый пакет, браузер): всё как раньше, в localStorage
     const st2 = { bs_tg_token: TOKEN, bs_tg_chat: '1', bs_ai_groq: KEYS.og };
     const xl2 = [];

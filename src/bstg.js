@@ -2616,8 +2616,9 @@ var BSTelegram = (function () {
                 svc.aliveAt = 0;                                     // службе — сразу: этот ТВ теперь главный
                 busSend({ t: 'who', users: true });                  // люди со всех ТВ: вдруг гостя разрешили на другом
             }
-            var staleTold = {};
-            (updates || []).forEach(function (u) { takeUpdate(u, staleTold); });
+            var staleTold = {}, i, list = updates && updates.length ? updates : [];
+            // не разобран — дальше не идём: номер на нём, следующий опрос отдаст его и всё за ним
+            for (i = 0; i < list.length; i++) if (!takeUpdate(list[i], staleTold)) break;
             // общий бот: пусто — следующий вопрос через 1 с (сервер ждёт ещё 1 с сам; дольше держать хостинг не может)
             setTimeout(poll, 200);
         }, function (e) {
@@ -2650,11 +2651,32 @@ var BSTelegram = (function () {
         if (c) return !/^(start|find|type)$/i.test(c[1]);
         return KB_WORDS.indexOf(plainOf(t)) >= 0 && !isWord(plainOf(t), 'type');
     }
+    /* Апдейт подтверждается (номер bs_tg_offset — за ним) только разобранным: Telegram считает апдейт принятым, когда
+     * следующий getUpdates придёт с offset больше его номера. Номер ставим до разбора, как и раньше (разбор может сам
+     * сбросить номер — другой бот), а разбор упал — возвращаем номер на этот апдейт: следующий опрос (или очередь службы)
+     * отдаст его ещё раз, и всё, что шло за ним, тоже не пропадёт. Упал и повтор — пропускаем его с записью в журнал,
+     * чтобы один плохой апдейт не держал бота вечно. false — апдейт не разобран, остальное из пачки — следующим опросом. */
+    var takeFail = -1;
     function takeUpdate(u, staleTold) {
-        if (!u || typeof u.update_id !== 'number') return;
+        if (!u || typeof u.update_id !== 'number') return true;
+        if (u._q && u.update_id < (parseInt(lsGet('bs_tg_offset'), 10) || 0)) return true;   // из очереди, но уже разобрано
+        var next = String(u.update_id + 1);
+        lsSet('bs_tg_offset', next);
+        try { takeOne(u, staleTold); }
+        catch (e) {
+            if (takeFail !== u.update_id) {
+                takeFail = u.update_id;
+                if (lsGet('bs_tg_offset') === next) lsSet('bs_tg_offset', String(u.update_id));   // номер не сбросили при разборе
+                log('команда не разобрана — повторю', e && e.message);
+                return false;
+            }
+            log('команда не разобрана и при повторе — пропускаю', u.update_id + ' ' + (e && e.message));
+        }
+        if (takeFail === u.update_id) takeFail = -1;
+        return true;
+    }
+    function takeOne(u, staleTold) {
         var q = u._q;
-        if (q && u.update_id < (parseInt(lsGet('bs_tg_offset'), 10) || 0)) return;   // из очереди, но уже разобрано
-        lsSet('bs_tg_offset', String(u.update_id + 1));
         if (q && u.message && u.message._k) return keyAgain(u);                 // ключ ИИ — служба его не сохранила
         if (q && u._big) return bigAgain(u);                                   // слишком большое — служба его не сохранила
         // q.at = 0: служба не знает, когда пришло (догоняющий ответ без даты) — «на ТВ» такое не выполняем
@@ -2680,7 +2702,7 @@ var BSTelegram = (function () {
             return;
         }
         queuedTv = !!(q && q.tv);                                               // «на ТВ» из очереди: служба уже сказала «включите ТВ»
-        try { handle(u); } catch (e) { log('команда', e.message); } finally { queuedTv = false; }
+        try { handle(u); } finally { queuedTv = false; }
     }
 
     /** Апдейт был слишком большим для очереди службы (u._big = {chat, date}): содержимого нет — подключённого человека
@@ -2794,15 +2816,18 @@ var BSTelegram = (function () {
         svc.pend = 0;
         svcAsk('GET', '/pending', undefined, function (st, j) {
             if (!(st === 200 && j && j.ok && j.items && j.items.length)) return done();
-            var told = {}, upTo = -1;
+            var told = {}, upTo = -1, stop = false;
             j.items.forEach(function (it) {
-                if (!it || !it.u || typeof it.u.update_id !== 'number') return;
+                if (stop || !it || !it.u || typeof it.u.update_id !== 'number') return;
                 it.u._q = { at: +it.at || 0, tv: it.tv ? 1 : 0 };
+                var ok = true;
+                try { ok = takeUpdate(it.u, told); } catch (e) { log('очередь', e.message); }
+                // не разобран — в очереди службы его и всё за ним оставляем (подтверждаем только до него): ещё раз — следующим опросом
+                if (!ok) { stop = true; return; }
                 if (it.u.update_id > upTo) upTo = it.u.update_id;
-                try { takeUpdate(it.u, told); } catch (e) { log('очередь', e.message); }
             });
             var next = +j.next || 0, off = parseInt(lsGet('bs_tg_offset'), 10) || 0;
-            if (j.more) svc.pend = 1;                                // отдала не всё — остальное следующим опросом
+            if (j.more || stop) svc.pend = 1;                        // отдала не всё (или не разобран) — остальное следующим опросом
             else if (next > off) lsSet('bs_tg_offset', String(next));
             if (upTo < 0) return done();
             svcAsk('POST', '/pending/ack', { upTo: upTo }, function () { done(); });
