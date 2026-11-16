@@ -108,18 +108,20 @@ def parse(body):
 
 
 def norm_url(url):
-    """Ключ для поиска дублей: схема и хост строчными, без порта по умолчанию, %-коды раскрыты, параметры по порядку."""
-    from urllib.parse import urlsplit, unquote, parse_qsl, urlencode
+    """Ключ для поиска дублей: схема и хост строчными, без порта по умолчанию, путь в одной кодировке, параметры по
+    порядку. Значения параметров не раскодируем: «a%26x%3D1» и «a&x=1» — разные адреса. Битый адрес — как есть."""
+    from urllib.parse import urlsplit, unquote, quote, parse_qsl, urlencode
     try:
         p = urlsplit(url.split('|')[0].strip())
+        host = (p.hostname or '').lower()
+        port = p.port
+        if port and not ((p.scheme == 'http' and port == 80) or (p.scheme == 'https' and port == 443)):
+            host += ':%d' % port
+        path = quote(unquote(p.path), safe="/:@!$&'()*+,;=-._~")
+        q = urlencode(sorted(parse_qsl(p.query, keep_blank_values=True)))
     except ValueError:
         return url
-    host = (p.hostname or '').lower()
-    port = p.port
-    if port and not ((p.scheme == 'http' and port == 80) or (p.scheme == 'https' and port == 443)):
-        host += ':%d' % port
-    q = urlencode(sorted(parse_qsl(p.query, keep_blank_values=True)))
-    return '%s://%s%s%s' % (p.scheme.lower(), host, unquote(p.path), '?' + unquote(q) if q else '')
+    return '%s://%s%s%s' % (p.scheme.lower(), host, path, '?' + q if q else '')
 
 
 def freetv_failed():
