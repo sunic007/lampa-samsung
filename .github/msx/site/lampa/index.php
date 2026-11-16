@@ -15,7 +15,7 @@ const GH = 'https://raw.githubusercontent.com/' . REPO . '/main/version.json';
 const CDN = 'https://cdn.jsdelivr.net/gh/' . REPO . '@v';
 const PIN = '2.3.95';   // если GitHub не ответил и ничего не запомнено
 const LIFE = 600;       // версию проверяем раз в 10 минут
-const KEEP = 2;         // версий на хостинге
+const KEEP = 1;         // версий на хостинге (диск ~50 МБ: прежняя удаляется, как только новая готова)
 
 function fetch_url($u, $timeout = 10) {
     $c = curl_init($u);
@@ -75,7 +75,7 @@ function release_files($ver) {
     // хостинга), а долгий ответ съедал бы 30 с, что хостинг даёт PHP, — и до скачивания дело не доходило
     $memo = __DIR__ . '/.cache/files-' . $ver . '.json';
     $m = is_file($memo) ? json_decode((string) file_get_contents($memo), true) : null;
-    if (is_array($m) && count($m) >= 20) return $m;
+    if (is_array($m) && count($m) >= 20) return skip_heavy($m);
     $out = [];
     $t = json_decode((string) fetch_url('https://api.github.com/repos/' . REPO . '/git/trees/v' . $ver . '?recursive=1', 8), true);
     if (is_array($t) && !empty($t['tree'])) {
@@ -92,7 +92,14 @@ function release_files($ver) {
     // служба Tizen, проект Tizen Studio и config.xml странице не нужны
     foreach (array_keys($out) as $p) if (preg_match('#^(service/|\.tproject|config\.xml$)#', $p)) unset($out[$p]);
     if (count($out) >= 20) @file_put_contents($memo, json_encode($out));
-    return $out;
+    return skip_heavy($out);
+}
+/** Чего в своей копии не держим (диск ~50 МБ; выпуск без этого ~9 МБ вместо ~20):
+ *  - vender/jassub/ (субтитры ASS, ~8 МБ): Lampa сама ищет их по второму адресу (github_lampa), если своих нет;
+ *  - шрифты .eot/.ttf (~4 МБ): браузеры ТВ берут .woff, он стоит в @font-face раньше .ttf, а .eot не понимают. */
+function skip_heavy($files) {
+    foreach (array_keys($files) as $p) if (preg_match('#^(vender/jassub/|fonts/.*\.(eot|ttf)$|fonts/.*/demo\.html$)#i', $p)) unset($files[$p]);
+    return $files;
 }
 /** Скачать выпуск в v/<версия>/ (сначала во временную папку). true — готово. */
 function sync_release($store, $cache, $ver) {
@@ -151,6 +158,9 @@ function sync_release($store, $cache, $ver) {
     $vers = array_values(array_filter(scandir($store), 'ok_ver'));
     usort($vers, 'version_compare');
     foreach (array_slice($vers, 0, max(0, count($vers) - KEEP)) as $old) rrmdir("$store/$old");
+    // списки файлов и sha удалённых версий — тоже прочь (копились с октября)
+    foreach (array_merge(glob(__DIR__ . '/.cache/files-*.json') ?: [], glob(__DIR__ . '/.cache/sha-*.json') ?: []) as $f)
+        if (preg_match('#-(\d+\.\d+\.\d+)\.json$#', $f, $mm) && $mm[1] !== $ver && !is_dir("$store/" . $mm[1])) @unlink($f);
     return true;
 }
 function rrmdir($d) {
