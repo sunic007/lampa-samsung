@@ -978,6 +978,37 @@ t('обновление: GitHub не ответил — без версии', uc
 uc = updCheck(M46, () => 200, { bs_upd: JSON.stringify({ v: '1.7.45', files: ['loader.js'], m: 1, ok: 1 }) });
 t('обновление: при запуске берём зеркало, где проверка нашла файлы', /fastly\.jsdelivr\.net/.test(uc.U._base));
 
+/* ---- update.js: поэтапная выкатка (rollout / stable / hold) ---- */
+{
+    const ST = { version: '1.7.45', files: ['loader.js'] };
+    const R = (pct, extra) => Object.assign({ version: '1.7.46', files: ['loader.js', 'bstg.js'], rollout: { v: '1.7.46', pct }, stable: ST }, extra || {});
+    // корзина ТВ стабильна для версии и разная у разных ТВ
+    let a = updCheck(null, () => 200, { bs_uid: 'aaaaaaaaaaaaaaaa' }).U, b = updCheck(null, () => 200, { bs_uid: 'bbbbbbbbbbbbbbbb' }).U;
+    t('выкатка: корзина 0..99, у ТВ одна и та же, у разных ТВ разная', a._bucket('1.7.46') === a._bucket('1.7.46') && a._bucket('1.7.46') >= 0 && a._bucket('1.7.46') < 100 &&
+        [...Array(40)].map((_, i) => a._bucket('1.' + i)).join() !== [...Array(40)].map((_, i) => b._bucket('1.' + i)).join());
+    // найти ТВ внутри и вне 10%
+    let inId = '', outId = '';
+    for (let i = 0; i < 400 && (!inId || !outId); i++) {
+        const id = ('0000000000000000' + i.toString(16)).slice(-16), U = updCheck(null, () => 200, { bs_uid: id }).U;
+        if (U._bucket('1.7.46') < 10) inId = inId || id; else outId = outId || id;
+    }
+    let u = updCheck(R(10), () => 200, { bs_uid: inId });
+    t('выкатка 10%: ТВ в первых 10% — новая версия', u.v === '1.7.46');
+    u = updCheck(R(10), () => 200, { bs_uid: outId });
+    t('выкатка 10%: остальные — stable (новее того, что работает)', u.v === '1.7.45' && JSON.parse(u.ls.bs_upd).v === '1.7.45');
+    u = updCheck(R(0), () => 200, { bs_uid: outId, bs_beta: 'true' });
+    t('выкатка 0%: ТВ «Получать новые версии первым» (владелец) — новая', u.v === '1.7.46');
+    u = updCheck(R(0), () => 200, { bs_uid: inId });
+    t('выкатка 0%: никто, кроме владельца', u.v === '1.7.45');
+    u = updCheck({ version: '1.7.46', files: ['loader.js'] }, () => 200, { bs_uid: outId });
+    t('выкатка: поля нет — всем, как раньше', u.v === '1.7.46');
+    u = updCheck(R(100, { hold: ['1.7.46'] }), () => 200, { bs_uid: inId, bs_beta: 'true' });
+    t('остановка (hold): новую не ставим никому, даже владельцу, — stable; список запомнен', u.v === '1.7.45' && JSON.parse(u.ls.bs_upd_hold).join() === '1.7.46');
+    // ТВ уже работает на остановленной версии: при следующем запуске вернётся на stable
+    u = updCheck(null, () => 200, { bs_upd: JSON.stringify({ v: '1.7.46', files: ['loader.js'], ok: 1 }), bs_upd_hold: JSON.stringify(['1.7.46']) });
+    t('остановка: запуск на остановленной версии — сразу пакет, не CDN', u.U._remote === false && u.U._base === '');
+}
+
 /* ---- loader.js: клавиатура — экранная Lampa только на ТВ; в браузере системная, планшет — «Касание» ---- */
 function kbStart(o) {
     const src = fs.readFileSync(path.join(SRC, 'loader.js'), 'utf8');
