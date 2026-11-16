@@ -2302,6 +2302,18 @@ var BSTelegram = (function () {
         } catch (x) {}
         return null;
     }
+    /** Серию начали смотреть в Lampa — на этом ТВ или на другом устройстве через CUB: прогресс Lampa по привязке к
+     *  карточке (Timeline.link: «tv_<id>», сезон, серия — lampa-source 6407a18), название сериала не нужно. */
+    function lampaSeen(id, s, e) {
+        try {
+            var T = Lampa.Timeline;
+            if (!T || typeof T.link !== 'function' || typeof T.view !== 'function') return false;
+            var meta = T.link({ id: id, original_name: '-', source: 'tmdb' }, s, e);
+            if (!meta) return false;
+            var v = T.view('bs_by_card', meta);
+            return !!v && (+v.percent > 0 || +v.time > 0);
+        } catch (x) { return false; }
+    }
     /** Серия s×e уже не новость для того, кому пишем: о ней уже писали (seen — {s, e} последней отправленной) или
      *  владелец её уже смотрел на ТВ (w — watchedEp). У сериалов, что выходят через день, TMDB часто отстаёт: дата
      *  серии в нём позже, чем она есть в источниках, — без этой проверки приходило «Сегодня выходит» о просмотренной. */
@@ -2401,7 +2413,7 @@ var BSTelegram = (function () {
                     recipients().forEach(function (r) {
                         if (!r.list.some(function (x) { return x.id == c.id; })) return;
                         // утром уже было «Сегодня выходит» об этой серии или владелец её уже посмотрел — второй раз не пишем
-                        if (told.indexOf((r.owner ? '' : r.c + '@') + c.id + ':' + sNo + ':' + eNo + '|' + (last.air_date || '')) >= 0 || (r.owner && epKnown(sNo, eNo, null, w))) return;
+                        if (told.indexOf((r.owner ? '' : r.c + '@') + c.id + ':' + sNo + ':' + eNo + '|' + (last.air_date || '')) >= 0 || (r.owner && (epKnown(sNo, eNo, null, w) || lampaSeen(c.id, sNo, eNo)))) return;
                         asked++;
                         as(r.c, function () {
                             var text = L('🎬 Вышла новая серия\n', '🎬 New episode is out\n', '🎬 Yangi qism chiqdi\n') + name + '\n' + seEp(last.season_number, last.episode_number) + epName;
@@ -2528,7 +2540,7 @@ var BSTelegram = (function () {
                 // чтобы не отправить дважды, другим ТВ сообщаем, когда ушло, не ушло — метку снимаем
                 if (hour >= 8) ids.forEach(function (id) {
                     var x = seen[id], n = x && x.next;
-                    if (!n || n.d !== today || epKnown(n.s, n.e, x, r.owner ? watchedEp(id) : null)) return;
+                    if (!n || n.d !== today || epKnown(n.s, n.e, x, r.owner ? watchedEp(id) : null) || (r.owner && lampaSeen(id, n.s, n.e))) return;
                     var tag = (r.owner ? '' : r.c + '@') + id + ':' + n.s + ':' + n.e;
                     if (done.indexOf(tag) >= 0) return;
                     done.unshift(tag); changed = true;
@@ -4793,7 +4805,7 @@ var BSTelegram = (function () {
         /** 'own' — свой бот подключён, 'none' — не подключено. */
         state: state, refresh: function () { try { refreshSettings(); } catch (e) {} },
         tvName: tvName,
-        _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _ownerList: ownerList, _nextAfter: nextAfter, _epKnown: epKnown, _mini: mini, _joinMsg: joinMsg, _join4: { code: join4Code, show: join4Show, topic: join4Topic, hellos: join4Hellos, box: join4Box, open: join4Open, send: join4Send, BASE9: BASE9 }, _joinTopic: joinTopic, _joinShow: joinShow, _joinKeys: joinKeys, _aiForget: aiForget, _relaySet: relaySet, _svcSync: svcSync, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _onVideoStarted: onVideoStarted, _askDuringVideo: askDuringVideo, _stopVideo: stopVideo, _leaderStale: leaderStale, _leaderOnScreen: leaderOnScreen, _watchTick: watchTick, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _lateCommand: lateCommand, _botDesc: function (l, s) { return [botDesc(l || 'ru', s), botShort(l || 'ru', s)]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _tmdbGet: tmdbGet, _blockParse: blockParse, _blockReset: function () { blockIds = null; blockAt = 0; }, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow,
+        _chatFrom: chatFrom, _isNew: isNew, _nextText: nextText, _isLatest: isLatest, _tokenFrom: tokenFrom, _weekLines: weekLines, _weekKey: weekKey, _caption: resultCaption, _slideButtons: slideButtons, _fnv: fnv, _parseQuery: parseQuery, _fromGemini: fromGemini, _isGeminiKey: isGeminiKey, _rankModels: rankModels, _cleanDevName: cleanDevName, _joinFrom: joinFrom, _shotCaption: shotCaption, _clock: clock, _verNum: verNum, _keyKind: keyKind, _groqPick: groqPick, _oaContent: oaContent, _ongoing: ongoing, _pushCard: pushCard, _tvSubscribe: tvSubscribe, _fromGeminiList: fromGeminiList, _geminiBody: geminiBody, _as: as, _geminiRun: geminiRun, _isDescription: isDescription, _chatFrom2: chatFrom, _onUserPart: onUserPart, _guestTracked: guestTracked, _ownerList: ownerList, _nextAfter: nextAfter, _epKnown: epKnown, _lampaSeen: lampaSeen, _mini: mini, _joinMsg: joinMsg, _join4: { code: join4Code, show: join4Show, topic: join4Topic, hellos: join4Hellos, box: join4Box, open: join4Open, send: join4Send, BASE9: BASE9 }, _joinTopic: joinTopic, _joinShow: joinShow, _joinKeys: joinKeys, _aiForget: aiForget, _relaySet: relaySet, _svcSync: svcSync, _tvLabels: tvLabels, _geminiError: geminiError, _geminiSummary: geminiSummary, _menuRows: menuRows, _typedText: typedText, _typeHere: typeHere, _whenVideoEnds: whenVideoEnds, _onVideoClosed: onVideoClosed, _tvPlaying: tvPlaying, _onVideoStarted: onVideoStarted, _askDuringVideo: askDuringVideo, _stopVideo: stopVideo, _leaderStale: leaderStale, _leaderOnScreen: leaderOnScreen, _watchTick: watchTick, _takeoverRank: takeoverRank, _onBus: onBus, _qualityLine: qualityLine, _waitable: waitable, _qualityName: qualityName, _qualityLow: qualityLow, _lateCommand: lateCommand, _botDesc: function (l, s) { return [botDesc(l || 'ru', s), botShort(l || 'ru', s)]; }, _newsSeen: newsSeen, _newsDue: newsDue, _newsPkgFlag: newsPkgFlag, _shotsMigrate: shotsMigrate, _onShot: onShot, _onConflict: onConflict, _cubCards: cubCards, _commands: commands('ru'), _commandsFor: commands, _L: L, _plainOf: plainOf, _isWord: isWord, _kbWords: KB_WORDS, _help: helpText, _tmdbLang: tmdbLang, _tmdbGet: tmdbGet, _blockParse: blockParse, _blockReset: function () { blockIds = null; blockAt = 0; }, _crypt: Crypt, _busOpen: busOpen, _busKey: busKey, _inviteCode: inviteCode, _inviteReset: inviteReset, _active: active, _handle: handle, _tmp: tmp, _sent: sent, _delTick: delTick, _noteServerTime: noteServerTime, _serverNow: serverNow,
         _call: call, _check: check, _remind: remind, _joinCode: joinCode, _randomTopic: randomTopic,
         _busTopic: busTopic, _svc: svc, _svcKey: function (k) { if (window.BS_TEST_HOOKS !== true) return undefined; if (typeof k === 'string') svcKey = k; return svcKey; },
         _svcStart: svcStart, _svcMove: svcMove, _svcWanted: svcWanted, _svcCheck: svcCheck, _svcForget: svcForget, _tgOff: tgOff, _tgOffAsk: tgOffAsk, _svcSeen: svcSeen, _tvRules: tvRules, _addSettings: addSettings, _aiRun: aiRun, _aiSlot: aiSlot, _setAiKey: setAiKey,
