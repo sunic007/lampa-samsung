@@ -28,7 +28,7 @@
  * возвращаются (bs_player_forced хранит прежние, если приложение закрыли посреди просмотра).
  */
 var BSGuard = (function () {
-    var cfg = { NUDGE: 8000, RESTART_AGAIN: 10 * 60000, BUFFER_GRACE: 60000, START_LIMIT: 25000, PLAY_LIMIT: 20000, ERROR_GRACE: 6000, START_ERROR_GRACE: 2000, CLOSE_DELAY: 4000, TICK: 1000, RESUME_GRACE: 25000 };
+    var cfg = { NUDGE: 8000, RESTART_AGAIN: 10 * 60000, BUFFER_GRACE: 60000, START_LIMIT: 25000, ONLINE_START: 15000, PLAY_LIMIT: 20000, ERROR_GRACE: 6000, START_ERROR_GRACE: 2000, CLOSE_DELAY: 4000, TICK: 1000, RESUME_GRACE: 25000 };
     var s = null;          // текущий сеанс просмотра
     var timer = null;
     var HLS_START_LIMIT = 10000, HLS_QUIET = 6000, HLS_HINT = 3000, HLS_LEARN = 30 * 24 * 3600 * 1000, LEARN_KEY = 'bs_hls_inner', FORCED_KEY = 'bs_player_forced';
@@ -335,7 +335,9 @@ var BSGuard = (function () {
             noty('Подключаюсь к потоку…', HLS_START_LIMIT - HLS_HINT);
         }
         if (s.played && !s.avplay && !s.nudged && Date.now() - s.lastProgressAt > cfg.NUDGE) { s.nudged = true; nudge(); }
-        var limit = s.played ? cfg.PLAY_LIMIT : hlsWait ? (s.avSignal ? HLS_START_LIMIT : HLS_QUIET) : cfg.START_LIMIT;
+        // онлайн-источник с запасными: ждать первой картинки 15 с, а не 25 — дальше подбор другого (торренты — как было)
+        if (s.online === undefined) s.online = !s.iptv && (autoAvailable() || canOther());
+        var limit = s.played ? cfg.PLAY_LIMIT : hlsWait ? (s.avSignal ? HLS_START_LIMIT : HLS_QUIET) : s.online ? cfg.ONLINE_START : cfg.START_LIMIT;
         if (Date.now() - s.lastProgressAt > limit) escalate(s.played ? 'остановился' : 'не запускается');
     }
 
@@ -390,6 +392,8 @@ var BSGuard = (function () {
             if (sourceInPlayer()) return;
             return giveUp('Источник не работает — ищу другой', function () { try { BSFix.autoNext(); } catch (e) {} });
         }
+        // то же у плагина без своего автоподбора (Online Mod, Lordfilm, Showy): сразу следующий плагин
+        if (!s.everPlayed && !s.iptv && canOther()) return giveUp('Источник не работает — ищу в других источниках', otherPlugin);
 
         // Шаг 0: видео шло и встало — сначала тот же поток с того же места.
         if ((!s.restarted || Date.now() - s.restartedAt > cfg.RESTART_AGAIN) && s.played && s.lastTime > 5 && work && work.url) return restartSame(why === 'выдал ошибку' ? 'Ошибка потока' : 'Поток ' + why);
@@ -404,8 +408,10 @@ var BSGuard = (function () {
         // онлайн-источник: другой источник с той же серией — в плеере; нельзя — после закрытия плеера (bsfix.js)
         var auto = autoAvailable();
         if (auto && sourceInPlayer()) return;
-        giveUp(auto ? 'Источник не отвечает — ищу другой' : 'Источник не отвечает — выберите другой',
-            auto ? function () { try { BSFix.autoNext(); } catch (e) {} } : null);
+        // плагин без своего автоподбора (Online Mod, Lordfilm, Showy) — следующий плагин
+        var other = !auto && !s.iptv && canOther();
+        giveUp(auto ? 'Источник не отвечает — ищу другой' : other ? 'Источник не отвечает — ищу в других источниках' : 'Источник не отвечает — выберите другой',
+            auto ? function () { try { BSFix.autoNext(); } catch (e) {} } : other ? otherPlugin : null);
     }
 
     function fmtPos(sec) { sec = Math.floor(sec); var m = Math.floor(sec / 60), x = sec % 60; return Math.floor(m / 60) + ':' + ('0' + m % 60).slice(-2) + ':' + ('0' + x).slice(-2); }
@@ -444,7 +450,7 @@ var BSGuard = (function () {
                 if (s !== sess || !s) return;                      // плеер закрыли или включили другое
                 s.searching = false;
                 s.graceUntil = 0;
-                if (!res) return giveUp('Рабочий источник не найден — выберите вручную');
+                if (!res) return canOther() ? giveUp('Здесь рабочего нет — ищу в других источниках', otherPlugin) : giveUp('Рабочий источник не найден — выберите вручную');
                 var pos = s.everPlayed && s.lastTime > 5 ? s.lastTime : 0;
                 noty((res.name === was ? 'Ссылка на серию устарела — взял новую у «' + res.title + '»' : 'Переключаю на «' + res.title + '»') + (res.verdict === 'ok' ? ' — поток проверен' : ''), 7000);
                 log('другой источник в плеере:', res.name, res.verdict);
@@ -464,11 +470,14 @@ var BSGuard = (function () {
             s.graceUntil = Date.now() + SEARCH_WAIT;
             noty((from ? '«' + from + '»' : 'Источник') + ' не работает — ищу другой, не выходя из плеера…', 8000);
             // гонка не ответила вовсе — не ждать вечно
-            setTimeout(function () { if (s === sess && s && s.searching) { s.searching = false; giveUp('Рабочий источник не найден — выберите вручную'); } }, SEARCH_WAIT);
+            setTimeout(function () { if (s === sess && s && s.searching) { s.searching = false; canOther() ? giveUp('Здесь рабочего нет — ищу в других источниках', otherPlugin) : giveUp('Рабочий источник не найден — выберите вручную'); } }, SEARCH_WAIT);
         }
         return true;
     }
 
+    /** После закрытия плеера — следующий плагин (bssources.js через bsfix.js); false — его нет. */
+    function otherPlugin() { try { return !!(window.BSFix && BSFix.otherPlugin && BSFix.otherPlugin('noanswer')); } catch (e) { return false; } }
+    function canOther() { try { return !!(window.BSSources && BSSources.fallback && BSSources.here && BSSources.here()) && window.localStorage.getItem('bs_auto_source') !== 'false'; } catch (e) { return false; } }
     function autoAvailable() {
         try { return !!(window.BSFix && BSFix.current && BSFix.current()) && window.localStorage.getItem('bs_auto_source') !== 'false'; } catch (e) { return false; }
     }

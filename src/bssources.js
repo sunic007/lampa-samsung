@@ -70,10 +70,23 @@ var BSSources = (function () {
         if (/skaz/i.test(s) || btn.hasClass('lampac--button') || /^(Онлайн|Online)$/i.test(text)) return 'skaz';
         return '';
     }
-    /** Главный источник: выбранный, если он включён; иначе Skaz. */
+    /* Нет доступа (Skaz без подписки, платный балансер): источник сказал «нет доступа» — помним DENIED_LIFE и в поиске
+     * «Смотреть» ставим его последним, а главным берём первый бесплатный: без подписки человек сразу попадает туда, где
+     * видео есть, а не ждёт отказа платного каждый раз. Выбрал главный в настройках сам — отметку снимаем. */
+    var DENIED_LIFE = 7 * 86400000;
+    function denied(id, now) {
+        var t = parseInt(lsGet('bs_src_denied_' + id) || '0', 10) || 0;
+        return t > 0 && (now || Date.now()) - t < DENIED_LIFE;
+    }
+    function markDenied(id) { if (id && id.indexOf('x:') !== 0) lsSet('bs_src_denied_' + id, String(Date.now())); }
+    function clearDenied(id) { try { window.localStorage.removeItem('bs_src_denied_' + id); } catch (e) {} }
+    /** Главный источник: выбранный, если он включён и доступен; нет доступа — первый доступный включённый; иначе Skaz. */
     function mainId() {
         var id = lsGet('bs_src_main') || 'skaz', s = byId(id);
-        return s && enabled(s) ? id : 'skaz';
+        if (!(s && enabled(s))) id = 'skaz';
+        if (!denied(id)) return id;
+        for (var i = 0; i < LIST.length; i++) if (enabled(LIST[i]) && !denied(LIST[i].id)) return LIST[i].id;
+        return id;
     }
     function isMain(btn) {
         var who = owner(btn), main = mainId();
@@ -207,7 +220,7 @@ var BSSources = (function () {
         api.addParam({
             component: C, param: { name: 'bs_src_main', type: 'select', values: names, 'default': 'skaz' },
             field: { name: 'Главный источник для «Смотреть»', description: 'Первая кнопка на карточке' },
-            onChange: function (v) { lsSet('bs_src_main', String(v || 'skaz')); }
+            onChange: function (v) { lsSet('bs_src_main', String(v || 'skaz')); clearDenied(String(v || 'skaz')); }
         });
         LIST.forEach(function (s) {
             api.addParam({
@@ -257,7 +270,13 @@ var BSSources = (function () {
             if (s.group) groups[s.group] = true;
             if (ids.indexOf(s.id) < 0) ids.push(s.id);
         });
-        return ids;
+        return sortDenied(ids, Date.now());
+    }
+    /** Источники без доступа — в конец (порядок остальных не меняется). */
+    function sortDenied(ids, now) {
+        var ok = [], no = [];
+        ids.forEach(function (id) { (denied(id, now) ? no : ok).push(id); });
+        return ok.concat(no);
     }
     /** Один и тот же источник: id совпадают или это плагины одной группы (одинаковая кнопка — Online Mod / VOD). */
     function sameSource(a, b) { var x = byId(a), y = byId(b); return a === b || !!(x && y && x.group && x.group === y.group); }
@@ -301,6 +320,19 @@ var BSSources = (function () {
         return false;
     }
 
+    /** Видео не пошло, а свои источники плагина кончились (bsfix.js, playerguard.js): не «выберите вручную», а
+     *  следующий плагин — как при поиске «Смотреть». Поиска не было (выбрали источник сами) или он устарел — начинаем
+     *  с текущего. true — идём к следующему; false — некуда (не карточка, нет фильма). */
+    function fallback(why) {
+        var id = activeMovieId(), comp = '';
+        if (!id) return false;
+        try { comp = Lampa.Activity.active().component; } catch (e) {}
+        var who = compOwner(comp);
+        if (!who) return false;                                  // не экран онлайн-источника
+        if (!search || search.id != id || Date.now() > search.until) startSearch(id, who);
+        search.until = Date.now() + SEARCH_LIFE;
+        return giveUp(comp, why || 'noanswer');
+    }
     /** «Смотреть» нажали: поиск по источникам для этого фильма, первый — first (ключ кнопки). */
     function startSearch(movieId, first) {
         first = first || mainId();
@@ -314,8 +346,9 @@ var BSSources = (function () {
         var cur = labelOf(who), id = search.id, s = search;
         // Skaz — по подписке Skaz (к входу в CUB не относится): нет подписки — он пишет «Нет доступа». Человек должен
         // просто смотреть: идём к бесплатному источнику и делаем его главным, чтобы в следующий раз без этого крюка
-        var skazOff = why === 'denied' && who === 'skaz' && mainId() === 'skaz';
-        noty(skazOff ? 'Skaz — по подписке, её нет. Включаю бесплатный источник' :
+        var skazOff = why === 'denied' && sameSource(who, mainId());   // главный без доступа — дальше главным бесплатный
+        if (why === 'denied') markDenied(who);
+        noty(skazOff ? (who === 'skaz' ? 'Skaz — по подписке, её нет' : 'В «' + cur + '» нет доступа') + '. Включаю бесплатный источник' :
             (why === 'denied' ? 'В «' + cur + '» нет доступа' : why === 'noanswer' ? '«' + cur + '» не отвечает' : 'В «' + cur + '» нет') +
             ' — ищу в других источниках');
         log('поиск: ' + who + ' сдался', why);
@@ -340,7 +373,7 @@ var BSSources = (function () {
                 if (skazOff && byId(list[0].key)) {
                     lsSet('bs_src_main', list[0].key);
                     try { Lampa.Storage.set('bs_src_main', list[0].key); } catch (e) {}
-                    noty('Главный источник теперь «' + labelOf(list[0].key) + '». Вернуть Skaz: Sunic Apps → Онлайн-источники');
+                    noty('Главный источник теперь «' + labelOf(list[0].key) + '». Вернуть «' + cur + '»: Sunic Apps → Онлайн-источники');
                 } else noty('Ищу в «' + labelOf(list[0].key) + '»');
                 list[0].btn.trigger('hover:enter');
             }, 300);
@@ -388,6 +421,6 @@ var BSSources = (function () {
     }
 
     return { start: start, owner: owner, mainId: mainId, isMain: isMain, pick: pick, list: LIST, useMain: useMain,
-        startSearch: startSearch, giveUp: giveUp, order: order, _search: function () { return search; }, _candidates: candidates, _looksOnline: looksOnline,
+        startSearch: startSearch, giveUp: giveUp, fallback: fallback, here: function () { try { return !!compOwner(Lampa.Activity.active().component); } catch (e) { return false; } }, _denied: denied, _sortDenied: sortDenied, order: order, _search: function () { return search; }, _candidates: candidates, _looksOnline: looksOnline,
         _swapTo: swapTo, _compOwner: compOwner, _onActivity: onActivity, _loadAll: loadAll, _dropBlocked: dropBlocked };
 })();

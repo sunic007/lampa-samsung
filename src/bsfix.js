@@ -557,10 +557,17 @@ var BSFix = (function () {
     }
 
     function playerOpen() { try { return !!Lampa.Player.opened(); } catch (e) { return false; } }
+    /* Свои источники плагина кончились: следующий плагин (Z01 → Online Mod → Lordfilm → Showy, bssources.js), а не
+     * «выберите вручную». Плеер открыт — ждём, пока закроют (сторож закрывает сам). Плагинов не осталось — подсказка. */
     function giveUpAuto() {
         auto = null;
+        if (!playerOpen() && otherPlugin('noanswer')) return true;
         quiet('Рабочий источник не найден — выберите вручную');
         return false;
+    }
+    function otherPlugin(why) {
+        try { return !!(window.BSSources && BSSources.fallback && lsGetFix('bs_auto_source') !== 'false' && BSSources.fallback(why)); }
+        catch (e) { log('другой плагин', e.message); return false; }
     }
 
     /* Новый источник должен открыться на том же сезоне. У плагина для этого своя «память сезона»
@@ -815,5 +822,5 @@ var BSFix = (function () {
         try { patch(Lampa.Activity.active().activity.component); } catch (e) {}
     }
 
-    return { start: start, show: showDiag, diagText: diagText, nextSeason: nextSeason, findEpisode: findEpisode, note: linkAdd, _hookLoading: hookLoading, current: current, played: played, autoNext: autoNext, findInPlayer: findInPlayer, _afterPlayer: afterPlayer, openSources: openSources, _autoPick: autoPick, playingBitrate: playingBitrate, _pickQuality: pickQuality, _hookPlay: hookPlay, _remember: remember, _state: function () { return { lastPlay: lastPlay, auto: auto }; }, _normQuality: normQuality, _patch: patch, _otherServer: otherServer, _fallbackUrl: fallbackUrl, _fallbacks: fallbacks, _mask: mask, _shortError: shortError };
+    return { start: start, show: showDiag, diagText: diagText, nextSeason: nextSeason, findEpisode: findEpisode, note: linkAdd, _hookLoading: hookLoading, current: current, played: played, autoNext: autoNext, otherPlugin: otherPlugin, findInPlayer: findInPlayer, _afterPlayer: afterPlayer, openSources: openSources, _autoPick: autoPick, playingBitrate: playingBitrate, _pickQuality: pickQuality, _hookPlay: hookPlay, _remember: remember, _state: function () { return { lastPlay: lastPlay, auto: auto }; }, _normQuality: normQuality, _patch: patch, _otherServer: otherServer, _fallbackUrl: fallbackUrl, _fallbacks: fallbacks, _mask: mask, _shortError: shortError };
 })();

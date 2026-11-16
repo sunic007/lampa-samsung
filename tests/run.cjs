@@ -2173,6 +2173,11 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     const btns = [b('view--torrent', '', 'Торренты'), b('view--online lampac--button', 'Мой Lampac 2.0', 'Онлайн'), b('view--online', 'Смотреть нарезки', 'Shots'),
         b('view--online lampac--button', 'Z01 2.1', 'Онлайн'), b('view--online lampac--button', 'Онлайн by Skaz', 'Онлайн'), b('view--trailer', '', 'Трейлеры'),
         b('view--online view--online_mod', 'Online Mod', 'Онлайн'), b('selector', 'Свой источник', 'Online')];
+    t('поиск: Skaz без доступа — последним из известных: Z01, Online Mod, Skaz, потом свои (Мой Lampac, Свой источник); торренты, Shots, трейлеры — мимо',
+        S._candidates(btns).map(c => c.key).join() === 'z01,online_mod,skaz,x:Мой Lampac 2.0,x:Свой источник');
+    t('без подписки: главный — первый бесплатный, а не Skaz', S.mainId() === 'z01' && S._denied('skaz') && !S._denied('z01'));
+    t('без подписки: отметка живёт 7 дней', !S._denied('skaz', Date.now() + 8 * 86400000));
+    delete store.bs_src_denied_skaz;
     t('поиск: порядок кнопок — Skaz, Z01, Online Mod, потом свои (Мой Lampac, Свой источник); торренты, Shots, трейлеры — мимо',
         S._candidates(btns).map(c => c.key).join() === 'skaz,z01,online_mod,x:Мой Lampac 2.0,x:Свой источник');
 }
@@ -2196,7 +2201,12 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     S.startSearch(5, 'skaz');
     S.giveUp('lampacskaz', 'denied');
     t('Skaz без подписки: сразу Z01 и он главный, подсказка где вернуть Skaz', pressed.join() === 'Z01 2.1:hover:enter' && store.bs_src_main === 'z01' &&
-        /Главный источник теперь «Z01»\. Вернуть Skaz: Sunic Apps → Онлайн-источники/.test(notes[1]));
+        /Главный источник теперь «Z01»\. Вернуть «Skaz»: Sunic Apps → Онлайн-источники/.test(notes[1]));
+    // видео не пошло в Z01, свои источники Z01 кончились — сразу следующий плагин, а не «выберите вручную»
+    comp = 'lampac_z'; pressed.length = 0; card.push(b('view--online view--online_mod', 'Online Mod', 'Онлайн'));
+    t('видео не пошло: следующий плагин сам (Online Mod), без поиска «Смотреть»', S.fallback('noanswer') === true && pressed.join() === 'Online Mod:hover:enter');
+    comp = 'full';
+    t('не экран источника — fallback ничего не делает', S.fallback('noanswer') === false);
 }
 /* ---- update.js: запасные зеркала CDN ---- */
 {
