@@ -66,6 +66,8 @@ def main(argv):
         nx = m.get('next')
         if not nx:
             sys.exit('новой версии нет: выпускайте через tools/pack.py --bump --rollout 0')
+        if pct >= 100 and nx['version'] in m.get('hold', []):
+            sys.exit('версия %s остановлена (hold) — сначала rollout.py unhold %s' % (nx['version'], nx['version']))
         if pct >= 100:
             m['version'], m['files'] = nx['version'], nx['files']
             if nx.get('notes'):

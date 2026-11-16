@@ -124,7 +124,9 @@ jobs:
               io.open(p, 'w', encoding='utf-8', newline='').write(s)
           PY
           python3 tools/pack.py --bump patch
-          V=$(python3 -c "import json;print(json.load(open('version.json',encoding='utf-8'))['version'])")
+          # поэтапная выкатка (tools/rollout.py): пока в version.json есть next, выпуск идёт туда — номер этого выпуска там
+          V=$(python3 -c "import json;m=json.load(open('version.json',encoding='utf-8'));print((m.get('next') or m)['version'])")
+          STAGED=$(python3 -c "import json;print('1' if json.load(open('version.json',encoding='utf-8')).get('next') else '')")
           [ "$V" = "$NEXT" ] || { echo "версия $V, ожидалась $NEXT"; exit 1; }
           git add -A src .github/CHANGELOG.md licenses version.json
           git commit -m "$V: Lampa $VERSION внутри пакета (автоматически, Skaz $HASH)"
@@ -144,6 +146,8 @@ jobs:
             echo
             echo "Установка: скачайте **samsung.wgt** ниже. Включённые ТВ обновятся сами."
           } > notes.md
+          # выкатка не закончена (next) — только тег: ни релиза, ни поста, пока владелец не выкатит на всех
+          if [ -n "$STAGED" ]; then echo "выпуск $V — в next (поэтапная выкатка): только тег"; exit 0; fi
           gh release create "v$V" -R "$REPO" --title "$V — Lampa $VERSION внутри пакета" --notes-file notes.md --latest "dist/samsung-$V.wgt" samsung.wgt
           # все файлы модулей — на jsDelivr (ТВ берут их оттуда), до 10 минут
           python3 - "$V" <<'PY'
@@ -172,7 +176,7 @@ jobs:
           VERSION: ${{ steps.cmp.outputs.version }}
         run: |
           [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || { echo "нет TELEGRAM_BOT_TOKEN или vars.OWNER_TG_CHAT — пропускаю"; exit 0; }
-          V=$(python3 -c "import json;print(json.load(open('version.json',encoding='utf-8'))['version'])")
+          V=$(python3 -c "import json;m=json.load(open('version.json',encoding='utf-8'));print((m.get('next') or m)['version'])")
           python3 .github/owner_notice.py "$V" "$VERSION"
       - name: Tests failed — pull request for a human
         if: steps.cmp.outputs.new && (!steps.upd.outputs.ok || (github.event_name == 'workflow_dispatch' && !inputs.release))

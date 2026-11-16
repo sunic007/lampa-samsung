@@ -64,8 +64,8 @@
     function target(m) {
         var hold = isArr(m.hold) ? m.hold : [], nx = m.next;
         if (nx && typeof nx === 'object' && okVer(nx.version) && okFiles(nx.files) && hold.indexOf(nx.version) < 0 &&
-            (get('bs_beta') === 'true' || bucket(nx.version) < (typeof nx.pct === 'number' ? nx.pct : 0))) return { v: nx.version, files: nx.files };
-        if (hold.indexOf(m.version) < 0) return { v: m.version, files: m.files };
+            (get('bs_beta') === 'true' || bucket(nx.version) < (typeof nx.pct === 'number' ? nx.pct : 0))) return { v: nx.version, files: nx.files, notes: nx.notes };
+        if (hold.indexOf(m.version) < 0) return { v: m.version, files: m.files, notes: m.notes };
         return null;
     }
 
@@ -222,7 +222,8 @@
                     return fin('');
                 }
                 if (!tg || tg.v === bad || (!back && num(tg.v) <= num(now)) || tg.v === now) return fin('');
-                if (upd && upd.v === tg.v && upd.ok) return fin(tg.v, m);               // уже проверена
+                var tm = { version: tg.v, files: tg.files, notes: tg.notes };             // «что нового» — той версии, что ставим
+                if (upd && upd.v === tg.v && upd.ok) return fin(tg.v, tm);              // уже проверена
                 verify(tg.v, tg.files, function (i) {
                     if (i < 0) return fin('');                                            // CDN ещё не готов — в следующий раз
                     var was = upd && upd.v;
@@ -233,7 +234,7 @@
                         try { console.log('BS update', 'на GitHub ' + m.version + ', этому ТВ ' + tg.v + ' (зеркало ' + i + '), сейчас ' + now); } catch (e) {}
                         try { Lampa.Noty.show(back ? 'Sunic Apps вернётся к версии ' + tg.v + ' при следующем запуске' : 'Обновление Sunic Apps ' + tg.v + ' готово — встанет при следующем запуске', { time: 5000 }); } catch (e) {}
                     }
-                    fin(tg.v, m);
+                    fin(tg.v, tm);
                 });
             });
         } catch (e) { fin(''); }

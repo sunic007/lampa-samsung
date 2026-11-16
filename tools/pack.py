@@ -147,6 +147,8 @@ def write_manifest(version):
             data['next']['notes'] = notes
     if old.get('hold'):
         data['hold'] = old['hold']
+        if not data.get('next') and data['version'] in old['hold']:
+            die('версия %s остановлена (hold) — всем её не выпускаем; снять: tools/rollout.py unhold %s' % (version, version))
     with open(os.path.join(ROOT, 'version.json'), 'w', encoding='utf-8', newline='\n') as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
         f.write('\n')
