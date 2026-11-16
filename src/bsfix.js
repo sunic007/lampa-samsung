@@ -387,6 +387,8 @@ var BSFix = (function () {
                     file = cloneFile(file); file.url = direct[0]; file.__bsAlts = direct.slice(1);
                 }
                 var t = Date.now();
+                // новый выбор (не наш повтор) — новое поколение; ответы прежнего выбора дальше не пройдут
+                var gen = file.__bsRetry ? selGen : ++selGen;
                 if (file.url) linkAdd('→ ' + shortUrl(file.url));
                 /* HDRezka-премиум, когда сломана, не отказывает, а молчит до таймаута Lampa (20 с, замер на эмуляторе
                  * 2026-10-11). Не ждём: через HEDGE_MS параллельно спрашиваем Rezka, берём ответ, пришедший первым. */
@@ -395,12 +397,14 @@ var BSFix = (function () {
                     if (settled) return;
                     if (!(json && json.url) && --pending > 0) return;   // другой запрос ещё может ответить
                     settled = true; if (hedge) clearTimeout(hedge);
+                    // отменили, ушли с экрана или выбрали другую серию — поздний ответ старого выбора не запускаем
+                    if (gen !== selGen) { log('поздний ответ прежнего выбора — пропускаю', shortUrl(file.url || '')); return; }
                     call(json, extra);
                 };
                 if (!file.__bsRetry && file.url && String(file.url).indexOf('/lite/rhsprem/movie') > 0) {
                     hedge = setTimeout(function () {
                         hedge = null;
-                        if (settled || Date.now() - lastCancel < 3000) return;
+                        if (settled || gen !== selGen || Date.now() - lastCancel < 3000) return;
                         var alts = fallbacks(file.url);
                         if (!alts.length) return;
                         rhsDown(); pending++; hedged = true;
@@ -436,6 +440,10 @@ var BSFix = (function () {
 
     // «Назад» на «Загрузке» — человек сам отменил; повтор через другой сервер тогда не нужен
     var lastCancel = 0;
+    /* Поколение выбора: растёт при каждом новом выборе файла, при отмене «Загрузки» и при уходе с экрана.
+     * Поздний ответ прежнего выбора (медленный запрос, запасной Rezka) не запускает старое видео. */
+    var selGen = 0;
+    function dropSelection() { selGen++; }
     /* Второй Loading.start без stop: Lampa заводит новый слой «Загрузка», а прежний (уже на экране) теряет — stop убирает
      * только последний, прежний висит навсегда, в том числе поверх фильма, и пульт остаётся у слоя загрузки. Так было при
      * параллельном запросе Rezka (HDRezka молчит 6 с — второй getFileUrl плагина, ТВ 2026-10-11). Перед новым start
@@ -457,7 +465,7 @@ var BSFix = (function () {
         if (st.__bs) return;
         L.start = function (onCancel) {
             var args = [].slice.call(arguments);
-            if (typeof onCancel === 'function') args[0] = function () { lastCancel = Date.now(); return onCancel.apply(this, arguments); };
+            if (typeof onCancel === 'function') args[0] = function () { lastCancel = Date.now(); dropSelection(); return onCancel.apply(this, arguments); };
             if (loadingOn) { try { sp.call(L); } catch (e) {} }
             loadingOn = true;
             clearTimeout(slowTimer);
@@ -819,6 +827,8 @@ var BSFix = (function () {
         try { hookPlay(); } catch (e) {}
         try { Lampa.Player.listener.follow('start', onPlayerStart); } catch (e) {}
         try { Lampa.Player.listener.follow('destroy', afterPlayer); } catch (e) {}
+        // новый экран или закрытый экран — выбор на прежнем больше не в силе
+        try { Lampa.Listener.follow('activity', function (e) { if (e && (e.type === 'init' || e.type === 'destroy')) dropSelection(); }); } catch (e) {}
         try {
             var C = Lampa.Component, create = C.create;
             if (create.__bs) return;
@@ -829,5 +839,5 @@ var BSFix = (function () {
         try { patch(Lampa.Activity.active().activity.component); } catch (e) {}
     }
 
-    return { start: start, show: showDiag, diagText: diagText, nextSeason: nextSeason, findEpisode: findEpisode, note: linkAdd, _hookLoading: hookLoading, current: current, played: played, autoNext: autoNext, otherPlugin: otherPlugin, findInPlayer: findInPlayer, _afterPlayer: afterPlayer, openSources: openSources, _autoPick: autoPick, playingBitrate: playingBitrate, _pickQuality: pickQuality, _hookPlay: hookPlay, _remember: remember, _state: function () { return { lastPlay: lastPlay, auto: auto }; }, _normQuality: normQuality, _patch: patch, _otherServer: otherServer, _fallbackUrl: fallbackUrl, _fallbacks: fallbacks, _mask: mask, _shortError: shortError };
+    return { start: start, show: showDiag, diagText: diagText, nextSeason: nextSeason, findEpisode: findEpisode, note: linkAdd, _hookLoading: hookLoading, _dropSelection: dropSelection, current: current, played: played, autoNext: autoNext, otherPlugin: otherPlugin, findInPlayer: findInPlayer, _afterPlayer: afterPlayer, openSources: openSources, _autoPick: autoPick, playingBitrate: playingBitrate, _pickQuality: pickQuality, _hookPlay: hookPlay, _remember: remember, _state: function () { return { lastPlay: lastPlay, auto: auto }; }, _normQuality: normQuality, _patch: patch, _otherServer: otherServer, _fallbackUrl: fallbackUrl, _fallbacks: fallbacks, _mask: mask, _shortError: shortError };
 })();
