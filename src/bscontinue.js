@@ -307,6 +307,9 @@ var BSContinue = (function () {
      * «Онлайн» / «Смотреть» на начатом (bs_online_resume, вкл.): так же — сериал сразу со своей серии (досмотрена —
      * следующая), фильм — с места (onDraw). Не начатое — экран источников как обычно. */
     function autoResume(o) {
+        // задание другого фильма или просроченное — не наше: экран не-Lampac (Online Mod, Lordfilm) его не забирает,
+        // и оно минуту не давало включиться следующему фильму (браузер, 2026-11-17: после «Дюны» — «Монте-Кристо»)
+        if (pending && (Date.now() > pending.until || !o.movie || pending.id != o.movie.id)) pending = null;
         if (pending || o.lampac_continue_episode || !o.movie || !(o.movie.id > 0)) return;
         try { if (window.BSSources && BSSources.wasCancelled && BSSources.wasCancelled(o.movie.id)) return; } catch (e) {}   // «Назад» на заставке
         var list = load(), i = find(list, o.movie), bot = window.BS_BOT_PLAY;

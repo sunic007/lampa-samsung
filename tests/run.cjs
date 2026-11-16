@@ -2000,10 +2000,12 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
                 Storage: { get: (k, d) => (k in lampa ? lampa[k] : d), field: k => lampa[k], cache: () => ({ 'Show': { season: 1, episode: 3 } }) } } };
         ctx.window = ctx; vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(SRC, 'bscontinue.js'), 'utf8') + ';this.M=BSContinue;', ctx);
         const o = { movie: card }; ctx.M._autoResume(o);
+        if (card.next) { said.length = 0; ctx.M._autoResume({ movie: card.next }); }   // следующий фильм сразу после этого
         return { said: said.join(' | '), ep: o.lampac_continue_episode };
     };
     const film = { id: 7, title: 'Фильм', original_title: 'Film' };
     t('skaz: новый фильм — сразу по-русски', /русскую/.test(run({}, {}, film).said));
+    t('skaz: экран не забрал задание фильма (Online Mod) — следующий фильм сразу тоже по-русски', /русскую/.test(run({}, {}, Object.assign({ next: { id: 8, title: 'Второй', original_title: 'Second' } }, film)).said));
     t('skaz: в Skaz запомнен оригинал — по-русски не включаем', run({ skaz_voice_pref: 'orig' }, {}, film).said === '');
     t('skaz: «Запоминать тип перевода» выключен — по-русски как обычно', /русскую/.test(run({ skaz_voice_pref: 'sub', skaz_voice_auto: false }, {}, film).said));
     const show = { id: 9, name: 'Шоу', original_name: 'Show', number_of_seasons: 2 };
@@ -2289,10 +2291,10 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     const b = (cls, subtitle, text) => ({ hasClass: c => cls.split(' ').indexOf(c) >= 0, attr: () => subtitle, data: () => subtitle, text: () => text || '',
         trigger: e => pressed.push(subtitle + ':' + e) });
     const card = [b('view--online lampac--button', 'Онлайн by Skaz', 'Онлайн'), b('view--online lampac--button', 'Z01 2.1', 'Онлайн')];
-    let comp = 'lampacskaz';
+    let comp = 'lampacskaz', backs = 0, stuckBack = 0;
     const Lampa = { Storage: { get: (k, d) => (d === undefined ? '' : d), set() {} }, Utils: { putScriptAsync() {} }, Noty: { show: t2 => notes.push(t2) },
         Listener: { follow() {} }, Plugins: { get: () => [] },
-        Activity: { active: () => ({ component: comp, movie: { id: 5 }, card: { id: 5 }, activity: { render: () => 'R' } }), backward: () => { comp = 'full'; } } };
+        Activity: { active: () => ({ component: comp, movie: { id: 5 }, card: { id: 5 }, activity: { render: () => 'R' } }), backward: () => { backs++; if (!stuckBack) comp = 'full'; else stuckBack--; } } };
     const $ = () => ({ find: () => ({ each: f => card.forEach(x => f.call(x)) }) });
     $.trim = x => String(x).trim();
     const ctx = { window: { localStorage: ls }, Lampa, $, console: { log() {} }, setTimeout: f => f(), JSON, String, Object, Array, Date };
@@ -2312,6 +2314,10 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     delete store.bs_src_denied_skaz; comp = 'lampacskaz'; S.startSearch(5, 'skaz');
     S.giveUp('lampacskaz', 'noconnect');
     t('сбой связи со Skaz — 7 дней не помним', !S._denied('skaz'));
+    // «назад» Lampa не сделала (плеер закрывался в тот же миг) — повторяем, а не стоим молча
+    comp = 'lampac_z'; backs = 0; stuckBack = 1; pressed.length = 0; S.startSearch(5, 'z01');
+    S.giveUp('lampac_z', 'noanswer');
+    t('поиск: первый «назад» не сработал — повторили и нажали следующий источник', backs === 2 && comp === 'full' && pressed.length === 1);
     // главный z01 без доступа, у Skaz подписка — главным Skaz, а не Online Mod
     store.bs_src_main = 'z01'; store.bs_src_denied_z01 = String(Date.now());
     t('главный без доступа — сначала Skaz (подписка есть), потом бесплатные', S.mainId() === 'skaz');

@@ -452,10 +452,20 @@ var BSSources = (function () {
             ['keydown', 'keyup'].forEach(function (t) { window.addEventListener(t, swallow, true); });
         }
     }
+    /* Плагины, что сами фильм не включают (не Lampac: Online Mod, Lordfilm, Showy, свои), — список показали и ждут
+     * выбора: заставку снимаем через STEP_OTHER, а не через 30 с впустую. */
+    var STEP_OTHER = 8000, AUTOPLAY = ['skaz', 'z01'];
+    function stepWait() {
+        var w = '';
+        try { w = compOwner(Lampa.Activity.active().component); } catch (e) {}
+        if (!w && search) w = search.current || '';
+        return w && AUTOPLAY.indexOf(w) < 0 ? STEP_OTHER : STEP_WAIT;
+    }
     /** Новый шаг поиска (открыли источник, закрыли плеер): если STEP_WAIT ничего не играет — источник ждёт выбора. */
     function veilStep() {
         if (!veil) return;
         clearTimeout(veil.step);
+        var wait = stepWait();
         veil.step = setTimeout(function () {
             if (!veil || veil.playing) return;
             var name = '';
@@ -463,7 +473,7 @@ var BSSources = (function () {
             search = null;                                       // дальше сами не переключаем: заставки нет — всё было бы на виду
             veilOff();
             notyOut(name ? 'Выберите, что включить в «' + name + '»' : 'Выберите источник');
-        }, STEP_WAIT);
+        }, wait);
     }
     function veilGiveUp(t) {
         if (!veil) return;
@@ -566,7 +576,9 @@ var BSSources = (function () {
         var cur = labelOf(who), id = search.id, s = search;
         // Skaz — по подписке Skaz (к входу в CUB не относится): нет подписки — он пишет «Нет доступа». Человек должен
         // просто смотреть: идём к бесплатному источнику и делаем его главным, чтобы в следующий раз без этого крюка
-        var skazOff = closed && sameSource(who, mainWas);   // главный без доступа — дальше главным бесплатный
+        // главный меняем навсегда только при настоящем «нет доступа» (accsdb/blocked); временный сбой связи (noconnect) —
+        // нет: иначе один сбой Z01 делал главным Online Mod (браузер, 2026-11-17)
+        var skazOff = why === 'denied' && sameSource(who, mainWas);   // главный без доступа — дальше главным бесплатный
         if (why === 'denied') markDenied(who);                     // кнопка без экрана (search.current)
         noty(skazOff ? (who === 'skaz' ? 'Skaz — по подписке, её нет' : 'В «' + cur + '» нет доступа') + '. Включаю бесплатный источник' :
             (closed ? 'В «' + cur + '» нет доступа' : why === 'fake' ? 'В «' + cur + '» не тот фильм' : why === 'noanswer' ? '«' + cur + '» не отвечает' : 'В «' + cur + '» нет') +
@@ -575,12 +587,17 @@ var BSSources = (function () {
         try { Lampa.Activity.backward(); } catch (e) {}
         var tries = 0;
         (function press() {
-            if (++tries > 15 || search !== s) return;
+            if (search !== s) return;
+            // карточку так и не увидели (браузер, 2026-11-17: плеер закрывался в тот же миг — «назад» Lampa не сделала,
+            // поиск молча стоял под заставкой) — не стоим: заставку снимаем, выбрать вручную
+            if (++tries > 20) { if (veil) veilGiveUp('Рабочий источник не найден — выберите вручную'); return; }
             setTimeout(function () {
                 if (search !== s) return;                            // отменили (Назад на заставке) или начали новый поиск
                 var list = null;
                 try {
                     var a = Lampa.Activity.active(), btns = [];
+                    // всё ещё на экране источника — «назад» ещё раз (каждые 1,5 с)
+                    if (a.component !== 'full' && compOwner(a.component) && tries % 5 === 0) { try { Lampa.Activity.backward(); } catch (x) {} }
                     if (a.component !== 'full' || (a.card || a.movie || {}).id != id) return press();
                     $(a.activity.render()).find('.buttons--container > .full-start__button').each(function () { btns.push($(this)); });
                     list = candidates(btns).filter(function (c) { return !triedHas(c.key); });
