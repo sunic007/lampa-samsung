@@ -1869,6 +1869,12 @@ t('буфер: «надёжно» 8/15', bufferFor('reliable') === 'PLAYER_BUFFE
     t('модели: перегружены — «через минуту», по каждой строка', (x => /через минуту/.test(x) && /• a — перегружена/.test(x) && /• b — лимит на сегодня/.test(x))(T._geminiSummary([{ id: 'a', kind: 'busy' }, { id: 'b', kind: 'day', until: gnow }], gnow)));
     const gt = T._guestTracked({ subs: [{ id: 1, tv: true }, { id: 2, tv: true }], want: [{ id: 1, tv: true }, { id: 3, tv: false }, { id: 4, tv: true }], muted: ['2'] });
     t('люди: уведомления — подписки и «Хочу посмотреть» (сериалы), без отписанных и повторов', gt.map(c => c.id).join() === '1,4');
+    const na = T._nextAfter, ep = (s, e, d) => ({ season_number: s, episode_number: e, air_date: d });
+    t('след. серия: TMDB дал ту же 12-ю, что смотрят, — берём 13-ю из списка сезона', (x => x.episode_number === 13 && x.air_date === '2026-11-17')(na(ep(1, 12, '2026-11-16'), 1, 12, [ep(1, 11, '2026-11-10'), ep(1, 12, '2026-11-16'), ep(1, 14, '2026-11-19'), ep(1, 13, '2026-11-17')])));
+    t('след. серия: TMDB дал серию после текущей — как есть', na(ep(1, 13, '2026-11-17'), 1, 12, []).episode_number === 13);
+    t('след. серия: в списке дальше ничего — null («дата не объявлена»)', na(ep(1, 12, '2026-11-16'), 1, 12, [ep(1, 12, '2026-11-16'), ep(1, 13, null)]) === null);
+    t('уведомления: о 12-й уже писали или её смотрели — не новость, 13-я — новость', T._epKnown(1, 12, { s: 1, e: 12 }, null) && T._epKnown(1, 12, null, { s: 1, e: 12 }) && T._epKnown(1, 3, null, { s: 2, e: 1 }) && !T._epKnown(1, 13, { s: 1, e: 12 }, { s: 1, e: 12 }) && !T._epKnown(1, 1, {}, null));
+    t('след. серия: дата уже прошла — «уже вышла», а не «сегодня»', /уже вышла/.test(T._nextText(ep(1, 12, '2026-11-12'), new Date(2026, 10, 16).getTime())) && /сегодня/.test(T._nextText(ep(1, 13, '2026-11-16'), new Date(2026, 10, 16).getTime())));
     const ol = (list, mine, u) => T._ownerList(list, mine, u).map(c => c.id).join();
     const olTv = [{ id: 10 }, { id: 11 }, { id: 12 }], olU = { '555': { name: 'Шахноза', subs: [{ id: 11, tv: true }], want: [{ id: 12, tv: true }] }, '666': { name: 'Бан', banned: true, subs: [{ id: 10, tv: true }] } };
     t('люди: подписка на Шахнозу — владельцу о сериале не пишем (даже если смотрели на ТВ), её «Хочу посмотреть» не мешает', ol(olTv, [], olU) === '10,12');
