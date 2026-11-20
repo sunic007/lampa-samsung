@@ -1450,6 +1450,36 @@
       configurable: true,
       writable: true
     });
+  } // https://tc39.github.io/ecma262/#sec-array.prototype.findindex
+
+
+  if (!Array.prototype.findIndex) {
+    Object.defineProperty(Array.prototype, 'findIndex', {
+      value: function value(predicate) {
+        if (this == null) {
+          throw new TypeError('"this" is null or not defined');
+        }
+
+        var o = Object(this);
+        var len = o.length >>> 0;
+
+        if (typeof predicate !== 'function') {
+          throw new TypeError('predicate must be a function');
+        }
+
+        var thisArg = arguments[1];
+
+        for (var k = 0; k < len; k++) {
+          if (predicate.call(thisArg, o[k], k, o)) {
+            return k;
+          }
+        }
+
+        return -1;
+      },
+      configurable: true,
+      writable: true
+    });
   } // https://tc39.github.io/ecma262/#sec-array.prototype.includes
 
 
@@ -3375,7 +3405,7 @@
 
   var html$1I = "<div class=\"files\">\n    <div class=\"files__left\">\n        <div class=\"full-start__poster selector\">\n            <img src=\"{img}\" class=\"full-start__img\" />\n        </div>\n\n        <div class=\"files__info\">\n            <div class=\"files__title\">{title}</div>\n            <div class=\"files__title-original\">{original_title}</div>\n        </div>\n    </div>\n    <div class=\"files__body\">\n        \n    </div>\n</div>";
 
-  var html$1H = "<div class=\"about\">\n    <div>#{about_text}</div>\n\n\n    <div class=\"overhide\">\n        <div class=\"about__contacts\">\n            <div>\n                <small>#{about_channel}</small><br>\n                \@lampabyskaz\n            </div>\n\n            <div>\n                <small>#{about_group}</small><br>\n                @lampa_group\n            </div>\n\n            <div>\n                <small>#{about_version}</small><br>\n                <span class=\"version_app\"></span>\n            </div>\n\n            <div class=\"hide platform_android\">\n                <small>#{about_version} Android APK</small><br>\n                <span class=\"version_android\"></span>\n            </div>\n\n            <div>\n                <small>Hash</small><br>\n                <span>aa701aae95d5d749e0e5938631db9040</span>\n            </div>\n\n            <div>\n                <small>Builded</small><br>\n                <span>2026-11-18 12:50</span>\n            </div>\n        </div>\n    </div>\n\n    <div class=\"about__rules\">\n        <h3>#{termsofuse_t_01}</h3>\n\n        <p>#{termsofuse_t_02}</p>\n\n        <ol>\n            <li>\n                <h6>#{termsofuse_t_03}</h6>\n\n                <ol>\n                    <li><p>#{termsofuse_t_04}</p></li>\n\n                    <li><p>#{termsofuse_t_05}</p></li>\n\n                    <li><p>#{termsofuse_t_06}</p></li>\n\n                    <li><p>#{termsofuse_t_07}</p></li>\n                </ol>\n                \n            </li>\n\n            <li>\n                <h6>#{termsofuse_t_08}</h6>\n\n                <ol>\n                    <li><p>#{termsofuse_t_09}</p></li>\n                    <li><p>#{termsofuse_t_10}</p></li>\n                </ol>\n            </li>\n\n            <li>\n                <h6>#{termsofuse_t_11}</h6>\n\n                <ol>\n                    <li><p>#{termsofuse_t_12}</p></li>\n                    <li><p>#{termsofuse_t_13}</p></li>\n                </ol>\n            </li>\n        </ol>\n    </div>\n</div>";
+  var html$1H = "<div class=\"about\">\n    <div>#{about_text}</div>\n\n\n    <div class=\"overhide\">\n        <div class=\"about__contacts\">\n            <div>\n                <small>#{about_channel}</small><br>\n                \@lampabyskaz\n            </div>\n\n            <div>\n                <small>#{about_group}</small><br>\n                @lampa_group\n            </div>\n\n            <div>\n                <small>#{about_version}</small><br>\n                <span class=\"version_app\"></span>\n            </div>\n\n            <div class=\"hide platform_android\">\n                <small>#{about_version} Android APK</small><br>\n                <span class=\"version_android\"></span>\n            </div>\n\n            <div>\n                <small>Hash</small><br>\n                <span>c5274ea098e8ebd6552c7ed2adfc7a18</span>\n            </div>\n\n            <div>\n                <small>Builded</small><br>\n                <span>2026-11-19 15:55</span>\n            </div>\n        </div>\n    </div>\n\n    <div class=\"about__rules\">\n        <h3>#{termsofuse_t_01}</h3>\n\n        <p>#{termsofuse_t_02}</p>\n\n        <ol>\n            <li>\n                <h6>#{termsofuse_t_03}</h6>\n\n                <ol>\n                    <li><p>#{termsofuse_t_04}</p></li>\n\n                    <li><p>#{termsofuse_t_05}</p></li>\n\n                    <li><p>#{termsofuse_t_06}</p></li>\n\n                    <li><p>#{termsofuse_t_07}</p></li>\n                </ol>\n                \n            </li>\n\n            <li>\n                <h6>#{termsofuse_t_08}</h6>\n\n                <ol>\n                    <li><p>#{termsofuse_t_09}</p></li>\n                    <li><p>#{termsofuse_t_10}</p></li>\n                </ol>\n            </li>\n\n            <li>\n                <h6>#{termsofuse_t_11}</h6>\n\n                <ol>\n                    <li><p>#{termsofuse_t_12}</p></li>\n                    <li><p>#{termsofuse_t_13}</p></li>\n                </ol>\n            </li>\n        </ol>\n    </div>\n</div>";
 
   var html$1G = "<div class=\"error\">\n    <div class=\"error__ico\"></div>\n    <div class=\"error__body\">\n        <div class=\"error__title\">{title}</div>\n        <div class=\"error__text\">{text}</div>\n    </div>\n</div>";
 
@@ -34734,11 +34764,11 @@
     try {
       if (typeof AndroidJS !== 'undefined' && typeof AndroidJS.getAdvertisingId === 'function') {
         var id = (AndroidJS.getAdvertisingId() || '') + '';
-        console.log('VAST', 'Advertising ID:', id);
+        console.log('Ad', 'Advertising ID:', id);
         if (/^[0-9a-f-]{36}$/i.test(id) && id.indexOf('00000000') !== 0) return id;
       }
     } catch (e) {
-      console.error('VAST', 'Error getting Advertising ID:', e);
+      console.error('Ad', 'Error getting Advertising ID:', e);
     }
 
     var guid = Storage.get('vast_device_guid', '');
@@ -49723,6 +49753,7 @@
 
   var SERVER = {};
   var timers = {};
+  var viewed_listener;
   var callback$1;
   var callback_back;
   var autostart_timer;
@@ -49988,6 +50019,7 @@
   function list$2(items, params) {
     var html = $('<div class="torrent-files"></div>');
     var playlist = [];
+    var views = {};
     var scroll_to_element;
     var first_item;
     Lampa.Listener.send('torrent_file', {
@@ -50102,6 +50134,11 @@
 
       if (element.img !== './img/img_broken.svg') element.thumbnail = element.img;
       item[0].visibility = 'hidden';
+      views[element.id] = {
+        view: view,
+        duration: view.duration,
+        server: serverView ? serverView.timecode || 0 : 0
+      };
       if (view.percent > 0) scroll_to_element = item;
       element.subtitles = parseSubs(element.path, params.files);
       element.title = (element.fname || element.title).replace(/<[^>]*>?/gm, '');
@@ -50280,7 +50317,35 @@ else if (element.url) {
     });else Modal.title(Lang.translate('title_files'));
     if (playlist.length == 1) autostart(first_item);
     Modal.update(html);
+
+    if (Storage.field('torrserver_tracktimecode')) {
+      document.removeEventListener('visibilitychange', viewed_listener);
+
+      viewed_listener = function viewed_listener() {
+        if (!document.hidden) refreshViewed(views);
+      };
+
+      document.addEventListener('visibilitychange', viewed_listener);
+    }
+
     if (scroll_to_element) Controller.collectionFocus(scroll_to_element, Modal.scroll().render());
+  }
+
+  function refreshViewed(views) {
+    if (!Storage.field('torrserver_tracktimecode') || !SERVER.hash) return;
+    Torserver.viewed(SERVER.hash, function (viewed) {
+      (viewed || []).forEach(function (sv) {
+        var item = views[sv.file_index];
+        var time = sv.timecode || 0;
+        if (!item || time === item.server) return;
+        item.server = time;
+        var view = item.view;
+        if (!view.duration) view.duration = item.duration;
+        view.time = time;
+        if (view.duration > 0) view.percent = Math.min(100, Math.round(view.time / view.duration * 100));
+        Timeline$2.update(view);
+      });
+    }, function () {});
   }
 
   function autostart(item) {
@@ -50323,6 +50388,7 @@ else if (element.url) {
     Torserver.drop(SERVER.hash);
     Torserver.clear();
     clearInterval(timers.files);
+    document.removeEventListener('visibilitychange', viewed_listener);
 
     if (callback_back) {
       callback_back();
@@ -67778,8 +67844,8 @@ else if (element.url) {
     console.log('App', 'is PWA:', Utils$1.isPWA());
     console.log('App', 'platform:', Storage.get('platform', 'noname'));
     console.log('App', 'version:', object$2.app_version);
-    console.log('App', 'build date:', '2026-11-18 12:50');
-    console.log('App', 'hash', 'aa701aae95d5d749e0e5938631db9040');
+    console.log('App', 'build date:', '2026-11-19 15:55');
+    console.log('App', 'hash', 'c5274ea098e8ebd6552c7ed2adfc7a18');
     console.log('App', 'location:', location.href); // Записываем uid
 
     if (!Storage.get('lampa_uid', '')) Storage.set('lampa_uid', Utils$1.uid()); // Ренедрим лампу
