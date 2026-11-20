@@ -4568,6 +4568,26 @@ async function serviceTests() {
         const R = 'http://tmdb-api.rootu.top/3/movie/1'; err(R, 0); err(R, 0); err(R, 0);
         t('TMDB: запасные кончились — снова основной', F._tmdbAltUrl(U) === U);
     }
+    {   // постеры: адрес ядра не отвечает — запасные адреса (2.3.101)
+        const U = 'https://imagetmdb.cubnotrip.top/t/p/w300/a.jpg?email=', err = (u) => F._imgNetError(u);
+        F._imgGrace(0);
+        t('Постеры: пока ошибок нет — адрес ядра', F._imgAltUrl(U) === U);
+        err('https://x/a.png'); err(U); err(U);
+        t('Постеры: не-TMDB картинки не считаем', F._imgAltUrl(U) === U);
+        err(U);
+        t('Постеры: 3 ошибки — оригинал TMDB', F._imgAltUrl(U) === 'https://image.tmdb.org/t/p/w300/a.jpg');
+        err(U); err(U); err(U);
+        t('Постеры: запоздалые ошибки старого адреса не уводят дальше', F._imgAltUrl(U) === 'https://image.tmdb.org/t/p/w300/a.jpg');
+        const O = 'https://image.tmdb.org/t/p/w300/a.jpg'; err(O); err(O); err(O);
+        t('Постеры: оригинал не отвечает — nl.imagetmdb.com', F._imgAltUrl(U) === 'https://nl.imagetmdb.com/t/p/w300/a.jpg');
+        const N = 'https://nl.imagetmdb.com/t/p/w300/a.jpg'; err(N); err(N); err(N);
+        t('Постеры: и он — прокси weserv', F._imgAltUrl(U) === 'https://images.weserv.nl/?url=image.tmdb.org/t/p/w300/a.jpg');
+        const W = 'https://images.weserv.nl/?url=image.tmdb.org/t/p/w300/a.jpg'; err(W); err(W); err(W);
+        t('Постеры: запасные кончились — снова адрес ядра', F._imgAltUrl(U) === U);
+        // ядро уже на оригинале: первый запасной — не он же
+        const O2 = 'https://image.tmdb.org/t/p/w300/b.jpg'; err(O2); err(O2); err(O2);
+        t('Постеры: ядро на оригинале — переходим сразу на nl', F._imgAltUrl(O2) === 'https://nl.imagetmdb.com/t/p/w300/b.jpg');
+    }
     t('IPTV: разбор — разделы по каналам, последний #EXTINF без ссылки тоже в списке',
         p.playlist.channels.length === 3 && p.playlist.channels[2].url === undefined &&
         p.playlist.menu.some(m => m.name === 'Uzbekistan' && m.count === 2) && p.playlist.menu.some(m => m.name === 'Новости' && m.count === 1));

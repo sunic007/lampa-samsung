@@ -26,5 +26,35 @@
    "Запасная копия Lampa внутри пакета обновлена до свежей сборки 3.4.7 (как на сервере Skaz): Lampa запускается из пакета, без загрузки ядра из сети.",
    "Сделано автоматически: новая Lampa на сервере Skaz → тесты → выпуск."
   ]
+ },
+ "next": {
+  "version": "2.3.101",
+  "files": [
+   "bsdevice.js",
+   "bsreport.js",
+   "skazauto.js",
+   "playerguard.js",
+   "bsfeatures.js",
+   "bsplayer.js",
+   "bsrch.js",
+   "bsprobe.js",
+   "bsfix.js",
+   "bssources.js",
+   "bsmenu.js",
+   "bscontinue.js",
+   "bswatch.js",
+   "bshub.js",
+   "bstg.js",
+   "bsvolume.js",
+   "bstv.js",
+   "loader.js"
+  ],
+  "pct": 0,
+  "notes": {
+   "title": "Постеры не пропадают",
+   "items": [
+    "Если постеры на главной не загружаются, Lampa сама переходит на запасной адрес картинок и возвращается назад позже."
+   ]
+  }
  }
 }

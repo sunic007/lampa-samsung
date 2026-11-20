@@ -1124,8 +1124,55 @@ var BSFeatures = (function () {
         Lampa.Listener.follow('request_error', tmdbNetError);
     }
 
+    /* Запасные адреса постеров (2.3.101). Ядро меняет зеркало картинок только после 20 ошибок за 10 с, а карточка после
+     * 4 неудач рисует вместо постера адрес картинки (на устройстве владельца 19.11.2026 так было у большинства
+     * карточек главной). 3 ошибки загрузки картинки за 30 с — на 15 минут идём через следующий адрес: оригинал TMDB,
+     * nl.imagetmdb.com, общий прокси images.weserv.nl; не отвечают и они — снова адрес ядра. Проверяем «картинка не
+     * загрузилась» своим слушателем (error не всплывает — ловим на захвате), от ядра не зависим. */
+    var IMG_ALT = [{ h: 'image.tmdb.org', p: 'image.tmdb.org/' }, { h: 'nl.imagetmdb.com', p: 'nl.imagetmdb.com/' },
+                   { h: 'images.weserv.nl', p: 'images.weserv.nl/?url=image.tmdb.org/' }],
+        imgAlt = -1, imgAltUntil = 0, imgErr = [], imgSwitchAt = 0, IMG_GRACE = 3000;
+    function imgAltUrl(u) {
+        u = String(u);
+        if (imgAlt >= 0 && Date.now() > imgAltUntil) imgAlt = -1;
+        if (imgAlt < 0) return u;
+        var m = /^(https?:\/\/)[^?#]*?\/(t\/p\/[^?#]*)/.exec(u);
+        return m ? m[1] + IMG_ALT[imgAlt].p + m[2] : u;
+    }
+    function imgNetError(src) {
+        src = String(src || '');
+        if (src.indexOf('/t/p/') < 0) return;
+        var now = Date.now(), i, keep = [];
+        if (imgAlt >= 0 && src.indexOf(IMG_ALT[imgAlt].h) < 0) return;      // запоздалая ошибка прежнего адреса
+        if (now - imgSwitchAt < IMG_GRACE) return;
+        for (i = 0; i < imgErr.length; i++) if (now - imgErr[i] < 30000) keep.push(imgErr[i]);
+        keep.push(now);
+        imgErr = keep;
+        if (imgErr.length < 3) return;
+        imgErr = [];
+        imgSwitchAt = now;
+        var from = imgAlt;
+        if (from < 0) { from = -1; for (i = 0; i < IMG_ALT.length; i++) if (src.indexOf(IMG_ALT[i].h) < 0) { from = i - 1; break; } }
+        imgAlt = from + 1 < IMG_ALT.length ? from + 1 : -1;
+        if (imgAlt >= 0) imgAltUntil = now + 15 * 60000;
+        console.log('BS img', imgAlt < 0 ? 'запасные адреса картинок не отвечают — снова адрес ядра' : 'постеры не грузятся — через ' + IMG_ALT[imgAlt].h);
+    }
+    function installImgFallback() {
+        var T = Lampa.TMDB;
+        if (!T || typeof T.image !== 'function' || T.image.__bs) return;
+        var orig = T.image;
+        var wrap = function () { return imgAltUrl(orig.apply(this, arguments)); };
+        wrap.__bs = true;
+        T.image = wrap;
+        document.addEventListener('error', function (e) {
+            var t = e && e.target;
+            if (t && t.tagName === 'IMG') imgNetError(t.src);
+        }, true);
+    }
+
     function start() {
         try { installTmdbFallback(); } catch (e) { console.log('BS tmdb fallback', e.message); }
+        try { installImgFallback(); } catch (e) { console.log('BS img fallback', e.message); }
         try { keyboardWrap(); } catch (e) { console.log('BS keyboard wrap', e.message); }
         try { fullscreenButton(); } catch (e) {}
         try { webKeys(); } catch (e) {}
@@ -1153,6 +1200,6 @@ var BSFeatures = (function () {
 
     return {
         _iptvToggle: iptvToggle, _iptvLists: IPTV_LISTS, _iptvFix: iptvFix, _iptvInstalled: iptvInstalled, _iptvAuto: iptvAuto, _iptvMenuOff: iptvMenuOff, _iptvGroup: iptvGroup, _iptvChannel: iptvChannel, _iptvLook: iptvLook,
-        _iptvSource: iptvSourceSet, _iptvDefault: IPTV_DEFAULT, _iptvUrl: iptvUrl, _iptvParse: iptvParse, _iptvParseAsync: iptvParseAsync, _tmdbAltUrl: tmdbAltUrl, _tmdbNetError: tmdbNetError, _tmdbGrace: function (ms) { TMDB_GRACE = ms; }, _iptvParseRun: iptvParseRun, _iptvAlt: iptvAlt, _iptvAltIndex: iptvAltIndex, _iptvNormName: iptvNormName,
+        _iptvSource: iptvSourceSet, _iptvDefault: IPTV_DEFAULT, _iptvUrl: iptvUrl, _iptvParse: iptvParse, _iptvParseAsync: iptvParseAsync, _imgAltUrl: imgAltUrl, _imgNetError: imgNetError, _imgGrace: function (ms) { IMG_GRACE = ms; }, _tmdbAltUrl: tmdbAltUrl,_tmdbNetError: tmdbNetError, _tmdbGrace: function (ms) { TMDB_GRACE = ms; }, _iptvParseRun: iptvParseRun, _iptvAlt: iptvAlt, _iptvAltIndex: iptvAltIndex, _iptvNormName: iptvNormName,
         start: start, _kbWrapTarget: keyboardWrapTarget, _kbWrap: keyboardWrap, _freshUrl: freshUrl, _localVender: localVender, _sleepSet: sleepSet, _sleepLabel: sleepLabel, _sleepNext: sleepNext, _sleepMode: sleepMode };
 })();
