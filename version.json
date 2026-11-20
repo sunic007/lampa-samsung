@@ -28,7 +28,7 @@
   ]
  },
  "next": {
-  "version": "2.3.101",
+  "version": "2.4.0",
   "files": [
    "bsdevice.js",
    "bsreport.js",
