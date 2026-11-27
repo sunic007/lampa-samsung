@@ -12,7 +12,7 @@ var BS_SERVER = 'http://lampa.byskaz.ru/lampa-main/';
 var BS_PACKAGE_VERSION = 'dev';   // версия пакета .wgt — pack.py подставляет её из config.xml
 if (window.BS_REMOTE_VERSION) BS_PACKAGE_VERSION = window.BS_REMOTE_VERSION;   // модули пришли с GitHub (update.js)
 var BS_BUNDLED_VERSION = '3.4.8'; // версия встроенной копии app.js — update_bundled.py
-var BS_BUNDLED_HASH = 'b8aa96410e3073d7dfa9ff4a4e4b9481'; // hash из assembly.json этой копии — update_bundled.py
+var BS_BUNDLED_HASH = '2fb82388c1b4be8e78983e731b200fc3'; // hash из assembly.json этой копии — update_bundled.py
 // loader.js пришёл с GitHub, а пакет на ТВ старее: app.js в пакете — та сборка, что записана в update.js пакета
 if (window.BS_REMOTE_VERSION && window.BS_PKG_APP && window.BS_PKG_APP.hash) {
     BS_BUNDLED_HASH = window.BS_PKG_APP.hash;
